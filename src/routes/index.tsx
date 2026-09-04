@@ -7,7 +7,7 @@ import mascotCoin from "@/assets/mascot-coin.jpg.asset.json";
 import { Ticker } from "@/components/site/Ticker";
 import { CopyAddress } from "@/components/site/CopyAddress";
 
-const CONTRACT = "0x0000000000000000000000000000000000000000";
+const CONTRACT = "0x577a8addf60a34d4c705914ad066a3b28c3fc40d365ed0d9dfc408f29b4725d3::blast::BLAST";
 const BUY_URL = "https://blast.fun";
 
 export const Route = createFileRoute("/")({
