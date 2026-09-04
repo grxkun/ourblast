@@ -82,14 +82,34 @@ function Home() {
               How to buy
             </a>
           </nav>
-          <a
-            href={BUY_URL}
-            target="_blank"
-            rel="noreferrer"
-            className="shrink-0 rounded-lg border-[3px] border-border bg-primary px-4 py-2 font-display text-lg tracking-wide text-primary-foreground shadow-[4px_4px_0_0_var(--ink)] transition-transform hover:-translate-y-0.5 active:translate-y-0.5"
-          >
-            BUY $BLAST
-          </a>
+          <div className="flex shrink-0 items-center gap-2 sm:gap-3">
+            <a
+              href={X_URL}
+              target="_blank"
+              rel="noreferrer"
+              aria-label="X (Twitter)"
+              className="flex size-11 items-center justify-center rounded-lg border-[3px] border-border bg-card font-display text-base shadow-[4px_4px_0_0_var(--ink)] transition-transform hover:-translate-y-0.5 active:translate-y-0.5"
+            >
+              X
+            </a>
+            <a
+              href={TG_URL}
+              target="_blank"
+              rel="noreferrer"
+              aria-label="Telegram"
+              className="flex size-11 items-center justify-center rounded-lg border-[3px] border-border bg-card font-display text-sm shadow-[4px_4px_0_0_var(--ink)] transition-transform hover:-translate-y-0.5 active:translate-y-0.5"
+            >
+              TG
+            </a>
+            <a
+              href={BUY_URL}
+              target="_blank"
+              rel="noreferrer"
+              className="rounded-lg border-[3px] border-border bg-primary px-4 py-2 font-display text-lg tracking-wide text-primary-foreground shadow-[4px_4px_0_0_var(--ink)] transition-transform hover:-translate-y-0.5 active:translate-y-0.5"
+            >
+              BUY $BLAST
+            </a>
+          </div>
         </div>
       </header>
 
