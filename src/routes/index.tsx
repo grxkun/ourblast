@@ -8,7 +8,9 @@ import { Ticker } from "@/components/site/Ticker";
 import { CopyAddress } from "@/components/site/CopyAddress";
 
 const CONTRACT = "0x577a8addf60a34d4c705914ad066a3b28c3fc40d365ed0d9dfc408f29b4725d3::blast::BLAST";
-const BUY_URL = "https://blast.fun";
+const BUY_URL = "https://www.aftermath.finance/trade?from=SUI&to=0x577a8addf60a34d4c705914ad066a3b28c3fc40d365ed0d9dfc408f29b4725d3%3A%3Ablast%3A%3ABLAST";
+const X_URL = "https://x.com/Blastdotv2";
+const TG_URL = "https://t.me/+CTQYRsfq4Bs1NmM0";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -80,14 +82,34 @@ function Home() {
               How to buy
             </a>
           </nav>
-          <a
-            href={BUY_URL}
-            target="_blank"
-            rel="noreferrer"
-            className="shrink-0 rounded-lg border-[3px] border-border bg-primary px-4 py-2 font-display text-lg tracking-wide text-primary-foreground shadow-[4px_4px_0_0_var(--ink)] transition-transform hover:-translate-y-0.5 active:translate-y-0.5"
-          >
-            BUY $BLAST
-          </a>
+          <div className="flex shrink-0 items-center gap-2 sm:gap-3">
+            <a
+              href={X_URL}
+              target="_blank"
+              rel="noreferrer"
+              aria-label="X (Twitter)"
+              className="flex size-11 items-center justify-center rounded-lg border-[3px] border-border bg-card font-display text-base shadow-[4px_4px_0_0_var(--ink)] transition-transform hover:-translate-y-0.5 active:translate-y-0.5"
+            >
+              X
+            </a>
+            <a
+              href={TG_URL}
+              target="_blank"
+              rel="noreferrer"
+              aria-label="Telegram"
+              className="flex size-11 items-center justify-center rounded-lg border-[3px] border-border bg-card font-display text-sm shadow-[4px_4px_0_0_var(--ink)] transition-transform hover:-translate-y-0.5 active:translate-y-0.5"
+            >
+              TG
+            </a>
+            <a
+              href={BUY_URL}
+              target="_blank"
+              rel="noreferrer"
+              className="rounded-lg border-[3px] border-border bg-primary px-4 py-2 font-display text-lg tracking-wide text-primary-foreground shadow-[4px_4px_0_0_var(--ink)] transition-transform hover:-translate-y-0.5 active:translate-y-0.5"
+            >
+              BUY $BLAST
+            </a>
+          </div>
         </div>
       </header>
 
@@ -270,17 +292,19 @@ function Home() {
 
             <div className="flex flex-wrap items-center gap-3">
               <a
-                href="https://x.com"
+                href={X_URL}
                 target="_blank"
                 rel="noreferrer"
+                aria-label="X (Twitter)"
                 className="rounded-lg border-[3px] border-primary px-5 py-2.5 font-display text-lg tracking-wide transition-colors hover:bg-primary"
               >
                 X / TWITTER
               </a>
               <a
-                href="https://t.me"
+                href={TG_URL}
                 target="_blank"
                 rel="noreferrer"
+                aria-label="Telegram"
                 className="rounded-lg border-[3px] border-primary px-5 py-2.5 font-display text-lg tracking-wide transition-colors hover:bg-primary"
               >
                 TELEGRAM
@@ -289,9 +313,10 @@ function Home() {
                 href={BUY_URL}
                 target="_blank"
                 rel="noreferrer"
+                aria-label="Buy $BLAST on blast.fun"
                 className="rounded-lg border-[3px] border-border bg-primary px-5 py-2.5 font-display text-lg tracking-wide text-primary-foreground"
               >
-                BLAST.FUN
+                BUY $BLAST
               </a>
             </div>
           </div>
