@@ -292,17 +292,19 @@ function Home() {
 
             <div className="flex flex-wrap items-center gap-3">
               <a
-                href="https://x.com"
+                href={X_URL}
                 target="_blank"
                 rel="noreferrer"
+                aria-label="X (Twitter)"
                 className="rounded-lg border-[3px] border-primary px-5 py-2.5 font-display text-lg tracking-wide transition-colors hover:bg-primary"
               >
                 X / TWITTER
               </a>
               <a
-                href="https://t.me"
+                href={TG_URL}
                 target="_blank"
                 rel="noreferrer"
+                aria-label="Telegram"
                 className="rounded-lg border-[3px] border-primary px-5 py-2.5 font-display text-lg tracking-wide transition-colors hover:bg-primary"
               >
                 TELEGRAM
@@ -311,9 +313,10 @@ function Home() {
                 href={BUY_URL}
                 target="_blank"
                 rel="noreferrer"
+                aria-label="Buy $BLAST on blast.fun"
                 className="rounded-lg border-[3px] border-border bg-primary px-5 py-2.5 font-display text-lg tracking-wide text-primary-foreground"
               >
-                BLAST.FUN
+                BUY $BLAST
               </a>
             </div>
           </div>
