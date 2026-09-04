@@ -1,5 +1,5 @@
 const ITEMS = [
-  "$CTO",
+  "$BLAST",
   "COMMUNITY TAKEOVER",
   "HELMETS ON",
   "LP BURNED",

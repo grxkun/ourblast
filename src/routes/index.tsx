@@ -13,13 +13,13 @@ const BUY_URL = "https://blast.fun";
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "$CTO — Helmets On, Community Owned Coin on Blast.fun" },
+      { title: "$BLAST — Helmets On, Community Owned Coin on Blast.fun" },
       {
         name: "description",
         content:
-          "$CTO is a community takeover coin on blast.fun. No dev, no roadmap, LP burned, zero tax. Grab a helmet and ride the chart.",
+          "$BLAST is a community takeover coin on blast.fun. No dev, no roadmap, LP burned, zero tax. Grab a helmet and ride the chart.",
       },
-      { property: "og:title", content: "$CTO — Helmets On, Community Owned" },
+      { property: "og:title", content: "$BLAST — Helmets On, Community Owned" },
       {
         property: "og:description",
         content:
@@ -46,7 +46,7 @@ const STEPS = [
   {
     n: "02",
     title: "Head to blast.fun",
-    body: "Paste the $CTO address below, pick your amount, and confirm the swap.",
+    body: "Paste the $BLAST address below, pick your amount, and confirm the swap.",
   },
   {
     n: "03",
@@ -64,10 +64,10 @@ function Home() {
           <a href="#top" className="flex items-center gap-3">
             <img
               src={helmet.url}
-              alt="$CTO pixel helmet mascot"
+              alt="$BLAST pixel helmet mascot"
               className="animate-zap size-11 rounded-lg border-[3px] border-border bg-card object-cover"
             />
-            <span className="font-display text-2xl tracking-wide">$CTO</span>
+            <span className="font-display text-2xl tracking-wide">$BLAST</span>
           </a>
           <nav className="hidden items-center gap-7 font-body text-sm font-medium sm:flex">
             <a className="hover:text-primary" href="#story">
@@ -86,7 +86,7 @@ function Home() {
             rel="noreferrer"
             className="shrink-0 rounded-lg border-[3px] border-border bg-primary px-4 py-2 font-display text-lg tracking-wide text-primary-foreground shadow-[4px_4px_0_0_var(--ink)] transition-transform hover:-translate-y-0.5 active:translate-y-0.5"
           >
-            BUY $CTO
+            BUY $BLAST
           </a>
         </div>
       </header>
@@ -109,7 +109,7 @@ function Home() {
             </h1>
 
             <p className="mt-7 max-w-lg font-body text-lg leading-relaxed text-muted-foreground">
-              $CTO is a community takeover on Blast. No team, no promises, no unlock schedule
+              $BLAST is a community takeover on Blast. No team, no promises, no unlock schedule
               — just a chart, a group chat, and a crowd that refused to let this one die.
             </p>
 
@@ -134,7 +134,7 @@ function Home() {
           <div className="relative">
             <img
               src={mascotCoin.url}
-              alt="$CTO mascot standing triumphantly on a giant red CTO coin"
+              alt="$BLAST mascot standing triumphantly on a giant red BLAST coin"
               className="animate-bob mx-auto w-full max-w-md rounded-3xl border-[3px] border-border bg-card object-contain shadow-[var(--shadow-sticker-lg)]"
             />
             <div className="absolute -top-4 -left-2 rotate-[-8deg] rounded-lg border-[3px] border-border bg-card px-3 py-1.5 font-display text-lg tracking-wide shadow-[4px_4px_0_0_var(--ink)] sm:-left-6">
@@ -151,7 +151,7 @@ function Home() {
         <div className="grid gap-12 lg:grid-cols-[0.9fr_1.1fr] lg:items-center">
           <img
             src={mascotShock.url}
-            alt="$CTO mascot in shock as the chart moves"
+            alt="$BLAST mascot in shock as the chart moves"
             className="mx-auto w-full max-w-sm rounded-3xl border-[3px] border-border bg-card object-contain shadow-[var(--shadow-sticker-lg)]"
           />
           <div>
@@ -178,7 +178,7 @@ function Home() {
                 No team. No treasury. No exit.
               </p>
               <p className="mt-2 font-body text-muted-foreground">
-                The only thing steering $CTO is the crowd wearing the helmet.
+                The only thing steering $BLAST is the crowd wearing the helmet.
               </p>
             </div>
           </div>
@@ -244,7 +244,7 @@ function Home() {
 
           <img
             src={mascotStand.url}
-            alt="$CTO mascot standing confidently in a CTO helmet"
+            alt="$BLAST mascot standing confidently in a BLAST helmet"
             className="animate-bob mx-auto w-full max-w-sm rounded-3xl border-[3px] border-border bg-card object-contain shadow-[var(--shadow-sticker-lg)]"
           />
         </div>
@@ -257,11 +257,11 @@ function Home() {
             <div className="flex items-center gap-4">
               <img
                 src={helmet.url}
-                alt="$CTO pixel helmet mascot"
+                alt="$BLAST pixel helmet mascot"
                 className="size-14 rounded-lg border-[3px] border-border bg-card object-cover"
               />
               <div>
-                <p className="font-display text-3xl tracking-wide">$CTO</p>
+                <p className="font-display text-3xl tracking-wide">$BLAST</p>
                 <p className="font-body text-sm text-secondary-foreground/70">
                   A community takeover on Blast
                 </p>
@@ -297,7 +297,7 @@ function Home() {
           </div>
 
           <p className="mt-12 border-t border-secondary-foreground/20 pt-8 font-body text-sm text-secondary-foreground/60">
-            $CTO is a meme coin with no intrinsic value and no expectation of financial
+            $BLAST is a meme coin with no intrinsic value and no expectation of financial
             return. Nothing here is financial advice. Do your own research.
           </p>
         </div>
