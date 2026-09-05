@@ -10,15 +10,22 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AdminRouteImport } from './routes/admin'
 import { Route as ArcadeRouteImport } from './routes/arcade'
 import { Route as ChatRouteImport } from './routes/chat'
 import { Route as LeaderboardRouteImport } from './routes/leaderboard'
 import { Route as MemeRouteImport } from './routes/meme'
+import { Route as ProfileRouteImport } from './routes/profile'
 import { Route as RoastRouteImport } from './routes/roast'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminRoute = AdminRouteImport.update({
+  id: '/admin',
+  path: '/admin',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ArcadeRoute = ArcadeRouteImport.update({
@@ -41,6 +48,11 @@ const MemeRoute = MemeRouteImport.update({
   path: '/meme',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ProfileRoute = ProfileRouteImport.update({
+  id: '/profile',
+  path: '/profile',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const RoastRoute = RoastRouteImport.update({
   id: '/roast',
   path: '/roast',
@@ -49,44 +61,76 @@ const RoastRoute = RoastRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/admin': typeof AdminRoute
   '/arcade': typeof ArcadeRoute
   '/chat': typeof ChatRoute
   '/leaderboard': typeof LeaderboardRoute
   '/meme': typeof MemeRoute
+  '/profile': typeof ProfileRoute
   '/roast': typeof RoastRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/admin': typeof AdminRoute
   '/arcade': typeof ArcadeRoute
   '/chat': typeof ChatRoute
   '/leaderboard': typeof LeaderboardRoute
   '/meme': typeof MemeRoute
+  '/profile': typeof ProfileRoute
   '/roast': typeof RoastRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/admin': typeof AdminRoute
   '/arcade': typeof ArcadeRoute
   '/chat': typeof ChatRoute
   '/leaderboard': typeof LeaderboardRoute
   '/meme': typeof MemeRoute
+  '/profile': typeof ProfileRoute
   '/roast': typeof RoastRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/arcade' | '/chat' | '/leaderboard' | '/meme' | '/roast'
+  fullPaths:
+    | '/'
+    | '/admin'
+    | '/arcade'
+    | '/chat'
+    | '/leaderboard'
+    | '/meme'
+    | '/profile'
+    | '/roast'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/arcade' | '/chat' | '/leaderboard' | '/meme' | '/roast'
+  to:
+    | '/'
+    | '/admin'
+    | '/arcade'
+    | '/chat'
+    | '/leaderboard'
+    | '/meme'
+    | '/profile'
+    | '/roast'
   id:
-    '__root__' | '/' | '/arcade' | '/chat' | '/leaderboard' | '/meme' | '/roast'
+    | '__root__'
+    | '/'
+    | '/admin'
+    | '/arcade'
+    | '/chat'
+    | '/leaderboard'
+    | '/meme'
+    | '/profile'
+    | '/roast'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AdminRoute: typeof AdminRoute
   ArcadeRoute: typeof ArcadeRoute
   ChatRoute: typeof ChatRoute
   LeaderboardRoute: typeof LeaderboardRoute
   MemeRoute: typeof MemeRoute
+  ProfileRoute: typeof ProfileRoute
   RoastRoute: typeof RoastRoute
 }
 
@@ -97,6 +141,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin': {
+      id: '/admin'
+      path: '/admin'
+      fullPath: '/admin'
+      preLoaderRoute: typeof AdminRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/arcade': {
@@ -127,6 +178,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof MemeRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/profile': {
+      id: '/profile'
+      path: '/profile'
+      fullPath: '/profile'
+      preLoaderRoute: typeof ProfileRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/roast': {
       id: '/roast'
       path: '/roast'
@@ -139,10 +197,12 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AdminRoute: AdminRoute,
   ArcadeRoute: ArcadeRoute,
   ChatRoute: ChatRoute,
   LeaderboardRoute: LeaderboardRoute,
   MemeRoute: MemeRoute,
+  ProfileRoute: ProfileRoute,
   RoastRoute: RoastRoute,
 }
 export const routeTree = rootRouteImport
