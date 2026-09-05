@@ -1,6 +1,12 @@
 import { useState } from "react";
 
-export function CopyAddress({ address }: { address: string }) {
+export function CopyAddress({
+  address,
+  label = "contract address",
+}: {
+  address: string;
+  label?: string;
+}) {
   const [copied, setCopied] = useState(false);
 
   const copy = async () => {
@@ -17,7 +23,7 @@ export function CopyAddress({ address }: { address: string }) {
     <button
       type="button"
       onClick={copy}
-      aria-label="Copy contract address"
+      aria-label={`Copy ${label}`}
       className="ink-box flex w-full items-center justify-between gap-4 px-5 py-4 text-left transition-transform hover:-translate-y-0.5 active:translate-y-0.5"
     >
       <span className="truncate font-body text-sm sm:text-base">{address}</span>
