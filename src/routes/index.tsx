@@ -10,7 +10,8 @@ import { CopyAddress } from "@/components/site/CopyAddress";
 const CONTRACT = "0x577a8addf60a34d4c705914ad066a3b28c3fc40d365ed0d9dfc408f29b4725d3::blast::BLAST";
 const BUY_URL = "https://trade.bluefin.io/swap/SUI-0x577a8addf60a34d4c705914ad066a3b28c3fc40d365ed0d9dfc408f29b4725d3::blast::BLAST";
 const X_URL = "https://x.com/Blastdotv2";
-const TG_URL = "https://t.me/+CTQYRsfq4Bs1NmM0";
+const TG_URL = "https://t.me/Blastnotfun_CTO";
+const TREASURY = "0xd9ba2ba33cc6eb61302cec564126caae22fbbe10f564789c5e6e5eca0940372c";
 
 export const Route = createFileRoute("/")({
   head: () => ({
