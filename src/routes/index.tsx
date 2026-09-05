@@ -257,11 +257,19 @@ function Home() {
               ))}
             </div>
 
-            <div className="mt-8">
-              <p className="mb-3 font-body text-xs font-bold tracking-[0.18em] text-muted-foreground uppercase">
-                Contract address
-              </p>
-              <CopyAddress address={CONTRACT} />
+            <div className="mt-8 space-y-4">
+              <div>
+                <p className="mb-3 font-body text-xs font-bold tracking-[0.18em] text-muted-foreground uppercase">
+                  Contract address
+                </p>
+                <CopyAddress address={CONTRACT} label="contract address" />
+              </div>
+              <div>
+                <p className="mb-3 font-body text-xs font-bold tracking-[0.18em] text-muted-foreground uppercase">
+                  Treasury
+                </p>
+                <CopyAddress address={TREASURY} label="treasury address" />
+              </div>
             </div>
           </div>
 
