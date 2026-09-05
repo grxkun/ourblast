@@ -10,7 +10,8 @@ import { CopyAddress } from "@/components/site/CopyAddress";
 const CONTRACT = "0x577a8addf60a34d4c705914ad066a3b28c3fc40d365ed0d9dfc408f29b4725d3::blast::BLAST";
 const BUY_URL = "https://trade.bluefin.io/swap/SUI-0x577a8addf60a34d4c705914ad066a3b28c3fc40d365ed0d9dfc408f29b4725d3::blast::BLAST";
 const X_URL = "https://x.com/Blastdotv2";
-const TG_URL = "https://t.me/+CTQYRsfq4Bs1NmM0";
+const TG_URL = "https://t.me/Blastnotfun_CTO";
+const TREASURY = "0xd9ba2ba33cc6eb61302cec564126caae22fbbe10f564789c5e6e5eca0940372c";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -197,7 +198,7 @@ function Home() {
             </div>
             <div className="ink-box mt-8 p-6">
               <p className="font-display text-2xl tracking-wide uppercase">
-                No team. No treasury. No exit.
+                No team. No exit. Treasury tracked.
               </p>
               <p className="mt-2 font-body text-muted-foreground">
                 The only thing steering $BLAST is the crowd wearing the helmet.
@@ -256,11 +257,19 @@ function Home() {
               ))}
             </div>
 
-            <div className="mt-8">
-              <p className="mb-3 font-body text-xs font-bold tracking-[0.18em] text-muted-foreground uppercase">
-                Contract address
-              </p>
-              <CopyAddress address={CONTRACT} />
+            <div className="mt-8 space-y-4">
+              <div>
+                <p className="mb-3 font-body text-xs font-bold tracking-[0.18em] text-muted-foreground uppercase">
+                  Contract address
+                </p>
+                <CopyAddress address={CONTRACT} label="contract address" />
+              </div>
+              <div>
+                <p className="mb-3 font-body text-xs font-bold tracking-[0.18em] text-muted-foreground uppercase">
+                  Treasury
+                </p>
+                <CopyAddress address={TREASURY} label="treasury address" />
+              </div>
             </div>
           </div>
 
