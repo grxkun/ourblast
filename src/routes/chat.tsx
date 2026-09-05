@@ -87,9 +87,9 @@ function ChatPage() {
     queryFn: async () => {
       const { data } = await supabase
         .from("user_blocks")
-        .select("blocked_id")
-        .eq("blocker_id", userId!);
-      return (data ?? []).map((b) => b.blocked_id);
+        .select("blocked_user_id")
+        .eq("user_id", userId!);
+      return (data ?? []).map((b) => b.blocked_user_id);
     },
   });
 
@@ -155,7 +155,7 @@ function ChatPage() {
 
   const block = async (targetId: string) => {
     if (!userId) return;
-    await supabase.from("user_blocks").insert({ blocker_id: userId, blocked_id: targetId });
+    await supabase.from("user_blocks").insert({ user_id: userId, blocked_user_id: targetId });
     toast("Hidden. You won't see their messages.");
     void queryClient.invalidateQueries({ queryKey: ["chat", "blocks"] });
   };

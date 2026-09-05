@@ -36,7 +36,7 @@ export function PlayerName({
   className,
 }: {
   address: string;
-  nickname?: string | null;
+  nickname?: string | null | undefined;
   className?: string;
 }) {
   return (
