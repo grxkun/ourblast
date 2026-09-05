@@ -1,341 +1,318 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { useQuery } from "@tanstack/react-query";
+import { Link, createFileRoute } from "@tanstack/react-router";
 
-import helmet from "@/assets/helmet.jpg.asset.json";
-import mascotStand from "@/assets/mascot-stand.jpg.asset.json";
-import mascotShock from "@/assets/mascot-shock.jpg.asset.json";
-import mascotCoin from "@/assets/mascot-coin.jpg.asset.json";
-import { Ticker } from "@/components/site/Ticker";
-import { CopyAddress } from "@/components/site/CopyAddress";
-
-const CONTRACT = "0x577a8addf60a34d4c705914ad066a3b28c3fc40d365ed0d9dfc408f29b4725d3::blast::BLAST";
-const BUY_URL = "https://trade.bluefin.io/swap/SUI-0x577a8addf60a34d4c705914ad066a3b28c3fc40d365ed0d9dfc408f29b4725d3::blast::BLAST";
-const X_URL = "https://x.com/Blastdotv2";
-const TG_URL = "https://t.me/Blastnotfun_CTO";
-const TREASURY = "0xd9ba2ba33cc6eb61302cec564126caae22fbbe10f564789c5e6e5eca0940372c";
+import { SectionTitle } from "@/components/blast/AppShell";
+import { PlayerAvatar, PlayerName } from "@/components/blast/PlayerBadge";
+import { useBlast } from "@/components/blast/session";
+import { supabase } from "@/integrations/supabase/client";
+import { formatNumber, timeAgo } from "@/lib/blast";
+import { fetchLeaderboard } from "@/lib/leaderboard";
+import { getTodaysBattle } from "@/lib/community.functions";
 
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "$BLAST — Helmets On, Community Owned Coin on Blast.fun" },
+      { title: "OURBLAST — Blast Community Arcade, Points & Leaderboards" },
       {
         name: "description",
         content:
-          "$BLAST is a community takeover coin on blast.fun. No dev, no roadmap, LP burned, zero tax. Grab a helmet and ride the chart.",
+          "Play BLAST CLICK, climb the leaderboard, earn BLAST POINTS, battle memes and roast tokens. Connect your Slush wallet and join the Blast community arcade.",
       },
-      { property: "og:title", content: "$BLAST — Helmets On, Community Owned" },
+      { property: "og:title", content: "OURBLAST — Blast Community Arcade" },
       {
         property: "og:description",
         content:
-          "A community takeover coin on blast.fun. No dev, no roadmap, LP burned, zero tax. Helmets on.",
+          "Arcade games, daily challenges, leaderboards, meme battles and AI roasts for the Blast community.",
       },
     ],
   }),
   component: Home,
 });
 
-const STATS = [
-  { label: "Total supply", value: "1,000,000,000", note: "Fixed forever, no mint" },
-  { label: "Liquidity", value: "BURNED", note: "Nobody can pull it" },
-  { label: "Buy / sell tax", value: "0% / 0%", note: "What you see is what you get" },
-  { label: "Dev wallet", value: "NONE", note: "The community holds the keys" },
-];
-
-const STEPS = [
-  {
-    n: "01",
-    title: "Grab a wallet",
-    body: "Any wallet that works with Blast will do. Keep a little ETH for gas.",
-  },
-  {
-    n: "02",
-    title: "Head to blast.fun",
-    body: "Paste the $BLAST address below, pick your amount, and confirm the swap.",
-  },
-  {
-    n: "03",
-    title: "Helmet on",
-    body: "You're in. Join the group chat and help decide what happens next.",
-  },
-];
-
 function Home() {
+  const { userId, connect, connecting, profile } = useBlast();
+
+  const leaders = useQuery({
+    queryKey: ["leaderboard", "today"],
+    queryFn: () => fetchLeaderboard("today"),
+  });
+
+  const challenge = useQuery({
+    queryKey: ["challenge", "today"],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("daily_challenges")
+        .select("title, description, target, reward_points")
+        .eq("day", new Date().toISOString().slice(0, 10))
+        .maybeSingle();
+      return data;
+    },
+  });
+
+  const battle = useQuery({ queryKey: ["battle", "today"], queryFn: () => getTodaysBattle() });
+
+  const chat = useQuery({
+    queryKey: ["chat", "peek"],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("chat_messages")
+        .select("id, body, created_at, user_id")
+        .eq("is_deleted", false)
+        .order("created_at", { ascending: false })
+        .limit(3);
+      const ids = [...new Set((data ?? []).map((m) => m.user_id))];
+      const { data: profiles } = ids.length
+        ? await supabase.from("profiles").select("id, wallet_address, nickname").in("id", ids)
+        : { data: [] };
+      return (data ?? []).map((m) => ({
+        ...m,
+        author: (profiles ?? []).find((p) => p.id === m.user_id),
+      }));
+    },
+  });
+
   return (
-    <main className="min-h-screen overflow-x-hidden">
-      {/* nav */}
-      <header className="sticky top-0 z-50 border-b-[3px] border-border bg-background/90 backdrop-blur">
-        <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-5 py-3">
-          <a href="#top" className="flex items-center gap-3">
-            <img
-              src={helmet.url}
-              alt="$BLAST pixel helmet mascot"
-              className="animate-zap size-11 rounded-lg border-[3px] border-border bg-card object-cover"
-            />
-            <span className="font-display text-2xl tracking-wide">$BLAST</span>
-          </a>
-          <nav className="hidden items-center gap-7 font-body text-sm font-medium sm:flex">
-            <a className="hover:text-primary" href="#story">
-              The takeover
-            </a>
-            <a className="hover:text-primary" href="#numbers">
-              Numbers
-            </a>
-            <a className="hover:text-primary" href="#buy">
-              How to buy
-            </a>
-          </nav>
-          <div className="flex shrink-0 items-center gap-2 sm:gap-3">
-            <a
-              href={X_URL}
-              target="_blank"
-              rel="noreferrer"
-              aria-label="X (Twitter)"
-              className="flex size-11 items-center justify-center rounded-lg border-[3px] border-border bg-card font-display text-base shadow-[4px_4px_0_0_var(--ink)] transition-transform hover:-translate-y-0.5 active:translate-y-0.5"
-            >
-              X
-            </a>
-            <a
-              href={TG_URL}
-              target="_blank"
-              rel="noreferrer"
-              aria-label="Telegram"
-              className="flex size-11 items-center justify-center rounded-lg border-[3px] border-border bg-card font-display text-sm shadow-[4px_4px_0_0_var(--ink)] transition-transform hover:-translate-y-0.5 active:translate-y-0.5"
-            >
-              TG
-            </a>
-            <a
-              href={BUY_URL}
-              target="_blank"
-              rel="noreferrer"
-              className="rounded-lg border-[3px] border-border bg-primary px-4 py-2 font-display text-lg tracking-wide text-primary-foreground shadow-[4px_4px_0_0_var(--ink)] transition-transform hover:-translate-y-0.5 active:translate-y-0.5"
-            >
-              BUY $BLAST
-            </a>
-          </div>
-        </div>
-      </header>
-
+    <div className="space-y-14">
       {/* hero */}
-      <section id="top" className="relative mx-auto max-w-6xl px-5 pt-14 pb-16 sm:pt-20">
-        <div className="grid items-center gap-12 lg:grid-cols-[1.1fr_1fr]">
-          <div className="animate-pop-in">
-            <span className="inline-flex items-center gap-2 rounded-full border-[3px] border-border bg-card px-4 py-1.5 font-body text-xs font-bold tracking-[0.18em] uppercase">
-              <span className="size-2.5 rounded-full bg-primary" />
-              Live on blast.fun
-            </span>
+      <section className="panel grid-noise animate-pop-in relative overflow-hidden px-5 py-10 sm:px-10 sm:py-14">
+        <span className="inline-flex items-center gap-2 rounded-full border border-border bg-background/60 px-3 py-1.5 font-body text-[0.68rem] font-bold tracking-[0.2em] uppercase">
+          <span className="size-2 animate-pulse rounded-full bg-lime" />
+          Live · Blast community arcade
+        </span>
 
-            <h1 className="mt-7 font-display text-[clamp(3.4rem,11vw,7.5rem)] leading-[0.86] tracking-tight uppercase">
-              The dev left.
-              <br />
-              <span className="text-primary">We kept</span>
-              <br />
-              the helmet.
-            </h1>
+        <h1 className="text-glow mt-6 font-display text-[clamp(2.9rem,10vw,6rem)] leading-[0.85]">
+          Play. Climb.
+          <br />
+          <span className="text-primary">Blast off.</span>
+        </h1>
 
-            <p className="mt-7 max-w-lg font-body text-lg leading-relaxed text-muted-foreground">
-              $BLAST is a community takeover on Blast. No team, no promises, no unlock schedule
-              — just a chart, a group chat, and a crowd that refused to let this one die.
-            </p>
+        <p className="mt-5 max-w-xl font-body text-lg text-muted-foreground">
+          A community-run arcade for Blast. Smash games, stack BLAST POINTS, fight for the top of
+          the leaderboard, vote on memes and let the AI roast your favourite token.
+        </p>
 
-            <div className="mt-9 flex flex-wrap items-center gap-4">
-              <a
-                href={BUY_URL}
-                target="_blank"
-                rel="noreferrer"
-                className="rounded-xl border-[3px] border-border bg-primary px-8 py-4 font-display text-2xl tracking-wide text-primary-foreground shadow-[var(--shadow-sticker)] transition-transform hover:-translate-y-1 active:translate-y-0.5"
-              >
-                BUY ON BLUEFIN
-              </a>
-              <a
-                href="#story"
-                className="rounded-xl border-[3px] border-border bg-card px-8 py-4 font-display text-2xl tracking-wide shadow-[var(--shadow-sticker)] transition-transform hover:-translate-y-1 active:translate-y-0.5"
-              >
-                THE STORY
-              </a>
-            </div>
-          </div>
-
-          <div className="relative">
-            <img
-              src={mascotCoin.url}
-              alt="$BLAST mascot standing triumphantly on a giant red BLAST coin"
-              className="animate-bob mx-auto w-full max-w-md rounded-3xl border-[3px] border-border bg-card object-contain shadow-[var(--shadow-sticker-lg)]"
-            />
-            <div className="absolute -top-4 -left-2 rotate-[-8deg] rounded-lg border-[3px] border-border bg-card px-3 py-1.5 font-display text-lg tracking-wide shadow-[4px_4px_0_0_var(--ink)] sm:-left-6">
-              HELMETS ON
-            </div>
-          </div>
+        <div className="mt-8 flex flex-wrap gap-3">
+          <Link
+            to="/arcade"
+            className="glow-blast rounded-full bg-primary px-8 py-3.5 font-display text-xl tracking-wide text-primary-foreground uppercase transition-transform hover:-translate-y-0.5"
+          >
+            Play now
+          </Link>
+          {userId ? (
+            <Link
+              to="/profile"
+              className="rounded-full bg-secondary px-8 py-3.5 font-display text-xl tracking-wide text-secondary-foreground uppercase transition-transform hover:-translate-y-0.5"
+            >
+              {formatNumber(profile?.points ?? 0)} points
+            </Link>
+          ) : (
+            <button
+              type="button"
+              onClick={() => void connect()}
+              disabled={connecting}
+              className="glow-cyber rounded-full bg-accent px-8 py-3.5 font-display text-xl tracking-wide text-accent-foreground uppercase transition-transform hover:-translate-y-0.5 disabled:opacity-60"
+            >
+              {connecting ? "Connecting…" : "Connect Slush"}
+            </button>
+          )}
         </div>
+
+        <dl className="mt-10 grid grid-cols-2 gap-4 sm:grid-cols-4">
+          {[
+            { k: "Game", v: "Blast Click" },
+            { k: "Daily login", v: "+100 pts" },
+            { k: "High score", v: "+250 pts" },
+            { k: "Challenge", v: "+500 pts" },
+          ].map((s) => (
+            <div key={s.k} className="rounded-2xl border border-border bg-background/40 px-4 py-3">
+              <dt className="font-body text-[0.62rem] font-bold tracking-[0.2em] text-muted-foreground uppercase">
+                {s.k}
+              </dt>
+              <dd className="mt-1 font-display text-lg text-cyber">{s.v}</dd>
+            </div>
+          ))}
+        </dl>
       </section>
 
-      <Ticker />
+      {/* cards */}
+      <section className="grid gap-5 lg:grid-cols-3">
+        <Card
+          to="/arcade"
+          kicker="Arcade"
+          title="Blast Click"
+          body="30 seconds, endless combos. Beat your own record and bank the points."
+          emoji="🕹️"
+        />
+        <Card
+          to="/roast"
+          kicker="Blast Roast"
+          title="Roast my token"
+          body="Feed a ticker to the roast machine and get flamed in seconds."
+          emoji="🔥"
+        />
+        <Card
+          to="/chat"
+          kicker="Community"
+          title="Blast chat"
+          body="Wallet-verified chat. Talk trash, earn points for showing up."
+          emoji="💬"
+        />
+      </section>
 
-      {/* story */}
-      <section id="story" className="mx-auto max-w-6xl px-5 py-20 sm:py-28">
-        <div className="grid gap-12 lg:grid-cols-[0.9fr_1.1fr] lg:items-center">
-          <img
-            src={mascotShock.url}
-            alt="$BLAST mascot in shock as the chart moves"
-            className="mx-auto w-full max-w-sm rounded-3xl border-[3px] border-border bg-card object-contain shadow-[var(--shadow-sticker-lg)]"
+      {/* leaderboard + challenge */}
+      <section className="grid gap-6 lg:grid-cols-[1.3fr_1fr]">
+        <div className="panel p-5 sm:p-6">
+          <SectionTitle
+            kicker="Trending today"
+            title="Top blasters"
+            action={
+              <Link to="/leaderboard" className="font-body text-sm text-cyber hover:underline">
+                Full leaderboard →
+              </Link>
+            }
           />
-          <div>
-            <p className="font-body text-xs font-bold tracking-[0.22em] text-primary uppercase">
-              The takeover
+          {leaders.isLoading ? (
+            <p className="font-body text-muted-foreground">Loading scores…</p>
+          ) : (leaders.data ?? []).length === 0 ? (
+            <p className="font-body text-muted-foreground">
+              Nobody has played today yet. Be the first name on the board.
             </p>
-            <h2 className="mt-4 font-display text-[clamp(2.4rem,6vw,4.2rem)] leading-[0.9] tracking-tight uppercase">
-              Nobody was driving. So we all did.
-            </h2>
-            <div className="mt-7 space-y-5 font-body text-lg leading-relaxed text-muted-foreground">
-              <p>
-                The launch was an accident. A ticker, a helmet drawing, and a deployer who
-                disappeared before the first candle closed. What was left behind was a
-                contract nobody controlled.
-              </p>
-              <p>
-                So the holders took it. Liquidity burned, socials handed over, and every
-                decision from that point on made in the open — in the chat, by the people
-                actually holding the bag.
-              </p>
-            </div>
-            <div className="ink-box mt-8 p-6">
-              <p className="font-display text-2xl tracking-wide uppercase">
-                No team. No exit. Treasury tracked.
-              </p>
-              <p className="mt-2 font-body text-muted-foreground">
-                The only thing steering $BLAST is the crowd wearing the helmet.
-              </p>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* numbers */}
-      <section id="numbers" className="border-y-[3px] border-border bg-muted">
-        <div className="mx-auto max-w-6xl px-5 py-20 sm:py-24">
-          <div className="flex flex-wrap items-end justify-between gap-4">
-            <h2 className="font-display text-[clamp(2.4rem,6vw,4rem)] leading-none tracking-tight uppercase">
-              The numbers
-            </h2>
-            <p className="font-body text-muted-foreground">Boring on purpose.</p>
-          </div>
-
-          <div className="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
-            {STATS.map((s) => (
-              <div key={s.label} className="ink-box p-6">
-                <p className="font-body text-xs font-bold tracking-[0.18em] text-muted-foreground uppercase">
-                  {s.label}
-                </p>
-                <p className="mt-3 font-display text-3xl leading-none tracking-wide text-primary">
-                  {s.value}
-                </p>
-                <p className="mt-3 font-body text-sm text-muted-foreground">{s.note}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* how to buy */}
-      <section id="buy" className="mx-auto max-w-6xl px-5 py-20 sm:py-28">
-        <div className="grid gap-12 lg:grid-cols-[1.1fr_0.9fr] lg:items-center">
-          <div>
-            <p className="font-body text-xs font-bold tracking-[0.22em] text-primary uppercase">
-              How to buy
-            </p>
-            <h2 className="mt-4 font-display text-[clamp(2.4rem,6vw,4.2rem)] leading-[0.9] tracking-tight uppercase">
-              Three steps, one helmet
-            </h2>
-
-            <div className="mt-9 space-y-5">
-              {STEPS.map((s) => (
-                <div key={s.n} className="ink-box flex gap-5 p-6">
-                  <span className="font-display text-4xl leading-none text-primary">{s.n}</span>
-                  <div>
-                    <p className="font-display text-2xl tracking-wide uppercase">{s.title}</p>
-                    <p className="mt-1 font-body text-muted-foreground">{s.body}</p>
-                  </div>
-                </div>
+          ) : (
+            <ol className="space-y-2">
+              {(leaders.data ?? []).slice(0, 6).map((row) => (
+                <li
+                  key={row.userId}
+                  className="flex items-center gap-3 rounded-2xl border border-border bg-background/40 px-4 py-3"
+                >
+                  <span className="w-7 font-display text-lg text-primary">#{row.rank}</span>
+                  <PlayerAvatar address={row.wallet} size={34} />
+                  <PlayerName address={row.wallet} nickname={row.nickname} className="flex-1" />
+                  <span className="font-display text-lg text-lime">{formatNumber(row.best)}</span>
+                </li>
               ))}
-            </div>
+            </ol>
+          )}
+        </div>
 
-            <div className="mt-8 space-y-4">
-              <div>
-                <p className="mb-3 font-body text-xs font-bold tracking-[0.18em] text-muted-foreground uppercase">
-                  Contract address
+        <div className="space-y-6">
+          <div className="panel p-5 sm:p-6">
+            <SectionTitle kicker="Daily challenge" title="Today's mission" />
+            {challenge.data ? (
+              <>
+                <p className="font-display text-xl">{challenge.data.title}</p>
+                <p className="mt-2 font-body text-sm text-muted-foreground">
+                  {challenge.data.description}
                 </p>
-                <CopyAddress address={CONTRACT} label="contract address" />
-              </div>
-              <div>
-                <p className="mb-3 font-body text-xs font-bold tracking-[0.18em] text-muted-foreground uppercase">
-                  Treasury
+                <p className="mt-4 font-display text-lg text-lime">
+                  +{formatNumber(challenge.data.reward_points)} points
                 </p>
-                <CopyAddress address={TREASURY} label="treasury address" />
-              </div>
-            </div>
+              </>
+            ) : (
+              <p className="font-body text-muted-foreground">
+                No challenge posted yet — check back shortly.
+              </p>
+            )}
           </div>
 
-          <img
-            src={mascotStand.url}
-            alt="$BLAST mascot standing confidently in a BLAST helmet"
-            className="animate-bob mx-auto w-full max-w-sm rounded-3xl border-[3px] border-border bg-card object-contain shadow-[var(--shadow-sticker-lg)]"
-          />
+          <div className="panel p-5 sm:p-6">
+            <SectionTitle
+              kicker="Meme of the day"
+              title="Battle"
+              action={
+                <Link to="/meme" className="font-body text-sm text-cyber hover:underline">
+                  Vote →
+                </Link>
+              }
+            />
+            {battle.data ? (
+              <div className="grid grid-cols-2 gap-3">
+                {[battle.data.a, battle.data.b].map((m) => (
+                  <div key={m.id} className="overflow-hidden rounded-2xl border border-border">
+                    <img
+                      src={m.image_url}
+                      alt={m.title}
+                      loading="lazy"
+                      className="aspect-square w-full object-cover"
+                    />
+                    <p className="px-3 py-2 font-body text-xs text-muted-foreground">
+                      {m.votes} votes
+                    </p>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="font-body text-muted-foreground">
+                No battle running yet — submit a meme to start one.
+              </p>
+            )}
+          </div>
         </div>
       </section>
 
-      {/* footer */}
-      <footer className="border-t-[3px] border-border bg-secondary text-secondary-foreground">
-        <div className="mx-auto max-w-6xl px-5 py-16">
-          <div className="flex flex-wrap items-center justify-between gap-8">
-            <div className="flex items-center gap-4">
-              <img
-                src={helmet.url}
-                alt="$BLAST pixel helmet mascot"
-                className="size-14 rounded-lg border-[3px] border-border bg-card object-cover"
-              />
-              <div>
-                <p className="font-display text-3xl tracking-wide">$BLAST</p>
-                <p className="font-body text-sm text-secondary-foreground/70">
-                  A community takeover on Blast
-                </p>
-              </div>
-            </div>
+      {/* chat peek */}
+      <section className="panel p-5 sm:p-6">
+        <SectionTitle
+          kicker="Community chat"
+          title="Latest noise"
+          action={
+            <Link to="/chat" className="font-body text-sm text-cyber hover:underline">
+              Join the chat →
+            </Link>
+          }
+        />
+        {(chat.data ?? []).length === 0 ? (
+          <p className="font-body text-muted-foreground">Chat is quiet. Say something loud.</p>
+        ) : (
+          <ul className="space-y-3">
+            {(chat.data ?? []).map((m) => (
+              <li key={m.id} className="flex items-start gap-3">
+                <PlayerAvatar address={m.author?.wallet_address ?? "0x0"} size={32} />
+                <div>
+                  <p className="font-body text-xs text-muted-foreground">
+                    <PlayerName
+                      address={m.author?.wallet_address ?? "0x0"}
+                      nickname={m.author?.nickname}
+                      className="text-foreground"
+                    />{" "}
+                    · {timeAgo(m.created_at)}
+                  </p>
+                  <p className="font-body">{m.body}</p>
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+    </div>
+  );
+}
 
-            <div className="flex flex-wrap items-center gap-3">
-              <a
-                href={X_URL}
-                target="_blank"
-                rel="noreferrer"
-                aria-label="X (Twitter)"
-                className="rounded-lg border-[3px] border-primary px-5 py-2.5 font-display text-lg tracking-wide transition-colors hover:bg-primary"
-              >
-                X / TWITTER
-              </a>
-              <a
-                href={TG_URL}
-                target="_blank"
-                rel="noreferrer"
-                aria-label="Telegram"
-                className="rounded-lg border-[3px] border-primary px-5 py-2.5 font-display text-lg tracking-wide transition-colors hover:bg-primary"
-              >
-                TELEGRAM
-              </a>
-              <a
-                href={BUY_URL}
-                target="_blank"
-                rel="noreferrer"
-                aria-label="Buy $BLAST on blast.fun"
-                className="rounded-lg border-[3px] border-border bg-primary px-5 py-2.5 font-display text-lg tracking-wide text-primary-foreground"
-              >
-                BUY $BLAST
-              </a>
-            </div>
-          </div>
-
-          <p className="mt-12 border-t border-secondary-foreground/20 pt-8 font-body text-sm text-secondary-foreground/60">
-            $BLAST is a meme coin with no intrinsic value and no expectation of financial
-            return. Nothing here is financial advice. Do your own research.
-          </p>
-        </div>
-      </footer>
-    </main>
+function Card({
+  to,
+  kicker,
+  title,
+  body,
+  emoji,
+}: {
+  to: "/arcade" | "/roast" | "/chat";
+  kicker: string;
+  title: string;
+  body: string;
+  emoji: string;
+}) {
+  return (
+    <Link
+      to={to}
+      className="panel group p-6 transition-transform hover:-translate-y-1 hover:glow-blast"
+    >
+      <span className="text-3xl" aria-hidden="true">
+        {emoji}
+      </span>
+      <p className="mt-4 font-body text-xs font-bold tracking-[0.22em] text-cyber uppercase">
+        {kicker}
+      </p>
+      <h3 className="mt-1 font-display text-2xl">{title}</h3>
+      <p className="mt-2 font-body text-sm text-muted-foreground">{body}</p>
+    </Link>
   );
 }
