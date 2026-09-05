@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AdminRouteImport } from './routes/admin'
 import { Route as ArcadeRouteImport } from './routes/arcade'
 import { Route as ChatRouteImport } from './routes/chat'
 import { Route as LeaderboardRouteImport } from './routes/leaderboard'
@@ -20,6 +21,11 @@ import { Route as RoastRouteImport } from './routes/roast'
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminRoute = AdminRouteImport.update({
+  id: '/admin',
+  path: '/admin',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ArcadeRoute = ArcadeRouteImport.update({
@@ -55,6 +61,7 @@ const RoastRoute = RoastRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/admin': typeof AdminRoute
   '/arcade': typeof ArcadeRoute
   '/chat': typeof ChatRoute
   '/leaderboard': typeof LeaderboardRoute
@@ -64,6 +71,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/admin': typeof AdminRoute
   '/arcade': typeof ArcadeRoute
   '/chat': typeof ChatRoute
   '/leaderboard': typeof LeaderboardRoute
@@ -74,6 +82,7 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/admin': typeof AdminRoute
   '/arcade': typeof ArcadeRoute
   '/chat': typeof ChatRoute
   '/leaderboard': typeof LeaderboardRoute
@@ -84,13 +93,28 @@ export interface FileRoutesById {
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
-    '/' | '/arcade' | '/chat' | '/leaderboard' | '/meme' | '/profile' | '/roast'
+    | '/'
+    | '/admin'
+    | '/arcade'
+    | '/chat'
+    | '/leaderboard'
+    | '/meme'
+    | '/profile'
+    | '/roast'
   fileRoutesByTo: FileRoutesByTo
   to:
-    '/' | '/arcade' | '/chat' | '/leaderboard' | '/meme' | '/profile' | '/roast'
+    | '/'
+    | '/admin'
+    | '/arcade'
+    | '/chat'
+    | '/leaderboard'
+    | '/meme'
+    | '/profile'
+    | '/roast'
   id:
     | '__root__'
     | '/'
+    | '/admin'
     | '/arcade'
     | '/chat'
     | '/leaderboard'
@@ -101,6 +125,7 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AdminRoute: typeof AdminRoute
   ArcadeRoute: typeof ArcadeRoute
   ChatRoute: typeof ChatRoute
   LeaderboardRoute: typeof LeaderboardRoute
@@ -116,6 +141,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin': {
+      id: '/admin'
+      path: '/admin'
+      fullPath: '/admin'
+      preLoaderRoute: typeof AdminRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/arcade': {
@@ -165,6 +197,7 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AdminRoute: AdminRoute,
   ArcadeRoute: ArcadeRoute,
   ChatRoute: ChatRoute,
   LeaderboardRoute: LeaderboardRoute,
