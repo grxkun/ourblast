@@ -142,7 +142,7 @@ function Home() {
                 rel="noreferrer"
                 className="rounded-xl border-[3px] border-border bg-primary px-8 py-4 font-display text-2xl tracking-wide text-primary-foreground shadow-[var(--shadow-sticker)] transition-transform hover:-translate-y-1 active:translate-y-0.5"
               >
-                BUY ON BLAST.FUN
+                BUY ON BLUEFIN
               </a>
               <a
                 href="#story"
