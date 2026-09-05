@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ArcadeRouteImport } from './routes/arcade'
 import { Route as LeaderboardRouteImport } from './routes/leaderboard'
+import { Route as MemeRouteImport } from './routes/meme'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -28,35 +29,44 @@ const LeaderboardRoute = LeaderboardRouteImport.update({
   path: '/leaderboard',
   getParentRoute: () => rootRouteImport,
 } as any)
+const MemeRoute = MemeRouteImport.update({
+  id: '/meme',
+  path: '/meme',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/arcade': typeof ArcadeRoute
   '/leaderboard': typeof LeaderboardRoute
+  '/meme': typeof MemeRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/arcade': typeof ArcadeRoute
   '/leaderboard': typeof LeaderboardRoute
+  '/meme': typeof MemeRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/arcade': typeof ArcadeRoute
   '/leaderboard': typeof LeaderboardRoute
+  '/meme': typeof MemeRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/arcade' | '/leaderboard'
+  fullPaths: '/' | '/arcade' | '/leaderboard' | '/meme'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/arcade' | '/leaderboard'
-  id: '__root__' | '/' | '/arcade' | '/leaderboard'
+  to: '/' | '/arcade' | '/leaderboard' | '/meme'
+  id: '__root__' | '/' | '/arcade' | '/leaderboard' | '/meme'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   ArcadeRoute: typeof ArcadeRoute
   LeaderboardRoute: typeof LeaderboardRoute
+  MemeRoute: typeof MemeRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -82,6 +92,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LeaderboardRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/meme': {
+      id: '/meme'
+      path: '/meme'
+      fullPath: '/meme'
+      preLoaderRoute: typeof MemeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -89,6 +106,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   ArcadeRoute: ArcadeRoute,
   LeaderboardRoute: LeaderboardRoute,
+  MemeRoute: MemeRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
