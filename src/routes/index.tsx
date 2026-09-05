@@ -8,7 +8,7 @@ import { Ticker } from "@/components/site/Ticker";
 import { CopyAddress } from "@/components/site/CopyAddress";
 
 const CONTRACT = "0x577a8addf60a34d4c705914ad066a3b28c3fc40d365ed0d9dfc408f29b4725d3::blast::BLAST";
-const BUY_URL = "https://www.aftermath.finance/trade?from=SUI&to=0x577a8addf60a34d4c705914ad066a3b28c3fc40d365ed0d9dfc408f29b4725d3%3A%3Ablast%3A%3ABLAST";
+const BUY_URL = "https://trade.bluefin.io/swap/SUI-0x577a8addf60a34d4c705914ad066a3b28c3fc40d365ed0d9dfc408f29b4725d3::blast::BLAST";
 const X_URL = "https://x.com/Blastdotv2";
 const TG_URL = "https://t.me/+CTQYRsfq4Bs1NmM0";
 
@@ -142,7 +142,7 @@ function Home() {
                 rel="noreferrer"
                 className="rounded-xl border-[3px] border-border bg-primary px-8 py-4 font-display text-2xl tracking-wide text-primary-foreground shadow-[var(--shadow-sticker)] transition-transform hover:-translate-y-1 active:translate-y-0.5"
               >
-                BUY ON BLAST.FUN
+                BUY ON BLUEFIN
               </a>
               <a
                 href="#story"
