@@ -198,7 +198,7 @@ function Home() {
             </div>
             <div className="ink-box mt-8 p-6">
               <p className="font-display text-2xl tracking-wide uppercase">
-                No team. No treasury. No exit.
+                No team. No exit. Treasury tracked.
               </p>
               <p className="mt-2 font-body text-muted-foreground">
                 The only thing steering $BLAST is the crowd wearing the helmet.
