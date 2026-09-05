@@ -5,26 +5,17 @@
 @custom-variant dark (&:is(.dark *));
 
 /*
- * Design system definition.
- *
- * The @theme inline block maps CSS custom properties to Tailwind utility
- * classes (e.g. --color-primary -> bg-primary, text-primary).
- *
- * The :root and .dark blocks define the actual color values using oklch.
- * All colors MUST use oklch format.
- *
- * To add a new semantic color:
- * 1. Add the variable to :root (light value) and .dark (dark value)
- * 2. Register it in @theme inline as --color-<name>: var(--<name>)
+ * OURBLAST design system — dark neon arcade.
+ * All colors use oklch. Never hardcode colors in components.
  */
 
 @theme inline {
-  --radius-sm: calc(var(--radius) - 4px);
-  --radius-md: calc(var(--radius) - 2px);
+  --radius-sm: calc(var(--radius) - 6px);
+  --radius-md: calc(var(--radius) - 3px);
   --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) + 4px);
-  --radius-2xl: calc(var(--radius) + 8px);
-  --radius-3xl: calc(var(--radius) + 12px);
+  --radius-xl: calc(var(--radius) + 6px);
+  --radius-2xl: calc(var(--radius) + 12px);
+  --radius-3xl: calc(var(--radius) + 20px);
 
   --color-background: var(--background);
   --color-foreground: var(--foreground);
@@ -45,74 +36,148 @@
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
-  --color-ink: var(--ink);
-  --color-paper: var(--paper);
-  --color-paper-deep: var(--paper-deep);
+
+  --color-blast: var(--blast);
+  --color-cyber: var(--cyber);
+  --color-lime: var(--lime);
+  --color-grape: var(--grape);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
 
   --font-display: "Anton", "Impact", sans-serif;
   --font-hand: "Bricolage Grotesque", sans-serif;
   --font-body: "Space Grotesk", sans-serif;
 
-  --shadow-sticker: 6px 6px 0 0 var(--ink);
-  --shadow-sticker-lg: 10px 10px 0 0 var(--ink);
-  --shadow-sticker-red: 6px 6px 0 0 var(--primary);
+  --shadow-glow: 0 0 0 1px var(--border), 0 12px 40px -12px var(--glow-blast);
+  --shadow-glow-cyber: 0 0 0 1px var(--border), 0 12px 40px -12px var(--glow-cyber);
 }
 
 :root {
-  --radius: 1rem;
-  --paper: oklch(0.973 0.014 78.5);
-  --paper-deep: oklch(0.936 0.02 74);
-  --ink: oklch(0.16 0.008 60);
+  --radius: 1.25rem;
 
-  --background: var(--paper);
-  --foreground: var(--ink);
-  --card: oklch(1 0 0);
-  --card-foreground: var(--ink);
-  --popover: oklch(1 0 0);
-  --popover-foreground: var(--ink);
-  --primary: oklch(0.575 0.235 26.5);
-  --primary-foreground: oklch(1 0 0);
-  --secondary: var(--ink);
-  --secondary-foreground: oklch(1 0 0);
-  --muted: var(--paper-deep);
-  --muted-foreground: oklch(0.45 0.015 60);
-  --accent: oklch(0.575 0.235 26.5);
-  --accent-foreground: oklch(1 0 0);
-  --destructive: oklch(0.575 0.235 26.5);
-  --destructive-foreground: oklch(1 0 0);
-  --border: var(--ink);
-  --input: var(--ink);
-  --ring: oklch(0.575 0.235 26.5);
+  --background: oklch(0.16 0.03 285);
+  --foreground: oklch(0.97 0.01 285);
+
+  --surface: oklch(0.21 0.035 285);
+  --surface-2: oklch(0.26 0.04 285);
+
+  --card: oklch(0.21 0.035 285);
+  --card-foreground: oklch(0.97 0.01 285);
+  --popover: oklch(0.19 0.035 285);
+  --popover-foreground: oklch(0.97 0.01 285);
+
+  --blast: oklch(0.68 0.24 27);
+  --cyber: oklch(0.83 0.16 195);
+  --lime: oklch(0.88 0.2 128);
+  --grape: oklch(0.68 0.24 315);
+
+  --primary: var(--blast);
+  --primary-foreground: oklch(0.14 0.02 285);
+  --secondary: oklch(0.28 0.045 285);
+  --secondary-foreground: oklch(0.97 0.01 285);
+  --muted: oklch(0.25 0.035 285);
+  --muted-foreground: oklch(0.72 0.02 285);
+  --accent: var(--cyber);
+  --accent-foreground: oklch(0.14 0.02 285);
+  --destructive: oklch(0.62 0.23 20);
+  --destructive-foreground: oklch(0.98 0.01 285);
+
+  --border: oklch(0.34 0.04 285);
+  --input: oklch(0.3 0.04 285);
+  --ring: var(--blast);
+
+  --glow-blast: oklch(0.68 0.24 27 / 0.75);
+  --glow-cyber: oklch(0.83 0.16 195 / 0.6);
+
+  --sidebar: oklch(0.19 0.035 285);
+  --sidebar-foreground: oklch(0.97 0.01 285);
+  --sidebar-primary: var(--blast);
+  --sidebar-primary-foreground: oklch(0.14 0.02 285);
+  --sidebar-accent: oklch(0.26 0.04 285);
+  --sidebar-accent-foreground: oklch(0.97 0.01 285);
+  --sidebar-border: oklch(0.34 0.04 285);
+  --sidebar-ring: var(--blast);
+}
+
+.dark {
+  color-scheme: dark;
 }
 
 @layer base {
   * {
-    border-color: var(--color-border);
+    @apply border-border outline-ring/40;
+  }
+
+  html {
+    color-scheme: dark;
+    scroll-behavior: smooth;
   }
 
   body {
-    background-color: var(--color-background);
-    color: var(--color-foreground);
-    font-family: var(--font-body);
+    @apply bg-background text-foreground font-body antialiased;
     background-image:
-      radial-gradient(oklch(0.16 0.008 60 / 0.055) 1px, transparent 1px);
-    background-size: 22px 22px;
+      radial-gradient(60rem 40rem at 12% -10%, oklch(0.68 0.24 27 / 0.18), transparent 60%),
+      radial-gradient(50rem 36rem at 92% 4%, oklch(0.83 0.16 195 / 0.14), transparent 62%),
+      radial-gradient(46rem 34rem at 50% 108%, oklch(0.68 0.24 315 / 0.16), transparent 60%);
+    background-attachment: fixed;
   }
 
-  ::selection {
-    background: var(--color-primary);
-    color: var(--color-primary-foreground);
+  h1,
+  h2,
+  h3 {
+    @apply font-display tracking-tight uppercase;
   }
 }
 
-@utility ink-box {
-  border: 3px solid var(--ink);
-  border-radius: var(--radius);
-  background: var(--color-card);
-  box-shadow: var(--shadow-sticker);
+@utility panel {
+  border-radius: var(--radius-xl);
+  border: 1px solid var(--border);
+  background:
+    linear-gradient(180deg, oklch(1 0 0 / 0.05), oklch(1 0 0 / 0.01)),
+    var(--surface);
+  backdrop-filter: blur(8px);
 }
 
-@keyframes ticker-slide {
+@utility glow-blast {
+  box-shadow: 0 0 24px -6px var(--glow-blast);
+}
+
+@utility glow-cyber {
+  box-shadow: 0 0 24px -6px var(--glow-cyber);
+}
+
+@utility text-glow {
+  text-shadow: 0 0 24px var(--glow-blast);
+}
+
+@utility grid-noise {
+  background-image:
+    linear-gradient(oklch(1 0 0 / 0.04) 1px, transparent 1px),
+    linear-gradient(90deg, oklch(1 0 0 / 0.04) 1px, transparent 1px);
+  background-size: 44px 44px;
+}
+
+@keyframes float-up {
+  0% {
+    opacity: 1;
+    transform: translate(-50%, 0) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(var(--dx, 0), -90px) scale(1.6);
+  }
+}
+
+@keyframes pulse-ring {
+  0% {
+    box-shadow: 0 0 0 0 var(--glow-blast);
+  }
+  100% {
+    box-shadow: 0 0 0 28px oklch(0.68 0.24 27 / 0);
+  }
+}
+
+@keyframes marquee {
   from {
     transform: translateX(0);
   }
@@ -124,51 +189,48 @@
 @keyframes bob {
   0%,
   100% {
-    transform: translateY(0) rotate(-1.5deg);
+    transform: translateY(0) rotate(-1deg);
   }
   50% {
-    transform: translateY(-14px) rotate(1.5deg);
+    transform: translateY(-12px) rotate(1deg);
   }
 }
 
 @keyframes pop-in {
-  from {
+  0% {
     opacity: 0;
-    transform: translateY(18px) scale(0.97);
+    transform: translateY(14px) scale(0.97);
   }
-  to {
-    opacity: 1;
-    transform: translateY(0) scale(1);
-  }
-}
-
-@keyframes zap {
-  0%,
-  92%,
   100% {
-    transform: scale(1) rotate(0deg);
-  }
-  95% {
-    transform: scale(1.08) rotate(-3deg);
-  }
-  98% {
-    transform: scale(0.98) rotate(2deg);
+    opacity: 1;
+    transform: none;
   }
 }
 
-@utility animate-ticker {
-  animation: ticker-slide 24s linear infinite;
+.animate-float-up {
+  animation: float-up 0.9s ease-out forwards;
+}
+.animate-pulse-ring {
+  animation: pulse-ring 1.2s ease-out infinite;
+}
+.animate-marquee {
+  animation: marquee 26s linear infinite;
+}
+.animate-bob {
+  animation: bob 5s ease-in-out infinite;
+}
+.animate-pop-in {
+  animation: pop-in 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) both;
 }
 
-@utility animate-bob {
-  animation: bob 5.5s ease-in-out infinite;
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
 }
-
-@utility animate-pop-in {
-  animation: pop-in 0.7s cubic-bezier(0.2, 0.9, 0.2, 1) both;
+::-webkit-scrollbar-track {
+  background: var(--surface);
 }
-
-@utility animate-zap {
-  animation: zap 6s ease-in-out infinite;
+::-webkit-scrollbar-thumb {
+  background: var(--surface-2);
+  border-radius: 999px;
 }
-

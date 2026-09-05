@@ -10,33 +10,84 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as ArcadeRouteImport } from './routes/arcade'
+import { Route as ChatRouteImport } from './routes/chat'
+import { Route as LeaderboardRouteImport } from './routes/leaderboard'
+import { Route as MemeRouteImport } from './routes/meme'
+import { Route as RoastRouteImport } from './routes/roast'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ArcadeRoute = ArcadeRouteImport.update({
+  id: '/arcade',
+  path: '/arcade',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ChatRoute = ChatRouteImport.update({
+  id: '/chat',
+  path: '/chat',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LeaderboardRoute = LeaderboardRouteImport.update({
+  id: '/leaderboard',
+  path: '/leaderboard',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MemeRoute = MemeRouteImport.update({
+  id: '/meme',
+  path: '/meme',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RoastRoute = RoastRouteImport.update({
+  id: '/roast',
+  path: '/roast',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/arcade': typeof ArcadeRoute
+  '/chat': typeof ChatRoute
+  '/leaderboard': typeof LeaderboardRoute
+  '/meme': typeof MemeRoute
+  '/roast': typeof RoastRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/arcade': typeof ArcadeRoute
+  '/chat': typeof ChatRoute
+  '/leaderboard': typeof LeaderboardRoute
+  '/meme': typeof MemeRoute
+  '/roast': typeof RoastRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/arcade': typeof ArcadeRoute
+  '/chat': typeof ChatRoute
+  '/leaderboard': typeof LeaderboardRoute
+  '/meme': typeof MemeRoute
+  '/roast': typeof RoastRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths: '/' | '/arcade' | '/chat' | '/leaderboard' | '/meme' | '/roast'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to: '/' | '/arcade' | '/chat' | '/leaderboard' | '/meme' | '/roast'
+  id:
+    '__root__' | '/' | '/arcade' | '/chat' | '/leaderboard' | '/meme' | '/roast'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  ArcadeRoute: typeof ArcadeRoute
+  ChatRoute: typeof ChatRoute
+  LeaderboardRoute: typeof LeaderboardRoute
+  MemeRoute: typeof MemeRoute
+  RoastRoute: typeof RoastRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -48,11 +99,51 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/arcade': {
+      id: '/arcade'
+      path: '/arcade'
+      fullPath: '/arcade'
+      preLoaderRoute: typeof ArcadeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/chat': {
+      id: '/chat'
+      path: '/chat'
+      fullPath: '/chat'
+      preLoaderRoute: typeof ChatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/leaderboard': {
+      id: '/leaderboard'
+      path: '/leaderboard'
+      fullPath: '/leaderboard'
+      preLoaderRoute: typeof LeaderboardRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/meme': {
+      id: '/meme'
+      path: '/meme'
+      fullPath: '/meme'
+      preLoaderRoute: typeof MemeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/roast': {
+      id: '/roast'
+      path: '/roast'
+      fullPath: '/roast'
+      preLoaderRoute: typeof RoastRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  ArcadeRoute: ArcadeRoute,
+  ChatRoute: ChatRoute,
+  LeaderboardRoute: LeaderboardRoute,
+  MemeRoute: MemeRoute,
+  RoastRoute: RoastRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
