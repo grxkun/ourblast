@@ -1,9 +1,12 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link, createFileRoute } from "@tanstack/react-router";
+import { useRef } from "react";
 
 import { SectionTitle } from "@/components/blast/AppShell";
 import { useBlast } from "@/components/blast/session";
 import { BlastClick } from "@/components/game/BlastClick";
+import { BlastTutorial } from "@/components/game/BlastTutorial";
+import { GamePreview } from "@/components/game/GamePreview";
 import { supabase } from "@/integrations/supabase/client";
 import { POINTS, formatNumber } from "@/lib/blast";
 
