@@ -1,6 +1,9 @@
-# Roadmap
+# Roadmap — OURBLAST
 
-- [x] Upload mascot/helmet artwork as site assets
-- [x] Design system: cream paper, black ink outlines, red accent, sticker/brutalist look
-- [x] Build single-page $CTO landing (hero, takeover story, tokenomics, how to buy, contract, socials)
-- [ ] Replace placeholder contract address + social links with real ones (waiting on user)
+- [x] Backend: players, scores, points ledger, challenges, chat, meme battles, achievements, moderation (with access rules)
+- [x] Dark neon design system + shared shell (top nav + mobile bottom bar)
+- [x] Slush wallet sign-in, points, streaks, achievements
+- [x] Home, Arcade (BLAST CLICK), Leaderboard, Meme, Roast, Chat, Profile, Admin pages
+- [x] Daily missions pre-filled for the next 30 days
+- [ ] Real meme submissions to kick off the first meme battle
+- [ ] More arcade games
