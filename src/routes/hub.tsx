@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link, createFileRoute } from "@tanstack/react-router";
 
+import mascotStand from "@/assets/mascot-stand.jpg.asset.json";
 import { SectionTitle } from "@/components/blast/AppShell";
 import { PlayerAvatar, PlayerName } from "@/components/blast/PlayerBadge";
 import { useBlast } from "@/components/blast/session";
