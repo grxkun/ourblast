@@ -63,7 +63,7 @@ export function AppShell({ children }: { children: ReactNode }) {
 
       <nav className="fixed bottom-0 left-0 z-50 w-full border-t border-border bg-background/90 backdrop-blur-xl lg:hidden">
         <div className="mx-auto flex max-w-lg items-stretch justify-between px-1 py-1.5">
-          {NAV.map((item) => (
+          {NAV.filter((item) => item.to !== "/how-to-play").map((item) => (
             <Link
               key={item.to}
               to={item.to}
