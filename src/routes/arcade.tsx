@@ -60,13 +60,23 @@ function ArcadePage() {
 
   return (
     <div className="space-y-10">
-      <div>
-        <p className="font-body text-xs font-bold tracking-[0.22em] text-cyber uppercase">Arcade</p>
-        <h1 className="mt-1 font-display text-4xl sm:text-5xl">Pick your poison</h1>
-        <p className="mt-3 max-w-xl font-body text-muted-foreground">
-          One game live today, more landing soon. Every run counts toward the leaderboard and your
-          points balance.
-        </p>
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <p className="font-body text-xs font-bold tracking-[0.22em] text-cyber uppercase">
+            Arcade
+          </p>
+          <h1 className="mt-1 font-display text-4xl sm:text-5xl">Pick your poison</h1>
+          <p className="mt-3 max-w-xl font-body text-muted-foreground">
+            One game live today, more landing soon. Every run counts toward the leaderboard and your
+            points balance.
+          </p>
+        </div>
+        <Link
+          to="/how-to-play"
+          className="rounded-full border-2 border-border px-5 py-2.5 font-display text-base tracking-wide uppercase transition-transform hover:-translate-y-0.5"
+        >
+          How to play
+        </Link>
       </div>
 
       <BlastClick />
