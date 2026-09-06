@@ -42,7 +42,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           </Link>
 
           <nav className="hidden items-center gap-1 lg:flex">
-            {NAV.slice(0, 7).map((item) => (
+            {NAV.slice(0, 8).map((item) => (
               <Link
                 key={item.to}
                 to={item.to}
