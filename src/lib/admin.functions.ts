@@ -43,12 +43,11 @@ async function logAction(
 export const amIStaff = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
-    const { data } = await context.supabase.rpc("is_staff", { _user_id: context.userId });
-    const { data: isAdmin } = await context.supabase.rpc("has_role", {
-      _user_id: context.userId,
-      _role: "admin",
-    });
-    return { staff: Boolean(data), admin: Boolean(isAdmin) };
+    const roles = await myRoles(context);
+    return {
+      staff: roles.includes("admin") || roles.includes("moderator"),
+      admin: roles.includes("admin"),
+    };
   });
 
 export const adminOverview = createServerFn({ method: "GET" })
