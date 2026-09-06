@@ -60,6 +60,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             <Link
               key={item.to}
               to={item.to}
+              activeOptions={{ exact: item.to === "/" }}
               activeProps={{ className: "text-primary" }}
               className="flex flex-1 flex-col items-center gap-0.5 rounded-lg px-1 py-1.5 text-muted-foreground"
             >
