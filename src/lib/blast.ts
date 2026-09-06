@@ -3,6 +3,7 @@
 export const POINTS = {
   dailyLogin: 100,
   playGame: 50,
+  skillBonusCap: 400, // extra points a single great run can add (1 per 100 score)
   highScore: 250,
   dailyChallenge: 500,
   achievement: 1000,
