@@ -182,6 +182,17 @@ export function BlastClick() {
     return () => window.clearInterval(id);
   }, [phase, score, clicks, maxCombo, finish]);
 
+  // Harder tiers keep the blast moving even when you miss it.
+  useEffect(() => {
+    if (phase !== "playing") return;
+    const drift = DIFFICULTIES[playedTier.current].driftMs;
+    if (!drift) return;
+    const id = window.setInterval(() => {
+      setTarget({ x: 18 + Math.random() * 64, y: 20 + Math.random() * 58 });
+    }, drift);
+    return () => window.clearInterval(id);
+  }, [phase]);
+
   const hit = (event: React.MouseEvent<HTMLButtonElement>) => {
     if (phase !== "playing") return;
     const now = Date.now();
@@ -260,8 +271,14 @@ export function BlastClick() {
         >
           {phase === "playing" ? (
             <span
-              className="animate-pulse-ring absolute grid size-24 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full bg-primary text-4xl transition-all duration-100 sm:size-28"
-              style={{ left: `${target.x}%`, top: `${target.y}%` }}
+              className="animate-pulse-ring absolute grid -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full bg-primary transition-all duration-150"
+              style={{
+                left: `${target.x}%`,
+                top: `${target.y}%`,
+                width: `${DIFFICULTIES[playedTier.current].sizeRem}rem`,
+                height: `${DIFFICULTIES[playedTier.current].sizeRem}rem`,
+                fontSize: `${DIFFICULTIES[playedTier.current].sizeRem / 2.6}rem`,
+              }}
             >
               💥
             </span>
@@ -284,9 +301,42 @@ export function BlastClick() {
               <div className="animate-pop-in max-w-md text-center">
                 <h4 className="font-display text-4xl">Smash the blast</h4>
                 <p className="mt-3 font-body text-muted-foreground">
-                  30 seconds. Every hit is 10 points, and hitting fast stacks a combo multiplier up
-                  to x12. Miss a beat and the combo resets.
+                  30 seconds. Every hit is 10 points, and hitting fast stacks a combo. Miss a beat
+                  and the combo resets.
                 </p>
+
+                <div className="mt-5">
+                  <p className="font-body text-[0.62rem] font-bold tracking-[0.2em] text-muted-foreground uppercase">
+                    Difficulty
+                  </p>
+                  <div className="mt-2 grid grid-cols-3 gap-2">
+                    {DIFFICULTY_KEYS.map((key) => {
+                      const option = DIFFICULTIES[key];
+                      const selected = key === difficulty;
+                      return (
+                        <button
+                          key={key}
+                          type="button"
+                          aria-pressed={selected}
+                          onClick={() => chooseDifficulty(key)}
+                          className={`rounded-2xl border px-2 py-2 font-display text-sm tracking-wide uppercase transition-colors ${
+                            selected
+                              ? "border-primary bg-primary text-primary-foreground"
+                              : "border-border hover:bg-secondary"
+                          }`}
+                        >
+                          {option.label}
+                          <span className="mt-0.5 block font-body text-[0.6rem] tracking-normal normal-case opacity-80">
+                            x{option.multiplier} pts
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <p className="mt-2 font-body text-xs text-muted-foreground">
+                    {tier.blurb} Combo up to x{tier.maxCombo}, every point worth x{tier.multiplier}.
+                  </p>
+                </div>
                 <p className="mt-4 font-body text-sm">
                   Play cost{" "}
                   <span className="font-display text-lime">{FEES.game} SUI</span> — paid straight to
