@@ -14,6 +14,43 @@ export const POINTS = {
 export const CHAT_DAILY_POINT_CAP = 20; // messages that earn points per day
 export const GAME_DURATION_MS = 30_000;
 
+/**
+ * Blast Click difficulty tiers. Shared with the server so score validation
+ * knows the highest total a run of each tier can plausibly reach.
+ */
+export const DIFFICULTIES = {
+  easy: {
+    label: "Chill",
+    blurb: "Big blast, patient combo window.",
+    sizeRem: 8,
+    comboWindowMs: 620,
+    maxCombo: 8,
+    multiplier: 1,
+    driftMs: 0, // target only moves when hit
+  },
+  normal: {
+    label: "Normal",
+    blurb: "Standard blast, x12 combo ceiling.",
+    sizeRem: 6,
+    comboWindowMs: 450,
+    maxCombo: 12,
+    multiplier: 1.25,
+    driftMs: 1400,
+  },
+  hard: {
+    label: "Helmet off",
+    blurb: "Tiny blast that keeps running. Big payout.",
+    sizeRem: 4,
+    comboWindowMs: 330,
+    maxCombo: 16,
+    multiplier: 1.6,
+    driftMs: 750,
+  },
+} as const;
+
+export type DifficultyKey = keyof typeof DIFFICULTIES;
+export const DIFFICULTY_KEYS = ["easy", "normal", "hard"] as const;
+
 export function shortAddress(address: string | null | undefined, size = 4) {
   if (!address) return "";
   if (address.length <= size * 2 + 4) return address;
