@@ -3,10 +3,20 @@ import { z } from "zod";
 
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
+// Reads the caller's own role rows through their RLS-scoped client.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function myRoles(context: any): Promise<string[]> {
+  const { data } = await context.supabase
+    .from("user_roles")
+    .select("role")
+    .eq("user_id", context.userId);
+  return ((data ?? []) as { role: string }[]).map((r) => r.role);
+}
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function assertStaff(context: any) {
-  const { data, error } = await context.supabase.rpc("is_staff", { _user_id: context.userId });
-  if (error || !data) throw new Error("Admins only.");
+  const roles = await myRoles(context);
+  if (!roles.includes("admin") && !roles.includes("moderator")) throw new Error("Admins only.");
   return context.userId as string;
 }
 
