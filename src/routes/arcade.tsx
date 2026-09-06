@@ -79,7 +79,13 @@ function ArcadePage() {
         </Link>
       </div>
 
-      <BlastClick />
+      <GamePreview />
+
+      <BlastTutorial onPlay={() => gameRef.current?.scrollIntoView({ behavior: "smooth", block: "center" })} />
+
+      <div ref={gameRef}>
+        <BlastClick />
+      </div>
 
       <section className="grid gap-6 lg:grid-cols-[1.2fr_1fr]">
         <div className="panel p-5 sm:p-6">
