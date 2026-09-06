@@ -9,6 +9,8 @@ const scoreInput = z.object({
   clicks: z.number().int().min(0).max(600),
   maxCombo: z.number().int().min(1).max(20),
   durationMs: z.number().int().min(20_000).max(40_000),
+  paymentId: z.string().uuid(),
+  gameKey: z.string().min(2).max(40).default("blast_click"),
 });
 
 /**
@@ -24,6 +26,7 @@ export const submitScore = createServerFn({ method: "POST" })
     const userId = context.userId;
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { awardPoints, grantAchievement, today } = await import("./points.server");
+    const { consumePayment, currentSeasonId } = await import("./payments.server");
 
     const maxPlausible = data.clicks * 10 * 12;
     if (data.score > maxPlausible) throw new Error("Score rejected: impossible for that many clicks.");
@@ -43,13 +46,19 @@ export const submitScore = createServerFn({ method: "POST" })
       .gte("created_at", new Date(Date.now() - 3_600_000).toISOString());
     if ((recent ?? 0) >= 30) throw new Error("Take a breather — too many runs this hour.");
 
+    // The paid entry ticket is verified and spent here — one run per payment.
+    const paymentId = await consumePayment(supabaseAdmin, data.paymentId, userId, "game");
+    const seasonId = await currentSeasonId(supabaseAdmin);
+
     await supabaseAdmin.from("game_sessions").insert({
       user_id: userId,
-      game_key: "blast_click",
+      game_key: data.gameKey,
       score: data.score,
       clicks: data.clicks,
       max_combo: data.maxCombo,
       duration_ms: data.durationMs,
+      payment_id: paymentId,
+      season_id: seasonId,
     });
 
     const isPersonalBest = data.score > (profile.best_score ?? 0);

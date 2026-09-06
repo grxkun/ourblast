@@ -234,3 +234,62 @@
   background: var(--surface-2);
   border-radius: 999px;
 }
+
+/*
+ * Paper/ink theme — scoped to the $BLAST landing page only, so the token
+ * flip lives here instead of in components. Arcade pages keep the dark
+ * neon defaults above.
+ */
+.theme-paper {
+  --background: oklch(0.96 0.026 86);
+  --foreground: oklch(0.18 0.01 60);
+  --ink: oklch(0.18 0.01 60);
+  --shadow-sticker: 6px 6px 0 0 var(--ink);
+  --shadow-sticker-lg: 10px 10px 0 0 var(--ink);
+
+  --card: oklch(0.99 0.008 86);
+  --card-foreground: var(--foreground);
+  --popover: oklch(0.99 0.008 86);
+  --popover-foreground: var(--foreground);
+
+  --primary: oklch(0.58 0.22 27);
+  --primary-foreground: oklch(0.98 0.01 86);
+  --secondary: oklch(0.18 0.01 60);
+  --secondary-foreground: oklch(0.97 0.02 86);
+  --muted: oklch(0.91 0.03 86);
+  --muted-foreground: oklch(0.42 0.02 60);
+  --accent: oklch(0.58 0.22 27);
+  --accent-foreground: oklch(0.98 0.01 86);
+
+  --border: oklch(0.18 0.01 60);
+  --input: oklch(0.18 0.01 60);
+  --ring: oklch(0.58 0.22 27);
+
+  color-scheme: light;
+  background-color: var(--background);
+  color: var(--foreground);
+}
+
+.theme-paper h1,
+.theme-paper h2,
+.theme-paper h3 {
+  @apply font-display tracking-tight uppercase;
+}
+
+@keyframes zap {
+  0%,
+  92%,
+  100% {
+    transform: rotate(0deg) scale(1);
+  }
+  95% {
+    transform: rotate(-6deg) scale(1.08);
+  }
+  97% {
+    transform: rotate(6deg) scale(1.08);
+  }
+}
+
+.animate-zap {
+  animation: zap 4.5s ease-in-out infinite;
+}

@@ -13,6 +13,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as ArcadeRouteImport } from './routes/arcade'
 import { Route as ChatRouteImport } from './routes/chat'
+import { Route as HubRouteImport } from './routes/hub'
 import { Route as LeaderboardRouteImport } from './routes/leaderboard'
 import { Route as MemeRouteImport } from './routes/meme'
 import { Route as ProfileRouteImport } from './routes/profile'
@@ -36,6 +37,11 @@ const ArcadeRoute = ArcadeRouteImport.update({
 const ChatRoute = ChatRouteImport.update({
   id: '/chat',
   path: '/chat',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const HubRoute = HubRouteImport.update({
+  id: '/hub',
+  path: '/hub',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LeaderboardRoute = LeaderboardRouteImport.update({
@@ -64,6 +70,7 @@ export interface FileRoutesByFullPath {
   '/admin': typeof AdminRoute
   '/arcade': typeof ArcadeRoute
   '/chat': typeof ChatRoute
+  '/hub': typeof HubRoute
   '/leaderboard': typeof LeaderboardRoute
   '/meme': typeof MemeRoute
   '/profile': typeof ProfileRoute
@@ -74,6 +81,7 @@ export interface FileRoutesByTo {
   '/admin': typeof AdminRoute
   '/arcade': typeof ArcadeRoute
   '/chat': typeof ChatRoute
+  '/hub': typeof HubRoute
   '/leaderboard': typeof LeaderboardRoute
   '/meme': typeof MemeRoute
   '/profile': typeof ProfileRoute
@@ -85,6 +93,7 @@ export interface FileRoutesById {
   '/admin': typeof AdminRoute
   '/arcade': typeof ArcadeRoute
   '/chat': typeof ChatRoute
+  '/hub': typeof HubRoute
   '/leaderboard': typeof LeaderboardRoute
   '/meme': typeof MemeRoute
   '/profile': typeof ProfileRoute
@@ -97,6 +106,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/arcade'
     | '/chat'
+    | '/hub'
     | '/leaderboard'
     | '/meme'
     | '/profile'
@@ -107,6 +117,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/arcade'
     | '/chat'
+    | '/hub'
     | '/leaderboard'
     | '/meme'
     | '/profile'
@@ -117,6 +128,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/arcade'
     | '/chat'
+    | '/hub'
     | '/leaderboard'
     | '/meme'
     | '/profile'
@@ -128,6 +140,7 @@ export interface RootRouteChildren {
   AdminRoute: typeof AdminRoute
   ArcadeRoute: typeof ArcadeRoute
   ChatRoute: typeof ChatRoute
+  HubRoute: typeof HubRoute
   LeaderboardRoute: typeof LeaderboardRoute
   MemeRoute: typeof MemeRoute
   ProfileRoute: typeof ProfileRoute
@@ -162,6 +175,13 @@ declare module '@tanstack/react-router' {
       path: '/chat'
       fullPath: '/chat'
       preLoaderRoute: typeof ChatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/hub': {
+      id: '/hub'
+      path: '/hub'
+      fullPath: '/hub'
+      preLoaderRoute: typeof HubRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/leaderboard': {
@@ -200,6 +220,7 @@ const rootRouteChildren: RootRouteChildren = {
   AdminRoute: AdminRoute,
   ArcadeRoute: ArcadeRoute,
   ChatRoute: ChatRoute,
+  HubRoute: HubRoute,
   LeaderboardRoute: LeaderboardRoute,
   MemeRoute: MemeRoute,
   ProfileRoute: ProfileRoute,

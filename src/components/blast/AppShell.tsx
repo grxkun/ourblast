@@ -1,10 +1,10 @@
-import { Link } from "@tanstack/react-router";
+import { Link, useRouterState } from "@tanstack/react-router";
 import type { ReactNode } from "react";
 
 import { WalletButton } from "@/components/blast/WalletButton";
 
 const NAV = [
-  { to: "/", label: "Home", icon: "🏠" },
+  { to: "/hub", label: "Hub", icon: "🏠" },
   { to: "/arcade", label: "Arcade", icon: "🕹️" },
   { to: "/leaderboard", label: "Ranks", icon: "🏆" },
   { to: "/meme", label: "Meme", icon: "😂" },
@@ -14,11 +14,16 @@ const NAV = [
 ] as const;
 
 export function AppShell({ children }: { children: ReactNode }) {
+  const pathname = useRouterState({ select: (state) => state.location.pathname });
+
+  // The $BLAST landing page brings its own header and footer.
+  if (pathname === "/") return <>{children}</>;
+
   return (
     <div className="min-h-screen">
       <header className="sticky top-0 z-50 border-b border-border bg-background/80 backdrop-blur-xl">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3">
-          <Link to="/" className="flex items-center gap-2">
+          <Link to="/hub" className="flex items-center gap-2">
             <span className="glow-blast grid size-9 place-items-center rounded-xl bg-primary font-display text-lg text-primary-foreground">
               O
             </span>

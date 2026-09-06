@@ -43,6 +43,105 @@ export const awardChatPoints = createServerFn({ method: "POST" })
     return { pointsEarned: earned, cappedFor: n > CHAT_DAILY_POINT_CAP };
   });
 
+const chatInput = z.object({
+  body: z.string().trim().min(1).max(400),
+  paymentId: z.string().uuid(),
+});
+
+const BLOCKED_WORDS = [
+  "nigger",
+  "faggot",
+  "retard",
+  "kike",
+  "cunt",
+  "rape",
+  "paedo",
+  "pedo",
+  "kill yourself",
+  "kys",
+];
+
+function cleanBody(body: string) {
+  const lower = body.toLowerCase();
+  if (BLOCKED_WORDS.some((w) => lower.includes(w))) {
+    throw new Error("That message breaks the community rules.");
+  }
+  if (/(.)\1{9,}/.test(body)) throw new Error("Easy on the spam.");
+  return body;
+}
+
+/**
+ * Chat messages cost SUI. The paid transaction is verified and consumed here,
+ * before the message is published — never the other way round.
+ */
+export const postChatMessage = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: unknown) => chatInput.parse(data))
+  .handler(async ({ data, context }) => {
+    const userId = context.userId;
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { consumePayment } = await import("./payments.server");
+    const { awardPoints, grantAchievement, today } = await import("./points.server");
+    const day = today();
+
+    const { data: profile } = await supabaseAdmin
+      .from("profiles")
+      .select("is_banned, muted_until")
+      .eq("id", userId)
+      .maybeSingle();
+    if (!profile) throw new Error("Profile not found.");
+    if (profile.is_banned) throw new Error("This wallet is banned from OURBLAST.");
+    if (profile.muted_until && new Date(profile.muted_until) > new Date()) {
+      throw new Error("You're muted right now.");
+    }
+
+    const body = cleanBody(data.body.trim());
+
+    const { count: lastMinute } = await supabaseAdmin
+      .from("chat_messages")
+      .select("id", { count: "exact", head: true })
+      .eq("user_id", userId)
+      .gte("created_at", new Date(Date.now() - 60_000).toISOString());
+    if ((lastMinute ?? 0) >= 15) throw new Error("Slow down — too many messages.");
+
+    const paymentId = await consumePayment(supabaseAdmin, data.paymentId, userId, "chat");
+
+    const { error } = await supabaseAdmin
+      .from("chat_messages")
+      .insert({ user_id: userId, body, payment_id: paymentId });
+    if (error) throw new Error(error.message);
+
+    const { count: todayCount } = await supabaseAdmin
+      .from("chat_messages")
+      .select("id", { count: "exact", head: true })
+      .eq("user_id", userId)
+      .gte("created_at", `${day}T00:00:00.000Z`);
+    const n = (todayCount ?? 0) - 1;
+
+    let earned = 0;
+    if (n < CHAT_DAILY_POINT_CAP) {
+      earned = await awardPoints(
+        supabaseAdmin,
+        userId,
+        POINTS.chatMessage,
+        "chat_message",
+        `chat:${day}:${n}`,
+      );
+    }
+
+    const { count: total } = await supabaseAdmin
+      .from("chat_messages")
+      .select("id", { count: "exact", head: true })
+      .eq("user_id", userId);
+    if ((total ?? 0) >= 100) {
+      const res = await grantAchievement(supabaseAdmin, userId, "chatterblast");
+      earned += res.points;
+    }
+
+    return { pointsEarned: earned, cappedFor: n >= CHAT_DAILY_POINT_CAP };
+  });
+
+
 const memeInput = z.object({
   title: z.string().trim().min(2).max(80),
   imageUrl: z.string().trim().url().max(600),
