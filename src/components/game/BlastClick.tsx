@@ -3,6 +3,10 @@ import { Link } from "@tanstack/react-router";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 
+import blastCool from "@/assets/blast-cool.png.asset.json";
+import blastLaughing from "@/assets/blast-laughing.png.asset.json";
+import blastStoned from "@/assets/blast-stoned.png.asset.json";
+import blastThinking from "@/assets/blast-thinking.png.asset.json";
 import { useBlast } from "@/components/blast/session";
 import {
   DIFFICULTIES,
@@ -244,6 +248,19 @@ export function BlastClick() {
       ? `Play for ${FEES.game} SUI`
       : "Connect Slush to play";
 
+  const reaction =
+    phase === "idle"
+      ? { src: blastThinking.url, alt: "BLAST mascot thinking before the game" }
+      : phase === "playing"
+        ? combo >= 5
+          ? { src: blastLaughing.url, alt: "BLAST mascot laughing at a strong combo" }
+          : { src: blastCool.url, alt: "BLAST mascot looking cool during the game" }
+        : result?.isPersonalBest
+          ? { src: blastCool.url, alt: "BLAST mascot celebrating a personal best" }
+          : score >= 1_000
+            ? { src: blastLaughing.url, alt: "BLAST mascot laughing after a strong run" }
+            : { src: blastStoned.url, alt: "BLAST mascot dazed after a rough run" };
+
   return (
     <div className="panel overflow-hidden">
       <div className="flex flex-wrap items-center justify-between gap-4 border-b border-border px-5 py-4">
@@ -300,12 +317,26 @@ export function BlastClick() {
               +{p.value}
             </span>
           ))}
+
+          {phase === "playing" ? (
+            <img
+              key={reaction.src}
+              src={reaction.src}
+              alt={reaction.alt}
+              className="animate-pop-in pointer-events-none absolute bottom-3 left-3 h-24 w-24 object-contain drop-shadow-md sm:h-32 sm:w-32"
+            />
+          ) : null}
         </button>
 
         {phase !== "playing" ? (
           <div className="absolute inset-0 grid place-items-center bg-background/85 px-5 backdrop-blur-sm">
             {phase === "idle" ? (
               <div className="animate-pop-in max-w-md text-center">
+                <img
+                  src={reaction.src}
+                  alt={reaction.alt}
+                  className="mx-auto mb-2 h-28 w-28 object-contain sm:h-32 sm:w-32"
+                />
                 <h4 className="font-display text-4xl">Smash the blast</h4>
                 <p className="mt-3 font-body text-muted-foreground">
                   30 seconds. Every hit is 10 points, and hitting fast stacks a combo. Miss a beat
@@ -368,6 +399,11 @@ export function BlastClick() {
               </div>
             ) : (
               <div className="animate-pop-in w-full max-w-md text-center">
+                <img
+                  src={reaction.src}
+                  alt={reaction.alt}
+                  className="mx-auto h-28 w-28 object-contain sm:h-32 sm:w-32"
+                />
                 <p className="font-body text-xs font-bold tracking-[0.22em] text-cyber uppercase">
                   Game over
                 </p>
