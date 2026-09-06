@@ -31,6 +31,7 @@ export const Route = createFileRoute("/arcade")({
 
 function ArcadePage() {
   const { profile, userId } = useBlast();
+  const gameRef = useRef<HTMLDivElement>(null);
 
   const challenge = useQuery({
     queryKey: ["challenge", "today"],
