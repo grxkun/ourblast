@@ -6,7 +6,7 @@ import helmet from "@/assets/helmet.jpg.asset.json";
 import mascotCoin from "@/assets/mascot-coin.jpg.asset.json";
 import mascotShock from "@/assets/mascot-shock.jpg.asset.json";
 import { CHAT_DAILY_POINT_CAP, POINTS, formatNumber } from "@/lib/blast";
-import { FEES } from "@/lib/ourblast.config";
+import { ECONOMY, FEES, playsToTarget } from "@/lib/ourblast.config";
 
 export const Route = createFileRoute("/how-to-play")({
   head: () => ({
@@ -212,6 +212,37 @@ function HowToPlay() {
               </div>
             ))}
           </dl>
+          <p className="mt-3 font-body text-xs text-muted-foreground">
+            Runs and personal bests scale with the difficulty you choose (Chill x1, Normal x1.25,
+            Helmet off x1.6), and a strong score adds up to {formatNumber(POINTS.skillBonusCap)}{" "}
+            bonus points on top.
+          </p>
+        </div>
+
+        <div className="panel p-5 sm:p-6">
+          <SectionTitle kicker="Treasury" title={`Where your ${FEES.game} SUI goes`} />
+          <ul className="space-y-2 font-body text-sm">
+            {[
+              ["Season prize pool for top players", ECONOMY.prizePoolShare],
+              ["$BLAST buybacks", ECONOMY.buybackShare],
+              ["Hosting, art and tools", ECONOMY.opsShare],
+            ].map(([label, share]) => (
+              <li
+                key={label as string}
+                className="flex items-center justify-between rounded-xl border border-border px-3 py-2"
+              >
+                <span>{label}</span>
+                <span className="font-display text-lg text-primary">
+                  {Math.round((share as number) * 100)}%
+                </span>
+              </li>
+            ))}
+          </ul>
+          <p className="mt-3 font-body text-xs text-muted-foreground">
+            Season target: {formatNumber(ECONOMY.seasonTargetSui)} SUI over {ECONOMY.seasonDays}{" "}
+            days — about {formatNumber(playsToTarget())} paid actions. Every payment goes straight
+            from your wallet to the community treasury, on-chain and public.
+          </p>
         </div>
       </section>
 

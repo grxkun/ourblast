@@ -72,9 +72,21 @@ export const submitScore = createServerFn({ method: "POST" })
       })
       .eq("id", userId);
 
-    let earned = await awardPoints(supabaseAdmin, userId, POINTS.playGame, "play_game");
+    // Reward = flat entry reward scaled by the tier you chose, plus a small
+    // skill bonus so a great run on Chill still loses to a great run on Hard.
+    const runReward = Math.round(POINTS.playGame * tier.multiplier);
+    const skillBonus = Math.min(POINTS.skillBonusCap, Math.floor(data.score / 100));
+    let earned = await awardPoints(supabaseAdmin, userId, runReward, "play_game");
+    if (skillBonus > 0) {
+      earned += await awardPoints(supabaseAdmin, userId, skillBonus, "skill_bonus");
+    }
     if (isPersonalBest && data.score > 0) {
-      earned += await awardPoints(supabaseAdmin, userId, POINTS.highScore, "high_score");
+      earned += await awardPoints(
+        supabaseAdmin,
+        userId,
+        Math.round(POINTS.highScore * tier.multiplier),
+        "high_score",
+      );
     }
 
     const newAchievements: string[] = [];

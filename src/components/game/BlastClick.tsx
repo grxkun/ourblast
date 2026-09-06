@@ -13,6 +13,7 @@ import {
   type DifficultyKey,
 } from "@/lib/blast";
 import { FEES } from "@/lib/ourblast.config";
+import { primeAudio, setSoundEnabled, sfx, soundEnabled, syncSoundPreference } from "@/lib/sound";
 import { submitScore } from "@/lib/game.functions";
 
 type Phase = "idle" | "playing" | "over";
@@ -50,6 +51,7 @@ export function BlastClick() {
   const paymentId = useRef<string | null>(null);
   const audio = useRef<AudioContext | null>(null);
   const playedTier = useRef<DifficultyKey>("normal");
+  const remainingRef = useRef(GAME_DURATION_MS);
 
   const tier = DIFFICULTIES[difficulty];
 
@@ -69,27 +71,18 @@ export function BlastClick() {
     }
   };
 
-  const blip = useCallback(
-    (pitch: number) => {
-      if (!sound) return;
-      try {
-        audio.current ??= new AudioContext();
-        const ctx = audio.current;
-        const osc = ctx.createOscillator();
-        const gain = ctx.createGain();
-        osc.type = "square";
-        osc.frequency.value = 220 + pitch * 40;
-        gain.gain.value = 0.05;
-        osc.connect(gain).connect(ctx.destination);
-        osc.start();
-        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.08);
-        osc.stop(ctx.currentTime + 0.09);
-      } catch {
-        /* audio unavailable */
-      }
-    },
-    [sound],
-  );
+  useEffect(() => {
+    setSound(soundEnabled());
+    syncSoundPreference();
+  }, []);
+
+  const toggleSound = () => {
+    const next = !sound;
+    setSound(next);
+    setSoundEnabled(next);
+    syncSoundPreference();
+    if (next) sfx.ui();
+  };
 
   const startRound = () => {
     setScore(0);
@@ -100,8 +93,10 @@ export function BlastClick() {
     setResult(null);
     setRemaining(GAME_DURATION_MS);
     endsAt.current = Date.now() + GAME_DURATION_MS;
+    remainingRef.current = GAME_DURATION_MS;
     lastClick.current = 0;
     playedTier.current = difficulty;
+    sfx.start();
     setTarget({ x: 50, y: 50 });
     setPhase("playing");
   };
@@ -114,13 +109,16 @@ export function BlastClick() {
     }
     setPaying(true);
     try {
+      primeAudio();
       paymentId.current = await pay("game");
+      sfx.coin();
       toast.success(`${FEES.game} SUI sent to the OURBLAST treasury`, {
         description: "Entry confirmed — go smash it.",
       });
       startRound();
     } catch (error) {
       paymentId.current = null;
+      sfx.error();
       toast.error("Payment not completed", {
         description:
           error instanceof Error ? error.message : "The transaction was rejected. Try again.",
@@ -133,6 +131,7 @@ export function BlastClick() {
   const finish = useCallback(
     async (finalScore: number, finalClicks: number, finalCombo: number) => {
       setPhase("over");
+      sfx.gameOver();
       const ticket = paymentId.current;
       if (!userId || !ticket) return;
       setSaving(true);
@@ -151,6 +150,8 @@ export function BlastClick() {
         paymentId.current = null;
         setResult(res);
         refresh();
+        if (res.isPersonalBest) sfx.fanfare();
+        else if (res.pointsEarned > 0) sfx.points();
         if (res.pointsEarned > 0) {
           toast.success(`+${formatNumber(res.pointsEarned)} BLAST POINTS`, {
             description: res.isPersonalBest ? "New personal best 🔥" : undefined,
@@ -176,6 +177,10 @@ export function BlastClick() {
         setRemaining(0);
         void finish(score, clicks, maxCombo);
       } else {
+        if (left <= 5_200 && Math.ceil(left / 1000) !== Math.ceil(remainingRef.current / 1000)) {
+          sfx.tick(left <= 3_000);
+        }
+        remainingRef.current = left;
         setRemaining(left);
       }
     }, 100);
@@ -205,7 +210,9 @@ export function BlastClick() {
     const rect = event.currentTarget.getBoundingClientRect();
     const id = popId.current++;
 
-    blip(nextCombo);
+    if (nextCombo === 1 && combo > 2) sfx.comboBreak();
+    else if (nextCombo % 5 === 0) sfx.comboUp(nextCombo);
+    else sfx.hit(nextCombo);
     setCombo(nextCombo);
     setMaxCombo((m) => Math.max(m, nextCombo));
     setScore((s) => s + gained);
@@ -252,7 +259,7 @@ export function BlastClick() {
           <Stat label="Combo" value={`x${combo}`} />
           <button
             type="button"
-            onClick={() => setSound((s) => !s)}
+            onClick={toggleSound}
             aria-label={sound ? "Turn sound off" : "Turn sound on"}
             className="rounded-full border border-border px-3 py-1.5 font-body text-sm"
           >
@@ -318,7 +325,11 @@ export function BlastClick() {
                           key={key}
                           type="button"
                           aria-pressed={selected}
-                          onClick={() => chooseDifficulty(key)}
+                          onClick={() => {
+                            primeAudio();
+                            sfx.ui();
+                            chooseDifficulty(key);
+                          }}
                           className={`rounded-2xl border px-2 py-2 font-display text-sm tracking-wide uppercase transition-colors ${
                             selected
                               ? "border-primary bg-primary text-primary-foreground"
