@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { createFileRoute } from "@tanstack/react-router";
+import { Link, createFileRoute } from "@tanstack/react-router";
 
 import { SectionTitle } from "@/components/blast/AppShell";
 import { useBlast } from "@/components/blast/session";
