@@ -63,14 +63,14 @@ function Home() {
     <main className="theme-paper min-h-screen overflow-x-hidden bg-background text-foreground">
       {/* nav */}
       <header className="sticky top-0 z-50 border-b-[3px] border-border bg-background/90 backdrop-blur">
-        <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-5 py-3">
-          <a href="#top" className="flex items-center gap-3">
+        <div className="mx-auto grid max-w-6xl grid-cols-[minmax(0,1fr)_auto] items-center gap-3 px-4 py-3 sm:flex sm:justify-between sm:gap-4 sm:px-5">
+          <a href="#top" className="flex min-w-0 items-center gap-2 sm:gap-3">
             <img
               src={helmet.url}
               alt="$BLAST pixel helmet mascot"
-              className="animate-zap size-11 rounded-lg border-[3px] border-border bg-card object-cover"
+              className="animate-zap size-10 shrink-0 rounded-lg border-[3px] border-border bg-card object-cover sm:size-11"
             />
-            <span className="font-display text-2xl tracking-wide">$BLAST</span>
+            <span className="truncate font-display text-xl tracking-wide sm:text-2xl">$BLAST</span>
           </a>
           <nav className="hidden items-center gap-7 font-body text-sm font-medium sm:flex">
             <a className="hover:text-primary" href="#story">
@@ -92,7 +92,7 @@ function Home() {
               target="_blank"
               rel="noreferrer"
               aria-label="X (Twitter)"
-              className="flex size-11 items-center justify-center rounded-lg border-[3px] border-border bg-card font-display text-base shadow-[4px_4px_0_0_var(--ink)] transition-transform hover:-translate-y-0.5 active:translate-y-0.5"
+              className="flex size-10 items-center justify-center rounded-lg border-[3px] border-border bg-card font-display text-base shadow-[4px_4px_0_0_var(--ink)] transition-transform hover:-translate-y-0.5 active:translate-y-0.5 sm:size-11"
             >
               X
             </a>
@@ -101,7 +101,7 @@ function Home() {
               target="_blank"
               rel="noreferrer"
               aria-label="Telegram"
-              className="flex size-11 items-center justify-center rounded-lg border-[3px] border-border bg-card font-display text-sm shadow-[4px_4px_0_0_var(--ink)] transition-transform hover:-translate-y-0.5 active:translate-y-0.5"
+              className="flex size-10 items-center justify-center rounded-lg border-[3px] border-border bg-card font-display text-sm shadow-[4px_4px_0_0_var(--ink)] transition-transform hover:-translate-y-0.5 active:translate-y-0.5 sm:size-11"
             >
               TG
             </a>
@@ -109,13 +109,31 @@ function Home() {
               href={BUY_URL}
               target="_blank"
               rel="noreferrer"
-              className="rounded-lg border-[3px] border-border bg-primary px-4 py-2 font-display text-lg tracking-wide text-primary-foreground shadow-[4px_4px_0_0_var(--ink)] transition-transform hover:-translate-y-0.5 active:translate-y-0.5"
+              className="rounded-lg border-[3px] border-border bg-primary px-3 py-2 font-display text-base tracking-wide text-primary-foreground shadow-[4px_4px_0_0_var(--ink)] transition-transform hover:-translate-y-0.5 active:translate-y-0.5 sm:px-4 sm:text-lg"
             >
-              BUY $BLAST
+              BUY
+              <span className="hidden sm:inline"> $BLAST</span>
             </a>
           </div>
         </div>
+
+        {/* compact link row for phones */}
+        <nav className="flex items-center gap-4 overflow-x-auto border-t-[3px] border-border px-4 py-2 font-body text-xs font-bold tracking-[0.14em] uppercase sm:hidden">
+          <a className="shrink-0" href="#story">
+            Takeover
+          </a>
+          <a className="shrink-0" href="#numbers">
+            Numbers
+          </a>
+          <a className="shrink-0" href="#buy">
+            How to buy
+          </a>
+          <Link className="shrink-0 text-primary" to="/hub">
+            Arcade →
+          </Link>
+        </nav>
       </header>
+
 
       {/* hero */}
       <section id="top" className="relative mx-auto max-w-6xl px-5 pt-14 pb-16 sm:pt-20">
