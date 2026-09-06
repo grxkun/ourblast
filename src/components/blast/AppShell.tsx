@@ -1,18 +1,21 @@
 import { Link, useRouterState } from "@tanstack/react-router";
 import type { ReactNode } from "react";
 
+import helmet from "@/assets/helmet.jpg.asset.json";
 import { WalletButton } from "@/components/blast/WalletButton";
 
 const NAV = [
   { to: "/", label: "$BLAST", icon: "💥" },
   { to: "/hub", label: "Hub", icon: "🏠" },
   { to: "/arcade", label: "Arcade", icon: "🕹️" },
+  { to: "/how-to-play", label: "Guide", icon: "📖" },
   { to: "/leaderboard", label: "Ranks", icon: "🏆" },
   { to: "/meme", label: "Meme", icon: "😂" },
   { to: "/roast", label: "Roast", icon: "🔥" },
   { to: "/chat", label: "Chat", icon: "💬" },
   { to: "/profile", label: "You", icon: "👾" },
 ] as const;
+
 
 
 export function AppShell({ children }: { children: ReactNode }) {
