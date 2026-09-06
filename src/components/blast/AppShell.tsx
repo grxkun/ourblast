@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 import { WalletButton } from "@/components/blast/WalletButton";
 
 const NAV = [
+  { to: "/", label: "$BLAST", icon: "💥" },
   { to: "/hub", label: "Hub", icon: "🏠" },
   { to: "/arcade", label: "Arcade", icon: "🕹️" },
   { to: "/leaderboard", label: "Ranks", icon: "🏆" },
@@ -12,6 +13,7 @@ const NAV = [
   { to: "/chat", label: "Chat", icon: "💬" },
   { to: "/profile", label: "You", icon: "👾" },
 ] as const;
+
 
 export function AppShell({ children }: { children: ReactNode }) {
   const pathname = useRouterState({ select: (state) => state.location.pathname });
@@ -33,10 +35,11 @@ export function AppShell({ children }: { children: ReactNode }) {
           </Link>
 
           <nav className="hidden items-center gap-1 lg:flex">
-            {NAV.slice(0, 6).map((item) => (
+            {NAV.slice(0, 7).map((item) => (
               <Link
                 key={item.to}
                 to={item.to}
+                activeOptions={{ exact: item.to === "/" }}
                 activeProps={{ className: "bg-secondary text-foreground" }}
                 className="rounded-full px-4 py-2 font-body text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
               >
@@ -57,6 +60,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             <Link
               key={item.to}
               to={item.to}
+              activeOptions={{ exact: item.to === "/" }}
               activeProps={{ className: "text-primary" }}
               className="flex flex-1 flex-col items-center gap-0.5 rounded-lg px-1 py-1.5 text-muted-foreground"
             >
