@@ -21,6 +21,30 @@ export const FEES = {
 
 export type PaymentPurpose = keyof typeof FEES;
 
+/**
+ * Treasury plan. Every paid action lands in one community wallet; this split
+ * is the published promise for how it gets spent, and the target is the
+ * milestone the arcade is working towards. Numbers only — the wallet itself is
+ * spent by the community, so keep this and the on-chain reality in sync.
+ */
+export const ECONOMY = {
+  /** Season prize pool paid back to top players. */
+  prizePoolShare: 0.5,
+  /** $BLAST buybacks from the open market. */
+  buybackShare: 0.3,
+  /** Hosting, art, tools. */
+  opsShare: 0.2,
+  /** Season length in days. */
+  seasonDays: 30,
+  /** Treasury milestone for the current season, in SUI. */
+  seasonTargetSui: 1_000,
+} as const;
+
+/** Paid actions needed to hit the season target at current pricing. */
+export function playsToTarget(): number {
+  return Math.ceil(ECONOMY.seasonTargetSui / FEES.game);
+}
+
 export function feeInMist(purpose: PaymentPurpose): number {
   return Math.round(FEES[purpose] * MIST_PER_SUI);
 }
