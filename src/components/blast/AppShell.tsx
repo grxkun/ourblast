@@ -22,7 +22,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   if (pathname === "/") return <>{children}</>;
 
   return (
-    <div className="min-h-screen">
+    <div className="theme-paper min-h-screen">
       <header className="sticky top-0 z-50 border-b border-border bg-background/80 backdrop-blur-xl">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3">
           <Link to="/hub" className="flex items-center gap-2">
