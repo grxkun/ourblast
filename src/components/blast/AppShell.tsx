@@ -29,9 +29,13 @@ export function AppShell({ children }: { children: ReactNode }) {
       <header className="sticky top-0 z-50 border-b border-border bg-background/80 backdrop-blur-xl">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3">
           <Link to="/hub" className="flex items-center gap-2">
-            <span className="glow-blast grid size-9 place-items-center rounded-xl bg-primary font-display text-lg text-primary-foreground">
-              O
-            </span>
+            <img
+              src={helmet.url}
+              alt="OURBLAST helmet mascot"
+              width={36}
+              height={36}
+              className="size-9 rounded-xl border-2 border-border object-cover"
+            />
             <span className="font-display text-xl tracking-wide">
               OUR<span className="text-primary">BLAST</span>
             </span>
