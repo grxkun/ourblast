@@ -2,12 +2,13 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-import { POINTS } from "./blast";
+import { DIFFICULTIES, POINTS } from "./blast";
 
 const scoreInput = z.object({
   score: z.number().int().min(0).max(60_000),
   clicks: z.number().int().min(0).max(600),
   maxCombo: z.number().int().min(1).max(20),
+  difficulty: z.enum(["easy", "normal", "hard"]).default("normal"),
   durationMs: z.number().int().min(20_000).max(40_000),
   paymentId: z.string().uuid(),
   gameKey: z.string().min(2).max(40).default("blast_click"),
@@ -28,7 +29,8 @@ export const submitScore = createServerFn({ method: "POST" })
     const { awardPoints, grantAchievement, today } = await import("./points.server");
     const { consumePayment, currentSeasonId } = await import("./payments.server");
 
-    const maxPlausible = data.clicks * 10 * 12;
+    const tier = DIFFICULTIES[data.difficulty];
+    const maxPlausible = Math.ceil(data.clicks * 10 * tier.maxCombo * tier.multiplier);
     if (data.score > maxPlausible) throw new Error("Score rejected: impossible for that many clicks.");
 
     const { data: profile } = await supabaseAdmin

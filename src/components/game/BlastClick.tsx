@@ -4,14 +4,21 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 
 import { useBlast } from "@/components/blast/session";
-import { GAME_DURATION_MS, formatNumber, msToClock } from "@/lib/blast";
+import {
+  DIFFICULTIES,
+  DIFFICULTY_KEYS,
+  GAME_DURATION_MS,
+  formatNumber,
+  msToClock,
+  type DifficultyKey,
+} from "@/lib/blast";
 import { FEES } from "@/lib/ourblast.config";
 import { submitScore } from "@/lib/game.functions";
 
 type Phase = "idle" | "playing" | "over";
 type Pop = { id: number; x: number; y: number; value: number };
 
-const COMBO_WINDOW_MS = 450;
+const STORAGE_KEY = "ourblast.blastclick.difficulty";
 
 export function BlastClick() {
   const { userId, connect, refresh, pay } = useBlast();
@@ -26,6 +33,7 @@ export function BlastClick() {
   const [pops, setPops] = useState<Pop[]>([]);
   const [target, setTarget] = useState({ x: 50, y: 50 });
   const [sound, setSound] = useState(true);
+  const [difficulty, setDifficulty] = useState<DifficultyKey>("normal");
   const [paying, setPaying] = useState(false);
   const [result, setResult] = useState<{
     rank: number;
@@ -41,6 +49,25 @@ export function BlastClick() {
   const endsAt = useRef(0);
   const paymentId = useRef<string | null>(null);
   const audio = useRef<AudioContext | null>(null);
+  const playedTier = useRef<DifficultyKey>("normal");
+
+  const tier = DIFFICULTIES[difficulty];
+
+  useEffect(() => {
+    const saved = window.localStorage.getItem(STORAGE_KEY);
+    if (saved && (DIFFICULTY_KEYS as readonly string[]).includes(saved)) {
+      setDifficulty(saved as DifficultyKey);
+    }
+  }, []);
+
+  const chooseDifficulty = (key: DifficultyKey) => {
+    setDifficulty(key);
+    try {
+      window.localStorage.setItem(STORAGE_KEY, key);
+    } catch {
+      /* storage unavailable */
+    }
+  };
 
   const blip = useCallback(
     (pitch: number) => {
@@ -74,6 +101,8 @@ export function BlastClick() {
     setRemaining(GAME_DURATION_MS);
     endsAt.current = Date.now() + GAME_DURATION_MS;
     lastClick.current = 0;
+    playedTier.current = difficulty;
+    setTarget({ x: 50, y: 50 });
     setPhase("playing");
   };
 
@@ -116,6 +145,7 @@ export function BlastClick() {
             durationMs: GAME_DURATION_MS,
             paymentId: ticket,
             gameKey: "blast_click",
+            difficulty: playedTier.current,
           },
         });
         paymentId.current = null;
@@ -152,13 +182,26 @@ export function BlastClick() {
     return () => window.clearInterval(id);
   }, [phase, score, clicks, maxCombo, finish]);
 
+  // Harder tiers keep the blast moving even when you miss it.
+  useEffect(() => {
+    if (phase !== "playing") return;
+    const drift = DIFFICULTIES[playedTier.current].driftMs;
+    if (!drift) return;
+    const id = window.setInterval(() => {
+      setTarget({ x: 18 + Math.random() * 64, y: 20 + Math.random() * 58 });
+    }, drift);
+    return () => window.clearInterval(id);
+  }, [phase]);
+
   const hit = (event: React.MouseEvent<HTMLButtonElement>) => {
     if (phase !== "playing") return;
     const now = Date.now();
-    const nextCombo = now - lastClick.current < COMBO_WINDOW_MS ? Math.min(combo + 1, 12) : 1;
+    const active = DIFFICULTIES[playedTier.current];
+    const nextCombo =
+      now - lastClick.current < active.comboWindowMs ? Math.min(combo + 1, active.maxCombo) : 1;
     lastClick.current = now;
 
-    const gained = 10 * nextCombo;
+    const gained = Math.round(10 * nextCombo * active.multiplier);
     const rect = event.currentTarget.getBoundingClientRect();
     const id = popId.current++;
 
@@ -228,8 +271,14 @@ export function BlastClick() {
         >
           {phase === "playing" ? (
             <span
-              className="animate-pulse-ring absolute grid size-24 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full bg-primary text-4xl transition-all duration-100 sm:size-28"
-              style={{ left: `${target.x}%`, top: `${target.y}%` }}
+              className="animate-pulse-ring absolute grid -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full bg-primary transition-all duration-150"
+              style={{
+                left: `${target.x}%`,
+                top: `${target.y}%`,
+                width: `${DIFFICULTIES[playedTier.current].sizeRem}rem`,
+                height: `${DIFFICULTIES[playedTier.current].sizeRem}rem`,
+                fontSize: `${DIFFICULTIES[playedTier.current].sizeRem / 2.6}rem`,
+              }}
             >
               💥
             </span>
@@ -252,9 +301,42 @@ export function BlastClick() {
               <div className="animate-pop-in max-w-md text-center">
                 <h4 className="font-display text-4xl">Smash the blast</h4>
                 <p className="mt-3 font-body text-muted-foreground">
-                  30 seconds. Every hit is 10 points, and hitting fast stacks a combo multiplier up
-                  to x12. Miss a beat and the combo resets.
+                  30 seconds. Every hit is 10 points, and hitting fast stacks a combo. Miss a beat
+                  and the combo resets.
                 </p>
+
+                <div className="mt-5">
+                  <p className="font-body text-[0.62rem] font-bold tracking-[0.2em] text-muted-foreground uppercase">
+                    Difficulty
+                  </p>
+                  <div className="mt-2 grid grid-cols-3 gap-2">
+                    {DIFFICULTY_KEYS.map((key) => {
+                      const option = DIFFICULTIES[key];
+                      const selected = key === difficulty;
+                      return (
+                        <button
+                          key={key}
+                          type="button"
+                          aria-pressed={selected}
+                          onClick={() => chooseDifficulty(key)}
+                          className={`rounded-2xl border px-2 py-2 font-display text-sm tracking-wide uppercase transition-colors ${
+                            selected
+                              ? "border-primary bg-primary text-primary-foreground"
+                              : "border-border hover:bg-secondary"
+                          }`}
+                        >
+                          {option.label}
+                          <span className="mt-0.5 block font-body text-[0.6rem] tracking-normal normal-case opacity-80">
+                            x{option.multiplier} pts
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <p className="mt-2 font-body text-xs text-muted-foreground">
+                    {tier.blurb} Combo up to x{tier.maxCombo}, every point worth x{tier.multiplier}.
+                  </p>
+                </div>
                 <p className="mt-4 font-body text-sm">
                   Play cost{" "}
                   <span className="font-display text-lime">{FEES.game} SUI</span> — paid straight to
