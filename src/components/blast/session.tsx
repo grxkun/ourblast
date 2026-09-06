@@ -1,10 +1,13 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 
 import { supabase } from "@/integrations/supabase/client";
 import { loginMessage } from "@/lib/blast";
 import { walletLogin } from "@/lib/auth.functions";
+import { verifyPayment } from "@/lib/payments.functions";
+import { payFeeToTreasury } from "@/lib/sui-pay";
+import type { PaymentPurpose } from "@/lib/ourblast.config";
 
 export type Profile = {
   id: string;
@@ -36,6 +39,8 @@ type BlastSession = {
   connect: (walletName?: string) => Promise<void>;
   disconnect: () => Promise<void>;
   refresh: () => void;
+  /** Pays the SUI fee for an activity and returns a server-verified payment id. */
+  pay: (purpose: PaymentPurpose) => Promise<string>;
 };
 
 const BlastContext = createContext<BlastSession | null>(null);
@@ -52,21 +57,23 @@ export function BlastProvider({ children }: { children: React.ReactNode }) {
   const [ready, setReady] = useState(false);
   const [connecting, setConnecting] = useState(false);
   const [wallets, setWallets] = useState<DetectedWallet[]>([]);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const active = useRef<{ raw: any; account: any } | null>(null);
 
   // Supabase session (wallet-backed) --------------------------------------
   useEffect(() => {
-    let active = true;
+    let alive = true;
     const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (!active) return;
+      if (!alive) return;
       setUserId(session?.user?.id ?? null);
     });
     supabase.auth.getSession().then(({ data }) => {
-      if (!active) return;
+      if (!alive) return;
       setUserId(data.session?.user?.id ?? null);
       setReady(true);
     });
     return () => {
-      active = false;
+      alive = false;
       sub.subscription.unsubscribe();
     };
   }, []);
@@ -133,6 +140,7 @@ export function BlastProvider({ children }: { children: React.ReactNode }) {
         const connectResult = await target.raw.features["standard:connect"].connect();
         const account = connectResult?.accounts?.[0] ?? target.raw.accounts?.[0];
         if (!account) throw new Error("No account shared by the wallet.");
+        active.current = { raw: target.raw, account };
 
         const issuedAt = new Date().toISOString();
         const message = loginMessage(account.address, issuedAt);
@@ -173,9 +181,36 @@ export function BlastProvider({ children }: { children: React.ReactNode }) {
     [wallets, queryClient],
   );
 
+  /**
+   * Fees are paid straight from the user's wallet to the OURBLAST treasury.
+   * The digest is then verified server-side; nothing unlocks before that.
+   */
+  const pay = useCallback(
+    async (purpose: PaymentPurpose) => {
+      if (!userId) throw new Error("Connect your wallet first.");
+
+      let session = active.current;
+      if (!session) {
+        const target = wallets.find((w) => /slush/i.test(w.name)) ?? wallets[0];
+        if (!target) throw new Error("No Sui wallet found in this browser.");
+        const res = await target.raw.features["standard:connect"].connect();
+        const account = res?.accounts?.[0] ?? target.raw.accounts?.[0];
+        if (!account) throw new Error("Wallet did not share an account.");
+        session = { raw: target.raw, account };
+        active.current = session;
+      }
+
+      const digest = await payFeeToTreasury(session.raw, session.account, purpose);
+      const { paymentId } = await verifyPayment({ data: { digest, purpose } });
+      return paymentId;
+    },
+    [userId, wallets],
+  );
+
   const disconnect = useCallback(async () => {
     await queryClient.cancelQueries();
     queryClient.clear();
+    active.current = null;
     await supabase.auth.signOut();
     setUserId(null);
     toast("Disconnected. Helmet off.");
@@ -190,11 +225,12 @@ export function BlastProvider({ children }: { children: React.ReactNode }) {
       ready,
       connect,
       disconnect,
+      pay,
       refresh: () => {
         void queryClient.invalidateQueries();
       },
     }),
-    [userId, profileQuery.data, wallets, connecting, ready, connect, disconnect, queryClient],
+    [userId, profileQuery.data, wallets, connecting, ready, connect, disconnect, pay, queryClient],
   );
 
   return <BlastContext.Provider value={value}>{children}</BlastContext.Provider>;

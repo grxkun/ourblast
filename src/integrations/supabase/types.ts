@@ -79,6 +79,7 @@ export type Database = {
           created_at: string
           id: string
           is_deleted: boolean
+          payment_id: string | null
           reply_to: string | null
           user_id: string
         }
@@ -87,6 +88,7 @@ export type Database = {
           created_at?: string
           id?: string
           is_deleted?: boolean
+          payment_id?: string | null
           reply_to?: string | null
           user_id: string
         }
@@ -95,10 +97,18 @@ export type Database = {
           created_at?: string
           id?: string
           is_deleted?: boolean
+          payment_id?: string | null
           reply_to?: string | null
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "chat_messages_payment_id_fkey"
+            columns: ["payment_id"]
+            isOneToOne: false
+            referencedRelation: "sui_payments"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "chat_messages_reply_to_fkey"
             columns: ["reply_to"]
@@ -178,7 +188,9 @@ export type Database = {
           game_key: string
           id: string
           max_combo: number
+          payment_id: string | null
           score: number
+          season_id: string | null
           user_id: string
         }
         Insert: {
@@ -188,7 +200,9 @@ export type Database = {
           game_key?: string
           id?: string
           max_combo?: number
+          payment_id?: string | null
           score: number
+          season_id?: string | null
           user_id: string
         }
         Update: {
@@ -198,10 +212,27 @@ export type Database = {
           game_key?: string
           id?: string
           max_combo?: number
+          payment_id?: string | null
           score?: number
+          season_id?: string | null
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "game_sessions_payment_id_fkey"
+            columns: ["payment_id"]
+            isOneToOne: false
+            referencedRelation: "sui_payments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "game_sessions_season_id_fkey"
+            columns: ["season_id"]
+            isOneToOne: false
+            referencedRelation: "seasons"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       meme_battles: {
         Row: {
@@ -429,6 +460,69 @@ export type Database = {
           streak?: number
           updated_at?: string
           wallet_address?: string
+        }
+        Relationships: []
+      }
+      seasons: {
+        Row: {
+          created_at: string
+          ends_on: string | null
+          id: string
+          is_current: boolean
+          name: string
+          starts_on: string
+        }
+        Insert: {
+          created_at?: string
+          ends_on?: string | null
+          id?: string
+          is_current?: boolean
+          name: string
+          starts_on: string
+        }
+        Update: {
+          created_at?: string
+          ends_on?: string | null
+          id?: string
+          is_current?: boolean
+          name?: string
+          starts_on?: string
+        }
+        Relationships: []
+      }
+      sui_payments: {
+        Row: {
+          amount_mist: number
+          consumed_at: string | null
+          created_at: string
+          digest: string
+          id: string
+          purpose: string
+          recipient: string
+          sender: string
+          user_id: string
+        }
+        Insert: {
+          amount_mist: number
+          consumed_at?: string | null
+          created_at?: string
+          digest: string
+          id?: string
+          purpose: string
+          recipient: string
+          sender: string
+          user_id: string
+        }
+        Update: {
+          amount_mist?: number
+          consumed_at?: string | null
+          created_at?: string
+          digest?: string
+          id?: string
+          purpose?: string
+          recipient?: string
+          sender?: string
+          user_id?: string
         }
         Relationships: []
       }

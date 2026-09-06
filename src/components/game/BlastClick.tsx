@@ -5,6 +5,7 @@ import { toast } from "sonner";
 
 import { useBlast } from "@/components/blast/session";
 import { GAME_DURATION_MS, formatNumber, msToClock } from "@/lib/blast";
+import { FEES } from "@/lib/ourblast.config";
 import { submitScore } from "@/lib/game.functions";
 
 type Phase = "idle" | "playing" | "over";
@@ -13,7 +14,7 @@ type Pop = { id: number; x: number; y: number; value: number };
 const COMBO_WINDOW_MS = 450;
 
 export function BlastClick() {
-  const { userId, connect, refresh } = useBlast();
+  const { userId, connect, refresh, pay } = useBlast();
   const submit = useServerFn(submitScore);
 
   const [phase, setPhase] = useState<Phase>("idle");
@@ -24,6 +25,8 @@ export function BlastClick() {
   const [remaining, setRemaining] = useState(GAME_DURATION_MS);
   const [pops, setPops] = useState<Pop[]>([]);
   const [target, setTarget] = useState({ x: 50, y: 50 });
+  const [sound, setSound] = useState(true);
+  const [paying, setPaying] = useState(false);
   const [result, setResult] = useState<{
     rank: number;
     pointsEarned: number;
@@ -36,8 +39,32 @@ export function BlastClick() {
   const lastClick = useRef(0);
   const popId = useRef(0);
   const endsAt = useRef(0);
+  const paymentId = useRef<string | null>(null);
+  const audio = useRef<AudioContext | null>(null);
 
-  const start = () => {
+  const blip = useCallback(
+    (pitch: number) => {
+      if (!sound) return;
+      try {
+        audio.current ??= new AudioContext();
+        const ctx = audio.current;
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = "square";
+        osc.frequency.value = 220 + pitch * 40;
+        gain.gain.value = 0.05;
+        osc.connect(gain).connect(ctx.destination);
+        osc.start();
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.08);
+        osc.stop(ctx.currentTime + 0.09);
+      } catch {
+        /* audio unavailable */
+      }
+    },
+    [sound],
+  );
+
+  const startRound = () => {
     setScore(0);
     setClicks(0);
     setCombo(1);
@@ -50,10 +77,35 @@ export function BlastClick() {
     setPhase("playing");
   };
 
+  /** Pay first, verify, then play. A rejected payment never starts a round. */
+  const payAndStart = async () => {
+    if (!userId) {
+      await connect();
+      return;
+    }
+    setPaying(true);
+    try {
+      paymentId.current = await pay("game");
+      toast.success(`${FEES.game} SUI sent to the OURBLAST treasury`, {
+        description: "Entry confirmed — go smash it.",
+      });
+      startRound();
+    } catch (error) {
+      paymentId.current = null;
+      toast.error("Payment not completed", {
+        description:
+          error instanceof Error ? error.message : "The transaction was rejected. Try again.",
+      });
+    } finally {
+      setPaying(false);
+    }
+  };
+
   const finish = useCallback(
     async (finalScore: number, finalClicks: number, finalCombo: number) => {
       setPhase("over");
-      if (!userId) return;
+      const ticket = paymentId.current;
+      if (!userId || !ticket) return;
       setSaving(true);
       try {
         const res = await submit({
@@ -62,8 +114,11 @@ export function BlastClick() {
             clicks: finalClicks,
             maxCombo: finalCombo,
             durationMs: GAME_DURATION_MS,
+            paymentId: ticket,
+            gameKey: "blast_click",
           },
         });
+        paymentId.current = null;
         setResult(res);
         refresh();
         if (res.pointsEarned > 0) {
@@ -107,6 +162,7 @@ export function BlastClick() {
     const rect = event.currentTarget.getBoundingClientRect();
     const id = popId.current++;
 
+    blip(nextCombo);
     setCombo(nextCombo);
     setMaxCombo((m) => Math.max(m, nextCombo));
     setScore((s) => s + gained);
@@ -132,6 +188,12 @@ export function BlastClick() {
     }
   };
 
+  const playLabel = paying
+    ? "Waiting for wallet…"
+    : userId
+      ? `Play for ${FEES.game} SUI`
+      : "Connect Slush to play";
+
   return (
     <div className="panel overflow-hidden">
       <div className="flex flex-wrap items-center justify-between gap-4 border-b border-border px-5 py-4">
@@ -145,6 +207,14 @@ export function BlastClick() {
           <Stat label="Time" value={msToClock(remaining)} />
           <Stat label="Score" value={formatNumber(score)} highlight />
           <Stat label="Combo" value={`x${combo}`} />
+          <button
+            type="button"
+            onClick={() => setSound((s) => !s)}
+            aria-label={sound ? "Turn sound off" : "Turn sound on"}
+            className="rounded-full border border-border px-3 py-1.5 font-body text-sm"
+          >
+            {sound ? "🔊" : "🔇"}
+          </button>
         </div>
       </div>
 
@@ -154,7 +224,7 @@ export function BlastClick() {
           onClick={hit}
           disabled={phase !== "playing"}
           aria-label="Hit the blast target"
-          className="grid-noise relative block h-[22rem] w-full cursor-crosshair select-none sm:h-[26rem]"
+          className="grid-noise relative block h-[22rem] w-full touch-manipulation cursor-crosshair select-none sm:h-[26rem]"
         >
           {phase === "playing" ? (
             <span
@@ -185,18 +255,23 @@ export function BlastClick() {
                   30 seconds. Every hit is 10 points, and hitting fast stacks a combo multiplier up
                   to x12. Miss a beat and the combo resets.
                 </p>
+                <p className="mt-4 font-body text-sm">
+                  Play cost{" "}
+                  <span className="font-display text-lime">{FEES.game} SUI</span> — paid straight to
+                  the OURBLAST treasury from your own wallet.
+                </p>
                 <button
                   type="button"
-                  onClick={userId ? start : () => void connect()}
-                  className="glow-blast mt-6 rounded-full bg-primary px-8 py-3 font-display text-xl tracking-wide text-primary-foreground uppercase transition-transform hover:-translate-y-0.5"
+                  disabled={paying}
+                  onClick={() => void payAndStart()}
+                  className="glow-blast mt-5 rounded-full bg-primary px-8 py-3 font-display text-xl tracking-wide text-primary-foreground uppercase transition-transform hover:-translate-y-0.5 disabled:opacity-60"
                 >
-                  {userId ? "Start run" : "Connect to play"}
+                  {playLabel}
                 </button>
-                {!userId ? (
-                  <p className="mt-3 font-body text-xs text-muted-foreground">
-                    Your wallet is your player card — scores and points need it.
-                  </p>
-                ) : null}
+                <p className="mt-3 font-body text-xs text-muted-foreground">
+                  Your wallet is your player card. OURBLAST never holds your funds — you approve
+                  every transaction in Slush.
+                </p>
               </div>
             ) : (
               <div className="animate-pop-in w-full max-w-md text-center">
@@ -227,10 +302,11 @@ export function BlastClick() {
                 <div className="mt-4 flex flex-wrap justify-center gap-2">
                   <button
                     type="button"
-                    onClick={start}
-                    className="glow-blast rounded-full bg-primary px-6 py-2.5 font-display tracking-wide text-primary-foreground uppercase"
+                    disabled={paying}
+                    onClick={() => void payAndStart()}
+                    className="glow-blast rounded-full bg-primary px-6 py-2.5 font-display tracking-wide text-primary-foreground uppercase disabled:opacity-60"
                   >
-                    Play again
+                    {paying ? "Waiting for wallet…" : `Play again · ${FEES.game} SUI`}
                   </button>
                   <button
                     type="button"

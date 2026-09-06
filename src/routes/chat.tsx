@@ -8,7 +8,8 @@ import { PlayerAvatar, PlayerName } from "@/components/blast/PlayerBadge";
 import { useBlast } from "@/components/blast/session";
 import { supabase } from "@/integrations/supabase/client";
 import { timeAgo } from "@/lib/blast";
-import { awardChatPoints } from "@/lib/community.functions";
+import { postChatMessage } from "@/lib/community.functions";
+import { FEES } from "@/lib/ourblast.config";
 
 export const Route = createFileRoute("/chat")({
   head: () => ({
@@ -39,9 +40,9 @@ type Message = {
 };
 
 function ChatPage() {
-  const { userId, profile, connect } = useBlast();
+  const { userId, profile, connect, pay } = useBlast();
   const queryClient = useQueryClient();
-  const award = useServerFn(awardChatPoints);
+  const post = useServerFn(postChatMessage);
   const [draft, setDraft] = useState("");
   const [sending, setSending] = useState(false);
   const listEnd = useRef<HTMLDivElement>(null);
@@ -115,17 +116,18 @@ function ChatPage() {
 
   const muted = profile?.muted_until ? new Date(profile.muted_until) > new Date() : false;
 
+  /** Pay, verify, then publish — a message never goes out before payment lands. */
   const send = async () => {
     const body = draft.trim();
     if (!body || !userId) return;
     setSending(true);
     try {
-      const { error } = await supabase.from("chat_messages").insert({ user_id: userId, body });
-      if (error) throw new Error(error.message.includes("rate") ? "Slow down a second." : error.message);
+      const paymentId = await pay("chat");
+      const res = await post({ data: { body, paymentId } });
       setDraft("");
-      const res = await award({});
       if (res.pointsEarned > 0) toast.success(`+${res.pointsEarned} points for the noise`);
       void queryClient.invalidateQueries({ queryKey: ["profile"] });
+      void queryClient.invalidateQueries({ queryKey: ["chat", "messages"] });
     } catch (error) {
       toast.error("Message not sent", {
         description: error instanceof Error ? error.message : "Try again.",
@@ -172,7 +174,7 @@ function ChatPage() {
         </p>
         <h1 className="mt-1 font-display text-4xl sm:text-5xl">Blast chat</h1>
         <p className="mt-3 max-w-xl font-body text-muted-foreground">
-          Every message is signed by a wallet. First 20 messages a day earn points.
+          Every message is signed by a wallet. Each message costs {FEES.chat} SUI, paid to the OURBLAST treasury. The first 20 messages a day earn points.
         </p>
       </div>
 
@@ -266,7 +268,7 @@ function ChatPage() {
                 disabled={sending || !draft.trim()}
                 className="rounded-full bg-primary px-6 py-3 font-display tracking-wide text-primary-foreground uppercase disabled:opacity-50"
               >
-                Send
+                {sending ? "Paying…" : `Send · ${FEES.chat} SUI`}
               </button>
             </form>
           )}
