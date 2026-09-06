@@ -5,8 +5,8 @@ import { useBlast } from "@/components/blast/session";
 import helmet from "@/assets/helmet.jpg.asset.json";
 import mascotCoin from "@/assets/mascot-coin.jpg.asset.json";
 import mascotShock from "@/assets/mascot-shock.jpg.asset.json";
-import { DIFFICULTIES, DIFFICULTY_KEYS, CHAT_DAILY_POINT_CAP, POINTS, formatNumber } from "@/lib/blast";
-import { FEES } from "@/lib/ourblast.config";
+import { CHAT_DAILY_POINT_CAP, POINTS, formatNumber } from "@/lib/blast";
+import { ECONOMY, FEES, playsToTarget } from "@/lib/ourblast.config";
 
 export const Route = createFileRoute("/how-to-play")({
   head: () => ({
