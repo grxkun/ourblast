@@ -1,9 +1,12 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link, createFileRoute } from "@tanstack/react-router";
+import { useRef } from "react";
 
 import { SectionTitle } from "@/components/blast/AppShell";
 import { useBlast } from "@/components/blast/session";
 import { BlastClick } from "@/components/game/BlastClick";
+import { BlastTutorial } from "@/components/game/BlastTutorial";
+import { GamePreview } from "@/components/game/GamePreview";
 import { supabase } from "@/integrations/supabase/client";
 import { POINTS, formatNumber } from "@/lib/blast";
 
@@ -28,6 +31,7 @@ export const Route = createFileRoute("/arcade")({
 
 function ArcadePage() {
   const { profile, userId } = useBlast();
+  const gameRef = useRef<HTMLDivElement>(null);
 
   const challenge = useQuery({
     queryKey: ["challenge", "today"],
@@ -79,7 +83,13 @@ function ArcadePage() {
         </Link>
       </div>
 
-      <BlastClick />
+      <GamePreview />
+
+      <BlastTutorial onPlay={() => gameRef.current?.scrollIntoView({ behavior: "smooth", block: "center" })} />
+
+      <div ref={gameRef}>
+        <BlastClick />
+      </div>
 
       <section className="grid gap-6 lg:grid-cols-[1.2fr_1fr]">
         <div className="panel p-5 sm:p-6">
