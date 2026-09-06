@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 import { WalletButton } from "@/components/blast/WalletButton";
 
 const NAV = [
+  { to: "/", label: "$BLAST", icon: "💥" },
   { to: "/hub", label: "Hub", icon: "🏠" },
   { to: "/arcade", label: "Arcade", icon: "🕹️" },
   { to: "/leaderboard", label: "Ranks", icon: "🏆" },
@@ -12,6 +13,7 @@ const NAV = [
   { to: "/chat", label: "Chat", icon: "💬" },
   { to: "/profile", label: "You", icon: "👾" },
 ] as const;
+
 
 export function AppShell({ children }: { children: ReactNode }) {
   const pathname = useRouterState({ select: (state) => state.location.pathname });
