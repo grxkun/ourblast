@@ -219,6 +219,12 @@ function Home() {
               >
                 LEADERBOARD
               </Link>
+              <Link
+                to="/how-to-play"
+                className="rounded-xl border-[3px] border-border bg-card px-8 py-4 font-display text-2xl tracking-wide shadow-[var(--shadow-sticker)] transition-transform hover:-translate-y-1 active:translate-y-0.5"
+              >
+                HOW TO PLAY
+              </Link>
             </div>
             <p className="mt-5 font-body text-sm text-muted-foreground">
               Every play fee goes to the treasury address published below. Nothing is held by a

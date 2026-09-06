@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link, createFileRoute } from "@tanstack/react-router";
 
+import mascotStand from "@/assets/mascot-stand.jpg.asset.json";
 import { SectionTitle } from "@/components/blast/AppShell";
 import { PlayerAvatar, PlayerName } from "@/components/blast/PlayerBadge";
 import { useBlast } from "@/components/blast/session";
@@ -98,6 +99,12 @@ function Home() {
           >
             Play now
           </Link>
+          <Link
+            to="/how-to-play"
+            className="rounded-full border-2 border-border px-8 py-3.5 font-display text-xl tracking-wide uppercase transition-transform hover:-translate-y-0.5"
+          >
+            How to play
+          </Link>
           {userId ? (
             <Link
               to="/profile"
@@ -116,6 +123,14 @@ function Home() {
             </button>
           )}
         </div>
+
+        <img
+          src={mascotStand.url}
+          alt="OURBLAST helmet mascot standing confidently"
+          width={220}
+          height={220}
+          className="pointer-events-none absolute -right-4 bottom-0 hidden w-40 rounded-3xl border-2 border-border object-cover lg:block xl:w-52"
+        />
 
         <dl className="mt-10 grid grid-cols-2 gap-4 sm:grid-cols-4">
           {[

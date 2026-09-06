@@ -1,18 +1,21 @@
 import { Link, useRouterState } from "@tanstack/react-router";
 import type { ReactNode } from "react";
 
+import helmet from "@/assets/helmet.jpg.asset.json";
 import { WalletButton } from "@/components/blast/WalletButton";
 
 const NAV = [
   { to: "/", label: "$BLAST", icon: "💥" },
   { to: "/hub", label: "Hub", icon: "🏠" },
   { to: "/arcade", label: "Arcade", icon: "🕹️" },
+  { to: "/how-to-play", label: "Guide", icon: "📖" },
   { to: "/leaderboard", label: "Ranks", icon: "🏆" },
   { to: "/meme", label: "Meme", icon: "😂" },
   { to: "/roast", label: "Roast", icon: "🔥" },
   { to: "/chat", label: "Chat", icon: "💬" },
   { to: "/profile", label: "You", icon: "👾" },
 ] as const;
+
 
 
 export function AppShell({ children }: { children: ReactNode }) {
@@ -26,16 +29,20 @@ export function AppShell({ children }: { children: ReactNode }) {
       <header className="sticky top-0 z-50 border-b border-border bg-background/80 backdrop-blur-xl">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3">
           <Link to="/hub" className="flex items-center gap-2">
-            <span className="glow-blast grid size-9 place-items-center rounded-xl bg-primary font-display text-lg text-primary-foreground">
-              O
-            </span>
+            <img
+              src={helmet.url}
+              alt="OURBLAST helmet mascot"
+              width={36}
+              height={36}
+              className="size-9 rounded-xl border-2 border-border object-cover"
+            />
             <span className="font-display text-xl tracking-wide">
               OUR<span className="text-primary">BLAST</span>
             </span>
           </Link>
 
           <nav className="hidden items-center gap-1 lg:flex">
-            {NAV.slice(0, 7).map((item) => (
+            {NAV.slice(0, 8).map((item) => (
               <Link
                 key={item.to}
                 to={item.to}
@@ -56,7 +63,7 @@ export function AppShell({ children }: { children: ReactNode }) {
 
       <nav className="fixed bottom-0 left-0 z-50 w-full border-t border-border bg-background/90 backdrop-blur-xl lg:hidden">
         <div className="mx-auto flex max-w-lg items-stretch justify-between px-1 py-1.5">
-          {NAV.map((item) => (
+          {NAV.filter((item) => item.to !== "/how-to-play").map((item) => (
             <Link
               key={item.to}
               to={item.to}
