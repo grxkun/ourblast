@@ -11,11 +11,15 @@
 export const DEFAULT_TREASURY_ADDRESS =
   "0xd9ba2ba33cc6eb61302cec564126caae22fbbe10f564789c5e6e5eca0940372c";
 
+/** Founder share address — receives 10% of every game fee, on-chain. */
+export const FOUNDER_ADDRESS =
+  "0xa0ec4ee84d06471499e3d512d9d8af9bab40e6aeb6dfa197f16366e70e2660c4";
+
 export const MIST_PER_SUI = 1_000_000_000;
 
 /** Fees charged for community activities, in SUI. */
 export const FEES = {
-  game: 0.1,
+  game: 1,
   chat: 0.1,
 } as const;
 
