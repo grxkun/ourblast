@@ -141,3 +141,112 @@ export const verifyPayment = createServerFn({ method: "POST" })
 
     return { paymentId: inserted.id as string };
   });
+
+const recoverInput = z.object({ purpose: z.enum(["game", "chat"]) });
+
+async function rpc<T>(method: string, params: unknown[]): Promise<T | null> {
+  try {
+    const res = await fetch(fullnode(), {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ jsonrpc: "2.0", id: 1, method, params }),
+    });
+    const json = (await res.json()) as { result?: T };
+    return json.result ?? null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Rescue path for wallets (mobile Slush in particular) that complete the
+ * transfer on chain but never hand the digest back to the page. Looks at the
+ * player's own recent transactions, finds one that paid the treasury the right
+ * amount and has not been recorded yet, and turns it into a valid entry.
+ */
+export const recoverPayment = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: unknown) => recoverInput.parse(data))
+  .handler(async ({ data, context }) => {
+    const userId = context.userId;
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+    const { data: profile } = await supabaseAdmin
+      .from("profiles")
+      .select("wallet_address, is_banned")
+      .eq("id", userId)
+      .maybeSingle();
+    if (!profile) throw new Error("Profile not found.");
+    if (profile.is_banned) throw new Error("This wallet is banned from OURBLAST.");
+
+    const wallet = (profile.wallet_address as string).toLowerCase();
+    const treasury = serverTreasury();
+    const required =
+      data.purpose === "game"
+        ? Math.floor(feeInMist(data.purpose) * (1 - ECONOMY.founderShare))
+        : feeInMist(data.purpose);
+
+    const listed = await rpc<{ data?: { digest: string }[] }>("suix_queryTransactionBlocks", [
+      { filter: { FromAddress: profile.wallet_address }, options: {} },
+      null,
+      12,
+      true,
+    ]);
+    const digests = (listed?.data ?? []).map((d) => d.digest).filter(Boolean);
+    if (digests.length === 0) {
+      throw new Error("No recent payment found for this wallet yet. Try again in a moment.");
+    }
+
+    const { data: known } = await supabaseAdmin
+      .from("sui_payments")
+      .select("digest")
+      .in("digest", digests);
+    const seen = new Set((known ?? []).map((r) => r.digest as string));
+
+    const blocks = await rpc<Record<string, unknown>[]>("sui_multiGetTransactionBlocks", [
+      digests.filter((d) => !seen.has(d)),
+      { showEffects: true, showBalanceChanges: true, showInput: true },
+    ]);
+
+    const cutoff = Date.now() - 30 * 60 * 1000;
+    for (const tx of blocks ?? []) {
+      const digest = tx['digest'] as string | undefined;
+      if (!digest) continue;
+      const ms = Number(tx['timestampMs'] ?? 0);
+      if (ms && ms < cutoff) continue;
+      const effects = tx['effects'] as { status?: { status?: string } } | undefined;
+      if (effects?.status?.status !== "success") continue;
+      const sender = (
+        (tx['transaction'] as { data?: { sender?: string } } | undefined)?.data?.sender ?? ""
+      ).toLowerCase();
+      if (sender !== wallet) continue;
+
+      const received = ((tx['balanceChanges'] ?? []) as BalanceChange[])
+        .filter((c) => {
+          const owner = typeof c.owner === "string" ? c.owner : c.owner?.AddressOwner;
+          return (
+            owner?.toLowerCase() === treasury &&
+            (c.coinType === "0x2::sui::SUI" || c.coinType.endsWith("::sui::SUI"))
+          );
+        })
+        .reduce((sum, c) => sum + Number(c.amount), 0);
+      if (received < required) continue;
+
+      const { data: inserted, error } = await supabaseAdmin
+        .from("sui_payments")
+        .insert({
+          user_id: userId,
+          purpose: data.purpose,
+          digest,
+          sender,
+          recipient: treasury,
+          amount_mist: received,
+        })
+        .select("id")
+        .single();
+      if (error || !inserted) continue;
+      return { paymentId: inserted.id as string };
+    }
+
+    throw new Error("No unused payment found on chain yet. Give it a few seconds and retry.");
+  });
