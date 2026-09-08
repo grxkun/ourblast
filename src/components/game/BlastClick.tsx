@@ -327,9 +327,10 @@ export function BlastClick() {
             />
           ) : null}
         </button>
+        ) : null}
 
         {phase !== "playing" ? (
-          <div className="absolute inset-0 flex max-h-full items-start justify-center overflow-y-auto bg-background/85 px-5 py-5 backdrop-blur-sm sm:items-center">
+          <div className="grid-noise flex min-h-[22rem] items-center justify-center px-5 py-8 sm:min-h-[26rem]">
             {phase === "idle" ? (
               <div className="animate-pop-in max-w-md text-center">
                 <img
