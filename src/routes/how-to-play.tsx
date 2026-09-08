@@ -15,7 +15,7 @@ export const Route = createFileRoute("/how-to-play")({
       {
         name: "description",
         content:
-          "New to OURBLAST? Connect your Slush wallet, pay the 0.1 SUI arcade fee, play BLAST CLICK and learn exactly how BLAST POINTS and the leaderboard work.",
+          "New to OURBLAST? Connect your Slush wallet, pay the 1 SUI arcade fee, play BLAST CLICK and learn exactly how BLAST POINTS and the leaderboard work.",
       },
       { property: "og:title", content: "How to Play OURBLAST" },
       {
