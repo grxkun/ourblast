@@ -286,10 +286,10 @@ export function BlastClick() {
       </div>
 
       <div className="relative">
+        {phase === "playing" ? (
         <button
           type="button"
           onClick={hit}
-          disabled={phase !== "playing"}
           aria-label="Hit the blast target"
           className="grid-noise relative block h-[22rem] w-full touch-manipulation cursor-crosshair select-none sm:h-[26rem]"
         >
@@ -327,9 +327,10 @@ export function BlastClick() {
             />
           ) : null}
         </button>
+        ) : null}
 
         {phase !== "playing" ? (
-          <div className="absolute inset-0 grid place-items-center bg-background/85 px-5 backdrop-blur-sm">
+          <div className="grid-noise flex min-h-[22rem] items-center justify-center px-5 py-8 sm:min-h-[26rem]">
             {phase === "idle" ? (
               <div className="animate-pop-in max-w-md text-center">
                 <img

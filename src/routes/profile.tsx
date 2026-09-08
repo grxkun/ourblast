@@ -9,6 +9,7 @@ import { PlayerAvatar } from "@/components/blast/PlayerBadge";
 import { useBlast } from "@/components/blast/session";
 import { supabase } from "@/integrations/supabase/client";
 import { formatNumber, shortAddress, timeAgo } from "@/lib/blast";
+import { fetchSuiBalance, formatSui } from "@/lib/sui-balance";
 import { amIStaff } from "@/lib/admin.functions";
 
 export const Route = createFileRoute("/profile")({
@@ -44,6 +45,13 @@ function ProfilePage() {
     queryKey: ["staff", userId],
     enabled: Boolean(userId),
     queryFn: () => staffCheck({}),
+  });
+
+  const balance = useQuery({
+    queryKey: ["sui-balance", profile?.wallet_address],
+    enabled: Boolean(profile?.wallet_address),
+    refetchInterval: 30_000,
+    queryFn: () => fetchSuiBalance(profile!.wallet_address),
   });
 
   const achievements = useQuery({
@@ -114,13 +122,21 @@ function ProfilePage() {
 
   return (
     <div className="space-y-10">
-      <section className="panel flex flex-wrap items-center gap-5 p-6">
-        <PlayerAvatar address={profile.wallet_address} size={78} className="glow-blast" />
-        <div className="min-w-0 flex-1">
-          <h1 className="font-display text-3xl">
+      <section className="panel flex flex-wrap items-center gap-4 p-5 sm:gap-5 sm:p-6">
+        <PlayerAvatar address={profile.wallet_address} size={64} className="glow-blast sm:size-[78px]" />
+        <div className="min-w-0 flex-1 basis-40">
+          <h1 className="font-display text-2xl sm:text-3xl">
             {profile.nickname?.trim() || shortAddress(profile.wallet_address)}
           </h1>
-          <p className="font-body text-sm text-muted-foreground">{profile.wallet_address}</p>
+          <p className="mt-0.5 font-body text-[0.7rem] break-all text-muted-foreground sm:text-xs">
+            {profile.wallet_address}
+          </p>
+          <p className="mt-2 inline-flex items-center gap-2 rounded-full border border-border px-3 py-1 font-body text-xs">
+            <span className="text-muted-foreground">Wallet balance</span>
+            <span className="font-display text-sm text-lime">
+              {balance.isLoading ? "…" : `${formatSui(balance.data ?? 0)} SUI`}
+            </span>
+          </p>
         </div>
         <div className="flex flex-wrap gap-2">
           {staff.data?.staff ? (
