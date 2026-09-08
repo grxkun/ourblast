@@ -202,7 +202,7 @@ function Home() {
               Play with your <span className="text-primary">helmet on</span>
             </h2>
             <p className="mt-5 max-w-xl font-body text-lg leading-relaxed text-muted-foreground">
-              Connect your Sui wallet, pay 0.1 SUI straight into the community treasury, and play
+              Connect your Sui wallet, pay 1 SUI — 70% goes to the player prize pool — and play
               for BLAST POINTS, leaderboard ranks and daily challenges. Chat, memes and the Blast
               Roast live in there too.
             </p>

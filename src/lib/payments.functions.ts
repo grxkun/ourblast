@@ -5,6 +5,7 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import {
   DEFAULT_SUI_CHAIN,
   DEFAULT_TREASURY_ADDRESS,
+  ECONOMY,
   SUI_FULLNODES,
   feeInMist,
 } from "./ourblast.config";
@@ -98,7 +99,12 @@ export const verifyPayment = createServerFn({ method: "POST" })
     }
 
     const treasury = serverTreasury();
-    const required = feeInMist(data.purpose);
+    // Game fees are split on-chain: the founder share goes to the founder
+    // wallet, so the treasury receives (1 - founderShare) of the full fee.
+    const required =
+      data.purpose === "game"
+        ? Math.floor(feeInMist(data.purpose) * (1 - ECONOMY.founderShare))
+        : feeInMist(data.purpose);
     const changes = (tx['balanceChanges'] ?? []) as BalanceChange[];
     const received = changes
       .filter((c) => {
