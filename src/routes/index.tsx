@@ -153,7 +153,7 @@ function Home() {
             </h1>
 
             <p className="mt-7 max-w-lg font-body text-lg leading-relaxed text-muted-foreground">
-              $BLAST is a community takeover on Blast. No team, no promises, no unlock schedule
+              $BLAST is a community takeover on blast.fun, running on Sui. No team, no promises, no unlock schedule
               — just a chart, a group chat, and a crowd that refused to let this one die.
             </p>
 
