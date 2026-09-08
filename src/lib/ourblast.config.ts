@@ -32,12 +32,12 @@ export type PaymentPurpose = keyof typeof FEES;
  * spent by the community, so keep this and the on-chain reality in sync.
  */
 export const ECONOMY = {
-  /** Season prize pool paid back to top players. */
-  prizePoolShare: 0.5,
-  /** $BLAST buybacks from the open market. */
-  buybackShare: 0.3,
-  /** Hosting, art, tools. */
+  /** Prize pool paid back to the winning players. */
+  prizePoolShare: 0.7,
+  /** Community treasury: events, buybacks, hosting, art, tools. */
   opsShare: 0.2,
+  /** Founder share, sent on-chain with every game payment. */
+  founderShare: 0.1,
   /** Season length in days. */
   seasonDays: 30,
   /** Treasury milestone for the current season, in SUI. */
