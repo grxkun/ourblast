@@ -43,13 +43,13 @@ const STATS = [
 const STEPS = [
   {
     n: "01",
-    title: "Grab a wallet",
-    body: "Any wallet that works with Blast will do. Keep a little ETH for gas.",
+    title: "Grab a Sui wallet",
+    body: "Slush or any Sui wallet works. Keep a little SUI in it for gas and swaps.",
   },
   {
     n: "02",
-    title: "Head to blast.fun",
-    body: "Paste the $BLAST address below, pick your amount, and confirm the swap.",
+    title: "Open Bluefin",
+    body: "Paste the $BLAST address below, swap SUI for $BLAST, and confirm in your wallet.",
   },
   {
     n: "03",
