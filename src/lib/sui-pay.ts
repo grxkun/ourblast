@@ -1,6 +1,8 @@
 import {
   DEFAULT_SUI_CHAIN,
+  ECONOMY,
   FEES,
+  FOUNDER_ADDRESS,
   MIST_PER_SUI,
   type PaymentPurpose,
   treasuryAddress,
@@ -24,8 +26,21 @@ export async function payFeeToTreasury(
   const amount = BigInt(Math.round(FEES[purpose] * MIST_PER_SUI));
   const tx = new Transaction();
   tx.setSender(account.address);
-  const [coin] = tx.splitCoins(tx.gas, [tx.pure.u64(amount)]);
-  tx.transferObjects([coin], tx.pure.address(treasuryAddress()));
+
+  if (purpose === "game") {
+    // Split the play fee on-chain: founder share goes to the founder wallet,
+    // the rest (prize pool + treasury) lands in the community treasury.
+    const founderCut = BigInt(Math.round(Number(amount) * ECONOMY.founderShare));
+    const [treasuryCoin, founderCoin] = tx.splitCoins(tx.gas, [
+      tx.pure.u64(amount - founderCut),
+      tx.pure.u64(founderCut),
+    ]);
+    tx.transferObjects([treasuryCoin], tx.pure.address(treasuryAddress()));
+    tx.transferObjects([founderCoin], tx.pure.address(FOUNDER_ADDRESS));
+  } else {
+    const [coin] = tx.splitCoins(tx.gas, [tx.pure.u64(amount)]);
+    tx.transferObjects([coin], tx.pure.address(treasuryAddress()));
+  }
 
   const chain: string =
     (account.chains as string[] | undefined)?.find((c) => c.startsWith("sui:")) ??
