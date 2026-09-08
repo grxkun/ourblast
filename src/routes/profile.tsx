@@ -9,6 +9,7 @@ import { PlayerAvatar } from "@/components/blast/PlayerBadge";
 import { useBlast } from "@/components/blast/session";
 import { supabase } from "@/integrations/supabase/client";
 import { formatNumber, shortAddress, timeAgo } from "@/lib/blast";
+import { fetchSuiBalance, formatSui } from "@/lib/sui-balance";
 import { amIStaff } from "@/lib/admin.functions";
 
 export const Route = createFileRoute("/profile")({
@@ -44,6 +45,13 @@ function ProfilePage() {
     queryKey: ["staff", userId],
     enabled: Boolean(userId),
     queryFn: () => staffCheck({}),
+  });
+
+  const balance = useQuery({
+    queryKey: ["sui-balance", profile?.wallet_address],
+    enabled: Boolean(profile?.wallet_address),
+    refetchInterval: 30_000,
+    queryFn: () => fetchSuiBalance(profile!.wallet_address),
   });
 
   const achievements = useQuery({
