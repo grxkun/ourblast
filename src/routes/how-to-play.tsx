@@ -223,9 +223,9 @@ function HowToPlay() {
           <SectionTitle kicker="Treasury" title={`Where your ${FEES.game} SUI goes`} />
           <ul className="space-y-2 font-body text-sm">
             {[
-              ["Season prize pool for top players", ECONOMY.prizePoolShare],
-              ["$BLAST buybacks", ECONOMY.buybackShare],
-              ["Hosting, art and tools", ECONOMY.opsShare],
+              ["Prize pool — paid back to the winning players", ECONOMY.prizePoolShare],
+              ["Community treasury — events, buybacks, hosting", ECONOMY.opsShare],
+              ["Founder", ECONOMY.founderShare],
             ].map(([label, share]) => (
               <li
                 key={label as string}
@@ -240,8 +240,8 @@ function HowToPlay() {
           </ul>
           <p className="mt-3 font-body text-xs text-muted-foreground">
             Season target: {formatNumber(ECONOMY.seasonTargetSui)} SUI over {ECONOMY.seasonDays}{" "}
-            days — about {formatNumber(playsToTarget())} paid actions. Every payment goes straight
-            from your wallet to the community treasury, on-chain and public.
+            days — about {formatNumber(playsToTarget())} paid actions. Every payment is split
+            automatically on-chain the moment you approve it: {Math.round(ECONOMY.founderShare * 100)}% goes to the founder wallet, the rest lands in the community treasury — on-chain and public.
           </p>
         </div>
       </section>
