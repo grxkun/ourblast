@@ -364,7 +364,7 @@ function Home() {
               <div>
                 <p className="font-display text-3xl tracking-wide">$BLAST</p>
                 <p className="font-body text-sm text-secondary-foreground/70">
-                  A community takeover on Blast
+                  A community takeover on blast.fun, built on Sui
                 </p>
               </div>
             </div>
