@@ -127,18 +127,28 @@ export function BlastTutorial({ onPlay }: { onPlay?: () => void }) {
     return (
       <div className="panel flex flex-wrap items-center justify-between gap-3 px-5 py-4">
         <p className="font-body text-sm text-muted-foreground">
-          {done ? "Tutorial finished." : "New to Blast Click?"} Practice for free, no wallet needed.
+          {done ? "Tutorial finished." : "New to Blast Click?"} Practice for free — no wallet, no
+          fee, and practice never changes your BLAST POINTS.
         </p>
-        <button
-          type="button"
-          onClick={() => {
-            reset();
-            setOpen(true);
-          }}
-          className="rounded-full border-2 border-border px-5 py-2 font-display tracking-wide uppercase transition-transform hover:-translate-y-0.5"
-        >
-          {done ? "Replay tutorial" : "Start tutorial"}
-        </button>
+        <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={() => {
+              reset();
+              setOpen(true);
+            }}
+            className="rounded-full border-2 border-border px-5 py-2 font-display tracking-wide uppercase transition-transform hover:-translate-y-0.5"
+          >
+            {done ? "Replay tutorial" : "Start tutorial"}
+          </button>
+          <button
+            type="button"
+            onClick={() => onPlay?.()}
+            className="glow-blast rounded-full bg-primary px-5 py-2 font-display tracking-wide text-primary-foreground uppercase transition-transform hover:-translate-y-0.5"
+          >
+            Play for real
+          </button>
+        </div>
       </div>
     );
   }
@@ -150,13 +160,13 @@ export function BlastTutorial({ onPlay }: { onPlay?: () => void }) {
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-5 py-4">
         <div>
           <p className="font-body text-xs font-bold tracking-[0.22em] text-primary uppercase">
-            Free practice · no wallet, no fee
+            Free practice · no wallet, no fee, no BLAST POINTS
           </p>
           <h3 className="mt-1 font-display text-2xl">
             {finished ? "Tutorial complete" : `Step ${step + 1} of ${STEPS.length} — ${current.title}`}
           </h3>
         </div>
-        <div className="flex items-center gap-4">
+        <div className="flex flex-wrap items-center gap-3">
           <div className="flex items-center gap-1.5" aria-hidden="true">
             {STEPS.map((s, i) => (
               <span
@@ -173,6 +183,16 @@ export function BlastTutorial({ onPlay }: { onPlay?: () => void }) {
             className="rounded-full border border-border px-4 py-1.5 font-body text-sm"
           >
             Skip
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setOpen(false);
+              onPlay?.();
+            }}
+            className="rounded-full bg-primary px-4 py-1.5 font-display text-sm tracking-wide text-primary-foreground uppercase"
+          >
+            Play for real
           </button>
         </div>
       </div>
@@ -218,7 +238,7 @@ export function BlastTutorial({ onPlay }: { onPlay?: () => void }) {
                 Combo <span className="font-display text-base text-foreground">x{combo}</span>
               </span>
               <span className="font-body text-xs tracking-[0.2em] text-muted-foreground uppercase">
-                Score <span className="font-display text-base text-lime">{score}</span>
+                Practice score <span className="font-display text-base text-lime">{score}</span>
               </span>
               {step === 3 ? (
                 <span className="font-body text-xs tracking-[0.2em] text-muted-foreground uppercase">

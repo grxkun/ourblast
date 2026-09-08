@@ -4,6 +4,7 @@ import {
   FEES,
   FOUNDER_ADDRESS,
   MIST_PER_SUI,
+  SUI_FULLNODES,
   type PaymentPurpose,
   treasuryAddress,
 } from "./ourblast.config";
@@ -51,17 +52,46 @@ export async function payFeeToTreasury(
     wallet.features["sui:signAndExecuteTransactionBlock"];
   if (!feature) throw new Error("This wallet cannot send transactions.");
 
+  let digest: string | undefined;
   if (feature.signAndExecuteTransaction) {
     const result = await feature.signAndExecuteTransaction({ transaction: tx, account, chain });
-    if (!result?.digest) throw new Error("Wallet did not return a transaction.");
-    return result.digest as string;
+    digest = result?.digest;
+  } else {
+    const result = await feature.signAndExecuteTransactionBlock({
+      transactionBlock: tx,
+      account,
+      chain,
+      options: { showEffects: true },
+    });
+    digest = result?.digest;
   }
+  if (!digest) throw new Error("Wallet did not return a transaction.");
 
-  const result = await feature.signAndExecuteTransactionBlock({
-    transactionBlock: tx,
-    account,
-    chain,
-  });
-  if (!result?.digest) throw new Error("Wallet did not return a transaction.");
-  return result.digest as string;
+  // Wait until the transaction is actually readable on a fullnode, otherwise
+  // the server-side check can run before the network has indexed it.
+  await waitForDigest(digest, chain);
+  return digest;
+}
+
+async function waitForDigest(digest: string, chain: string): Promise<void> {
+  const url = SUI_FULLNODES[chain] ?? SUI_FULLNODES[DEFAULT_SUI_CHAIN]!;
+  for (let attempt = 0; attempt < 15; attempt++) {
+    try {
+      const res = await fetch(url, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          jsonrpc: "2.0",
+          id: 1,
+          method: "sui_getTransactionBlock",
+          params: [digest, { showEffects: true }],
+        }),
+      });
+      const json = (await res.json()) as { result?: unknown };
+      if (json.result) return;
+    } catch {
+      /* transient network issue in a wallet browser — keep polling */
+    }
+    await new Promise((r) => setTimeout(r, 1500));
+  }
 }

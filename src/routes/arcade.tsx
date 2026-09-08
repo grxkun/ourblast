@@ -75,12 +75,21 @@ function ArcadePage() {
             points balance.
           </p>
         </div>
-        <Link
-          to="/how-to-play"
-          className="rounded-full border-2 border-border px-5 py-2.5 font-display text-base tracking-wide uppercase transition-transform hover:-translate-y-0.5"
-        >
-          How to play
-        </Link>
+        <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={() => gameRef.current?.scrollIntoView({ behavior: "smooth", block: "center" })}
+            className="glow-blast rounded-full bg-primary px-5 py-2.5 font-display text-base tracking-wide text-primary-foreground uppercase transition-transform hover:-translate-y-0.5"
+          >
+            Play for real
+          </button>
+          <Link
+            to="/how-to-play"
+            className="rounded-full border-2 border-border px-5 py-2.5 font-display text-base tracking-wide uppercase transition-transform hover:-translate-y-0.5"
+          >
+            How to play
+          </Link>
+        </div>
       </div>
 
       <GamePreview />

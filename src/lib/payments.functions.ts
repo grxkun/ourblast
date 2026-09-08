@@ -66,25 +66,30 @@ export const verifyPayment = createServerFn({ method: "POST" })
     if (!profile) throw new Error("Profile not found.");
     if (profile.is_banned) throw new Error("This wallet is banned from OURBLAST.");
 
-    // Poll briefly: a freshly executed transaction may not be readable yet.
+    // Poll: a freshly executed transaction can take several seconds to be
+    // readable on a public fullnode, so keep asking before giving up.
     let tx: Record<string, unknown> | null = null;
-    for (let attempt = 0; attempt < 6 && !tx; attempt++) {
-      if (attempt > 0) await new Promise((r) => setTimeout(r, 1200));
-      const res = await fetch(fullnode(), {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          jsonrpc: "2.0",
-          id: 1,
-          method: "sui_getTransactionBlock",
-          params: [
-            data.digest,
-            { showEffects: true, showBalanceChanges: true, showInput: true },
-          ],
-        }),
-      });
-      const json = (await res.json()) as { result?: Record<string, unknown> };
-      if (json.result) tx = json.result;
+    for (let attempt = 0; attempt < 15 && !tx; attempt++) {
+      if (attempt > 0) await new Promise((r) => setTimeout(r, 1500));
+      try {
+        const res = await fetch(fullnode(), {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            jsonrpc: "2.0",
+            id: 1,
+            method: "sui_getTransactionBlock",
+            params: [
+              data.digest,
+              { showEffects: true, showBalanceChanges: true, showInput: true },
+            ],
+          }),
+        });
+        const json = (await res.json()) as { result?: Record<string, unknown> };
+        if (json.result) tx = json.result;
+      } catch {
+        /* transient fullnode error — retry */
+      }
     }
     if (!tx) throw new Error("Payment not found on the Sui network yet. Try again in a moment.");
 

@@ -201,8 +201,25 @@ export function BlastProvider({ children }: { children: React.ReactNode }) {
       }
 
       const digest = await payFeeToTreasury(session.raw, session.account, purpose);
-      const { paymentId } = await verifyPayment({ data: { digest, purpose } });
-      return paymentId;
+
+      // The payment is already on chain; retry the check while the network
+      // catches up so a slow fullnode never costs the player their fee.
+      let lastError: unknown;
+      for (let attempt = 0; attempt < 4; attempt++) {
+        if (attempt > 0) await new Promise((r) => setTimeout(r, 2500));
+        try {
+          const { paymentId } = await verifyPayment({ data: { digest, purpose } });
+          return paymentId;
+        } catch (error) {
+          lastError = error;
+          const message = error instanceof Error ? error.message : "";
+          if (!/not found on the Sui network|already been used/i.test(message)) throw error;
+          if (/already been used/i.test(message)) throw error;
+        }
+      }
+      throw lastError instanceof Error
+        ? lastError
+        : new Error("Payment could not be confirmed yet. Try again in a moment.");
     },
     [userId, wallets],
   );
