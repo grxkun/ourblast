@@ -127,18 +127,28 @@ export function BlastTutorial({ onPlay }: { onPlay?: () => void }) {
     return (
       <div className="panel flex flex-wrap items-center justify-between gap-3 px-5 py-4">
         <p className="font-body text-sm text-muted-foreground">
-          {done ? "Tutorial finished." : "New to Blast Click?"} Practice for free, no wallet needed.
+          {done ? "Tutorial finished." : "New to Blast Click?"} Practice for free — no wallet, no
+          fee, and practice never changes your BLAST POINTS.
         </p>
-        <button
-          type="button"
-          onClick={() => {
-            reset();
-            setOpen(true);
-          }}
-          className="rounded-full border-2 border-border px-5 py-2 font-display tracking-wide uppercase transition-transform hover:-translate-y-0.5"
-        >
-          {done ? "Replay tutorial" : "Start tutorial"}
-        </button>
+        <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={() => {
+              reset();
+              setOpen(true);
+            }}
+            className="rounded-full border-2 border-border px-5 py-2 font-display tracking-wide uppercase transition-transform hover:-translate-y-0.5"
+          >
+            {done ? "Replay tutorial" : "Start tutorial"}
+          </button>
+          <button
+            type="button"
+            onClick={() => onPlay?.()}
+            className="glow-blast rounded-full bg-primary px-5 py-2 font-display tracking-wide text-primary-foreground uppercase transition-transform hover:-translate-y-0.5"
+          >
+            Play for real
+          </button>
+        </div>
       </div>
     );
   }
