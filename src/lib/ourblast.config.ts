@@ -65,4 +65,14 @@ export const SUI_FULLNODES: Record<string, string> = {
   "sui:devnet": "https://fullnode.devnet.sui.io:443",
 };
 
+/**
+ * Public JSON-RPC fullnodes are deprecated, so payment lookups go through the
+ * current Sui GraphQL endpoints instead.
+ */
+export const SUI_GRAPHQL: Record<string, string> = {
+  "sui:mainnet": "https://graphql.mainnet.sui.io/graphql",
+  "sui:testnet": "https://graphql.testnet.sui.io/graphql",
+  "sui:devnet": "https://graphql.devnet.sui.io/graphql",
+};
+
 export const DEFAULT_SUI_CHAIN = "sui:mainnet";
