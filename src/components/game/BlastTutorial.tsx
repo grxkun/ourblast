@@ -156,7 +156,7 @@ export function BlastTutorial({ onPlay }: { onPlay?: () => void }) {
             {finished ? "Tutorial complete" : `Step ${step + 1} of ${STEPS.length} — ${current.title}`}
           </h3>
         </div>
-        <div className="flex items-center gap-4">
+        <div className="flex flex-wrap items-center gap-3">
           <div className="flex items-center gap-1.5" aria-hidden="true">
             {STEPS.map((s, i) => (
               <span
@@ -173,6 +173,16 @@ export function BlastTutorial({ onPlay }: { onPlay?: () => void }) {
             className="rounded-full border border-border px-4 py-1.5 font-body text-sm"
           >
             Skip
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setOpen(false);
+              onPlay?.();
+            }}
+            className="rounded-full bg-primary px-4 py-1.5 font-display text-sm tracking-wide text-primary-foreground uppercase"
+          >
+            Play for real
           </button>
         </div>
       </div>
