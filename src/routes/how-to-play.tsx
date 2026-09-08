@@ -39,7 +39,7 @@ const STEPS = [
   {
     n: "02",
     title: `Keep a little SUI ready`,
-    body: `Every arcade run costs ${FEES.game} SUI and every chat message costs ${FEES.chat} SUI. The fee goes straight to the community treasury and funds prizes and events.`,
+    body: `Every arcade run costs ${FEES.game} SUI and every chat message costs ${FEES.chat} SUI. 70% of every game fee funds the prize pool for the winning players — paid back to you.`,
   },
   {
     n: "03",
