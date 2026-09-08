@@ -5,7 +5,7 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { loginMessage } from "@/lib/blast";
 import { walletLogin } from "@/lib/auth.functions";
-import { verifyPayment } from "@/lib/payments.functions";
+import { recoverPayment, verifyPayment } from "@/lib/payments.functions";
 import { payFeeToTreasury } from "@/lib/sui-pay";
 import type { PaymentPurpose } from "@/lib/ourblast.config";
 
@@ -41,6 +41,8 @@ type BlastSession = {
   refresh: () => void;
   /** Pays the SUI fee for an activity and returns a server-verified payment id. */
   pay: (purpose: PaymentPurpose) => Promise<string>;
+  /** Finds an already-confirmed on-chain payment when the wallet never returned. */
+  recoverEntry: (purpose: PaymentPurpose) => Promise<string>;
 };
 
 const BlastContext = createContext<BlastSession | null>(null);
@@ -200,7 +202,19 @@ export function BlastProvider({ children }: { children: React.ReactNode }) {
         active.current = session;
       }
 
-      const digest = await payFeeToTreasury(session.raw, session.account, purpose);
+      let digest: string;
+      try {
+        digest = await payFeeToTreasury(session.raw, session.account, purpose);
+      } catch (error) {
+        // Some wallets (mobile Slush) send the transfer but never return the
+        // digest. Look on chain before telling the player the payment failed.
+        try {
+          const { paymentId } = await recoverPayment({ data: { purpose } });
+          return paymentId;
+        } catch {
+          throw error;
+        }
+      }
 
       // The payment is already on chain; retry the check while the network
       // catches up so a slow fullnode never costs the player their fee.
@@ -224,6 +238,12 @@ export function BlastProvider({ children }: { children: React.ReactNode }) {
     [userId, wallets],
   );
 
+  /** Checks the chain for a paid-but-unclaimed entry from this wallet. */
+  const recoverEntry = useCallback(async (purpose: PaymentPurpose) => {
+    const { paymentId } = await recoverPayment({ data: { purpose } });
+    return paymentId;
+  }, []);
+
   const disconnect = useCallback(async () => {
     await queryClient.cancelQueries();
     queryClient.clear();
@@ -243,11 +263,23 @@ export function BlastProvider({ children }: { children: React.ReactNode }) {
       connect,
       disconnect,
       pay,
+      recoverEntry,
       refresh: () => {
         void queryClient.invalidateQueries();
       },
     }),
-    [userId, profileQuery.data, wallets, connecting, ready, connect, disconnect, pay, queryClient],
+    [
+      userId,
+      profileQuery.data,
+      wallets,
+      connecting,
+      ready,
+      connect,
+      disconnect,
+      pay,
+      recoverEntry,
+      queryClient,
+    ],
   );
 
   return <BlastContext.Provider value={value}>{children}</BlastContext.Provider>;

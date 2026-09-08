@@ -26,7 +26,7 @@ type Pop = { id: number; x: number; y: number; value: number };
 const STORAGE_KEY = "ourblast.blastclick.difficulty";
 
 export function BlastClick() {
-  const { userId, connect, refresh, pay } = useBlast();
+  const { userId, connect, refresh, pay, recoverEntry } = useBlast();
   const submit = useServerFn(submitScore);
 
   const [phase, setPhase] = useState<Phase>("idle");
@@ -40,6 +40,9 @@ export function BlastClick() {
   const [sound, setSound] = useState(true);
   const [difficulty, setDifficulty] = useState<DifficultyKey>("normal");
   const [paying, setPaying] = useState(false);
+  const [payStatus, setPayStatus] = useState<string | null>(null);
+  const [recovering, setRecovering] = useState(false);
+  const [stuck, setStuck] = useState(false);
   const [result, setResult] = useState<{
     rank: number;
     pointsEarned: number;
@@ -112,6 +115,12 @@ export function BlastClick() {
       return;
     }
     setPaying(true);
+    setStuck(false);
+    setPayStatus("Approve 1 SUI in your wallet…");
+    const confirming = window.setTimeout(
+      () => setPayStatus("Confirming your payment on Sui — this can take a few seconds…"),
+      4000,
+    );
     try {
       primeAudio();
       paymentId.current = await pay("game");
@@ -123,12 +132,34 @@ export function BlastClick() {
     } catch (error) {
       paymentId.current = null;
       sfx.error();
+      setStuck(true);
       toast.error("Payment not completed", {
         description:
           error instanceof Error ? error.message : "The transaction was rejected. Try again.",
       });
     } finally {
+      window.clearTimeout(confirming);
+      setPayStatus(null);
       setPaying(false);
+    }
+  };
+
+  /** Wallet sent the SUI but never came back? Find it on chain and play. */
+  const recoverAndStart = async () => {
+    setRecovering(true);
+    try {
+      paymentId.current = await recoverEntry("game");
+      sfx.coin();
+      setStuck(false);
+      toast.success("Payment found on chain", { description: "Entry confirmed — go smash it." });
+      startRound();
+    } catch (error) {
+      toast.error("No entry found yet", {
+        description:
+          error instanceof Error ? error.message : "Give the network a moment and try again.",
+      });
+    } finally {
+      setRecovering(false);
     }
   };
 
@@ -393,6 +424,19 @@ export function BlastClick() {
                 >
                   {playLabel}
                 </button>
+                {payStatus ? (
+                  <p className="mt-3 font-body text-sm text-muted-foreground">{payStatus}</p>
+                ) : null}
+                {stuck && !paying ? (
+                  <button
+                    type="button"
+                    disabled={recovering}
+                    onClick={() => void recoverAndStart()}
+                    className="mt-4 rounded-full border border-border px-6 py-2.5 font-display tracking-wide uppercase disabled:opacity-60"
+                  >
+                    {recovering ? "Checking the chain…" : "I already paid — check on chain"}
+                  </button>
+                ) : null}
                 <p className="mt-3 font-body text-xs text-muted-foreground">
                   Your wallet is your player card. OURBLAST never holds your funds — you approve
                   every transaction in Slush.
