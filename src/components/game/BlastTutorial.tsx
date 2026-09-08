@@ -150,7 +150,7 @@ export function BlastTutorial({ onPlay }: { onPlay?: () => void }) {
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-5 py-4">
         <div>
           <p className="font-body text-xs font-bold tracking-[0.22em] text-primary uppercase">
-            Free practice · no wallet, no fee
+            Free practice · no wallet, no fee, no BLAST POINTS
           </p>
           <h3 className="mt-1 font-display text-2xl">
             {finished ? "Tutorial complete" : `Step ${step + 1} of ${STEPS.length} — ${current.title}`}
@@ -218,7 +218,7 @@ export function BlastTutorial({ onPlay }: { onPlay?: () => void }) {
                 Combo <span className="font-display text-base text-foreground">x{combo}</span>
               </span>
               <span className="font-body text-xs tracking-[0.2em] text-muted-foreground uppercase">
-                Score <span className="font-display text-base text-lime">{score}</span>
+                Practice score <span className="font-display text-base text-lime">{score}</span>
               </span>
               {step === 3 ? (
                 <span className="font-body text-xs tracking-[0.2em] text-muted-foreground uppercase">
