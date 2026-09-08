@@ -43,13 +43,13 @@ const STATS = [
 const STEPS = [
   {
     n: "01",
-    title: "Grab a wallet",
-    body: "Any wallet that works with Blast will do. Keep a little ETH for gas.",
+    title: "Grab a Sui wallet",
+    body: "Slush or any Sui wallet works. Keep a little SUI in it for gas and swaps.",
   },
   {
     n: "02",
-    title: "Head to blast.fun",
-    body: "Paste the $BLAST address below, pick your amount, and confirm the swap.",
+    title: "Open Bluefin",
+    body: "Paste the $BLAST address below, swap SUI for $BLAST, and confirm in your wallet.",
   },
   {
     n: "03",
@@ -153,7 +153,7 @@ function Home() {
             </h1>
 
             <p className="mt-7 max-w-lg font-body text-lg leading-relaxed text-muted-foreground">
-              $BLAST is a community takeover on Blast. No team, no promises, no unlock schedule
+              $BLAST is a community takeover on blast.fun, running on Sui. No team, no promises, no unlock schedule
               — just a chart, a group chat, and a crowd that refused to let this one die.
             </p>
 
@@ -364,7 +364,7 @@ function Home() {
               <div>
                 <p className="font-display text-3xl tracking-wide">$BLAST</p>
                 <p className="font-body text-sm text-secondary-foreground/70">
-                  A community takeover on Blast
+                  A community takeover on blast.fun, built on Sui
                 </p>
               </div>
             </div>
