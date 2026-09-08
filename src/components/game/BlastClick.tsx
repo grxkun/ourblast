@@ -286,10 +286,10 @@ export function BlastClick() {
       </div>
 
       <div className="relative">
+        {phase === "playing" ? (
         <button
           type="button"
           onClick={hit}
-          disabled={phase !== "playing"}
           aria-label="Hit the blast target"
           className="grid-noise relative block h-[22rem] w-full touch-manipulation cursor-crosshair select-none sm:h-[26rem]"
         >
