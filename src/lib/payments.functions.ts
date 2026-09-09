@@ -248,7 +248,7 @@ export const recoverPayment = createServerFn({ method: "POST" })
           digest: tx.digest,
           sender: wallet,
           recipient: treasury,
-          amount_mist: treasuryAmount(tx, treasury),
+          amount_mist: amountTo(tx, treasury) + amountTo(tx, PRIZE_POOL_ADDRESS),
         })
         .select("id")
         .single();
