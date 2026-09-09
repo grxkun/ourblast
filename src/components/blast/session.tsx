@@ -45,7 +45,13 @@ type BlastSession = {
   recoverEntry: (purpose: PaymentPurpose) => Promise<string>;
 };
 
-const BlastContext = createContext<BlastSession | null>(null);
+// Keep a single context instance across hot-reloads / duplicate module copies,
+// otherwise consumers can read a different context than the provider writes.
+const globalStore = globalThis as unknown as {
+  __blastContext?: React.Context<BlastSession | null>;
+};
+const BlastContext =
+  globalStore.__blastContext ?? (globalStore.__blastContext = createContext<BlastSession | null>(null));
 
 export function useBlast() {
   const ctx = useContext(BlastContext);
