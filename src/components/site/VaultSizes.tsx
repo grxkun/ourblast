@@ -1,0 +1,62 @@
+import { useQuery } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
+
+import { getVaultSizes } from "@/lib/vault.functions";
+import { formatSui } from "@/lib/sui-balance";
+import { PRIZE_POOL_ADDRESS, DEFAULT_TREASURY_ADDRESS } from "@/lib/ourblast.config";
+
+function usd(amount: number): string {
+  if (!amount) return "—";
+  return `$${amount.toLocaleString(undefined, { maximumFractionDigits: amount < 100 ? 2 : 0 })}`;
+}
+
+function shorten(address: string): string {
+  return `${address.slice(0, 6)}…${address.slice(-4)}`;
+}
+
+export function VaultSizes() {
+  const fetchSizes = useServerFn(getVaultSizes);
+  const { data, isPending } = useQuery({
+    queryKey: ["vault-sizes"],
+    queryFn: () => fetchSizes(),
+    refetchInterval: 60_000,
+    staleTime: 30_000,
+  });
+
+  const cards = [
+    {
+      label: "Prize pool",
+      sui: data?.prizePoolSui ?? 0,
+      address: PRIZE_POOL_ADDRESS,
+      note: "70% of every arcade round, paid back to winning players.",
+    },
+    {
+      label: "Community treasury",
+      sui: data?.treasurySui ?? 0,
+      address: DEFAULT_TREASURY_ADDRESS,
+      note: "20% of every round: events, buybacks, art, hosting.",
+    },
+  ];
+
+  return (
+    <div className="grid gap-5 sm:grid-cols-2">
+      {cards.map((c) => (
+        <div key={c.label} className="ink-box p-6">
+          <p className="font-body text-xs font-bold tracking-[0.18em] text-muted-foreground uppercase">
+            {c.label}
+          </p>
+          <p className="mt-3 font-display text-4xl leading-none tracking-wide text-primary">
+            {isPending ? "…" : usd(c.sui * (data?.suiUsd ?? 0))}
+          </p>
+          <p className="mt-2 font-body text-sm font-bold">
+            {isPending ? "loading" : `${formatSui(c.sui)} SUI`}
+          </p>
+          <p className="mt-3 font-body text-sm text-muted-foreground">{c.note}</p>
+          <p className="mt-2 font-body text-xs break-all text-muted-foreground">
+            {shorten(c.address)}
+          </p>
+        </div>
+      ))}
+    </div>
+  );
+}
