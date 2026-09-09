@@ -288,6 +288,11 @@ function Home() {
             <p className="font-body text-muted-foreground">Boring on purpose.</p>
           </div>
 
+          <div className="mt-10">
+            <VaultSizes />
+          </div>
+
+
           <div className="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
             {STATS.map((s) => (
               <div key={s.label} className="ink-box p-6">
