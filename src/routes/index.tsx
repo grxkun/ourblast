@@ -6,6 +6,7 @@ import mascotShock from "@/assets/mascot-shock.jpg.asset.json";
 import mascotCoin from "@/assets/mascot-coin.jpg.asset.json";
 import { Ticker } from "@/components/site/Ticker";
 import { CopyAddress } from "@/components/site/CopyAddress";
+import { VaultSizes } from "@/components/site/VaultSizes";
 
 const CONTRACT = "0x577a8addf60a34d4c705914ad066a3b28c3fc40d365ed0d9dfc408f29b4725d3::blast::BLAST";
 const BUY_URL = "https://trade.bluefin.io/swap/SUI-0x577a8addf60a34d4c705914ad066a3b28c3fc40d365ed0d9dfc408f29b4725d3::blast::BLAST";
@@ -287,6 +288,11 @@ function Home() {
             </h2>
             <p className="font-body text-muted-foreground">Boring on purpose.</p>
           </div>
+
+          <div className="mt-10">
+            <VaultSizes />
+          </div>
+
 
           <div className="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
             {STATS.map((s) => (
