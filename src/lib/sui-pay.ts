@@ -4,6 +4,7 @@ import {
   FEES,
   FOUNDER_ADDRESS,
   MIST_PER_SUI,
+  PRIZE_POOL_ADDRESS,
   SUI_FULLNODES,
   type PaymentPurpose,
   treasuryAddress,
@@ -29,14 +30,19 @@ export async function payFeeToTreasury(
   tx.setSender(account.address);
 
   if (purpose === "game") {
-    // Split the play fee on-chain: founder share goes to the founder wallet,
-    // the rest (prize pool + treasury) lands in the community treasury.
+    // Split the play fee on-chain into three destinations: founder share,
+    // prize pool, and the community treasury (ops). All three are sent in the
+    // same transaction the moment the player approves it.
     const founderCut = BigInt(Math.round(Number(amount) * ECONOMY.founderShare));
-    const [treasuryCoin, founderCoin] = tx.splitCoins(tx.gas, [
-      tx.pure.u64(amount - founderCut),
+    const prizeCut = BigInt(Math.round(Number(amount) * ECONOMY.prizePoolShare));
+    const opsCut = amount - founderCut - prizeCut;
+    const [opsCoin, prizeCoin, founderCoin] = tx.splitCoins(tx.gas, [
+      tx.pure.u64(opsCut),
+      tx.pure.u64(prizeCut),
       tx.pure.u64(founderCut),
     ]);
-    tx.transferObjects([treasuryCoin], tx.pure.address(treasuryAddress()));
+    tx.transferObjects([opsCoin], tx.pure.address(treasuryAddress()));
+    tx.transferObjects([prizeCoin], tx.pure.address(PRIZE_POOL_ADDRESS));
     tx.transferObjects([founderCoin], tx.pure.address(FOUNDER_ADDRESS));
   } else {
     const [coin] = tx.splitCoins(tx.gas, [tx.pure.u64(amount)]);

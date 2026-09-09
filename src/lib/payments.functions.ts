@@ -6,6 +6,7 @@ import {
   DEFAULT_SUI_CHAIN,
   DEFAULT_TREASURY_ADDRESS,
   ECONOMY,
+  PRIZE_POOL_ADDRESS,
   SUI_GRAPHQL,
   feeInMist,
 } from "./ourblast.config";
@@ -64,24 +65,30 @@ async function suiQuery<T>(query: string, variables: Record<string, unknown>): P
   }
 }
 
-/** SUI actually credited to the treasury in this transaction, in MIST. */
-function treasuryAmount(tx: ChainTx, treasury: string): number {
+/** SUI actually credited to a given address in this transaction, in MIST. */
+function amountTo(tx: ChainTx, address: string): number {
+  const target = address.toLowerCase();
   return (tx.effects?.balanceChanges?.nodes ?? [])
     .filter((c) => {
       const repr = c.coinType?.repr ?? "";
       return (
-        c.owner?.address?.toLowerCase() === treasury && (repr === "" || repr.endsWith("::sui::SUI"))
+        c.owner?.address?.toLowerCase() === target && (repr === "" || repr.endsWith("::sui::SUI"))
       );
     })
     .reduce((sum, c) => sum + Number(c.amount ?? 0), 0);
 }
 
 function requiredMist(purpose: "game" | "chat"): number {
-  // Game fees split on-chain: the founder share leaves the treasury portion at
-  // (1 - founderShare) of the full fee.
+  // Game fees split on-chain across founder, prize pool, and treasury. The
+  // treasury (ops) portion is what must land in the community wallet; the
+  // prize pool portion must land in the prize pool wallet.
   return purpose === "game"
-    ? Math.floor(feeInMist(purpose) * (1 - ECONOMY.founderShare))
+    ? Math.floor(feeInMist(purpose) * ECONOMY.opsShare)
     : feeInMist(purpose);
+}
+
+function requiredPrizeMist(): number {
+  return Math.floor(feeInMist("game") * ECONOMY.prizePoolShare);
 }
 
 /**
@@ -140,11 +147,20 @@ export const verifyPayment = createServerFn({ method: "POST" })
     }
 
     const treasury = serverTreasury();
-    const received = treasuryAmount(tx, treasury);
-    if (received < requiredMist(data.purpose)) {
+    const opsReceived = amountTo(tx, treasury);
+    const prizeReceived = amountTo(tx, PRIZE_POOL_ADDRESS);
+    if (data.purpose === "game") {
+      if (prizeReceived < requiredPrizeMist()) {
+        throw new Error("That payment did not reach the OURBLAST prize pool.");
+      }
+      if (opsReceived < requiredMist("game")) {
+        throw new Error("That payment did not reach the OURBLAST treasury.");
+      }
+    } else if (opsReceived < requiredMist(data.purpose)) {
       throw new Error("That payment did not reach the OURBLAST treasury.");
     }
 
+    const totalReceived = opsReceived + prizeReceived;
     const { data: inserted, error } = await supabaseAdmin
       .from("sui_payments")
       .insert({
@@ -153,7 +169,7 @@ export const verifyPayment = createServerFn({ method: "POST" })
         digest: data.digest,
         sender,
         recipient: treasury,
-        amount_mist: received,
+        amount_mist: totalReceived,
       })
       .select("id")
       .single();
@@ -165,8 +181,9 @@ export const verifyPayment = createServerFn({ method: "POST" })
 /**
  * Rescue path for wallets (mobile Slush in particular) that complete the
  * transfer on chain but never hand the digest back to the page. Looks at the
- * player's own recent transactions, finds one that paid the treasury the right
- * amount and has not been recorded yet, and turns it into a valid entry.
+ * player's own recent transactions, finds one that paid the treasury (and the
+ * prize pool, for game fees) the right amount and has not been recorded yet,
+ * and turns it into a valid entry.
  */
 export const recoverPayment = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
@@ -185,7 +202,16 @@ export const recoverPayment = createServerFn({ method: "POST" })
 
     const wallet = (profile.wallet_address as string).toLowerCase();
     const treasury = serverTreasury();
-    const required = requiredMist(data.purpose);
+    const requiredOps = requiredMist(data.purpose);
+    const requiredPrize = data.purpose === "game" ? requiredPrizeMist() : 0;
+
+    const matchesPayment = (tx: ChainTx): boolean => {
+      if (!tx.digest || tx.effects?.status !== "SUCCESS") return false;
+      if ((tx.sender?.address ?? "").toLowerCase() !== wallet) return false;
+      if (amountTo(tx, treasury) < requiredOps) return false;
+      if (requiredPrize > 0 && amountTo(tx, PRIZE_POOL_ADDRESS) < requiredPrize) return false;
+      return true;
+    };
 
     const result = await suiQuery<{ transactions: { nodes: ChainTx[] } }>(
       `query Recent($sender: SuiAddress!) {
@@ -193,13 +219,7 @@ export const recoverPayment = createServerFn({ method: "POST" })
        }`,
       { sender: profile.wallet_address },
     );
-    const candidates = (result?.transactions?.nodes ?? []).filter(
-      (tx) =>
-        tx.digest &&
-        tx.effects?.status === "SUCCESS" &&
-        (tx.sender?.address ?? "").toLowerCase() === wallet &&
-        treasuryAmount(tx, treasury) >= required,
-    );
+    const candidates = (result?.transactions?.nodes ?? []).filter(matchesPayment);
     if (candidates.length === 0) {
       throw new Error("No matching payment found on chain yet. Try again in a moment.");
     }
@@ -228,7 +248,7 @@ export const recoverPayment = createServerFn({ method: "POST" })
           digest: tx.digest,
           sender: wallet,
           recipient: treasury,
-          amount_mist: treasuryAmount(tx, treasury),
+          amount_mist: amountTo(tx, treasury) + amountTo(tx, PRIZE_POOL_ADDRESS),
         })
         .select("id")
         .single();
