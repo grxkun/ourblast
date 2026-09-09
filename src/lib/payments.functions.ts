@@ -6,6 +6,7 @@ import {
   DEFAULT_SUI_CHAIN,
   DEFAULT_TREASURY_ADDRESS,
   ECONOMY,
+  PRIZE_POOL_ADDRESS,
   SUI_GRAPHQL,
   feeInMist,
 } from "./ourblast.config";
