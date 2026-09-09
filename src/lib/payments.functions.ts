@@ -65,24 +65,30 @@ async function suiQuery<T>(query: string, variables: Record<string, unknown>): P
   }
 }
 
-/** SUI actually credited to the treasury in this transaction, in MIST. */
-function treasuryAmount(tx: ChainTx, treasury: string): number {
+/** SUI actually credited to a given address in this transaction, in MIST. */
+function amountTo(tx: ChainTx, address: string): number {
+  const target = address.toLowerCase();
   return (tx.effects?.balanceChanges?.nodes ?? [])
     .filter((c) => {
       const repr = c.coinType?.repr ?? "";
       return (
-        c.owner?.address?.toLowerCase() === treasury && (repr === "" || repr.endsWith("::sui::SUI"))
+        c.owner?.address?.toLowerCase() === target && (repr === "" || repr.endsWith("::sui::SUI"))
       );
     })
     .reduce((sum, c) => sum + Number(c.amount ?? 0), 0);
 }
 
 function requiredMist(purpose: "game" | "chat"): number {
-  // Game fees split on-chain: the founder share leaves the treasury portion at
-  // (1 - founderShare) of the full fee.
+  // Game fees split on-chain across founder, prize pool, and treasury. The
+  // treasury (ops) portion is what must land in the community wallet; the
+  // prize pool portion must land in the prize pool wallet.
   return purpose === "game"
-    ? Math.floor(feeInMist(purpose) * (1 - ECONOMY.founderShare))
+    ? Math.floor(feeInMist(purpose) * ECONOMY.opsShare)
     : feeInMist(purpose);
+}
+
+function requiredPrizeMist(): number {
+  return Math.floor(feeInMist("game") * ECONOMY.prizePoolShare);
 }
 
 /**
