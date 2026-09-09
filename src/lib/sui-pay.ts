@@ -4,6 +4,7 @@ import {
   FEES,
   FOUNDER_ADDRESS,
   MIST_PER_SUI,
+  PRIZE_POOL_ADDRESS,
   SUI_FULLNODES,
   type PaymentPurpose,
   treasuryAddress,
