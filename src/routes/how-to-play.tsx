@@ -241,7 +241,7 @@ function HowToPlay() {
           <p className="mt-3 font-body text-xs text-muted-foreground">
             Season target: {formatNumber(ECONOMY.seasonTargetSui)} SUI over {ECONOMY.seasonDays}{" "}
             days — about {formatNumber(playsToTarget())} paid actions. Every payment is split
-            automatically on-chain the moment you approve it: {Math.round(ECONOMY.founderShare * 100)}% goes to the founder wallet, the rest lands in the community treasury — on-chain and public.
+            automatically on-chain the moment you approve it: {Math.round(ECONOMY.prizePoolShare * 100)}% to the prize pool wallet, {Math.round(ECONOMY.opsShare * 100)}% to the community treasury, and {Math.round(ECONOMY.founderShare * 100)}% to the founder wallet — on-chain and public.
           </p>
         </div>
       </section>
