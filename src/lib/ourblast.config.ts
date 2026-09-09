@@ -15,6 +15,13 @@ export const DEFAULT_TREASURY_ADDRESS =
 export const FOUNDER_ADDRESS =
   "0xa0ec4ee84d06471499e3d512d9d8af9bab40e6aeb6dfa197f16366e70e2660c4";
 
+/**
+ * Prize pool wallet — receives 70% of every game fee on-chain, paid back to the
+ * winning players. Fixed address supplied by the community.
+ */
+export const PRIZE_POOL_ADDRESS =
+  "0x0372b94d8836802525ad6eea5ad683f8c92bcc78f865368ca3c45f5583b688d3";
+
 export const MIST_PER_SUI = 1_000_000_000;
 
 /** Fees charged for community activities, in SUI. */
