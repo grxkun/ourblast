@@ -147,11 +147,20 @@ export const verifyPayment = createServerFn({ method: "POST" })
     }
 
     const treasury = serverTreasury();
-    const received = treasuryAmount(tx, treasury);
-    if (received < requiredMist(data.purpose)) {
+    const opsReceived = amountTo(tx, treasury);
+    const prizeReceived = amountTo(tx, PRIZE_POOL_ADDRESS);
+    if (data.purpose === "game") {
+      if (prizeReceived < requiredPrizeMist()) {
+        throw new Error("That payment did not reach the OURBLAST prize pool.");
+      }
+      if (opsReceived < requiredMist("game")) {
+        throw new Error("That payment did not reach the OURBLAST treasury.");
+      }
+    } else if (opsReceived < requiredMist(data.purpose)) {
       throw new Error("That payment did not reach the OURBLAST treasury.");
     }
 
+    const totalReceived = opsReceived + prizeReceived;
     const { data: inserted, error } = await supabaseAdmin
       .from("sui_payments")
       .insert({
@@ -160,7 +169,7 @@ export const verifyPayment = createServerFn({ method: "POST" })
         digest: data.digest,
         sender,
         recipient: treasury,
-        amount_mist: received,
+        amount_mist: totalReceived,
       })
       .select("id")
       .single();
