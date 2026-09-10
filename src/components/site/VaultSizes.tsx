@@ -62,8 +62,20 @@ export function VaultSizes() {
               <li className="font-body text-sm text-muted-foreground">Empty right now</li>
             )}
             {c.holdings.map((h) => (
-              <li key={h.coinType} className="flex items-baseline justify-between gap-3">
-                <span className="font-body text-sm font-bold">
+              <li key={h.coinType} className="flex items-center justify-between gap-3">
+                <span className="flex items-center gap-2 font-body text-sm font-bold">
+                  {h.iconUrl ? (
+                    <img
+                      src={h.iconUrl}
+                      alt={`${h.symbol} token icon`}
+                      loading="lazy"
+                      className="h-5 w-5 shrink-0 rounded-full border-2 border-border bg-background object-cover"
+                    />
+                  ) : (
+                    <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 border-border bg-background font-display text-[10px] leading-none">
+                      {h.symbol.slice(0, 1)}
+                    </span>
+                  )}
                   {amount(h.amount)} {h.symbol}
                 </span>
                 <span className="font-body text-sm text-muted-foreground">
