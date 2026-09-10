@@ -134,6 +134,8 @@ export type Holding = {
   amount: number;
   priceUsd: number;
   valueUsd: number;
+  /** Token logo URL, empty when none is published. */
+  iconUrl: string;
 };
 
 export type VaultSizes = {
