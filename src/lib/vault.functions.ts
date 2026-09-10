@@ -49,36 +49,39 @@ async function rawBalances(address: string): Promise<RawBalance[]> {
     .filter((b) => b.coinType && b.raw > 0);
 }
 
-type Meta = { symbol: string; decimals: number };
+type Meta = { symbol: string; decimals: number; iconUrl: string };
 
-/** Coin metadata (symbol + decimals) for a set of coin types. */
+/** Coin metadata (symbol + decimals + icon) for a set of coin types. */
 async function coinMetadata(coinTypes: string[]): Promise<Record<string, Meta>> {
   const out: Record<string, Meta> = {};
   if (!coinTypes.length) return out;
   const fields = coinTypes
-    .map((_, i) => `c${i}: coinMetadata(coinType: $t${i}) { symbol decimals }`)
+    .map((_, i) => `c${i}: coinMetadata(coinType: $t${i}) { symbol decimals iconUrl }`)
     .join("\n");
   const args = coinTypes.map((_, i) => `$t${i}: String!`).join(", ");
   const variables: Record<string, unknown> = {};
   coinTypes.forEach((t, i) => (variables[`t${i}`] = t));
-  const data = await gql<Record<string, { symbol?: string; decimals?: number } | null>>(
-    `query Meta(${args}) { ${fields} }`,
-    variables,
-  );
+  const data = await gql<
+    Record<string, { symbol?: string; decimals?: number; iconUrl?: string } | null>
+  >(`query Meta(${args}) { ${fields} }`, variables);
   coinTypes.forEach((t, i) => {
     const m = data?.[`c${i}`];
     out[t] = {
       symbol: m?.symbol || t.split("::").pop() || "TOKEN",
       decimals: typeof m?.decimals === "number" ? m.decimals : 9,
+      iconUrl: m?.iconUrl ?? "",
     };
   });
   return out;
 }
 
-/** USD prices per coin type, from the deepest DEX pair on Sui. */
-async function tokenPrices(coinTypes: string[]): Promise<Record<string, number>> {
+/** USD prices + DEX logos per coin type, from the deepest DEX pair on Sui. */
+async function tokenPrices(
+  coinTypes: string[],
+): Promise<{ prices: Record<string, number>; icons: Record<string, string> }> {
   const out: Record<string, number> = {};
-  if (!coinTypes.length) return out;
+  const icons: Record<string, string> = {};
+  if (!coinTypes.length) return { prices: out, icons };
   try {
     const res = await fetch(
       `https://api.dexscreener.com/latest/dex/tokens/${coinTypes.slice(0, 30).join(",")}`,
