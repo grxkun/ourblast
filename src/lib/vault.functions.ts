@@ -8,38 +8,106 @@ import {
   SUI_GRAPHQL,
 } from "./ourblast.config";
 
+const SUI_TYPE =
+  "0x0000000000000000000000000000000000000000000000000000000000000002::sui::SUI";
+
 function graphqlEndpoint(): string {
   return SUI_GRAPHQL[DEFAULT_SUI_CHAIN]!;
 }
 
-/** SUI balance (in whole SUI) held by an address, via the Sui GraphQL service. */
-async function balanceOf(address: string): Promise<number> {
+async function gql<T>(query: string, variables: Record<string, unknown>): Promise<T | null> {
   try {
     const res = await fetch(graphqlEndpoint(), {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({
-        query:
-          "query Balance($address: SuiAddress!) { address(address: $address) { balances(first: 50) { nodes { coinType { repr } totalBalance } } } }",
-        variables: { address },
-      }),
+      body: JSON.stringify({ query, variables }),
     });
-    const json = (await res.json()) as {
-      data?: {
-        address?: {
-          balances?: {
-            nodes?: { coinType?: { repr?: string } | null; totalBalance?: string }[];
-          };
-        };
+    const json = (await res.json()) as { data?: T };
+    return json.data ?? null;
+  } catch {
+    return null;
+  }
+}
+
+type RawBalance = { coinType: string; raw: number };
+
+/** Every coin balance held by an address (raw units). */
+async function rawBalances(address: string): Promise<RawBalance[]> {
+  const data = await gql<{
+    address?: {
+      balances?: {
+        nodes?: { coinType?: { repr?: string } | null; totalBalance?: string }[];
       };
     };
-    const nodes = json.data?.address?.balances?.nodes ?? [];
-    // SUI coin type repr ends with "::sui::SUI" (zero-padded package in mainnet).
-    const suiNode = nodes.find((n) => (n.coinType?.repr ?? "").endsWith("::sui::SUI"));
-    return Number(suiNode?.totalBalance ?? 0) / MIST_PER_SUI;
+  }>(
+    "query Balances($address: SuiAddress!) { address(address: $address) { balances(first: 50) { nodes { coinType { repr } totalBalance } } } }",
+    { address },
+  );
+  const nodes = data?.address?.balances?.nodes ?? [];
+  return nodes
+    .map((n) => ({ coinType: n.coinType?.repr ?? "", raw: Number(n.totalBalance ?? 0) }))
+    .filter((b) => b.coinType && b.raw > 0);
+}
+
+type Meta = { symbol: string; decimals: number };
+
+/** Coin metadata (symbol + decimals) for a set of coin types. */
+async function coinMetadata(coinTypes: string[]): Promise<Record<string, Meta>> {
+  const out: Record<string, Meta> = {};
+  if (!coinTypes.length) return out;
+  const fields = coinTypes
+    .map((_, i) => `c${i}: coinMetadata(coinType: $t${i}) { symbol decimals }`)
+    .join("\n");
+  const args = coinTypes.map((_, i) => `$t${i}: String!`).join(", ");
+  const variables: Record<string, unknown> = {};
+  coinTypes.forEach((t, i) => (variables[`t${i}`] = t));
+  const data = await gql<Record<string, { symbol?: string; decimals?: number } | null>>(
+    `query Meta(${args}) { ${fields} }`,
+    variables,
+  );
+  coinTypes.forEach((t, i) => {
+    const m = data?.[`c${i}`];
+    out[t] = {
+      symbol: m?.symbol || t.split("::").pop() || "TOKEN",
+      decimals: typeof m?.decimals === "number" ? m.decimals : 9,
+    };
+  });
+  return out;
+}
+
+/** USD prices per coin type, from the deepest DEX pair on Sui. */
+async function tokenPrices(coinTypes: string[]): Promise<Record<string, number>> {
+  const out: Record<string, number> = {};
+  if (!coinTypes.length) return out;
+  try {
+    const res = await fetch(
+      `https://api.dexscreener.com/latest/dex/tokens/${coinTypes.slice(0, 30).join(",")}`,
+      { headers: { accept: "application/json" } },
+    );
+    const json = (await res.json()) as {
+      pairs?: {
+        chainId?: string;
+        baseToken?: { address?: string };
+        priceUsd?: string;
+        liquidity?: { usd?: number };
+      }[];
+    };
+    const best: Record<string, number> = {};
+    for (const p of json.pairs ?? []) {
+      if (p.chainId !== "sui") continue;
+      const addr = p.baseToken?.address ?? "";
+      const price = Number(p.priceUsd ?? 0);
+      const liq = Number(p.liquidity?.usd ?? 0);
+      if (!addr || !price) continue;
+      if (!(addr in best) || liq > best[addr]!) {
+        best[addr] = liq;
+        out[addr] = price;
+      }
+    }
   } catch {
-    return 0;
+    /* prices stay empty */
   }
+  return out;
 }
 
 async function suiUsdPrice(): Promise<number> {
@@ -55,23 +123,81 @@ async function suiUsdPrice(): Promise<number> {
   }
 }
 
+export type Holding = {
+  coinType: string;
+  symbol: string;
+  amount: number;
+  priceUsd: number;
+  valueUsd: number;
+};
+
 export type VaultSizes = {
   prizePoolSui: number;
   treasurySui: number;
   suiUsd: number;
+  /** Total USD value of every token held, per vault. */
+  prizePoolUsd: number;
+  treasuryUsd: number;
+  prizePoolHoldings: Holding[];
+  treasuryHoldings: Holding[];
   updatedAt: number;
 };
 
-/** Public read: live on-chain size of the prize pool and community treasury. */
+/** Public read: live on-chain contents of the prize pool and community treasury. */
 export const getVaultSizes = createServerFn({ method: "GET" }).handler(
   async (): Promise<VaultSizes> => {
-    const treasury = (process.env['OURBLAST_TREASURY_ADDRESS'] ?? DEFAULT_TREASURY_ADDRESS)
-      .toLowerCase();
-    const [prizePoolSui, treasurySui, suiUsd] = await Promise.all([
-      balanceOf(PRIZE_POOL_ADDRESS),
-      balanceOf(treasury),
+    const treasury = (
+      process.env['OURBLAST_TREASURY_ADDRESS'] ?? DEFAULT_TREASURY_ADDRESS
+    ).toLowerCase();
+
+    const [poolRaw, treasuryRaw, suiUsd] = await Promise.all([
+      rawBalances(PRIZE_POOL_ADDRESS),
+      rawBalances(treasury),
       suiUsdPrice(),
     ]);
-    return { prizePoolSui, treasurySui, suiUsd, updatedAt: Date.now() };
+
+    const types = Array.from(
+      new Set([...poolRaw, ...treasuryRaw].map((b) => b.coinType)),
+    );
+    const nonSui = types.filter((t) => t !== SUI_TYPE);
+    const [meta, prices] = await Promise.all([coinMetadata(nonSui), tokenPrices(nonSui)]);
+
+    const toHoldings = (raws: RawBalance[]): Holding[] =>
+      raws
+        .map((b) => {
+          const isSui = b.coinType === SUI_TYPE;
+          const m = isSui ? { symbol: "SUI", decimals: 9 } : meta[b.coinType];
+          const decimals = m?.decimals ?? 9;
+          const amount = b.raw / 10 ** decimals;
+          const priceUsd = isSui ? suiUsd : (prices[b.coinType] ?? 0);
+          return {
+            coinType: b.coinType,
+            symbol: m?.symbol ?? "TOKEN",
+            amount,
+            priceUsd,
+            valueUsd: amount * priceUsd,
+          };
+        })
+        .filter((h) => h.amount > 0)
+        .sort((a, b) => b.valueUsd - a.valueUsd);
+
+    const prizePoolHoldings = toHoldings(poolRaw);
+    const treasuryHoldings = toHoldings(treasuryRaw);
+    const sum = (h: Holding[]) => h.reduce((t, x) => t + x.valueUsd, 0);
+    const suiAmount = (h: Holding[]) =>
+      h.find((x) => x.coinType === SUI_TYPE)?.amount ?? 0;
+
+    return {
+      prizePoolSui: suiAmount(prizePoolHoldings),
+      treasurySui: suiAmount(treasuryHoldings),
+      suiUsd,
+      prizePoolUsd: sum(prizePoolHoldings),
+      treasuryUsd: sum(treasuryHoldings),
+      prizePoolHoldings,
+      treasuryHoldings,
+      updatedAt: Date.now(),
+    };
   },
 );
+
+export { MIST_PER_SUI };
