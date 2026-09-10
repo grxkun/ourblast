@@ -93,6 +93,7 @@ async function tokenPrices(
         baseToken?: { address?: string };
         priceUsd?: string;
         liquidity?: { usd?: number };
+        info?: { imageUrl?: string };
       }[];
     };
     const best: Record<string, number> = {};
@@ -105,12 +106,13 @@ async function tokenPrices(
       if (!(addr in best) || liq > best[addr]!) {
         best[addr] = liq;
         out[addr] = price;
+        if (p.info?.imageUrl) icons[addr] = p.info.imageUrl;
       }
     }
   } catch {
     /* prices stay empty */
   }
-  return out;
+  return { prices: out, icons };
 }
 
 async function suiUsdPrice(): Promise<number> {
