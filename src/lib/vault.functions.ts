@@ -167,22 +167,23 @@ export const getVaultSizes = createServerFn({ method: "GET" }).handler(
       new Set([...poolRaw, ...treasuryRaw].map((b) => b.coinType)),
     );
     const nonSui = types.filter((t) => t !== SUI_TYPE);
-    const [meta, prices] = await Promise.all([coinMetadata(nonSui), tokenPrices(nonSui)]);
+    const [meta, dex] = await Promise.all([coinMetadata(types), tokenPrices(nonSui)]);
 
     const toHoldings = (raws: RawBalance[]): Holding[] =>
       raws
         .map((b) => {
           const isSui = b.coinType === SUI_TYPE;
-          const m = isSui ? { symbol: "SUI", decimals: 9 } : meta[b.coinType];
-          const decimals = m?.decimals ?? 9;
+          const m = meta[b.coinType];
+          const decimals = isSui ? 9 : (m?.decimals ?? 9);
           const amount = b.raw / 10 ** decimals;
-          const priceUsd = isSui ? suiUsd : (prices[b.coinType] ?? 0);
+          const priceUsd = isSui ? suiUsd : (dex.prices[b.coinType] ?? 0);
           return {
             coinType: b.coinType,
-            symbol: m?.symbol ?? "TOKEN",
+            symbol: isSui ? "SUI" : (m?.symbol ?? "TOKEN"),
             amount,
             priceUsd,
             valueUsd: amount * priceUsd,
+            iconUrl: m?.iconUrl || dex.icons[b.coinType] || "",
           };
         })
         .filter((h) => h.amount > 0)
