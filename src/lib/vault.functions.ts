@@ -49,36 +49,39 @@ async function rawBalances(address: string): Promise<RawBalance[]> {
     .filter((b) => b.coinType && b.raw > 0);
 }
 
-type Meta = { symbol: string; decimals: number };
+type Meta = { symbol: string; decimals: number; iconUrl: string };
 
-/** Coin metadata (symbol + decimals) for a set of coin types. */
+/** Coin metadata (symbol + decimals + icon) for a set of coin types. */
 async function coinMetadata(coinTypes: string[]): Promise<Record<string, Meta>> {
   const out: Record<string, Meta> = {};
   if (!coinTypes.length) return out;
   const fields = coinTypes
-    .map((_, i) => `c${i}: coinMetadata(coinType: $t${i}) { symbol decimals }`)
+    .map((_, i) => `c${i}: coinMetadata(coinType: $t${i}) { symbol decimals iconUrl }`)
     .join("\n");
   const args = coinTypes.map((_, i) => `$t${i}: String!`).join(", ");
   const variables: Record<string, unknown> = {};
   coinTypes.forEach((t, i) => (variables[`t${i}`] = t));
-  const data = await gql<Record<string, { symbol?: string; decimals?: number } | null>>(
-    `query Meta(${args}) { ${fields} }`,
-    variables,
-  );
+  const data = await gql<
+    Record<string, { symbol?: string; decimals?: number; iconUrl?: string } | null>
+  >(`query Meta(${args}) { ${fields} }`, variables);
   coinTypes.forEach((t, i) => {
     const m = data?.[`c${i}`];
     out[t] = {
       symbol: m?.symbol || t.split("::").pop() || "TOKEN",
       decimals: typeof m?.decimals === "number" ? m.decimals : 9,
+      iconUrl: m?.iconUrl ?? "",
     };
   });
   return out;
 }
 
-/** USD prices per coin type, from the deepest DEX pair on Sui. */
-async function tokenPrices(coinTypes: string[]): Promise<Record<string, number>> {
+/** USD prices + DEX logos per coin type, from the deepest DEX pair on Sui. */
+async function tokenPrices(
+  coinTypes: string[],
+): Promise<{ prices: Record<string, number>; icons: Record<string, string> }> {
   const out: Record<string, number> = {};
-  if (!coinTypes.length) return out;
+  const icons: Record<string, string> = {};
+  if (!coinTypes.length) return { prices: out, icons };
   try {
     const res = await fetch(
       `https://api.dexscreener.com/latest/dex/tokens/${coinTypes.slice(0, 30).join(",")}`,
@@ -90,6 +93,7 @@ async function tokenPrices(coinTypes: string[]): Promise<Record<string, number>>
         baseToken?: { address?: string };
         priceUsd?: string;
         liquidity?: { usd?: number };
+        info?: { imageUrl?: string };
       }[];
     };
     const best: Record<string, number> = {};
@@ -102,12 +106,13 @@ async function tokenPrices(coinTypes: string[]): Promise<Record<string, number>>
       if (!(addr in best) || liq > best[addr]!) {
         best[addr] = liq;
         out[addr] = price;
+        if (p.info?.imageUrl) icons[addr] = p.info.imageUrl;
       }
     }
   } catch {
     /* prices stay empty */
   }
-  return out;
+  return { prices: out, icons };
 }
 
 async function suiUsdPrice(): Promise<number> {
@@ -129,6 +134,8 @@ export type Holding = {
   amount: number;
   priceUsd: number;
   valueUsd: number;
+  /** Token logo URL, empty when none is published. */
+  iconUrl: string;
 };
 
 export type VaultSizes = {
@@ -160,22 +167,23 @@ export const getVaultSizes = createServerFn({ method: "GET" }).handler(
       new Set([...poolRaw, ...treasuryRaw].map((b) => b.coinType)),
     );
     const nonSui = types.filter((t) => t !== SUI_TYPE);
-    const [meta, prices] = await Promise.all([coinMetadata(nonSui), tokenPrices(nonSui)]);
+    const [meta, dex] = await Promise.all([coinMetadata(types), tokenPrices(nonSui)]);
 
     const toHoldings = (raws: RawBalance[]): Holding[] =>
       raws
         .map((b) => {
           const isSui = b.coinType === SUI_TYPE;
-          const m = isSui ? { symbol: "SUI", decimals: 9 } : meta[b.coinType];
-          const decimals = m?.decimals ?? 9;
+          const m = meta[b.coinType];
+          const decimals = isSui ? 9 : (m?.decimals ?? 9);
           const amount = b.raw / 10 ** decimals;
-          const priceUsd = isSui ? suiUsd : (prices[b.coinType] ?? 0);
+          const priceUsd = isSui ? suiUsd : (dex.prices[b.coinType] ?? 0);
           return {
             coinType: b.coinType,
-            symbol: m?.symbol ?? "TOKEN",
+            symbol: isSui ? "SUI" : (m?.symbol ?? "TOKEN"),
             amount,
             priceUsd,
             valueUsd: amount * priceUsd,
+            iconUrl: m?.iconUrl || dex.icons[b.coinType] || "",
           };
         })
         .filter((h) => h.amount > 0)
