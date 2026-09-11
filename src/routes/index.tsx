@@ -75,6 +75,9 @@ function Home() {
             <span className="truncate font-display text-xl tracking-wide sm:text-2xl">$BLAST</span>
           </a>
           <nav className="hidden items-center gap-7 font-body text-sm font-medium sm:flex">
+            <a className="hover:text-primary" href="#chart">
+              Chart
+            </a>
             <a className="hover:text-primary" href="#story">
               The takeover
             </a>
@@ -121,6 +124,9 @@ function Home() {
 
         {/* compact link row for phones */}
         <nav className="flex items-center gap-4 overflow-x-auto border-t-[3px] border-border px-4 py-2 font-body text-xs font-bold tracking-[0.14em] uppercase sm:hidden">
+          <a className="shrink-0" href="#chart">
+            Chart
+          </a>
           <a className="shrink-0" href="#story">
             Takeover
           </a>
@@ -191,6 +197,8 @@ function Home() {
       </section>
 
       <Ticker />
+
+      <BlastChart />
 
       {/* arcade */}
       <section id="arcade" className="mx-auto max-w-6xl px-5 py-20 sm:py-24">
