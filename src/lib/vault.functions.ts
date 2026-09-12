@@ -304,7 +304,7 @@ export const getVaultSizes = createServerFn({ method: "GET" }).handler(
       fallbackSuiUsdPrice(),
     ]);
     const suiUsd = aftermath[coinTypeKey(SUI_TYPE)] ?? fallbackSuiUsd;
-    const [meta, dex, gecko, suiPump] = await Promise.all([
+    const [dex, gecko, suiPump] = await Promise.all([
       tokenPrices(nonSui),
       geckoTerminalPrices(nonSui),
       suiPumpPrices(nonSui, suiUsd),
