@@ -24,6 +24,7 @@ type Phase = "idle" | "playing" | "over";
 type Pop = { id: number; x: number; y: number; value: number };
 
 const STORAGE_KEY = "ourblast.blastclick.difficulty";
+const MISS_PENALTY = 5;
 
 export function BlastClick() {
   const { userId, connect, refresh, pay, recoverEntry } = useBlast();
@@ -235,6 +236,28 @@ export function BlastClick() {
 
   const hit = (event: React.MouseEvent<HTMLButtonElement>) => {
     if (phase !== "playing") return;
+    const rect = event.currentTarget.getBoundingClientRect();
+    const id = popId.current++;
+    const clickedTarget = (event.target as HTMLElement).closest("[data-blast-target]");
+
+    if (!clickedTarget) {
+      if (combo > 1) sfx.comboBreak();
+      setCombo(1);
+      lastClick.current = 0;
+      setScore((current) => Math.max(0, current - MISS_PENALTY));
+      setPops((list) => [
+        ...list.slice(-8),
+        {
+          id,
+          x: event.clientX - rect.left,
+          y: event.clientY - rect.top,
+          value: -MISS_PENALTY,
+        },
+      ]);
+      window.setTimeout(() => setPops((list) => list.filter((p) => p.id !== id)), 900);
+      return;
+    }
+
     const now = Date.now();
     const active = DIFFICULTIES[playedTier.current];
     const nextCombo =
@@ -242,9 +265,6 @@ export function BlastClick() {
     lastClick.current = now;
 
     const gained = Math.round(10 * nextCombo * active.multiplier);
-    const rect = event.currentTarget.getBoundingClientRect();
-    const id = popId.current++;
-
     if (nextCombo === 1 && combo > 2) sfx.comboBreak();
     else if (nextCombo % 5 === 0) sfx.comboUp(nextCombo);
     else sfx.hit(nextCombo);
@@ -326,6 +346,7 @@ export function BlastClick() {
         >
           {phase === "playing" ? (
             <span
+              data-blast-target
               className="animate-pulse-ring absolute grid -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full bg-primary transition-all duration-150"
               style={{
                 left: `${target.x}%`,
@@ -342,10 +363,10 @@ export function BlastClick() {
           {pops.map((p) => (
             <span
               key={p.id}
-              className="animate-float-up pointer-events-none absolute font-display text-2xl text-lime"
+              className={`animate-float-up pointer-events-none absolute font-display text-2xl ${p.value < 0 ? "text-destructive" : "text-lime"}`}
               style={{ left: p.x, top: p.y, ["--dx" as string]: "-50%" }}
             >
-              +{p.value}
+              {p.value > 0 ? "+" : ""}{p.value}
             </span>
           ))}
 
@@ -371,8 +392,8 @@ export function BlastClick() {
                 />
                 <h4 className="font-display text-4xl">Smash the blast</h4>
                 <p className="mt-3 font-body text-muted-foreground">
-                  30 seconds. Every hit is 10 points, and hitting fast stacks a combo. Miss a beat
-                  and the combo resets.
+                  30 seconds. Every hit starts at 10 points, and hitting fast stacks a combo. Tap
+                  outside the circle and you lose {MISS_PENALTY} points.
                 </p>
 
                 <div className="mt-5">

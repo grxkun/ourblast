@@ -84,11 +84,18 @@ export const postChatMessage = createServerFn({ method: "POST" })
     const { awardPoints, grantAchievement, today } = await import("./points.server");
     const day = today();
 
-    const { data: profile } = await supabaseAdmin
-      .from("profiles")
-      .select("is_banned, muted_until")
-      .eq("id", userId)
-      .maybeSingle();
+    const [{ data: profile }, { count: lastMinute }] = await Promise.all([
+      supabaseAdmin
+        .from("profiles")
+        .select("is_banned, muted_until")
+        .eq("id", userId)
+        .maybeSingle(),
+      supabaseAdmin
+        .from("chat_messages")
+        .select("id", { count: "exact", head: true })
+        .eq("user_id", userId)
+        .gte("created_at", new Date(Date.now() - 60_000).toISOString()),
+    ]);
     if (!profile) throw new Error("Profile not found.");
     if (profile.is_banned) throw new Error("This wallet is banned from OURBLAST.");
     if (profile.muted_until && new Date(profile.muted_until) > new Date()) {
@@ -97,11 +104,6 @@ export const postChatMessage = createServerFn({ method: "POST" })
 
     const body = cleanBody(data.body.trim());
 
-    const { count: lastMinute } = await supabaseAdmin
-      .from("chat_messages")
-      .select("id", { count: "exact", head: true })
-      .eq("user_id", userId)
-      .gte("created_at", new Date(Date.now() - 60_000).toISOString());
     if ((lastMinute ?? 0) >= 15) throw new Error("Slow down — too many messages.");
 
     const paymentId = await consumePayment(supabaseAdmin, data.paymentId, userId, "chat");
@@ -111,11 +113,17 @@ export const postChatMessage = createServerFn({ method: "POST" })
       .insert({ user_id: userId, body, payment_id: paymentId });
     if (error) throw new Error(error.message);
 
-    const { count: todayCount } = await supabaseAdmin
-      .from("chat_messages")
-      .select("id", { count: "exact", head: true })
-      .eq("user_id", userId)
-      .gte("created_at", `${day}T00:00:00.000Z`);
+    const [{ count: todayCount }, { count: total }] = await Promise.all([
+      supabaseAdmin
+        .from("chat_messages")
+        .select("id", { count: "exact", head: true })
+        .eq("user_id", userId)
+        .gte("created_at", `${day}T00:00:00.000Z`),
+      supabaseAdmin
+        .from("chat_messages")
+        .select("id", { count: "exact", head: true })
+        .eq("user_id", userId),
+    ]);
     const n = (todayCount ?? 0) - 1;
 
     let earned = 0;
@@ -129,10 +137,6 @@ export const postChatMessage = createServerFn({ method: "POST" })
       );
     }
 
-    const { count: total } = await supabaseAdmin
-      .from("chat_messages")
-      .select("id", { count: "exact", head: true })
-      .eq("user_id", userId);
     if ((total ?? 0) >= 100) {
       const res = await grantAchievement(supabaseAdmin, userId, "chatterblast");
       earned += res.points;

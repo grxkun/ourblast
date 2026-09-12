@@ -129,8 +129,8 @@ export const verifyPayment = createServerFn({ method: "POST" })
     // A freshly executed transaction can take a few seconds to be readable, so
     // keep asking before giving up.
     let tx: ChainTx | null = null;
-    for (let attempt = 0; attempt < 10 && !tx; attempt++) {
-      if (attempt > 0) await new Promise((r) => setTimeout(r, 1500));
+    for (let attempt = 0; attempt < 6 && !tx; attempt++) {
+      if (attempt > 0) await new Promise((r) => setTimeout(r, 600));
       const result = await suiQuery<{ transaction: ChainTx | null }>(
         `query Tx($digest: String!) { transaction(digest: $digest) { ${TX_FIELDS} } }`,
         { digest: data.digest },

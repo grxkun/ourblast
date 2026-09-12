@@ -5,6 +5,7 @@ import { FEES } from "@/lib/ourblast.config";
 const STORAGE_KEY = "ourblast.tutorial.blastclick.v1";
 const COMBO_WINDOW_MS = 450;
 const TIMED_MS = 6000;
+const MISS_PENALTY = 5;
 
 type Pop = { id: number; x: number; y: number; value: number };
 
@@ -12,7 +13,7 @@ const STEPS = [
   {
     title: "Hit the blast",
     goal: "Tap the red blast once.",
-    body: "The blast jumps to a new spot after every hit. Anywhere inside the board counts — speed matters more than precision.",
+    body: "Only the red circle counts. A miss costs 5 practice points, so aim before you tap.",
   },
   {
     title: "Chain a combo",
@@ -90,14 +91,33 @@ export function BlastTutorial({ onPlay }: { onPlay?: () => void }) {
 
   const hit = (event: React.MouseEvent<HTMLButtonElement>) => {
     if (finished) return;
+    const rect = event.currentTarget.getBoundingClientRect();
+    const id = popId.current++;
+    const clickedTarget = (event.target as HTMLElement).closest("[data-blast-target]");
+
+    if (!clickedTarget) {
+      setCombo(1);
+      lastHit.current = 0;
+      setScore((current) => Math.max(0, current - MISS_PENALTY));
+      setPops((list) => [
+        ...list.slice(-6),
+        {
+          id,
+          x: event.clientX - rect.left,
+          y: event.clientY - rect.top,
+          value: -MISS_PENALTY,
+        },
+      ]);
+      window.setTimeout(() => setPops((list) => list.filter((p) => p.id !== id)), 800);
+      return;
+    }
+
     const now = Date.now();
     const fast = now - lastHit.current < COMBO_WINDOW_MS;
     const nextCombo = fast ? Math.min(combo + 1, 12) : 1;
     const gained = 10 * nextCombo;
     lastHit.current = now;
 
-    const rect = event.currentTarget.getBoundingClientRect();
-    const id = popId.current++;
     setPops((list) => [
       ...list.slice(-6),
       { id, x: event.clientX - rect.left, y: event.clientY - rect.top, value: gained },
@@ -258,6 +278,7 @@ export function BlastTutorial({ onPlay }: { onPlay?: () => void }) {
             className="grid-noise relative block h-64 w-full touch-manipulation cursor-crosshair select-none sm:h-72"
           >
             <span
+              data-blast-target
               className="animate-pulse-ring absolute grid size-20 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full bg-primary text-3xl transition-all duration-100 sm:size-24"
               style={{ left: `${target.x}%`, top: `${target.y}%` }}
             >
@@ -267,10 +288,10 @@ export function BlastTutorial({ onPlay }: { onPlay?: () => void }) {
             {pops.map((p) => (
               <span
                 key={p.id}
-                className="animate-float-up pointer-events-none absolute font-display text-xl text-lime"
+                className={`animate-float-up pointer-events-none absolute font-display text-xl ${p.value < 0 ? "text-destructive" : "text-lime"}`}
                 style={{ left: p.x, top: p.y, ["--dx" as string]: "-50%" }}
               >
-                +{p.value}
+                {p.value > 0 ? "+" : ""}{p.value}
               </span>
             ))}
           </button>
