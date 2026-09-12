@@ -5,7 +5,6 @@ import {
   FOUNDER_ADDRESS,
   MIST_PER_SUI,
   PRIZE_POOL_ADDRESS,
-  SUI_FULLNODES,
   type PaymentPurpose,
   treasuryAddress,
 } from "./ourblast.config";
@@ -73,31 +72,7 @@ export async function payFeeToTreasury(
   }
   if (!digest) throw new Error("Wallet did not return a transaction.");
 
-  // Wait until the transaction is actually readable on a fullnode, otherwise
-  // the server-side check can run before the network has indexed it.
-  await waitForDigest(digest, chain);
+  // The server verifies this digest against Sui GraphQL. Returning immediately
+  // avoids waiting on the retired JSON-RPC transaction lookup first.
   return digest;
-}
-
-async function waitForDigest(digest: string, chain: string): Promise<void> {
-  const url = SUI_FULLNODES[chain] ?? SUI_FULLNODES[DEFAULT_SUI_CHAIN]!;
-  for (let attempt = 0; attempt < 15; attempt++) {
-    try {
-      const res = await fetch(url, {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          jsonrpc: "2.0",
-          id: 1,
-          method: "sui_getTransactionBlock",
-          params: [digest, { showEffects: true }],
-        }),
-      });
-      const json = (await res.json()) as { result?: unknown };
-      if (json.result) return;
-    } catch {
-      /* transient network issue in a wallet browser — keep polling */
-    }
-    await new Promise((r) => setTimeout(r, 1500));
-  }
 }

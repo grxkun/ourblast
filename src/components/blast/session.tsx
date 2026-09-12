@@ -222,11 +222,11 @@ export function BlastProvider({ children }: { children: React.ReactNode }) {
         }
       }
 
-      // The payment is already on chain; retry the check while the network
-      // catches up so a slow fullnode never costs the player their fee.
+      // Verification already retries briefly on the server. One quick retry
+      // covers an unusually slow index without making every message wait.
       let lastError: unknown;
-      for (let attempt = 0; attempt < 4; attempt++) {
-        if (attempt > 0) await new Promise((r) => setTimeout(r, 2500));
+      for (let attempt = 0; attempt < 2; attempt++) {
+        if (attempt > 0) await new Promise((r) => setTimeout(r, 800));
         try {
           const { paymentId } = await verifyPayment({ data: { digest, purpose } });
           return paymentId;
