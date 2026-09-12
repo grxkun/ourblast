@@ -9,6 +9,7 @@
 - [x] Treasury payments: 1 SUI per game and 0.1 SUI per chat message, verified on-chain before rewards
 - [x] Blast Click precision: target hits score; misses reset combo and deduct 5 points
 - [x] Faster chat payments through current Sui indexing and shorter confirmation retries
+- [x] Slush wallet identity metadata with absolute OURBLAST favicon, touch icon, and manifest URLs
 - [ ] Season resets and treasury payout tooling
 - [ ] Real meme submissions to kick off the first meme battle
 - [ ] More arcade games

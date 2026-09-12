@@ -2,6 +2,7 @@
   "name": "OURBLAST — $BLAST Community Arcade",
   "short_name": "OURBLAST",
   "description": "Community-owned $BLAST hub: live chart, arcade games, leaderboard and BLAST POINTS on Sui.",
+  "id": "/",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
@@ -9,8 +10,8 @@
   "background_color": "#f6efe2",
   "theme_color": "#e23b2e",
   "icons": [
-    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
-    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
-    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+    { "src": "https://ourblast.xyz/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "https://ourblast.xyz/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "https://ourblast.xyz/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
   ]
 }
