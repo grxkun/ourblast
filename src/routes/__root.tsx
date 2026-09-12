@@ -108,6 +108,12 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       },
       {
         rel: "icon",
+        href: "https://ourblast.xyz/favicon.ico",
+        type: "image/x-icon",
+        sizes: "any",
+      },
+      {
+        rel: "icon",
         href: "https://ourblast.xyz/favicon-32x32.png",
         type: "image/png",
         sizes: "32x32",
@@ -120,8 +126,8 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       },
       {
         rel: "shortcut icon",
-        href: "https://ourblast.xyz/favicon.png",
-        type: "image/png",
+        href: "https://ourblast.xyz/favicon.ico",
+        type: "image/x-icon",
       },
     ],
   }),
