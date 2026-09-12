@@ -1,4 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
+import { Aftermath } from "aftermath-ts-sdk";
 
 import {
   DEFAULT_SUI_CHAIN,
@@ -31,6 +32,13 @@ async function gql<T>(query: string, variables: Record<string, unknown>): Promis
 
 type RawBalance = { coinType: string; raw: number };
 
+function coinTypeKey(coinType: string): string {
+  const [address, ...rest] = coinType.split("::");
+  if (!address || !rest.length) return coinType;
+  const compactAddress = address.toLowerCase().replace(/^0x0+/, "0x") || "0x0";
+  return `${compactAddress}::${rest.join("::")}`;
+}
+
 /** Every coin balance held by an address (raw units). */
 async function rawBalances(address: string): Promise<RawBalance[]> {
   const data = await gql<{
@@ -50,6 +58,34 @@ async function rawBalances(address: string): Promise<RawBalance[]> {
 }
 
 type Meta = { symbol: string; decimals: number; iconUrl: string };
+
+/** Primary Sui-native USD price index, batched through Aftermath Finance. */
+async function aftermathPrices(coinTypes: string[]): Promise<Record<string, number>> {
+  const prices: Record<string, number> = {};
+  if (!coinTypes.length) return prices;
+
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 6_000);
+    try {
+      const sdk = await Aftermath.create({ network: "MAINNET" }, controller.signal);
+      const response = await sdk.Prices().getCoinsToPrice(
+        { coins: coinTypes },
+        controller.signal,
+      );
+      for (const [coinType, value] of Object.entries(response)) {
+        const price = Number(value);
+        if (Number.isFinite(price) && price > 0) prices[coinTypeKey(coinType)] = price;
+      }
+    } finally {
+      clearTimeout(timeout);
+    }
+  } catch {
+    /* existing independent providers remain available below */
+  }
+
+  return prices;
+}
 
 /** Coin metadata (symbol + decimals + icon) for a set of coin types. */
 async function coinMetadata(coinTypes: string[]): Promise<Record<string, Meta>> {
@@ -179,7 +215,7 @@ async function suiPumpPrices(
   return { prices, icons };
 }
 
-async function suiUsdPrice(): Promise<number> {
+async function fallbackSuiUsdPrice(): Promise<number> {
   const sources: { url: string; read: (json: unknown) => number }[] = [
     {
       url: "https://api.coinpaprika.com/v1/tickers/sui-sui",
@@ -253,18 +289,22 @@ export const getVaultSizes = createServerFn({ method: "GET" }).handler(
       process.env['OURBLAST_TREASURY_ADDRESS'] ?? DEFAULT_TREASURY_ADDRESS
     ).toLowerCase();
 
-    const [poolRaw, treasuryRaw, suiUsd] = await Promise.all([
+    const [poolRaw, treasuryRaw] = await Promise.all([
       rawBalances(PRIZE_POOL_ADDRESS),
       rawBalances(treasury),
-      suiUsdPrice(),
     ]);
 
     const types = Array.from(
       new Set([...poolRaw, ...treasuryRaw].map((b) => b.coinType)),
     );
-    const nonSui = types.filter((t) => t !== SUI_TYPE);
-    const [meta, dex, gecko, suiPump] = await Promise.all([
+    const nonSui = types.filter((t) => coinTypeKey(t) !== coinTypeKey(SUI_TYPE));
+    const [meta, aftermath, fallbackSuiUsd] = await Promise.all([
       coinMetadata(types),
+      aftermathPrices(types),
+      fallbackSuiUsdPrice(),
+    ]);
+    const suiUsd = aftermath[coinTypeKey(SUI_TYPE)] ?? fallbackSuiUsd;
+    const [dex, gecko, suiPump] = await Promise.all([
       tokenPrices(nonSui),
       geckoTerminalPrices(nonSui),
       suiPumpPrices(nonSui, suiUsd),
@@ -273,13 +313,15 @@ export const getVaultSizes = createServerFn({ method: "GET" }).handler(
     const toHoldings = (raws: RawBalance[]): Holding[] =>
       raws
         .map((b) => {
-          const isSui = b.coinType === SUI_TYPE;
+          const key = coinTypeKey(b.coinType);
+          const isSui = key === coinTypeKey(SUI_TYPE);
           const m = meta[b.coinType];
           const decimals = isSui ? 9 : (m?.decimals ?? 9);
           const amount = b.raw / 10 ** decimals;
           const priceUsd = isSui
             ? suiUsd
-            : (dex.prices[b.coinType] ??
+            : (aftermath[key] ??
+              dex.prices[b.coinType] ??
               gecko[b.coinType] ??
               suiPump.prices[b.coinType] ??
               0);
