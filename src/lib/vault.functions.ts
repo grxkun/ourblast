@@ -12,7 +12,7 @@ const SUI_TYPE =
   "0x0000000000000000000000000000000000000000000000000000000000000002::sui::SUI";
 
 function graphqlEndpoint(): string {
-  return SUI_GRAPHQL[DEFAULT_SUI_CHAIN] ?? SUI_GRAPHQL.mainnet;
+  return SUI_GRAPHQL[DEFAULT_SUI_CHAIN] ?? "https://graphql.mainnet.sui.io/graphql";
 }
 
 async function gql<T>(query: string, variables: Record<string, unknown>): Promise<T | null> {
