@@ -12,7 +12,7 @@ const SUI_TYPE =
   "0x0000000000000000000000000000000000000000000000000000000000000002::sui::SUI";
 
 function graphqlEndpoint(): string {
-  return SUI_GRAPHQL[DEFAULT_SUI_CHAIN]!;
+  return SUI_GRAPHQL[DEFAULT_SUI_CHAIN] ?? "https://graphql.mainnet.sui.io/graphql";
 }
 
 async function gql<T>(query: string, variables: Record<string, unknown>): Promise<T | null> {
@@ -103,7 +103,7 @@ async function tokenPrices(
       const price = Number(p.priceUsd ?? 0);
       const liq = Number(p.liquidity?.usd ?? 0);
       if (!addr || !price) continue;
-      if (!(addr in best) || liq > best[addr]!) {
+      if (!(addr in best) || liq > (best[addr] ?? 0)) {
         best[addr] = liq;
         out[addr] = price;
         if (p.info?.imageUrl) icons[addr] = p.info.imageUrl;
@@ -115,17 +115,77 @@ async function tokenPrices(
   return { prices: out, icons };
 }
 
-async function suiUsdPrice(): Promise<number> {
+/** Prices for tokens still trading on SuiPump's bonding curve, quoted in SUI. */
+async function suiPumpPrices(
+  coinTypes: string[],
+  suiUsd: number,
+): Promise<{ prices: Record<string, number>; icons: Record<string, string> }> {
+  const prices: Record<string, number> = {};
+  const icons: Record<string, string> = {};
+  if (!coinTypes.length || !suiUsd) return { prices, icons };
+
   try {
-    const res = await fetch(
-      "https://api.coingecko.com/api/v3/simple/price?ids=sui&vs_currencies=usd",
-      { headers: { accept: "application/json" } },
-    );
-    const json = (await res.json()) as { sui?: { usd?: number } };
-    return Number(json.sui?.usd ?? 0);
+    const res = await fetch("https://suipump-main-web.onrender.com/tokens", {
+      headers: { accept: "application/json" },
+    });
+    if (!res.ok) return { prices, icons };
+    const tokens = (await res.json()) as {
+      tokenType?: string;
+      iconUrl?: string;
+      stats?: { live_price_sui?: number | null; last_price?: number | null };
+    }[];
+    const wanted = new Set(coinTypes);
+    for (const token of tokens) {
+      const coinType = token.tokenType ?? "";
+      if (!wanted.has(coinType)) continue;
+      const priceSui = Number(token.stats?.live_price_sui ?? token.stats?.last_price ?? 0);
+      if (priceSui > 0) prices[coinType] = priceSui * suiUsd;
+      if (token.iconUrl) icons[coinType] = token.iconUrl;
+    }
   } catch {
-    return 0;
+    /* launchpad prices stay empty */
   }
+  return { prices, icons };
+}
+
+async function suiUsdPrice(): Promise<number> {
+  const sources: { url: string; read: (json: unknown) => number }[] = [
+    {
+      url: "https://api.binance.com/api/v3/ticker/price?symbol=SUIUSDT",
+      read: (json) => Number((json as { price?: string }).price ?? 0),
+    },
+    {
+      url: "https://api.coingecko.com/api/v3/simple/price?ids=sui&vs_currencies=usd",
+      read: (json) => Number((json as { sui?: { usd?: number } }).sui?.usd ?? 0),
+    },
+    {
+      url: `https://api.dexscreener.com/latest/dex/tokens/${SUI_TYPE}`,
+      read: (json) => {
+        const pairs = (json as { pairs?: { priceUsd?: string; liquidity?: { usd?: number } }[] })
+          .pairs ?? [];
+        const deepest = pairs.reduce<(typeof pairs)[number] | null>((best, pair) => {
+          const liquidity = Number(pair.liquidity?.usd ?? 0);
+          const bestLiquidity = Number(best?.liquidity?.usd ?? 0);
+          return liquidity > bestLiquidity ? pair : best;
+        }, null);
+        return Number(deepest?.priceUsd ?? 0);
+      },
+    },
+  ];
+
+  for (const source of sources) {
+    try {
+      const res = await fetch(source.url, {
+        headers: { accept: "application/json" },
+      });
+      if (!res.ok) continue;
+      const price = source.read(await res.json());
+      if (Number.isFinite(price) && price > 0) return price;
+    } catch {
+      /* try the next independent price source */
+    }
+  }
+  return 0;
 }
 
 export type Holding = {
@@ -167,7 +227,11 @@ export const getVaultSizes = createServerFn({ method: "GET" }).handler(
       new Set([...poolRaw, ...treasuryRaw].map((b) => b.coinType)),
     );
     const nonSui = types.filter((t) => t !== SUI_TYPE);
-    const [meta, dex] = await Promise.all([coinMetadata(types), tokenPrices(nonSui)]);
+    const [meta, dex, suiPump] = await Promise.all([
+      coinMetadata(types),
+      tokenPrices(nonSui),
+      suiPumpPrices(nonSui, suiUsd),
+    ]);
 
     const toHoldings = (raws: RawBalance[]): Holding[] =>
       raws
@@ -176,14 +240,16 @@ export const getVaultSizes = createServerFn({ method: "GET" }).handler(
           const m = meta[b.coinType];
           const decimals = isSui ? 9 : (m?.decimals ?? 9);
           const amount = b.raw / 10 ** decimals;
-          const priceUsd = isSui ? suiUsd : (dex.prices[b.coinType] ?? 0);
+          const priceUsd = isSui
+            ? suiUsd
+            : (dex.prices[b.coinType] ?? suiPump.prices[b.coinType] ?? 0);
           return {
             coinType: b.coinType,
             symbol: isSui ? "SUI" : (m?.symbol ?? "TOKEN"),
             amount,
             priceUsd,
             valueUsd: amount * priceUsd,
-            iconUrl: m?.iconUrl || dex.icons[b.coinType] || "",
+            iconUrl: m?.iconUrl || dex.icons[b.coinType] || suiPump.icons[b.coinType] || "",
           };
         })
         .filter((h) => h.amount > 0)
