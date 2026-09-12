@@ -115,6 +115,37 @@ async function tokenPrices(
   return { prices: out, icons };
 }
 
+/** Independent DEX price fallback for hosts that DexScreener rate-limits. */
+async function geckoTerminalPrices(coinTypes: string[]): Promise<Record<string, number>> {
+  const prices: Record<string, number> = {};
+  if (!coinTypes.length) return prices;
+  try {
+    const encoded = coinTypes.map(encodeURIComponent).join(",");
+    const res = await fetch(
+      `https://api.geckoterminal.com/api/v2/simple/networks/sui-network/token_price/${encoded}`,
+      {
+        headers: {
+          accept: "application/json",
+          "user-agent": "OURBLAST/1.0",
+        },
+      },
+    );
+    if (!res.ok) return prices;
+    const json = (await res.json()) as {
+      data?: { attributes?: { token_prices?: Record<string, string | null> } };
+    };
+    for (const [coinType, value] of Object.entries(
+      json.data?.attributes?.token_prices ?? {},
+    )) {
+      const price = Number(value ?? 0);
+      if (Number.isFinite(price) && price > 0) prices[coinType] = price;
+    }
+  } catch {
+    /* fallback prices stay empty */
+  }
+  return prices;
+}
+
 /** Prices for tokens still trading on SuiPump's bonding curve, quoted in SUI. */
 async function suiPumpPrices(
   coinTypes: string[],
@@ -150,6 +181,11 @@ async function suiPumpPrices(
 
 async function suiUsdPrice(): Promise<number> {
   const sources: { url: string; read: (json: unknown) => number }[] = [
+    {
+      url: "https://api.coinpaprika.com/v1/tickers/sui-sui",
+      read: (json) =>
+        Number((json as { quotes?: { USD?: { price?: number } } }).quotes?.USD?.price ?? 0),
+    },
     {
       url: "https://api.binance.com/api/v3/ticker/price?symbol=SUIUSDT",
       read: (json) => Number((json as { price?: string }).price ?? 0),
@@ -227,9 +263,10 @@ export const getVaultSizes = createServerFn({ method: "GET" }).handler(
       new Set([...poolRaw, ...treasuryRaw].map((b) => b.coinType)),
     );
     const nonSui = types.filter((t) => t !== SUI_TYPE);
-    const [meta, dex, suiPump] = await Promise.all([
+    const [meta, dex, gecko, suiPump] = await Promise.all([
       coinMetadata(types),
       tokenPrices(nonSui),
+      geckoTerminalPrices(nonSui),
       suiPumpPrices(nonSui, suiUsd),
     ]);
 
@@ -242,7 +279,10 @@ export const getVaultSizes = createServerFn({ method: "GET" }).handler(
           const amount = b.raw / 10 ** decimals;
           const priceUsd = isSui
             ? suiUsd
-            : (dex.prices[b.coinType] ?? suiPump.prices[b.coinType] ?? 0);
+            : (dex.prices[b.coinType] ??
+              gecko[b.coinType] ??
+              suiPump.prices[b.coinType] ??
+              0);
           return {
             coinType: b.coinType,
             symbol: isSui ? "SUI" : (m?.symbol ?? "TOKEN"),
