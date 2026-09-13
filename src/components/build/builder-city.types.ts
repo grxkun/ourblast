@@ -7,10 +7,17 @@ export type CityBuilding = {
   position_y: number;
   builder_repositories?: {
     name: string;
+    full_name?: string | null;
+    owner?: string | null;
     sui_relevance: number;
     description: string | null;
   } | null;
 };
+
+export type CityCameraCommand =
+  | { id: number; type: "rotate"; amount: number }
+  | { id: number; type: "zoom"; amount: number }
+  | { id: number; type: "preset"; preset: "helicopter" | "isometric" };
 
 export type BuilderCitySceneProps = {
   buildings: CityBuilding[];
@@ -21,4 +28,6 @@ export type BuilderCitySceneProps = {
   profileEnabled: boolean;
   onSelect: (building: CityBuilding) => void;
   onOpenProfile: () => void;
+  cameraCommand?: CityCameraCommand;
+  visibleLevel?: number | null;
 };

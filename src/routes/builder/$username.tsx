@@ -44,7 +44,7 @@ function PublicBuilder() {
   const buildings = repos.map((repo, index) => ({
     id: repo.id, building_type: repo.building_type, building_level: repo.building_level,
     district_key: repo.building_type, position_x: index % 4, position_y: Math.floor(index / 4),
-    builder_repositories: { name: repo.name, sui_relevance: repo.sui_relevance, description: repo.description },
+    builder_repositories: { name: repo.name, full_name: repo.full_name, owner: repo.full_name.split("/")[0] || builder.github_username || null, sui_relevance: repo.sui_relevance, description: repo.description },
   }));
   return <div className="theme-build -mx-4 -mt-6 min-h-screen bg-build-bg text-build-text lg:-mb-16">
     <header className="border-b border-build-line px-4 py-5"><div className="mx-auto flex max-w-6xl items-center justify-between"><Link to="/build" className="font-build text-xl font-bold normal-case"><span className="text-build-cyan">BLAST</span> BUILD</Link><CityShareCard compact username={builder.github_username ?? "builder"} cityLevel={city?.city_level ?? builder.builder_level} builderPower={city?.builder_power ?? builder.builder_score} projects={builder.verified_repository_count} commits={builder.total_commits} packages={builder.verified_package_count}/></div></header>

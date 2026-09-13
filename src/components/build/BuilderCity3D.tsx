@@ -1,7 +1,8 @@
-import { Environment, Html, Lightformer, OrbitControls, RoundedBox } from "@react-three/drei";
+import { Environment, Html, Lightformer, OrbitControls, RoundedBox, Sky } from "@react-three/drei";
 import { Canvas, type ThreeEvent, useFrame, useThree } from "@react-three/fiber";
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import * as THREE from "three";
+import type { OrbitControls as OrbitControlsImpl } from "three-stdlib";
 
 import { BUILDING_LABELS, type BuildingType } from "@/lib/blast-build.config";
 import type { BuilderCitySceneProps, CityBuilding } from "./builder-city.types";
@@ -22,6 +23,10 @@ const CITY = {
   trunk: "#6d4935",
   foliage: "#477a4c",
   light: "#ffe5a1",
+  hill: "#6e8c67",
+  skyline: "#768b86",
+  skylineDark: "#526664",
+  path: "#bda98b",
 } as const;
 
 const typeColors: Record<BuildingType, string> = {
@@ -114,8 +119,8 @@ function Building({ building, index, selected, interactive, onSelect }: {
       {(selected || hovered) && (
         <Html position={[0, height + 1.35, 0]} center distanceFactor={12} style={{ pointerEvents: "none" }}>
           <div className="city-3d-label">
-            <strong>{building.builder_repositories?.name ?? BUILDING_LABELS[type]}</strong>
-            <span>DEV L{building.building_level}</span>
+            <strong>@{building.builder_repositories?.owner ?? "builder"} / {building.builder_repositories?.name ?? BUILDING_LABELS[type]}</strong>
+            <span>DEV L{building.building_level} · SUI {building.builder_repositories?.sui_relevance ?? 0}</span>
           </div>
         </Html>
       )}
@@ -135,6 +140,86 @@ function Lamp({ position }: { position: [number, number, number] }) {
     <mesh position-y={0.8} castShadow><cylinderGeometry args={[0.045, 0.07, 1.6, 7]} /><meshStandardMaterial color={CITY.ink} /></mesh>
     <mesh position-y={1.65}><sphereGeometry args={[0.14, 10, 8]} /><meshStandardMaterial color={CITY.light} emissive={CITY.light} emissiveIntensity={1.5} /></mesh>
   </group>;
+}
+
+function DistantSkyline() {
+  const towers = useMemo(() => Array.from({ length: 22 }, (_, index) => {
+    const side = index < 11 ? -1 : 1;
+    const lane = index % 11;
+    return {
+      x: -15 + lane * 3,
+      z: side * (13.4 + (lane % 3) * 1.05),
+      height: 2.4 + ((index * 17) % 6) * 0.68,
+      width: 1.7 + (index % 3) * 0.38,
+      color: index % 3 === 0 ? CITY.skylineDark : CITY.skyline,
+    };
+  }), []);
+  return <group>
+    {towers.map((tower, index) => <group key={index} position={[tower.x, tower.height / 2 - 0.1, tower.z]}>
+      <mesh castShadow receiveShadow>
+        <boxGeometry args={[tower.width, tower.height, tower.width * 0.8]} />
+        <meshStandardMaterial color={tower.color} roughness={0.88} />
+      </mesh>
+      {Array.from({ length: Math.max(2, Math.floor(tower.height)) }).map((_, floor) => <mesh key={floor} position={[0, -tower.height / 2 + 0.65 + floor * 0.72, sideFacing(tower.z)]}>
+        <boxGeometry args={[tower.width * 0.58, 0.16, 0.035]} />
+        <meshStandardMaterial color={CITY.glass} emissive={CITY.glass} emissiveIntensity={0.13} />
+      </mesh>)}
+    </group>)}
+  </group>;
+}
+
+function sideFacing(z: number) {
+  return z < 0 ? 0.82 : -0.82;
+}
+
+function Landscape() {
+  const hills = useMemo(() => Array.from({ length: 13 }, (_, index) => ({
+    x: -24 + index * 4,
+    z: index % 2 === 0 ? -20 : 20,
+    scale: 3.2 + (index % 4) * 0.75,
+  })), []);
+  return <>
+    <mesh position-y={-0.9} receiveShadow><cylinderGeometry args={[25, 27, 1.8, 12]} /><meshStandardMaterial color={CITY.grassDark} roughness={1} /></mesh>
+    <mesh position-y={-0.05} receiveShadow><boxGeometry args={[45, 0.42, 34]} /><meshStandardMaterial color={CITY.grass} roughness={1} /></mesh>
+    {hills.map((hill, index) => <mesh key={index} position={[hill.x, 0.45, hill.z]} scale={[hill.scale, 1.1 + (index % 3) * 0.35, hill.scale]} castShadow>
+      <dodecahedronGeometry args={[1, 0]} /><meshStandardMaterial color={index % 2 ? CITY.hill : CITY.grassDark} flatShading roughness={1} />
+    </mesh>)}
+    <DistantSkyline />
+  </>;
+}
+
+function CameraRig({ cameraCommand, controls }: { cameraCommand: BuilderCitySceneProps["cameraCommand"]; controls: React.RefObject<OrbitControlsImpl | null> }) {
+  const { camera } = useThree();
+  const goal = useRef<{ position: THREE.Vector3; target: THREE.Vector3 } | null>(null);
+
+  useEffect(() => {
+    const orbit = controls.current;
+    if (!orbit || !cameraCommand) return;
+    if (cameraCommand.type === "rotate") {
+      const offset = camera.position.clone().sub(orbit.target).applyAxisAngle(new THREE.Vector3(0, 1, 0), cameraCommand.amount);
+      goal.current = { position: orbit.target.clone().add(offset), target: orbit.target.clone() };
+    } else if (cameraCommand.type === "zoom") {
+      const direction = camera.position.clone().sub(orbit.target).normalize();
+      const distance = THREE.MathUtils.clamp(camera.position.distanceTo(orbit.target) + cameraCommand.amount, 11, 48);
+      goal.current = { position: orbit.target.clone().add(direction.multiplyScalar(distance)), target: orbit.target.clone() };
+    } else {
+      goal.current = cameraCommand.preset === "helicopter"
+        ? { position: new THREE.Vector3(0.01, 38, 11), target: new THREE.Vector3(0, 0.7, 0) }
+        : { position: new THREE.Vector3(18, 17, 23), target: new THREE.Vector3(0, 1.4, 0) };
+    }
+  }, [camera, cameraCommand, controls]);
+
+  useFrame((_, delta) => {
+    const orbit = controls.current;
+    const next = goal.current;
+    if (!orbit || !next) return;
+    const blend = 1 - Math.exp(-5 * Math.min(delta, 0.05));
+    camera.position.lerp(next.position, blend);
+    orbit.target.lerp(next.target, blend);
+    orbit.update();
+    if (camera.position.distanceTo(next.position) < 0.04 && orbit.target.distanceTo(next.target) < 0.04) goal.current = null;
+  });
+  return null;
 }
 
 function Headquarters({ username, level, profileEnabled, onOpen }: { username: string; level: number; profileEnabled: boolean; onOpen: () => void }) {
@@ -158,16 +243,19 @@ function Headquarters({ username, level, profileEnabled, onOpen }: { username: s
   </group>;
 }
 
-function Scene({ buildings, username, level, interactive, selectedId, profileEnabled, onSelect, onOpenProfile }: BuilderCitySceneProps) {
+function Scene({ buildings, username, level, interactive, selectedId, profileEnabled, onSelect, onOpenProfile, cameraCommand, visibleLevel }: BuilderCitySceneProps) {
   const treePositions = useMemo<Array<[number, number, number]>>(() => [
     [-9.2, 0.28, -7], [-7.6, 0.28, 7], [-4.3, 0.28, 7.1], [4.3, 0.28, 7.1], [7.7, 0.28, 7], [9.1, 0.28, -7],
     [-9.4, 0.28, 2.2], [9.4, 0.28, 2.3], [-4.6, 0.28, -7], [4.7, 0.28, -7],
   ], []);
   const { gl } = useThree();
+  const controls = useRef<OrbitControlsImpl>(null);
+  const visibleBuildings = visibleLevel === null || visibleLevel === undefined ? buildings : buildings.filter((building) => building.building_level === visibleLevel);
 
   return <>
     <color attach="background" args={[CITY.sky]} />
-    <fog attach="fog" args={[CITY.fog, 22, 48]} />
+    <fog attach="fog" args={[CITY.fog, 40, 78]} />
+    <Sky distance={450000} sunPosition={[-8, 14, 8]} inclination={0.54} azimuth={0.2} turbidity={7} rayleigh={1.8} mieCoefficient={0.004} mieDirectionalG={0.78} />
     <hemisphereLight args={[CITY.sky, CITY.grassDark, 1.25]} />
     <directionalLight position={[-10, 18, 11]} intensity={2.2} castShadow shadow-mapSize-width={1024} shadow-mapSize-height={1024} shadow-camera-left={-18} shadow-camera-right={18} shadow-camera-top={18} shadow-camera-bottom={-18} />
     <Environment>
@@ -175,6 +263,7 @@ function Scene({ buildings, username, level, interactive, selectedId, profileEna
       <Lightformer intensity={0.7} color={CITY.cyan} position={[-10, 3, -4]} rotation-y={Math.PI / 2} scale={[12, 3, 1]} />
     </Environment>
 
+    <Landscape />
     <mesh position-y={-0.55} receiveShadow><cylinderGeometry args={[16.7, 17.3, 1.2, 8]} /><meshStandardMaterial color={CITY.grassDark} roughness={1} /></mesh>
     <mesh position-y={0} receiveShadow><boxGeometry args={[25.5, 0.35, 20]} /><meshStandardMaterial color={CITY.grass} roughness={1} /></mesh>
 
@@ -189,22 +278,25 @@ function Scene({ buildings, username, level, interactive, selectedId, profileEna
     {[-7.7, -4.7, 4.7, 7.7].flatMap((x) => [-1.7, 1.7].map((z) => <Lamp key={`${x}-${z}`} position={[x, 0.32, z]} />))}
 
     <Headquarters username={username} level={level} profileEnabled={profileEnabled} onOpen={onOpenProfile} />
-    {buildings.slice(0, 10).map((building, index) => <Building key={building.id} building={building} index={index} selected={selectedId === building.id} interactive={interactive} onSelect={onSelect} />)}
+    {visibleBuildings.slice(0, 10).map((building) => {
+      const index = buildings.findIndex((candidate) => candidate.id === building.id);
+      return <Building key={building.id} building={building} index={index} selected={selectedId === building.id} interactive={interactive} onSelect={onSelect} />;
+    })}
 
     <OrbitControls
+      ref={controls}
       makeDefault
       target={[0, 1.4, 0]}
       minDistance={15}
-      maxDistance={34}
-      minPolarAngle={0.55}
-      maxPolarAngle={1.25}
-      minAzimuthAngle={-1.25}
-      maxAzimuthAngle={1.25}
+      maxDistance={48}
+      minPolarAngle={0.08}
+      maxPolarAngle={1.45}
       enablePan={false}
       dampingFactor={0.08}
       onStart={() => { gl.domElement.style.cursor = "grabbing"; }}
       onEnd={() => { gl.domElement.style.cursor = "grab"; }}
     />
+    <CameraRig cameraCommand={cameraCommand} controls={controls} />
   </>;
 }
 
@@ -212,9 +304,9 @@ export default function BuilderCity3D(props: BuilderCitySceneProps & { resetKey:
   return <Canvas
     key={props.resetKey}
     shadows
-    dpr={[1, 1.5]}
-    camera={{ position: [17, 18, 22], fov: 38, near: 0.1, far: 90 }}
-    gl={{ antialias: true, alpha: false, powerPreference: "high-performance" }}
+    dpr={[1, 1.35]}
+    camera={{ position: [18, 17, 23], fov: 42, near: 0.1, far: 120 }}
+    gl={{ antialias: true, alpha: false, powerPreference: "default" }}
     onPointerMissed={() => document.body.style.cursor = "default"}
   >
     <Scene {...props} />
