@@ -1,10 +1,14 @@
 import { Building2, Check, Hammer, LockKeyhole, Map, ShieldCheck } from "lucide-react";
+import { useMutation } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
 import { useMemo, useState } from "react";
+import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Slider } from "@/components/ui/slider";
 import { BLAST_BUILD, BUILDING_LABELS, buildingUpgradePreview, type BuildingType } from "@/lib/blast-build.config";
+import { previewBlastCommitment } from "@/lib/build.functions";
 
 type Project = {
   id: string;
@@ -25,6 +29,12 @@ export function ConstructionPanel({ projects, blastBalance, freeLand, expandedLa
   const [mode, setMode] = useState<"building" | "land">("building");
   const [projectId, setProjectId] = useState(projects[0]?.id ?? "");
   const [amount, setAmount] = useState(100);
+  const savePreview = useServerFn(previewBlastCommitment);
+  const previewMutation = useMutation({
+    mutationFn: () => savePreview({ data: { amount, purpose: mode } }),
+    onSuccess: () => toast.info("Preview saved", { description: "No BLAST moved. Mainnet construction requires the reversible lock contract." }),
+    onError: (error) => toast.error("Preview could not be saved", { description: error.message }),
+  });
   const project = projects.find((item) => item.id === projectId) ?? projects[0];
   const preview = useMemo(() => buildingUpgradePreview(project?.building_level ?? 1, amount), [project, amount]);
   const expansion = [...BLAST_BUILD.expansionTiers].reverse().find((tier) => amount >= tier.blast) ?? null;
@@ -74,7 +84,10 @@ export function ConstructionPanel({ projects, blastBalance, freeLand, expandedLa
         </div>
 
         {insufficient ? <p className="mt-4 font-mono text-xs text-destructive">This preview exceeds your current BLAST balance.</p> : null}
-        <Button disabled className="mt-5 h-12 w-full rounded-sm bg-build-cyan text-build-bg"><LockKeyhole/>Construction locked — preview only</Button>
+        <div className="mt-5 grid gap-2 sm:grid-cols-2">
+          <Button type="button" variant="outline" disabled={!projects.length && mode === "building" || previewMutation.isPending} onClick={() => previewMutation.mutate()} className="h-12 rounded-sm border-build-cyan bg-transparent text-build-text hover:bg-build-cyan/10">{previewMutation.isPending ? "Saving…" : "Save preview"}</Button>
+          <Button disabled className="h-12 rounded-sm bg-build-cyan text-build-bg"><LockKeyhole/>Confirm locked</Button>
+        </div>
       </div>
     </div>
   </section>;

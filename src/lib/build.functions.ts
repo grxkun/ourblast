@@ -332,6 +332,38 @@ const leaderboardInput = z.object({
   metric: z.enum(["builder", "city", "blast", "rising", "open-source"]),
 });
 
+const previewCommitmentInput = z.object({
+  amount: z.number().positive().max(1_000_000),
+  purpose: z.enum(["land", "building", "district", "cosmetic", "landmark"]),
+});
+
+export const previewBlastCommitment = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) => previewCommitmentInput.parse(input))
+  .handler(async ({ context, data }) => {
+    if (!BLAST_BUILD.blastTokenType) throw new Error("BLAST token configuration is unavailable.");
+    const { data: builder, error } = await context.supabase
+      .from("builders")
+      .select("id, builder_cities(id)")
+      .eq("user_id", context.userId)
+      .single();
+    if (error || !builder?.builder_cities) throw new Error("Generate your free Builder City first.");
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: preview, error: previewError } = await supabaseAdmin.from("blast_commitments").insert({
+      builder_id: builder.id,
+      city_id: builder.builder_cities.id,
+      user_id: context.userId,
+      amount_atomic: Math.round(data.amount * 10 ** BLAST_BUILD.blastDecimals),
+      amount_display: data.amount,
+      token_type: BLAST_BUILD.blastTokenType,
+      network: BLAST_BUILD.suiNetwork,
+      purpose: data.purpose,
+      status: "preview",
+    }).select("id, amount_display, purpose, status, created_at").single();
+    if (previewError || !preview) throw previewError ?? new Error("Preview could not be recorded.");
+    return { ...preview, previewOnly: true as const, reason: "Reversible lock contract not yet deployed" };
+  });
+
 export const getBuilderLeaderboard = createServerFn({ method: "GET" })
   .inputValidator((input) => leaderboardInput.parse(input))
   .handler(async ({ data }) => {
