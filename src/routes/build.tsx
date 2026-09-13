@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
-import { ArrowRight, CheckCircle2, Github, RefreshCw, ShieldCheck, Sparkles, WalletCards } from "lucide-react";
+import { ArrowRight, CheckCircle2, Github, RefreshCw, Sparkles, WalletCards } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 
