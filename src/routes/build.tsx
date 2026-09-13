@@ -77,23 +77,43 @@ function BlastBuild() {
   }, onError: (error) => toast.error("Sync failed", { description: error.message }) });
 
   return <div className="theme-build -mx-4 -mt-6 min-h-screen bg-build-bg text-build-text lg:-mb-16">
-    <section className="relative overflow-hidden border-b border-build-line px-4 py-12 sm:py-20">
+    <section className="relative overflow-hidden border-b border-build-line px-4 py-10 sm:py-16">
       <div className="build-blueprint absolute inset-0 opacity-30" />
-      <div className="relative mx-auto grid max-w-6xl items-center gap-10 lg:grid-cols-[0.88fr_1.12fr]">
-        <div>
-          <p className="font-mono text-xs font-bold tracking-[0.2em] text-build-cyan uppercase">OURBLAST / Builder protocol</p>
-          <h1 className="mt-5 font-build text-[clamp(3.2rem,8vw,6.8rem)] font-bold leading-[0.9] normal-case">BUILD YOUR<br/><span className="text-build-cyan">SUI CITY.</span></h1>
-          <p className="mt-6 max-w-xl text-lg leading-relaxed text-build-muted">Your GitHub code becomes your city. Your Sui activity proves you're a builder. BLAST powers your growth.</p>
-          <div className="mt-8 flex flex-wrap gap-3">
+      <div className="build-console relative mx-auto max-w-6xl p-5 sm:p-8 lg:p-10">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-build-line pb-4 font-mono text-[0.65rem] font-bold uppercase tracking-[0.16em] text-build-muted">
+          <span className="inline-flex items-center gap-2 text-build-cyan"><span className="build-status-dot"/>Builder network live</span>
+          <span>OURBLAST / SUI BUILDER PROTOCOL / V1.0</span>
+        </div>
+        <div className="grid items-end gap-8 py-8 lg:grid-cols-[1fr_auto]">
+          <div>
+            <p className="font-mono text-xs font-bold tracking-[0.2em] text-build-cyan uppercase">GitHub × Sui × City Builder</p>
+            <h1 className="mt-4 font-build text-[clamp(4rem,10vw,8.5rem)] leading-[0.78]">BUILD YOUR<br/><span className="text-build-cyan">SUI CITY.</span></h1>
+            <p className="mt-6 max-w-2xl text-lg leading-relaxed text-build-muted">Your GitHub code becomes your city. Your Sui activity proves you're a builder. BLAST powers your growth.</p>
+          </div>
+          <div className="flex flex-col gap-3 sm:flex-row lg:flex-col">
             {!userId ? <Button size="lg" onClick={() => void connect()} disabled={connecting} className="h-12 rounded-sm bg-build-cyan px-6 text-build-bg hover:bg-build-cyan/85"><WalletCards />{connecting ? "Connecting…" : "Connect Sui wallet"}</Button>
               : !builder.data?.github_connected ? <Button size="lg" onClick={() => githubMutation.mutate()} disabled={githubMutation.isPending} className="h-12 rounded-sm bg-build-cyan px-6 text-build-bg hover:bg-build-cyan/85"><Github />{githubMutation.isPending ? "Building your city…" : "Connect GitHub"}</Button>
               : <Button size="lg" onClick={() => syncMutation.mutate()} disabled={syncMutation.isPending} className="h-12 rounded-sm bg-build-cyan px-6 text-build-bg hover:bg-build-cyan/85"><RefreshCw className={syncMutation.isPending ? "animate-spin" : ""}/>{syncMutation.isPending ? "Analyzing…" : "Sync GitHub"}</Button>}
-            <a href="#explore" className="inline-flex h-12 items-center gap-2 border border-build-line px-6 font-mono text-sm font-bold uppercase hover:border-build-cyan">Explore Sui builders <ArrowRight className="size-4"/></a>
+            <Button asChild size="lg" variant="outline" className="h-12 rounded-sm border-build-line bg-transparent px-6 text-build-text hover:bg-build-panel-2"><a href="#explore">Explore Sui builders <ArrowRight className="size-4"/></a></Button>
           </div>
+        </div>
+        <div className="grid gap-6 border-t border-build-line pt-8 lg:grid-cols-[1.35fr_.65fr]">
+          <BuilderCity buildings={cityBuildings} username={builder.data?.github_username ?? "builder"} level={city?.city_level ?? builder.data?.builder_level ?? 1}/>
+          <div className="grid content-start gap-px border border-build-line bg-build-line sm:grid-cols-3 lg:grid-cols-1">
+            {[
+              ["01 / CODE", "GitHub proves you build", "Public repositories, contribution quality, and dependencies."],
+              ["02 / PROOF", "Sui proves you ship", "Only strong Sui-specific evidence creates a city building."],
+              ["03 / GROWTH", "Your city expands", "Real development determines capability; BLAST powers expansion."],
+            ].map(([n, title, text]) => <div key={n} className="bg-build-panel p-5"><p className="font-mono text-[0.62rem] font-bold text-build-cyan">{n}</p><h2 className="mt-5 font-build text-2xl">{title}</h2><p className="mt-2 text-sm leading-relaxed text-build-muted">{text}</p></div>)}
+          </div>
+        </div>
+        <div className="mt-8 flex flex-col justify-between gap-3 border-t border-build-line pt-4 font-mono text-[0.62rem] uppercase tracking-[0.14em] text-build-muted sm:flex-row">
+          <span>Relevance threshold: 60 / 100</span><span className="text-build-cyan">System status: verification active</span>
+        </div>
+        <div>
           {userId ? <div className="mt-6 flex flex-wrap gap-3 font-mono text-xs text-build-muted"><span className="inline-flex items-center gap-1.5"><CheckCircle2 className="size-4 text-build-cyan"/>Sui wallet verified</span>{builder.data?.github_connected ? <span className="inline-flex items-center gap-1.5"><CheckCircle2 className="size-4 text-build-cyan"/>GitHub connected</span> : null}<span className="truncate">{profile?.wallet_address}</span></div> : null}
           {syncNote ? <p className="mt-4 font-mono text-xs text-build-cyan">{syncNote}</p> : null}
         </div>
-        <BuilderCity buildings={cityBuildings} username={builder.data?.github_username ?? "builder"} level={city?.city_level ?? builder.data?.builder_level ?? 1}/>
       </div>
     </section>
 
