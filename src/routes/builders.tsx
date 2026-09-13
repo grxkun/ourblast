@@ -73,7 +73,7 @@ function BuildersPage() {
         <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
           <div>
             <p className="font-mono text-xs font-bold text-build-cyan">CURATED ECOSYSTEM / NO SIGN-IN REQUIRED</p>
-            <h2 id="core-team-title" className="mt-2 font-build text-5xl">SUI CORE TEAM CITIES</h2>
+            <h2 id="core-team-title" className="mt-2 font-build text-4xl sm:text-5xl">SUI CORE TEAM CITIES</h2>
           </div>
           <p className="max-w-md text-sm leading-relaxed text-build-muted">A recognition map for the people building Sui. These honorary cities are separate from community rankings and are not scored by Blast Build.</p>
         </div>
