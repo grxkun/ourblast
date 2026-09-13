@@ -94,7 +94,7 @@ function BlastBuild() {
             {!userId ? <Button size="lg" onClick={() => void connect()} disabled={connecting} className="h-12 rounded-sm bg-build-cyan px-6 text-build-bg hover:bg-build-cyan/85"><WalletCards />{connecting ? "Connecting…" : "Connect Sui wallet"}</Button>
               : !builder.data?.github_connected ? <Button size="lg" onClick={() => githubMutation.mutate()} disabled={githubMutation.isPending} className="h-12 rounded-sm bg-build-cyan px-6 text-build-bg hover:bg-build-cyan/85"><Github />{githubMutation.isPending ? "Building your city…" : "Connect GitHub"}</Button>
               : <Button size="lg" onClick={() => syncMutation.mutate()} disabled={syncMutation.isPending} className="h-12 rounded-sm bg-build-cyan px-6 text-build-bg hover:bg-build-cyan/85"><RefreshCw className={syncMutation.isPending ? "animate-spin" : ""}/>{syncMutation.isPending ? "Analyzing…" : "Sync GitHub"}</Button>}
-            <Button asChild size="lg" variant="outline" className="h-12 rounded-sm border-build-line bg-transparent px-6 text-build-text hover:bg-build-panel-2"><a href="#explore">Explore Sui builders <ArrowRight className="size-4"/></a></Button>
+            <Button asChild size="lg" variant="outline" className="h-12 rounded-sm border-build-line bg-transparent px-6 text-build-text hover:bg-build-panel-2"><Link to="/builders">Explore Sui builders <ArrowRight className="size-4"/></Link></Button>
           </div>
         </div>
         <div className="grid gap-6 border-t border-build-line pt-8 lg:grid-cols-[1.35fr_.65fr]">
