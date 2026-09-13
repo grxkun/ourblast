@@ -13,6 +13,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as ArcadeRouteImport } from './routes/arcade'
 import { Route as BuildRouteImport } from './routes/build'
+import { Route as BuildersRouteImport } from './routes/builders'
 import { Route as ChatRouteImport } from './routes/chat'
 import { Route as HowToPlayRouteImport } from './routes/how-to-play'
 import { Route as HubRouteImport } from './routes/hub'
@@ -42,6 +43,11 @@ const ArcadeRoute = ArcadeRouteImport.update({
 const BuildRoute = BuildRouteImport.update({
   id: '/build',
   path: '/build',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const BuildersRoute = BuildersRouteImport.update({
+  id: '/builders',
+  path: '/builders',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ChatRoute = ChatRouteImport.update({
@@ -100,6 +106,7 @@ export interface FileRoutesByFullPath {
   '/admin': typeof AdminRoute
   '/arcade': typeof ArcadeRoute
   '/build': typeof BuildRoute
+  '/builders': typeof BuildersRoute
   '/chat': typeof ChatRoute
   '/how-to-play': typeof HowToPlayRoute
   '/hub': typeof HubRoute
@@ -116,6 +123,7 @@ export interface FileRoutesByTo {
   '/admin': typeof AdminRoute
   '/arcade': typeof ArcadeRoute
   '/build': typeof BuildRoute
+  '/builders': typeof BuildersRoute
   '/chat': typeof ChatRoute
   '/how-to-play': typeof HowToPlayRoute
   '/hub': typeof HubRoute
@@ -133,6 +141,7 @@ export interface FileRoutesById {
   '/admin': typeof AdminRoute
   '/arcade': typeof ArcadeRoute
   '/build': typeof BuildRoute
+  '/builders': typeof BuildersRoute
   '/chat': typeof ChatRoute
   '/how-to-play': typeof HowToPlayRoute
   '/hub': typeof HubRoute
@@ -151,6 +160,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/arcade'
     | '/build'
+    | '/builders'
     | '/chat'
     | '/how-to-play'
     | '/hub'
@@ -167,6 +177,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/arcade'
     | '/build'
+    | '/builders'
     | '/chat'
     | '/how-to-play'
     | '/hub'
@@ -183,6 +194,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/arcade'
     | '/build'
+    | '/builders'
     | '/chat'
     | '/how-to-play'
     | '/hub'
@@ -200,6 +212,7 @@ export interface RootRouteChildren {
   AdminRoute: typeof AdminRoute
   ArcadeRoute: typeof ArcadeRoute
   BuildRoute: typeof BuildRoute
+  BuildersRoute: typeof BuildersRoute
   ChatRoute: typeof ChatRoute
   HowToPlayRoute: typeof HowToPlayRoute
   HubRoute: typeof HubRoute
@@ -240,6 +253,13 @@ declare module '@tanstack/react-router' {
       path: '/build'
       fullPath: '/build'
       preLoaderRoute: typeof BuildRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/builders': {
+      id: '/builders'
+      path: '/builders'
+      fullPath: '/builders'
+      preLoaderRoute: typeof BuildersRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/chat': {
@@ -320,6 +340,7 @@ const rootRouteChildren: RootRouteChildren = {
   AdminRoute: AdminRoute,
   ArcadeRoute: ArcadeRoute,
   BuildRoute: BuildRoute,
+  BuildersRoute: BuildersRoute,
   ChatRoute: ChatRoute,
   HowToPlayRoute: HowToPlayRoute,
   HubRoute: HubRoute,
