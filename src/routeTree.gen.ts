@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as ArcadeRouteImport } from './routes/arcade'
+import { Route as BuildRouteImport } from './routes/build'
 import { Route as ChatRouteImport } from './routes/chat'
 import { Route as HowToPlayRouteImport } from './routes/how-to-play'
 import { Route as HubRouteImport } from './routes/hub'
@@ -20,6 +21,7 @@ import { Route as MemeRouteImport } from './routes/meme'
 import { Route as ProfileRouteImport } from './routes/profile'
 import { Route as RoastRouteImport } from './routes/roast'
 import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
+import { Route as OauthGithubReturnRouteImport } from './routes/oauth/github/return'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -34,6 +36,11 @@ const AdminRoute = AdminRouteImport.update({
 const ArcadeRoute = ArcadeRouteImport.update({
   id: '/arcade',
   path: '/arcade',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const BuildRoute = BuildRouteImport.update({
+  id: '/build',
+  path: '/build',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ChatRoute = ChatRouteImport.update({
@@ -76,11 +83,17 @@ const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
   path: '/sitemap.xml',
   getParentRoute: () => rootRouteImport,
 } as any)
+const OauthGithubReturnRoute = OauthGithubReturnRouteImport.update({
+  id: '/oauth/github/return',
+  path: '/oauth/github/return',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
   '/arcade': typeof ArcadeRoute
+  '/build': typeof BuildRoute
   '/chat': typeof ChatRoute
   '/how-to-play': typeof HowToPlayRoute
   '/hub': typeof HubRoute
@@ -89,11 +102,13 @@ export interface FileRoutesByFullPath {
   '/profile': typeof ProfileRoute
   '/roast': typeof RoastRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
+  '/oauth/github/return': typeof OauthGithubReturnRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
   '/arcade': typeof ArcadeRoute
+  '/build': typeof BuildRoute
   '/chat': typeof ChatRoute
   '/how-to-play': typeof HowToPlayRoute
   '/hub': typeof HubRoute
@@ -102,12 +117,14 @@ export interface FileRoutesByTo {
   '/profile': typeof ProfileRoute
   '/roast': typeof RoastRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
+  '/oauth/github/return': typeof OauthGithubReturnRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
   '/arcade': typeof ArcadeRoute
+  '/build': typeof BuildRoute
   '/chat': typeof ChatRoute
   '/how-to-play': typeof HowToPlayRoute
   '/hub': typeof HubRoute
@@ -116,6 +133,7 @@ export interface FileRoutesById {
   '/profile': typeof ProfileRoute
   '/roast': typeof RoastRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
+  '/oauth/github/return': typeof OauthGithubReturnRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -123,6 +141,7 @@ export interface FileRouteTypes {
     | '/'
     | '/admin'
     | '/arcade'
+    | '/build'
     | '/chat'
     | '/how-to-play'
     | '/hub'
@@ -131,11 +150,13 @@ export interface FileRouteTypes {
     | '/profile'
     | '/roast'
     | '/sitemap.xml'
+    | '/oauth/github/return'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/admin'
     | '/arcade'
+    | '/build'
     | '/chat'
     | '/how-to-play'
     | '/hub'
@@ -144,11 +165,13 @@ export interface FileRouteTypes {
     | '/profile'
     | '/roast'
     | '/sitemap.xml'
+    | '/oauth/github/return'
   id:
     | '__root__'
     | '/'
     | '/admin'
     | '/arcade'
+    | '/build'
     | '/chat'
     | '/how-to-play'
     | '/hub'
@@ -157,12 +180,14 @@ export interface FileRouteTypes {
     | '/profile'
     | '/roast'
     | '/sitemap.xml'
+    | '/oauth/github/return'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AdminRoute: typeof AdminRoute
   ArcadeRoute: typeof ArcadeRoute
+  BuildRoute: typeof BuildRoute
   ChatRoute: typeof ChatRoute
   HowToPlayRoute: typeof HowToPlayRoute
   HubRoute: typeof HubRoute
@@ -171,6 +196,7 @@ export interface RootRouteChildren {
   ProfileRoute: typeof ProfileRoute
   RoastRoute: typeof RoastRoute
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
+  OauthGithubReturnRoute: typeof OauthGithubReturnRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -194,6 +220,13 @@ declare module '@tanstack/react-router' {
       path: '/arcade'
       fullPath: '/arcade'
       preLoaderRoute: typeof ArcadeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/build': {
+      id: '/build'
+      path: '/build'
+      fullPath: '/build'
+      preLoaderRoute: typeof BuildRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/chat': {
@@ -252,6 +285,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SitemapDotxmlRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/oauth/github/return': {
+      id: '/oauth/github/return'
+      path: '/oauth/github/return'
+      fullPath: '/oauth/github/return'
+      preLoaderRoute: typeof OauthGithubReturnRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -259,6 +299,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AdminRoute: AdminRoute,
   ArcadeRoute: ArcadeRoute,
+  BuildRoute: BuildRoute,
   ChatRoute: ChatRoute,
   HowToPlayRoute: HowToPlayRoute,
   HubRoute: HubRoute,
@@ -267,6 +308,7 @@ const rootRouteChildren: RootRouteChildren = {
   ProfileRoute: ProfileRoute,
   RoastRoute: RoastRoute,
   SitemapDotxmlRoute: SitemapDotxmlRoute,
+  OauthGithubReturnRoute: OauthGithubReturnRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
