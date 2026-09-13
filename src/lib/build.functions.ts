@@ -253,8 +253,14 @@ export const syncGitHub = createServerFn({ method: "POST" })
       builder_power: score, updated_at: new Date().toISOString(),
     }, { onConflict: "builder_id" }).select("id").single();
     if (cityError || !city) throw cityError ?? new Error("Builder City could not be created.");
-    await supabaseAdmin.from("city_buildings").delete().eq("city_id", city.id);
-    if (verified.length) await supabaseAdmin.from("city_buildings").insert(verified.flatMap((item, position) => {
+    const activeRepositoryIds = verified.flatMap((item) => {
+      const repositoryId = repoIds.get(item.repo.id);
+      return repositoryId ? [repositoryId] : [];
+    });
+    const { data: existingBuildings } = await supabaseAdmin.from("city_buildings").select("id, repository_id").eq("city_id", city.id);
+    const staleBuildingIds = (existingBuildings ?? []).filter((item) => item.repository_id && !activeRepositoryIds.includes(item.repository_id)).map((item) => item.id);
+    if (staleBuildingIds.length) await supabaseAdmin.from("city_buildings").delete().in("id", staleBuildingIds);
+    for (const row of verified.flatMap((item, position) => {
       const repositoryId = repoIds.get(item.repo.id);
       return repositoryId ? [{
         city_id: city.id,
@@ -267,7 +273,7 @@ export const syncGitHub = createServerFn({ method: "POST" })
         position_x: position % 4,
         position_y: Math.floor(position / 4),
       }] : [];
-    }));
+    })) await supabaseAdmin.from("city_buildings").upsert(row, { onConflict: "city_id,repository_id" });
 
     const districtCounts = new Map<string, number>();
     for (const item of verified) districtCounts.set(item.result.buildingType, (districtCounts.get(item.result.buildingType) ?? 0) + 1);

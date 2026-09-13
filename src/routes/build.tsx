@@ -93,7 +93,7 @@ function BlastBuild() {
           <div>
             <p className="font-mono text-xs font-bold tracking-[0.2em] text-build-cyan uppercase">GitHub × Sui × City Builder</p>
             <h1 className="mt-4 font-build text-[clamp(4rem,10vw,8.5rem)] leading-[0.78]">BUILD YOUR<br/><span className="text-build-cyan">SUI CITY.</span></h1>
-            <p className="mt-6 max-w-2xl text-lg leading-relaxed text-build-muted">Your GitHub code becomes your city. Your Sui activity proves you're a builder. BLAST powers your growth.</p>
+            <p className="mt-6 max-w-2xl text-lg leading-relaxed text-build-muted">Your GitHub code builds your free city. Your verified Sui activity grows it. BLAST is optional expansion—not developer reputation.</p>
           </div>
           <div className="flex flex-col gap-3 sm:flex-row lg:flex-col">
             {!userId ? <Button size="lg" onClick={() => void connect()} disabled={connecting} className="h-12 rounded-sm bg-build-cyan px-6 text-build-bg hover:bg-build-cyan/85"><WalletCards />{connecting ? "Connecting…" : "1. Connect Sui Wallet"}</Button>
@@ -108,7 +108,7 @@ function BlastBuild() {
             {[
                ["01 / WALLET", "Connect your Sui wallet", "Slush opens as your Sui wallet provider. This creates your player identity."],
                ["02 / CODE", "Then connect GitHub", "Public repositories and strong Sui-specific evidence create city buildings."],
-              ["03 / GROWTH", "Your city expands", "Real development determines capability; BLAST powers expansion."],
+              ["03 / GROWTH", "Your free city grows", "Real development grows buildings and Builder Power. Optional BLAST only expands the city."],
             ].map(([n, title, text]) => <div key={n} className="bg-build-panel p-5"><p className="font-mono text-[0.62rem] font-bold text-build-cyan">{n}</p><h2 className="mt-5 font-build text-2xl">{title}</h2><p className="mt-2 text-sm leading-relaxed text-build-muted">{text}</p></div>)}
           </div>
         </div>
