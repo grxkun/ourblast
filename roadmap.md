@@ -41,3 +41,15 @@
 - [x] Add a public city atlas that does not require geographic location
 - [x] Link ranking entries to shareable public builder cities
 - [x] Add honorary Sui core team cities, separate from app-verified community rankings
+- [ ] Add weekly Builder rankings with transparent score windows
+- [ ] Add downloadable city social cards for X, Telegram, and Discord
+- [ ] Expand verified Builder badges and achievement presentation
+
+## Blast Build — Phase 4
+
+- [ ] Detect Sui package IDs from verified repositories and wallet transaction history
+- [ ] Verify package ownership and publication on Sui mainnet server-side
+- [ ] Add a separate Sui Builder Reputation score with visible evidence
+- [ ] Add public ecosystem project discovery and project profiles
+- [ ] Add a community/global city generated from verified ecosystem projects
+- [ ] Add server-authoritative Builder achievements

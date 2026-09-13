@@ -137,6 +137,56 @@ export type Database = {
           },
         ]
       }
+      builder_achievements: {
+        Row: {
+          achievement_key: string
+          builder_id: string
+          created_at: string
+          description: string
+          earned_at: string | null
+          evidence: Json
+          id: string
+          label: string
+          progress: number
+          target: number
+          updated_at: string
+        }
+        Insert: {
+          achievement_key: string
+          builder_id: string
+          created_at?: string
+          description: string
+          earned_at?: string | null
+          evidence?: Json
+          id?: string
+          label: string
+          progress?: number
+          target?: number
+          updated_at?: string
+        }
+        Update: {
+          achievement_key?: string
+          builder_id?: string
+          created_at?: string
+          description?: string
+          earned_at?: string | null
+          evidence?: Json
+          id?: string
+          label?: string
+          progress?: number
+          target?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "builder_achievements_builder_id_fkey"
+            columns: ["builder_id"]
+            isOneToOne: false
+            referencedRelation: "builders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       builder_activity: {
         Row: {
           activity_day: string
@@ -388,8 +438,78 @@ export type Database = {
           },
         ]
       }
+      builder_sui_packages: {
+        Row: {
+          builder_id: string
+          created_at: string
+          evidence: Json
+          first_seen_at: string
+          id: string
+          module_count: number
+          network: string
+          package_id: string
+          package_version: number
+          published_tx_digest: string | null
+          repository_id: string | null
+          updated_at: string
+          verification_source: string
+          verification_status: string
+          verified_at: string | null
+        }
+        Insert: {
+          builder_id: string
+          created_at?: string
+          evidence?: Json
+          first_seen_at?: string
+          id?: string
+          module_count?: number
+          network?: string
+          package_id: string
+          package_version?: number
+          published_tx_digest?: string | null
+          repository_id?: string | null
+          updated_at?: string
+          verification_source: string
+          verification_status?: string
+          verified_at?: string | null
+        }
+        Update: {
+          builder_id?: string
+          created_at?: string
+          evidence?: Json
+          first_seen_at?: string
+          id?: string
+          module_count?: number
+          network?: string
+          package_id?: string
+          package_version?: number
+          published_tx_digest?: string | null
+          repository_id?: string | null
+          updated_at?: string
+          verification_source?: string
+          verification_status?: string
+          verified_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "builder_sui_packages_builder_id_fkey"
+            columns: ["builder_id"]
+            isOneToOne: false
+            referencedRelation: "builders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "builder_sui_packages_repository_id_fkey"
+            columns: ["repository_id"]
+            isOneToOne: false
+            referencedRelation: "builder_repositories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       builders: {
         Row: {
+          builder_achievement_count: number
           builder_level: number
           builder_score: number
           contribution_streak: number
@@ -405,15 +525,18 @@ export type Database = {
           last_synced_at: string | null
           merged_pull_requests: number
           oss_contributions: number
+          sui_reputation_score: number
           sui_verified: boolean
           total_commits: number
           total_pull_requests: number
           updated_at: string
           user_id: string
+          verified_package_count: number
           verified_repository_count: number
           wallet_address: string
         }
         Insert: {
+          builder_achievement_count?: number
           builder_level?: number
           builder_score?: number
           contribution_streak?: number
@@ -429,15 +552,18 @@ export type Database = {
           last_synced_at?: string | null
           merged_pull_requests?: number
           oss_contributions?: number
+          sui_reputation_score?: number
           sui_verified?: boolean
           total_commits?: number
           total_pull_requests?: number
           updated_at?: string
           user_id: string
+          verified_package_count?: number
           verified_repository_count?: number
           wallet_address: string
         }
         Update: {
+          builder_achievement_count?: number
           builder_level?: number
           builder_score?: number
           contribution_streak?: number
@@ -453,11 +579,13 @@ export type Database = {
           last_synced_at?: string | null
           merged_pull_requests?: number
           oss_contributions?: number
+          sui_reputation_score?: number
           sui_verified?: boolean
           total_commits?: number
           total_pull_requests?: number
           updated_at?: string
           user_id?: string
+          verified_package_count?: number
           verified_repository_count?: number
           wallet_address?: string
         }
@@ -813,6 +941,66 @@ export type Database = {
           title?: string
         }
         Relationships: []
+      }
+      ecosystem_projects: {
+        Row: {
+          builder_id: string
+          category: string
+          created_at: string
+          id: string
+          is_featured: boolean
+          name: string
+          package_count: number
+          repository_id: string
+          reputation_score: number
+          slug: string
+          summary: string | null
+          updated_at: string
+        }
+        Insert: {
+          builder_id: string
+          category: string
+          created_at?: string
+          id?: string
+          is_featured?: boolean
+          name: string
+          package_count?: number
+          repository_id: string
+          reputation_score?: number
+          slug: string
+          summary?: string | null
+          updated_at?: string
+        }
+        Update: {
+          builder_id?: string
+          category?: string
+          created_at?: string
+          id?: string
+          is_featured?: boolean
+          name?: string
+          package_count?: number
+          repository_id?: string
+          reputation_score?: number
+          slug?: string
+          summary?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ecosystem_projects_builder_id_fkey"
+            columns: ["builder_id"]
+            isOneToOne: false
+            referencedRelation: "builders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ecosystem_projects_repository_id_fkey"
+            columns: ["repository_id"]
+            isOneToOne: true
+            referencedRelation: "builder_repositories"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       game_sessions: {
         Row: {
