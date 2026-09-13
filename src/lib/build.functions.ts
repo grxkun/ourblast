@@ -361,17 +361,6 @@ export const syncGitHub = createServerFn({ method: "POST" })
     const earnedAchievements = achievementRows.filter((item) => item.progress >= item.target).length;
     const reputation = Math.min(10_000, Math.round(score * 0.65 + packageRows.size * 350 + earnedAchievements * 150));
     await supabaseAdmin.from("builders").update({ sui_reputation_score: reputation, verified_package_count: packageRows.size, builder_achievement_count: earnedAchievements }).eq("id", builder.id);
-    for (const item of verified) {
-      const repositoryId = repoIds.get(item.repo.id);
-      if (!repositoryId) continue;
-      const packageCount = [...packageRows.values()].filter((row) => row.repository_id === repositoryId).length;
-      const slug = `${githubUser.login}-${item.repo.name}`.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 80);
-      await supabaseAdmin.from("ecosystem_projects").upsert({
-        builder_id: builder.id, repository_id: repositoryId, slug, name: item.repo.name, summary: item.repo.description,
-        category: item.result.buildingType, package_count: packageCount,
-        reputation_score: Math.min(10_000, Math.round(item.result.relevance * 50 + item.result.developmentScore * 30 + item.result.qualityScore * 20 + packageCount * 500)),
-      }, { onConflict: "repository_id" });
-    }
     return { connected: true as const, username: githubUser.login, verified: verified.length, analyzed: analyzed.length, score, packages: packageRows.size, reputation };
   });
 
