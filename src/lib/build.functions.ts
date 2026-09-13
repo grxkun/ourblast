@@ -41,7 +41,7 @@ export const getMyBuilder = createServerFn({ method: "GET" })
   .handler(async ({ context }) => {
     const { data, error } = await context.supabase
       .from("builders")
-      .select("*, builder_cities(*, city_districts(*), city_events(*), city_buildings(*, building_upgrades(*))), builder_repositories(*, repository_signals(*)), builder_activity(*), builder_badges(*)")
+      .select("*, builder_cities(*, city_districts(*), city_events(*), city_buildings(*, building_upgrades(*))), builder_repositories(*, repository_signals(*)), builder_activity(*), builder_badges(*), builder_sui_packages(*), builder_achievements(*)")
       .eq("user_id", context.userId)
       .maybeSingle();
     if (error) throw error;
@@ -196,9 +196,10 @@ export const syncGitHub = createServerFn({ method: "POST" })
     }, 0)));
     const level = Math.max(1, Math.floor(Math.sqrt(score / 40)) + 1);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const walletAddress = (await supabaseAdmin.from("profiles").select("wallet_address").eq("id", context.userId).single()).data?.wallet_address ?? "";
     const { data: builder, error: builderError } = await supabaseAdmin.from("builders").upsert({
       user_id: context.userId,
-      wallet_address: (await supabaseAdmin.from("profiles").select("wallet_address").eq("id", context.userId).single()).data?.wallet_address ?? "",
+      wallet_address: walletAddress,
       github_id: githubUser.id,
       github_username: githubUser.login,
       github_avatar_url: githubUser.avatar_url,
@@ -308,7 +309,69 @@ export const syncGitHub = createServerFn({ method: "POST" })
     for (const [date, commits] of activity) {
       await supabaseAdmin.from("builder_activity").upsert({ builder_id: builder.id, activity_day: date, commits }, { onConflict: "builder_id,activity_day" });
     }
-    return { connected: true as const, username: githubUser.login, verified: verified.length, analyzed: analyzed.length, score };
+
+    const { extractPackageIds, verifySuiPackage, detectWalletPackages } = await import("./sui-packages.server");
+    const walletPackages = walletAddress ? await detectWalletPackages(walletAddress) : [];
+    const walletPackageIds = new Set(walletPackages.map((item) => item.packageId.toLowerCase()));
+    const packageRows = new Map<string, {
+      builder_id: string; repository_id: string | null; package_id: string; network: string; module_count: number;
+      package_version: number; verification_source: string; verification_status: string; published_tx_digest: string | null;
+      evidence: { moduleNames: string[]; publisher: string | null; githubMentioned: boolean }; verified_at: string;
+    }>();
+    for (const proof of walletPackages) {
+      packageRows.set(proof.packageId.toLowerCase(), {
+        builder_id: builder.id, repository_id: null, package_id: proof.packageId, network: BLAST_BUILD.suiNetwork,
+        module_count: proof.moduleNames.length, package_version: proof.version, verification_source: "wallet", verification_status: "verified",
+        published_tx_digest: proof.digest, evidence: { moduleNames: proof.moduleNames, publisher: proof.publisher, githubMentioned: false },
+        verified_at: proof.timestamp ?? new Date().toISOString(),
+      });
+    }
+    for (const item of verified) {
+      const repositoryId = repoIds.get(item.repo.id);
+      if (!repositoryId) continue;
+      const candidateIds = extractPackageIds(item.evidence.moveToml, item.evidence.packageJson, item.evidence.readme);
+      for (const candidateId of candidateIds) {
+        const proof = walletPackages.find((entry) => entry.packageId.toLowerCase() === candidateId) ?? await verifySuiPackage(candidateId);
+        if (!proof) continue;
+        const owned = proof.publisher === walletAddress.toLowerCase() || walletPackageIds.has(proof.packageId.toLowerCase());
+        if (!owned) continue;
+        packageRows.set(proof.packageId.toLowerCase(), {
+          builder_id: builder.id, repository_id: repositoryId, package_id: proof.packageId, network: BLAST_BUILD.suiNetwork,
+          module_count: proof.moduleNames.length, package_version: proof.version, verification_source: "both", verification_status: "verified",
+          published_tx_digest: proof.digest, evidence: { moduleNames: proof.moduleNames, publisher: proof.publisher, githubMentioned: true },
+          verified_at: proof.timestamp ?? new Date().toISOString(),
+        });
+      }
+    }
+    for (const row of packageRows.values()) await supabaseAdmin.from("builder_sui_packages").upsert(row, { onConflict: "builder_id,package_id,network" });
+
+    const achievementRows = [
+      { achievement_key: "first-foundation", label: "City Founder", description: "Verify your first Sui repository.", progress: verified.length, target: 1, evidence: { verifiedRepositories: verified.length } },
+      { achievement_key: "move-builder", label: "Move Builder", description: "Ship a verified repository containing Move source.", progress: verified.filter((item) => (item.evidence.languages['Move'] ?? 0) > 0).length, target: 1, evidence: { moveRepositories: verified.filter((item) => (item.evidence.languages['Move'] ?? 0) > 0).length } },
+      { achievement_key: "open-source-operator", label: "Open Source Operator", description: "Record 10 merged pull requests across verified Sui projects.", progress: verified.reduce((sum, item) => sum + item.evidence.mergedPullRequests, 0), target: 10, evidence: { mergedPullRequests: verified.reduce((sum, item) => sum + item.evidence.mergedPullRequests, 0) } },
+      { achievement_key: "onchain-shipper", label: "Onchain Shipper", description: "Publish a verified Move package from your connected wallet.", progress: packageRows.size, target: 1, evidence: { verifiedPackages: packageRows.size } },
+      { achievement_key: "city-architect", label: "City Architect", description: "Grow five verified Sui repository buildings.", progress: verified.length, target: 5, evidence: { verifiedRepositories: verified.length } },
+    ];
+    for (const achievement of achievementRows) await supabaseAdmin.from("builder_achievements").upsert({
+      builder_id: builder.id, ...achievement,
+      earned_at: achievement.progress >= achievement.target ? new Date().toISOString() : null,
+    }, { onConflict: "builder_id,achievement_key" });
+
+    const earnedAchievements = achievementRows.filter((item) => item.progress >= item.target).length;
+    const reputation = Math.min(10_000, Math.round(score * 0.65 + packageRows.size * 350 + earnedAchievements * 150));
+    await supabaseAdmin.from("builders").update({ sui_reputation_score: reputation, verified_package_count: packageRows.size, builder_achievement_count: earnedAchievements }).eq("id", builder.id);
+    for (const item of verified) {
+      const repositoryId = repoIds.get(item.repo.id);
+      if (!repositoryId) continue;
+      const packageCount = [...packageRows.values()].filter((row) => row.repository_id === repositoryId).length;
+      const slug = `${githubUser.login}-${item.repo.name}`.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 80);
+      await supabaseAdmin.from("ecosystem_projects").upsert({
+        builder_id: builder.id, repository_id: repositoryId, slug, name: item.repo.name, summary: item.repo.description,
+        category: item.result.buildingType, package_count: packageCount,
+        reputation_score: Math.min(10_000, Math.round(item.result.relevance * 50 + item.result.developmentScore * 30 + item.result.qualityScore * 20 + packageCount * 500)),
+      }, { onConflict: "repository_id" });
+    }
+    return { connected: true as const, username: githubUser.login, verified: verified.length, analyzed: analyzed.length, score, packages: packageRows.size, reputation };
   });
 
 export const getPublicBuilder = createServerFn({ method: "GET" })
@@ -326,7 +389,7 @@ export const getPublicBuilder = createServerFn({ method: "GET" })
       } },
     });
     const { data: builder, error } = await client.from("builders")
-      .select("*, builder_cities(*, city_districts(*), city_events(*), city_buildings(*, building_upgrades(*))), builder_repositories(*, repository_signals(*)), builder_activity(*), builder_badges(*)")
+      .select("*, builder_cities(*, city_districts(*), city_events(*), city_buildings(*, building_upgrades(*))), builder_repositories(*, repository_signals(*)), builder_activity(*), builder_badges(*), builder_sui_packages(*), builder_achievements(*)")
       .ilike("github_username", data.username)
       .eq("is_public", true)
       .maybeSingle();
@@ -335,7 +398,7 @@ export const getPublicBuilder = createServerFn({ method: "GET" })
   });
 
 const leaderboardInput = z.object({
-  metric: z.enum(["builder", "city", "blast", "rising", "open-source"]),
+  metric: z.enum(["builder", "city", "blast", "weekly", "rising", "open-source", "reputation"]),
 });
 
 const previewCommitmentInput = z.object({
@@ -386,7 +449,7 @@ export const getBuilderLeaderboard = createServerFn({ method: "GET" })
     });
     const { data: builders, error } = await client
       .from("builders")
-      .select("id, github_username, github_avatar_url, builder_score, builder_level, verified_repository_count, total_commits, merged_pull_requests, oss_contributions, builder_cities(city_level, city_score, blast_committed, tier_key), builder_activity(activity_day, commits, pull_requests, packages, oss_contributions)")
+      .select("id, github_username, github_avatar_url, builder_score, builder_level, verified_repository_count, verified_package_count, sui_reputation_score, total_commits, merged_pull_requests, oss_contributions, builder_cities(city_level, city_score, blast_committed, tier_key), builder_activity(activity_day, commits, pull_requests, packages, oss_contributions)")
       .eq("is_public", true)
       .eq("github_connected", true)
       .limit(100);
@@ -394,13 +457,16 @@ export const getBuilderLeaderboard = createServerFn({ method: "GET" })
     const sevenDaysAgo = new Date(Date.now() - 7 * 86_400_000).toISOString().slice(0, 10);
     const rows = (builders ?? []).map((builder) => {
       const city = builder.builder_cities;
-      const rising = (builder.builder_activity ?? [])
+      const weekly = (builder.builder_activity ?? [])
         .filter((activity) => activity.activity_day >= sevenDaysAgo)
         .reduce((sum, activity) => sum + activity.commits * 3 + activity.pull_requests * 8 + activity.packages * 12 + activity.oss_contributions * 6, 0);
+      const rising = weekly + Math.min(500, builder.verified_package_count * 100);
       const value = data.metric === "city" ? (city?.city_score ?? 0)
         : data.metric === "blast" ? Number(city?.blast_committed ?? 0)
+        : data.metric === "weekly" ? weekly
         : data.metric === "rising" ? rising
         : data.metric === "open-source" ? builder.oss_contributions
+        : data.metric === "reputation" ? builder.sui_reputation_score
         : builder.builder_score;
       return {
         id: builder.id,
@@ -412,10 +478,13 @@ export const getBuilderLeaderboard = createServerFn({ method: "GET" })
         commits: builder.total_commits,
         mergedPullRequests: builder.merged_pull_requests,
         ossContributions: builder.oss_contributions,
+        verifiedPackages: builder.verified_package_count,
+        suiReputation: builder.sui_reputation_score,
         cityLevel: city?.city_level ?? 1,
         cityScore: city?.city_score ?? 0,
         blastCommitted: Number(city?.blast_committed ?? 0),
         tier: city?.tier_key ?? "foundation",
+        weeklyScore: weekly,
         risingScore: rising,
         value,
       };
