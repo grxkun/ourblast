@@ -13,3 +13,12 @@
 - [ ] Season resets and treasury payout tooling
 - [ ] Real meme submissions to kick off the first meme battle
 - [ ] More arcade games
+
+## Blast Build — Phase 1
+
+- [ ] Preserve existing OURBLAST landing and arcade
+- [ ] Add Blast Build landing and authenticated builder experience
+- [ ] Add GitHub OAuth and public repository ingestion
+- [ ] Add server-authoritative Sui relevance and Builder Score
+- [ ] Add initial repository-to-city visualization and public builder profile
+- [ ] Reuse Sui wallet connection and configurable BLAST token detection
