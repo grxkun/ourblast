@@ -9,6 +9,8 @@ const NAV = [
   { to: "/hub", label: "Hub", icon: "🏠" },
   { to: "/arcade", label: "Arcade", icon: "🕹️" },
   { to: "/build", label: "Build", icon: "🏙️" },
+  { to: "/builders", label: "Builders", icon: "🏗️" },
+  { to: "/ecosystem", label: "Sui", icon: "💧" },
   { to: "/how-to-play", label: "Guide", icon: "📖" },
   { to: "/leaderboard", label: "Ranks", icon: "🏆" },
   { to: "/meme", label: "Meme", icon: "😂" },
@@ -43,7 +45,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           </Link>
 
           <nav className="hidden items-center gap-1 lg:flex">
-            {NAV.filter((item) => item.to !== "/how-to-play" && item.to !== "/profile").map((item) => (
+            {NAV.filter((item) => item.to !== "/how-to-play" && item.to !== "/profile" && item.to !== "/builders").map((item) => (
               <Link
                 key={item.to}
                 to={item.to}
@@ -64,7 +66,7 @@ export function AppShell({ children }: { children: ReactNode }) {
 
       <nav className="fixed bottom-0 left-0 z-50 w-full border-t border-border bg-background/90 backdrop-blur-xl lg:hidden">
         <div className="mx-auto flex max-w-lg items-stretch justify-between px-1 py-1.5">
-          {NAV.filter((item) => item.to !== "/how-to-play").map((item) => (
+          {NAV.filter((item) => item.to !== "/how-to-play" && item.to !== "/builders" && item.to !== "/roast").map((item) => (
             <Link
               key={item.to}
               to={item.to}

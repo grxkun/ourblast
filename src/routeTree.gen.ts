@@ -15,6 +15,8 @@ import { Route as ArcadeRouteImport } from './routes/arcade'
 import { Route as BuildRouteImport } from './routes/build'
 import { Route as BuildersRouteImport } from './routes/builders'
 import { Route as ChatRouteImport } from './routes/chat'
+import { Route as CommunityCityRouteImport } from './routes/community-city'
+import { Route as EcosystemRouteImport } from './routes/ecosystem'
 import { Route as HowToPlayRouteImport } from './routes/how-to-play'
 import { Route as HubRouteImport } from './routes/hub'
 import { Route as LeaderboardRouteImport } from './routes/leaderboard'
@@ -53,6 +55,16 @@ const BuildersRoute = BuildersRouteImport.update({
 const ChatRoute = ChatRouteImport.update({
   id: '/chat',
   path: '/chat',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CommunityCityRoute = CommunityCityRouteImport.update({
+  id: '/community-city',
+  path: '/community-city',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const EcosystemRoute = EcosystemRouteImport.update({
+  id: '/ecosystem',
+  path: '/ecosystem',
   getParentRoute: () => rootRouteImport,
 } as any)
 const HowToPlayRoute = HowToPlayRouteImport.update({
@@ -108,6 +120,8 @@ export interface FileRoutesByFullPath {
   '/build': typeof BuildRoute
   '/builders': typeof BuildersRoute
   '/chat': typeof ChatRoute
+  '/community-city': typeof CommunityCityRoute
+  '/ecosystem': typeof EcosystemRoute
   '/how-to-play': typeof HowToPlayRoute
   '/hub': typeof HubRoute
   '/leaderboard': typeof LeaderboardRoute
@@ -125,6 +139,8 @@ export interface FileRoutesByTo {
   '/build': typeof BuildRoute
   '/builders': typeof BuildersRoute
   '/chat': typeof ChatRoute
+  '/community-city': typeof CommunityCityRoute
+  '/ecosystem': typeof EcosystemRoute
   '/how-to-play': typeof HowToPlayRoute
   '/hub': typeof HubRoute
   '/leaderboard': typeof LeaderboardRoute
@@ -143,6 +159,8 @@ export interface FileRoutesById {
   '/build': typeof BuildRoute
   '/builders': typeof BuildersRoute
   '/chat': typeof ChatRoute
+  '/community-city': typeof CommunityCityRoute
+  '/ecosystem': typeof EcosystemRoute
   '/how-to-play': typeof HowToPlayRoute
   '/hub': typeof HubRoute
   '/leaderboard': typeof LeaderboardRoute
@@ -162,6 +180,8 @@ export interface FileRouteTypes {
     | '/build'
     | '/builders'
     | '/chat'
+    | '/community-city'
+    | '/ecosystem'
     | '/how-to-play'
     | '/hub'
     | '/leaderboard'
@@ -179,6 +199,8 @@ export interface FileRouteTypes {
     | '/build'
     | '/builders'
     | '/chat'
+    | '/community-city'
+    | '/ecosystem'
     | '/how-to-play'
     | '/hub'
     | '/leaderboard'
@@ -196,6 +218,8 @@ export interface FileRouteTypes {
     | '/build'
     | '/builders'
     | '/chat'
+    | '/community-city'
+    | '/ecosystem'
     | '/how-to-play'
     | '/hub'
     | '/leaderboard'
@@ -214,6 +238,8 @@ export interface RootRouteChildren {
   BuildRoute: typeof BuildRoute
   BuildersRoute: typeof BuildersRoute
   ChatRoute: typeof ChatRoute
+  CommunityCityRoute: typeof CommunityCityRoute
+  EcosystemRoute: typeof EcosystemRoute
   HowToPlayRoute: typeof HowToPlayRoute
   HubRoute: typeof HubRoute
   LeaderboardRoute: typeof LeaderboardRoute
@@ -267,6 +293,20 @@ declare module '@tanstack/react-router' {
       path: '/chat'
       fullPath: '/chat'
       preLoaderRoute: typeof ChatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/community-city': {
+      id: '/community-city'
+      path: '/community-city'
+      fullPath: '/community-city'
+      preLoaderRoute: typeof CommunityCityRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/ecosystem': {
+      id: '/ecosystem'
+      path: '/ecosystem'
+      fullPath: '/ecosystem'
+      preLoaderRoute: typeof EcosystemRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/how-to-play': {
@@ -342,6 +382,8 @@ const rootRouteChildren: RootRouteChildren = {
   BuildRoute: BuildRoute,
   BuildersRoute: BuildersRoute,
   ChatRoute: ChatRoute,
+  CommunityCityRoute: CommunityCityRoute,
+  EcosystemRoute: EcosystemRoute,
   HowToPlayRoute: HowToPlayRoute,
   HubRoute: HubRoute,
   LeaderboardRoute: LeaderboardRoute,

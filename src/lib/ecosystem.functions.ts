@@ -18,7 +18,7 @@ function publicClient() {
 
 export const getEcosystemProjects = createServerFn({ method: "GET" }).handler(async () => {
   const { data, error } = await publicClient().from("ecosystem_projects")
-    .select("*, builders(github_username, github_avatar_url, builder_level, sui_reputation_score), builder_repositories(html_url, sui_relevance, commits, building_level), builder_sui_packages(package_id, module_count, verification_status)")
+    .select("*, builders(github_username, github_avatar_url, builder_level, sui_reputation_score), builder_repositories(html_url, sui_relevance, commits, building_level)")
     .order("reputation_score", { ascending: false }).limit(100);
   if (error) throw error;
   return data ?? [];
