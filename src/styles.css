@@ -43,10 +43,18 @@
   --color-grape: var(--grape);
   --color-surface: var(--surface);
   --color-surface-2: var(--surface-2);
+  --color-build-bg: var(--build-bg);
+  --color-build-panel: var(--build-panel);
+  --color-build-panel-2: var(--build-panel-2);
+  --color-build-line: var(--build-line);
+  --color-build-text: var(--build-text);
+  --color-build-muted: var(--build-muted);
+  --color-build-cyan: var(--build-cyan);
 
   --font-display: "Anton", "Impact", sans-serif;
   --font-hand: "Bricolage Grotesque", sans-serif;
   --font-body: "Space Grotesk", sans-serif;
+  --font-build: "Space Grotesk", sans-serif;
 
   --shadow-glow: 0 0 0 1px var(--border), 0 12px 40px -12px var(--glow-blast);
   --shadow-glow-cyber: 0 0 0 1px var(--border), 0 12px 40px -12px var(--glow-cyber);
@@ -311,4 +319,129 @@
 
 .animate-zap {
   animation: zap 4.5s ease-in-out infinite;
+}
+
+.theme-build {
+  --build-bg: oklch(0.135 0.022 245);
+  --build-panel: oklch(0.18 0.025 245);
+  --build-panel-2: oklch(0.225 0.03 242);
+  --build-line: oklch(0.33 0.04 235);
+  --build-text: oklch(0.96 0.01 220);
+  --build-muted: oklch(0.7 0.025 225);
+  --build-cyan: oklch(0.82 0.135 205);
+  color-scheme: dark;
+}
+
+.build-blueprint {
+  background-image:
+    linear-gradient(var(--build-line) 1px, transparent 1px),
+    linear-gradient(90deg, var(--build-line) 1px, transparent 1px);
+  background-size: 48px 48px;
+  mask-image: linear-gradient(to bottom, black, transparent 85%);
+}
+
+.build-city {
+  position: relative;
+  min-height: 31rem;
+  overflow: hidden;
+  border: 1px solid var(--build-line);
+  background: linear-gradient(180deg, var(--build-panel), var(--build-bg));
+  perspective: 900px;
+}
+
+.build-skyline {
+  position: absolute;
+  inset: 0;
+  opacity: 0.38;
+  background-image:
+    linear-gradient(30deg, transparent 49%, var(--build-line) 50%, transparent 51%),
+    linear-gradient(150deg, transparent 49%, var(--build-line) 50%, transparent 51%);
+  background-size: 56px 32px;
+}
+
+.build-grid {
+  position: absolute;
+  inset: 9% 7% 15%;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-rows: repeat(3, minmax(0, 1fr));
+  gap: 1rem;
+  transform: rotateX(52deg) rotateZ(-1deg);
+  transform-style: preserve-3d;
+}
+
+.build-hq,
+.build-building {
+  position: relative;
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--build-line);
+  background: var(--build-panel-2);
+  color: var(--build-text);
+  transform: translateZ(18px);
+  transition: border-color 180ms ease, transform 180ms ease, background 180ms ease;
+}
+
+.build-hq:hover,
+.build-building:hover,
+.build-building.is-selected {
+  border-color: var(--build-cyan);
+  background: color-mix(in oklch, var(--build-panel-2), var(--build-cyan) 10%);
+  transform: translateZ(30px);
+}
+
+.build-hq {
+  grid-column: 2 / span 2;
+  grid-row: 2;
+  border-width: 2px;
+}
+
+.build-hq-mark {
+  display: grid;
+  width: 3.2rem;
+  aspect-ratio: 1;
+  place-items: center;
+  background: var(--build-cyan);
+  color: var(--build-bg);
+  font-family: var(--font-build);
+  font-weight: 800;
+}
+
+.build-hq strong,
+.build-hq small { display: block; font-family: ui-monospace, monospace; }
+.build-hq strong { margin-top: .45rem; font-size: .7rem; }
+.build-hq small { margin-top: .15rem; color: var(--build-muted); font-size: .55rem; }
+.build-roof { display: grid; width: 2.5rem; aspect-ratio: 1; place-items: center; border: 1px solid var(--build-cyan); color: var(--build-cyan); }
+.build-roof svg { width: 1.25rem; height: 1.25rem; }
+.build-windows { display: grid; grid-template-columns: repeat(2, .32rem); gap: .18rem; margin-top: .4rem; }
+.build-windows i { width: .32rem; height: .24rem; background: var(--build-cyan); opacity: .65; }
+.build-label { max-width: 100%; overflow: hidden; margin-top: .4rem; padding-inline: .3rem; text-overflow: ellipsis; white-space: nowrap; font-family: ui-monospace, monospace; font-size: .55rem; }
+.build-level { position: absolute; right: .25rem; top: .2rem; color: var(--build-muted); font-family: ui-monospace, monospace; font-size: .5rem; }
+.build-building-1 { grid-column: 1; grid-row: 1; }
+.build-building-2 { grid-column: 2; grid-row: 1; }
+.build-building-3 { grid-column: 4; grid-row: 1; }
+.build-building-4 { grid-column: 1; grid-row: 3; }
+.build-building-5 { grid-column: 4; grid-row: 3; }
+.build-road { position: absolute; inset-inline: 8%; bottom: 8%; display: flex; justify-content: space-around; border-top: 2px solid var(--build-line); }
+.build-road span { width: 2rem; border-top: 2px solid var(--build-cyan); transform: translateY(-2px); }
+
+@media (max-width: 640px) {
+  .build-city { min-height: 25rem; }
+  .build-grid { inset: 9% 4% 18%; gap: .45rem; }
+  .build-label { font-size: .45rem; }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .build-building { animation: city-rise 650ms cubic-bezier(.2,.8,.2,1) both; }
+  .build-building:nth-of-type(2) { animation-delay: 80ms; }
+  .build-building:nth-of-type(3) { animation-delay: 150ms; }
+  .build-building:nth-of-type(4) { animation-delay: 220ms; }
+}
+
+@keyframes city-rise {
+  from { opacity: 0; transform: translateZ(0) scaleY(.25); transform-origin: bottom; }
+  to { opacity: 1; transform: translateZ(18px) scaleY(1); }
 }

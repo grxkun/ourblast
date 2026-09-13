@@ -8,6 +8,7 @@ const NAV = [
   { to: "/", label: "$BLAST", icon: "💥" },
   { to: "/hub", label: "Hub", icon: "🏠" },
   { to: "/arcade", label: "Arcade", icon: "🕹️" },
+  { to: "/build", label: "Build", icon: "🏙️" },
   { to: "/how-to-play", label: "Guide", icon: "📖" },
   { to: "/leaderboard", label: "Ranks", icon: "🏆" },
   { to: "/meme", label: "Meme", icon: "😂" },
@@ -42,7 +43,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           </Link>
 
           <nav className="hidden items-center gap-1 lg:flex">
-            {NAV.slice(0, 8).map((item) => (
+            {NAV.filter((item) => item.to !== "/how-to-play" && item.to !== "/profile").map((item) => (
               <Link
                 key={item.to}
                 to={item.to}

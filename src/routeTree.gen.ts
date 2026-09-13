@@ -21,6 +21,7 @@ import { Route as MemeRouteImport } from './routes/meme'
 import { Route as ProfileRouteImport } from './routes/profile'
 import { Route as RoastRouteImport } from './routes/roast'
 import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
+import { Route as BuilderUsernameRouteImport } from './routes/builder/$username'
 import { Route as OauthGithubReturnRouteImport } from './routes/oauth/github/return'
 
 const IndexRoute = IndexRouteImport.update({
@@ -83,6 +84,11 @@ const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
   path: '/sitemap.xml',
   getParentRoute: () => rootRouteImport,
 } as any)
+const BuilderUsernameRoute = BuilderUsernameRouteImport.update({
+  id: '/builder/$username',
+  path: '/builder/$username',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const OauthGithubReturnRoute = OauthGithubReturnRouteImport.update({
   id: '/oauth/github/return',
   path: '/oauth/github/return',
@@ -102,6 +108,7 @@ export interface FileRoutesByFullPath {
   '/profile': typeof ProfileRoute
   '/roast': typeof RoastRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
+  '/builder/$username': typeof BuilderUsernameRoute
   '/oauth/github/return': typeof OauthGithubReturnRoute
 }
 export interface FileRoutesByTo {
@@ -117,6 +124,7 @@ export interface FileRoutesByTo {
   '/profile': typeof ProfileRoute
   '/roast': typeof RoastRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
+  '/builder/$username': typeof BuilderUsernameRoute
   '/oauth/github/return': typeof OauthGithubReturnRoute
 }
 export interface FileRoutesById {
@@ -133,6 +141,7 @@ export interface FileRoutesById {
   '/profile': typeof ProfileRoute
   '/roast': typeof RoastRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
+  '/builder/$username': typeof BuilderUsernameRoute
   '/oauth/github/return': typeof OauthGithubReturnRoute
 }
 export interface FileRouteTypes {
@@ -150,6 +159,7 @@ export interface FileRouteTypes {
     | '/profile'
     | '/roast'
     | '/sitemap.xml'
+    | '/builder/$username'
     | '/oauth/github/return'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -165,6 +175,7 @@ export interface FileRouteTypes {
     | '/profile'
     | '/roast'
     | '/sitemap.xml'
+    | '/builder/$username'
     | '/oauth/github/return'
   id:
     | '__root__'
@@ -180,6 +191,7 @@ export interface FileRouteTypes {
     | '/profile'
     | '/roast'
     | '/sitemap.xml'
+    | '/builder/$username'
     | '/oauth/github/return'
   fileRoutesById: FileRoutesById
 }
@@ -196,6 +208,7 @@ export interface RootRouteChildren {
   ProfileRoute: typeof ProfileRoute
   RoastRoute: typeof RoastRoute
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
+  BuilderUsernameRoute: typeof BuilderUsernameRoute
   OauthGithubReturnRoute: typeof OauthGithubReturnRoute
 }
 
@@ -285,6 +298,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SitemapDotxmlRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/builder/$username': {
+      id: '/builder/$username'
+      path: '/builder/$username'
+      fullPath: '/builder/$username'
+      preLoaderRoute: typeof BuilderUsernameRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/oauth/github/return': {
       id: '/oauth/github/return'
       path: '/oauth/github/return'
@@ -308,6 +328,7 @@ const rootRouteChildren: RootRouteChildren = {
   ProfileRoute: ProfileRoute,
   RoastRoute: RoastRoute,
   SitemapDotxmlRoute: SitemapDotxmlRoute,
+  BuilderUsernameRoute: BuilderUsernameRoute,
   OauthGithubReturnRoute: OauthGithubReturnRoute,
 }
 export const routeTree = rootRouteImport
