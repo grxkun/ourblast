@@ -1,0 +1,1 @@
+CREATE POLICY app_user_connections_service_only ON public.app_user_connections FOR ALL TO service_role USING (true) WITH CHECK (true);
