@@ -25,8 +25,8 @@
 
 ## Blast Build — 3D City Upgrade
 
-- [ ] Replace the flat Builder City with an interactive 3D city and detailed landscape
-- [ ] Verify desktop/mobile rendering, selection, orbit, and zoom
+- [x] Replace the flat Builder City with an interactive 3D city and detailed landscape
+- [x] Verify desktop/mobile rendering, selection, orbit, and zoom
 
 ## Blast Build — Phase 2
 
