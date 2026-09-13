@@ -16,9 +16,9 @@
 
 ## Blast Build — Phase 1
 
-- [ ] Preserve existing OURBLAST landing and arcade
-- [ ] Add Blast Build landing and authenticated builder experience
-- [ ] Add GitHub OAuth and public repository ingestion
-- [ ] Add server-authoritative Sui relevance and Builder Score
-- [ ] Add initial repository-to-city visualization and public builder profile
-- [ ] Reuse Sui wallet connection and configurable BLAST token detection
+- [x] Preserve existing OURBLAST landing and arcade
+- [x] Add Blast Build landing and authenticated builder experience
+- [x] Add GitHub OAuth and public repository ingestion
+- [x] Add server-authoritative Sui relevance and Builder Score
+- [x] Add initial repository-to-city visualization and public builder profile
+- [x] Reuse Sui wallet connection and configurable BLAST token detection

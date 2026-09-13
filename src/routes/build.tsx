@@ -8,7 +8,7 @@ import { toast } from "sonner";
 import { BuilderCity } from "@/components/build/BuilderCity";
 import { useBlast } from "@/components/blast/session";
 import { Button } from "@/components/ui/button";
-import { completeGitHubConnect, getMyBuilder, startGitHubConnect, syncGitHub } from "@/lib/build.functions";
+import { completeGitHubConnect, getBuilderWalletAssets, getMyBuilder, startGitHubConnect, syncGitHub } from "@/lib/build.functions";
 
 export const Route = createFileRoute("/build")({
   head: () => ({ meta: [
@@ -41,11 +41,13 @@ function BlastBuild() {
   const { userId, profile, connect, connecting } = useBlast();
   const queryClient = useQueryClient();
   const getBuilder = useServerFn(getMyBuilder);
+  const getWalletAssets = useServerFn(getBuilderWalletAssets);
   const startConnect = useServerFn(startGitHubConnect);
   const completeConnect = useServerFn(completeGitHubConnect);
   const sync = useServerFn(syncGitHub);
   const [syncNote, setSyncNote] = useState<string | null>(null);
   const builder = useQuery({ queryKey: ["blast-build", userId], queryFn: () => getBuilder(), enabled: Boolean(userId) });
+  const walletAssets = useQuery({ queryKey: ["blast-build-wallet", userId], queryFn: () => getWalletAssets(), enabled: Boolean(userId), staleTime: 30_000 });
   const repositories = (builder.data?.builder_repositories ?? []).slice().sort((a, b) => b.sui_relevance - a.sui_relevance);
   const city = builder.data?.builder_cities;
   const cityBuildings = repositories.filter((repo) => repo.verified).map((repo, index) => ({
@@ -97,10 +99,11 @@ function BlastBuild() {
 
     <section id="explore" className="mx-auto max-w-6xl px-4 py-12">
       {builder.data?.github_connected ? <>
-        <div className="grid gap-px border border-build-line bg-build-line sm:grid-cols-2 lg:grid-cols-5">
+        <div className="grid gap-px border border-build-line bg-build-line sm:grid-cols-2 lg:grid-cols-6">
           {[
             ["Sui Builder Score", builder.data.builder_score.toLocaleString()], ["Verified projects", builder.data.verified_repository_count],
             ["Commits", builder.data.total_commits.toLocaleString()], ["Pull requests", builder.data.total_pull_requests], ["Builder level", builder.data.builder_level],
+            ["Wallet", `${(walletAssets.data?.sui ?? 0).toLocaleString(undefined, { maximumFractionDigits: 2 })} SUI${walletAssets.data?.blastConfigured ? ` · ${walletAssets.data?.blast?.toLocaleString() ?? 0} BLAST` : ""}`],
           ].map(([label, value]) => <div key={label} className="bg-build-panel p-5"><p className="font-mono text-[0.62rem] tracking-[0.15em] text-build-muted uppercase">{label}</p><p className="mt-2 font-build text-3xl font-bold">{value}</p></div>)}
         </div>
         <div className="mt-12 flex flex-wrap items-end justify-between gap-4"><div><p className="font-mono text-xs text-build-cyan uppercase">Verification ledger</p><h2 className="mt-2 font-build text-4xl font-bold normal-case">Your Sui projects</h2></div>{builder.data.github_username ? <Link to="/builder/$username" params={{ username: builder.data.github_username }} className="font-mono text-sm text-build-cyan hover:underline">View public profile →</Link> : null}</div>

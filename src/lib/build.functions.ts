@@ -48,6 +48,38 @@ export const getMyBuilder = createServerFn({ method: "GET" })
     return data;
   });
 
+export const getBuilderWalletAssets = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { data: profile, error } = await context.supabase
+      .from("profiles")
+      .select("wallet_address")
+      .eq("id", context.userId)
+      .single();
+    if (error || !profile) throw new Error("Sui wallet not found.");
+    const tokenType = process.env['BLAST_TOKEN_TYPE']?.trim() || null;
+    const response = await fetch("https://graphql.mainnet.sui.io/graphql", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        query: "query WalletBalances($address: SuiAddress!) { address(address: $address) { balances(first: 100) { nodes { coinType { repr } totalBalance coinObjectCount } } } }",
+        variables: { address: profile.wallet_address },
+      }),
+    });
+    if (!response.ok) throw new Error("Sui balances are temporarily unavailable.");
+    const payload = await response.json() as { data?: { address?: { balances?: { nodes?: Array<{ coinType?: { repr?: string }; totalBalance?: string }> } } } };
+    const balances = payload.data?.address?.balances?.nodes ?? [];
+    const normalized = (value: string) => value.toLowerCase().replace(/^0x0+/, "0x");
+    const sui = balances.find((item) => normalized(item.coinType?.repr ?? "") === "0x2::sui::sui");
+    const blast = tokenType ? balances.find((item) => normalized(item.coinType?.repr ?? "") === normalized(tokenType)) : undefined;
+    return {
+      walletAddress: profile.wallet_address,
+      sui: Number(sui?.totalBalance ?? 0) / 1_000_000_000,
+      blast: blast ? Number(blast.totalBalance ?? 0) : null,
+      blastConfigured: Boolean(tokenType),
+    };
+  });
+
 export const startGitHubConnect = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
