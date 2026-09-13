@@ -29,10 +29,16 @@ export const getEcosystemProject = createServerFn({ method: "GET" })
   .inputValidator((input) => z.object({ slug: z.string().min(1).max(80).regex(/^[a-z0-9-]+$/) }).parse(input))
   .handler(async ({ data }) => {
     const { data: project, error } = await publicClient().from("ecosystem_projects")
-      .select("*, builders(github_username, github_avatar_url, builder_level, sui_reputation_score, verified_package_count), builder_repositories(html_url, sui_relevance, commits, pull_requests, contributors, building_level), builder_sui_packages(package_id, module_count, package_version, verification_source, verification_status, verified_at)")
+      .select("*, builders(github_username, github_avatar_url, builder_level, sui_reputation_score, verified_package_count), builder_repositories(html_url, sui_relevance, commits, pull_requests, contributors, building_level)")
       .eq("slug", data.slug).maybeSingle();
     if (error) throw error;
-    return project;
+    if (!project) return null;
+    const { data: packages, error: packageError } = await publicClient().from("builder_sui_packages")
+      .select("package_id, module_count, package_version, verification_source, verification_status, verified_at")
+      .eq("repository_id", project.repository_id)
+      .eq("verification_status", "verified");
+    if (packageError) throw packageError;
+    return { ...project, builder_sui_packages: packages ?? [] };
   });
 
 export const getCommunityCity = createServerFn({ method: "GET" }).handler(async () => {
