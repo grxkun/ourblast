@@ -33,7 +33,7 @@
 - [x] Separate free Builder Power from optional BLAST City Power
 - [x] Add free land, generated districts, repository XP, badges, and city events
 - [x] Add the city dashboard and safe upgrade previews
-- [ ] Add a generated shareable social card
+- [x] Add a generated shareable social card
 
 ## Blast Build — Phase 3
 
