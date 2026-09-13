@@ -23,6 +23,11 @@
 - [x] Add initial repository-to-city visualization and public builder profile
 - [x] Reuse Sui wallet connection and configurable BLAST token detection
 
+## Blast Build — 3D City Upgrade
+
+- [ ] Replace the flat Builder City with an interactive 3D city and detailed landscape
+- [ ] Verify desktop/mobile rendering, selection, orbit, and zoom
+
 ## Blast Build — Phase 2
 
 - [x] Configure the canonical BLAST token type before enabling transactions
