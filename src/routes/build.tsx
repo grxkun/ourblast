@@ -6,6 +6,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 
 import { BuilderCity } from "@/components/build/BuilderCity";
+import { CityShareCard } from "@/components/build/CityShareCard";
 import { ConstructionPanel } from "@/components/build/ConstructionPanel";
 import { useBlast } from "@/components/blast/session";
 import { Button } from "@/components/ui/button";
@@ -55,6 +56,8 @@ function BlastBuild() {
   const districts = city?.city_districts ?? [];
   const events = (city?.city_events ?? []).slice().sort((a, b) => Date.parse(b.occurred_at) - Date.parse(a.occurred_at));
   const badges = builder.data?.builder_badges ?? [];
+  const packages = builder.data?.builder_sui_packages ?? [];
+  const achievements = builder.data?.builder_achievements ?? [];
   const cityBuildings = repositories.filter((repo) => repo.verified).map((repo, index) => ({
     id: `building-${repo.id}`, building_type: repo.building_type, building_level: repo.building_level,
     district_key: repo.building_type, position_x: index % 4, position_y: Math.floor(index / 4),
@@ -126,8 +129,9 @@ function BlastBuild() {
       {builder.data?.github_connected ? <>
         <div className="grid gap-px border border-build-line bg-build-line sm:grid-cols-2 lg:grid-cols-6">
           {[
-            ["Builder Power", (city?.builder_power ?? builder.data.builder_score).toLocaleString()], ["City Power", (city?.city_power ?? 0).toLocaleString()],
-            ["Sui projects", builder.data.verified_repository_count], ["Free land", city?.free_land ?? Math.max(6, builder.data.verified_repository_count + 4)],
+            ["Builder Power", (city?.builder_power ?? builder.data.builder_score).toLocaleString()], ["Sui Reputation", builder.data.sui_reputation_score.toLocaleString()],
+            ["City Power", (city?.city_power ?? 0).toLocaleString()], ["Sui projects", builder.data.verified_repository_count],
+            ["Verified packages", builder.data.verified_package_count], ["Free land", city?.free_land ?? Math.max(6, builder.data.verified_repository_count + 4)],
             ["City level", city?.city_level ?? builder.data.builder_level], ["BLAST", (walletAssets.data?.blast ?? 0).toLocaleString(undefined, { maximumFractionDigits: 2 })],
           ].map(([label, value]) => <div key={label} className="bg-build-panel p-5"><p className="font-mono text-[0.62rem] tracking-[0.15em] text-build-muted uppercase">{label}</p><p className="mt-2 font-build text-3xl font-bold">{value}</p></div>)}
         </div>
@@ -144,6 +148,11 @@ function BlastBuild() {
            <div className="bg-build-panel p-5"><p className="flex items-center gap-2 font-mono text-xs font-bold text-build-cyan"><Zap className="size-4"/>CITY EVENTS</p><div className="mt-4 space-y-3">{events.length ? events.slice(0, 4).map((event) => <div key={event.id}><strong className="block text-sm">{event.title}</strong><span className="font-mono text-[0.62rem] text-build-muted">{new Date(event.occurred_at).toLocaleDateString()}</span></div>) : <span className="text-sm text-build-muted">New verified activity will bring your city to life.</span>}</div></div>
          </section>
          <ConstructionPanel projects={verifiedRepositories} blastBalance={walletAssets.data?.blast ?? 0} freeLand={city?.free_land ?? Math.max(6, builder.data.verified_repository_count + 4)} expandedLand={city?.expanded_land ?? 0}/>
+         <section className="mt-12 grid gap-6 lg:grid-cols-2">
+           <div className="border-t-2 border-build-line pt-5"><p className="font-mono text-xs font-bold text-build-cyan">VERIFIED SUI PACKAGES</p><div className="mt-4 space-y-2">{packages.length ? packages.map((pkg) => <div key={pkg.id} className="border border-build-line bg-build-panel p-4"><div className="flex justify-between gap-3"><strong className="font-mono text-sm">{pkg.package_id.slice(0, 12)}…{pkg.package_id.slice(-6)}</strong><span className="font-mono text-[0.6rem] text-build-cyan">ONCHAIN VERIFIED</span></div><p className="mt-2 text-xs text-build-muted">{pkg.module_count} modules · {pkg.verification_source} evidence · mainnet</p></div>) : <p className="text-sm text-build-muted">Sync checks your wallet history and repository evidence for published Move packages.</p>}</div></div>
+           <div className="border-t-2 border-build-line pt-5"><p className="font-mono text-xs font-bold text-build-cyan">BUILDER ACHIEVEMENTS</p><div className="mt-4 space-y-3">{achievements.map((achievement) => <div key={achievement.id}><div className="flex justify-between gap-3 text-sm"><strong>{achievement.label}</strong><span className={achievement.earned_at ? "font-mono text-xs text-build-cyan" : "font-mono text-xs text-build-muted"}>{achievement.earned_at ? "EARNED" : `${Math.min(achievement.progress, achievement.target)}/${achievement.target}`}</span></div><div className="mt-2 h-1.5 bg-build-line"><div className="h-full bg-build-cyan" style={{ width: `${Math.min(100, achievement.progress / achievement.target * 100)}%` }}/></div></div>)}</div></div>
+         </section>
+         {builder.data.github_username ? <div className="mt-12"><CityShareCard username={builder.data.github_username} cityLevel={city?.city_level ?? builder.data.builder_level} builderPower={city?.builder_power ?? builder.data.builder_score} projects={builder.data.verified_repository_count} commits={builder.data.total_commits} packages={builder.data.verified_package_count}/></div> : null}
       </> : <div className="grid gap-8 lg:grid-cols-3">
          {[{ icon: WalletCards, n: "01", title: "Connect your Sui wallet", text: "Slush opens as your wallet provider and creates your player identity." },{ icon: Github, n: "02", title: "Then connect GitHub", text: "We inspect public code, dependencies and contribution quality—not repository names alone." },{ icon: Sparkles, n: "03", title: "Your city grows", text: "Every verified Sui repository becomes a building sized by real development activity." }].map(({icon: Icon,n,title,text}) => <article key={n} className="border-t border-build-line pt-5"><div className="flex items-center justify-between"><Icon className="size-6 text-build-cyan"/><span className="font-mono text-xs text-build-muted">{n}</span></div><h2 className="mt-8 font-build text-2xl font-bold normal-case">{title}</h2><p className="mt-3 text-sm leading-relaxed text-build-muted">{text}</p></article>)}
       </div>}

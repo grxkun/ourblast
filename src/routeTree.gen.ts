@@ -15,6 +15,8 @@ import { Route as ArcadeRouteImport } from './routes/arcade'
 import { Route as BuildRouteImport } from './routes/build'
 import { Route as BuildersRouteImport } from './routes/builders'
 import { Route as ChatRouteImport } from './routes/chat'
+import { Route as CommunityCityRouteImport } from './routes/community-city'
+import { Route as EcosystemRouteImport } from './routes/ecosystem'
 import { Route as HowToPlayRouteImport } from './routes/how-to-play'
 import { Route as HubRouteImport } from './routes/hub'
 import { Route as LeaderboardRouteImport } from './routes/leaderboard'
@@ -23,6 +25,7 @@ import { Route as ProfileRouteImport } from './routes/profile'
 import { Route as RoastRouteImport } from './routes/roast'
 import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
 import { Route as BuilderUsernameRouteImport } from './routes/builder/$username'
+import { Route as EcosystemProjectSlugRouteImport } from './routes/ecosystem-project.$slug'
 import { Route as OauthGithubReturnRouteImport } from './routes/oauth/github/return'
 
 const IndexRoute = IndexRouteImport.update({
@@ -53,6 +56,16 @@ const BuildersRoute = BuildersRouteImport.update({
 const ChatRoute = ChatRouteImport.update({
   id: '/chat',
   path: '/chat',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CommunityCityRoute = CommunityCityRouteImport.update({
+  id: '/community-city',
+  path: '/community-city',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const EcosystemRoute = EcosystemRouteImport.update({
+  id: '/ecosystem',
+  path: '/ecosystem',
   getParentRoute: () => rootRouteImport,
 } as any)
 const HowToPlayRoute = HowToPlayRouteImport.update({
@@ -95,6 +108,11 @@ const BuilderUsernameRoute = BuilderUsernameRouteImport.update({
   path: '/builder/$username',
   getParentRoute: () => rootRouteImport,
 } as any)
+const EcosystemProjectSlugRoute = EcosystemProjectSlugRouteImport.update({
+  id: '/ecosystem-project/$slug',
+  path: '/ecosystem-project/$slug',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const OauthGithubReturnRoute = OauthGithubReturnRouteImport.update({
   id: '/oauth/github/return',
   path: '/oauth/github/return',
@@ -108,6 +126,8 @@ export interface FileRoutesByFullPath {
   '/build': typeof BuildRoute
   '/builders': typeof BuildersRoute
   '/chat': typeof ChatRoute
+  '/community-city': typeof CommunityCityRoute
+  '/ecosystem': typeof EcosystemRoute
   '/how-to-play': typeof HowToPlayRoute
   '/hub': typeof HubRoute
   '/leaderboard': typeof LeaderboardRoute
@@ -116,6 +136,7 @@ export interface FileRoutesByFullPath {
   '/roast': typeof RoastRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/builder/$username': typeof BuilderUsernameRoute
+  '/ecosystem-project/$slug': typeof EcosystemProjectSlugRoute
   '/oauth/github/return': typeof OauthGithubReturnRoute
 }
 export interface FileRoutesByTo {
@@ -125,6 +146,8 @@ export interface FileRoutesByTo {
   '/build': typeof BuildRoute
   '/builders': typeof BuildersRoute
   '/chat': typeof ChatRoute
+  '/community-city': typeof CommunityCityRoute
+  '/ecosystem': typeof EcosystemRoute
   '/how-to-play': typeof HowToPlayRoute
   '/hub': typeof HubRoute
   '/leaderboard': typeof LeaderboardRoute
@@ -133,6 +156,7 @@ export interface FileRoutesByTo {
   '/roast': typeof RoastRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/builder/$username': typeof BuilderUsernameRoute
+  '/ecosystem-project/$slug': typeof EcosystemProjectSlugRoute
   '/oauth/github/return': typeof OauthGithubReturnRoute
 }
 export interface FileRoutesById {
@@ -143,6 +167,8 @@ export interface FileRoutesById {
   '/build': typeof BuildRoute
   '/builders': typeof BuildersRoute
   '/chat': typeof ChatRoute
+  '/community-city': typeof CommunityCityRoute
+  '/ecosystem': typeof EcosystemRoute
   '/how-to-play': typeof HowToPlayRoute
   '/hub': typeof HubRoute
   '/leaderboard': typeof LeaderboardRoute
@@ -151,6 +177,7 @@ export interface FileRoutesById {
   '/roast': typeof RoastRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/builder/$username': typeof BuilderUsernameRoute
+  '/ecosystem-project/$slug': typeof EcosystemProjectSlugRoute
   '/oauth/github/return': typeof OauthGithubReturnRoute
 }
 export interface FileRouteTypes {
@@ -162,6 +189,8 @@ export interface FileRouteTypes {
     | '/build'
     | '/builders'
     | '/chat'
+    | '/community-city'
+    | '/ecosystem'
     | '/how-to-play'
     | '/hub'
     | '/leaderboard'
@@ -170,6 +199,7 @@ export interface FileRouteTypes {
     | '/roast'
     | '/sitemap.xml'
     | '/builder/$username'
+    | '/ecosystem-project/$slug'
     | '/oauth/github/return'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -179,6 +209,8 @@ export interface FileRouteTypes {
     | '/build'
     | '/builders'
     | '/chat'
+    | '/community-city'
+    | '/ecosystem'
     | '/how-to-play'
     | '/hub'
     | '/leaderboard'
@@ -187,6 +219,7 @@ export interface FileRouteTypes {
     | '/roast'
     | '/sitemap.xml'
     | '/builder/$username'
+    | '/ecosystem-project/$slug'
     | '/oauth/github/return'
   id:
     | '__root__'
@@ -196,6 +229,8 @@ export interface FileRouteTypes {
     | '/build'
     | '/builders'
     | '/chat'
+    | '/community-city'
+    | '/ecosystem'
     | '/how-to-play'
     | '/hub'
     | '/leaderboard'
@@ -204,6 +239,7 @@ export interface FileRouteTypes {
     | '/roast'
     | '/sitemap.xml'
     | '/builder/$username'
+    | '/ecosystem-project/$slug'
     | '/oauth/github/return'
   fileRoutesById: FileRoutesById
 }
@@ -214,6 +250,8 @@ export interface RootRouteChildren {
   BuildRoute: typeof BuildRoute
   BuildersRoute: typeof BuildersRoute
   ChatRoute: typeof ChatRoute
+  CommunityCityRoute: typeof CommunityCityRoute
+  EcosystemRoute: typeof EcosystemRoute
   HowToPlayRoute: typeof HowToPlayRoute
   HubRoute: typeof HubRoute
   LeaderboardRoute: typeof LeaderboardRoute
@@ -222,6 +260,7 @@ export interface RootRouteChildren {
   RoastRoute: typeof RoastRoute
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
   BuilderUsernameRoute: typeof BuilderUsernameRoute
+  EcosystemProjectSlugRoute: typeof EcosystemProjectSlugRoute
   OauthGithubReturnRoute: typeof OauthGithubReturnRoute
 }
 
@@ -267,6 +306,20 @@ declare module '@tanstack/react-router' {
       path: '/chat'
       fullPath: '/chat'
       preLoaderRoute: typeof ChatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/community-city': {
+      id: '/community-city'
+      path: '/community-city'
+      fullPath: '/community-city'
+      preLoaderRoute: typeof CommunityCityRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/ecosystem': {
+      id: '/ecosystem'
+      path: '/ecosystem'
+      fullPath: '/ecosystem'
+      preLoaderRoute: typeof EcosystemRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/how-to-play': {
@@ -325,6 +378,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof BuilderUsernameRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/ecosystem-project/$slug': {
+      id: '/ecosystem-project/$slug'
+      path: '/ecosystem-project/$slug'
+      fullPath: '/ecosystem-project/$slug'
+      preLoaderRoute: typeof EcosystemProjectSlugRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/oauth/github/return': {
       id: '/oauth/github/return'
       path: '/oauth/github/return'
@@ -342,6 +402,8 @@ const rootRouteChildren: RootRouteChildren = {
   BuildRoute: BuildRoute,
   BuildersRoute: BuildersRoute,
   ChatRoute: ChatRoute,
+  CommunityCityRoute: CommunityCityRoute,
+  EcosystemRoute: EcosystemRoute,
   HowToPlayRoute: HowToPlayRoute,
   HubRoute: HubRoute,
   LeaderboardRoute: LeaderboardRoute,
@@ -350,6 +412,7 @@ const rootRouteChildren: RootRouteChildren = {
   RoastRoute: RoastRoute,
   SitemapDotxmlRoute: SitemapDotxmlRoute,
   BuilderUsernameRoute: BuilderUsernameRoute,
+  EcosystemProjectSlugRoute: EcosystemProjectSlugRoute,
   OauthGithubReturnRoute: OauthGithubReturnRoute,
 }
 export const routeTree = rootRouteImport
