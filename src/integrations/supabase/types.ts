@@ -41,6 +41,309 @@ export type Database = {
         }
         Relationships: []
       }
+      app_user_connections: {
+        Row: {
+          connection_key_ciphertext: string
+          connector_id: string
+          created_at: string
+          id: string
+          reconnect_required: boolean
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          connection_key_ciphertext: string
+          connector_id: string
+          created_at?: string
+          id?: string
+          reconnect_required?: boolean
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          connection_key_ciphertext?: string
+          connector_id?: string
+          created_at?: string
+          id?: string
+          reconnect_required?: boolean
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      builder_activity: {
+        Row: {
+          activity_day: string
+          builder_id: string
+          commits: number
+          created_at: string
+          id: string
+          issues: number
+          oss_contributions: number
+          packages: number
+          pull_requests: number
+        }
+        Insert: {
+          activity_day: string
+          builder_id: string
+          commits?: number
+          created_at?: string
+          id?: string
+          issues?: number
+          oss_contributions?: number
+          packages?: number
+          pull_requests?: number
+        }
+        Update: {
+          activity_day?: string
+          builder_id?: string
+          commits?: number
+          created_at?: string
+          id?: string
+          issues?: number
+          oss_contributions?: number
+          packages?: number
+          pull_requests?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "builder_activity_builder_id_fkey"
+            columns: ["builder_id"]
+            isOneToOne: false
+            referencedRelation: "builders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      builder_cities: {
+        Row: {
+          blast_committed: number
+          builder_id: string
+          city_level: number
+          city_score: number
+          created_at: string
+          id: string
+          land_slots: number
+          theme_key: string
+          tier_key: string
+          updated_at: string
+        }
+        Insert: {
+          blast_committed?: number
+          builder_id: string
+          city_level?: number
+          city_score?: number
+          created_at?: string
+          id?: string
+          land_slots?: number
+          theme_key?: string
+          tier_key?: string
+          updated_at?: string
+        }
+        Update: {
+          blast_committed?: number
+          builder_id?: string
+          city_level?: number
+          city_score?: number
+          created_at?: string
+          id?: string
+          land_slots?: number
+          theme_key?: string
+          tier_key?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "builder_cities_builder_id_fkey"
+            columns: ["builder_id"]
+            isOneToOne: true
+            referencedRelation: "builders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      builder_repositories: {
+        Row: {
+          analyzed_at: string
+          builder_id: string
+          building_level: number
+          building_type: string
+          commits: number
+          contributors: number
+          created_at: string
+          default_branch_sha: string | null
+          description: string | null
+          development_score: number
+          forks: number
+          full_name: string
+          github_repo_id: number
+          html_url: string
+          id: string
+          is_archived: boolean
+          is_fork: boolean
+          issues_resolved: number
+          merged_pull_requests: number
+          name: string
+          primary_language: string | null
+          pull_requests: number
+          quality_score: number
+          repo_created_at: string | null
+          repo_pushed_at: string | null
+          stars: number
+          sui_relevance: number
+          topics: string[]
+          updated_at: string
+          verified: boolean
+        }
+        Insert: {
+          analyzed_at?: string
+          builder_id: string
+          building_level?: number
+          building_type?: string
+          commits?: number
+          contributors?: number
+          created_at?: string
+          default_branch_sha?: string | null
+          description?: string | null
+          development_score?: number
+          forks?: number
+          full_name: string
+          github_repo_id: number
+          html_url: string
+          id?: string
+          is_archived?: boolean
+          is_fork?: boolean
+          issues_resolved?: number
+          merged_pull_requests?: number
+          name: string
+          primary_language?: string | null
+          pull_requests?: number
+          quality_score?: number
+          repo_created_at?: string | null
+          repo_pushed_at?: string | null
+          stars?: number
+          sui_relevance?: number
+          topics?: string[]
+          updated_at?: string
+          verified?: boolean
+        }
+        Update: {
+          analyzed_at?: string
+          builder_id?: string
+          building_level?: number
+          building_type?: string
+          commits?: number
+          contributors?: number
+          created_at?: string
+          default_branch_sha?: string | null
+          description?: string | null
+          development_score?: number
+          forks?: number
+          full_name?: string
+          github_repo_id?: number
+          html_url?: string
+          id?: string
+          is_archived?: boolean
+          is_fork?: boolean
+          issues_resolved?: number
+          merged_pull_requests?: number
+          name?: string
+          primary_language?: string | null
+          pull_requests?: number
+          quality_score?: number
+          repo_created_at?: string | null
+          repo_pushed_at?: string | null
+          stars?: number
+          sui_relevance?: number
+          topics?: string[]
+          updated_at?: string
+          verified?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "builder_repositories_builder_id_fkey"
+            columns: ["builder_id"]
+            isOneToOne: false
+            referencedRelation: "builders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      builders: {
+        Row: {
+          builder_level: number
+          builder_score: number
+          contribution_streak: number
+          created_at: string
+          github_avatar_url: string | null
+          github_bio: string | null
+          github_connected: boolean
+          github_id: number | null
+          github_name: string | null
+          github_username: string | null
+          id: string
+          is_public: boolean
+          last_synced_at: string | null
+          merged_pull_requests: number
+          oss_contributions: number
+          sui_verified: boolean
+          total_commits: number
+          total_pull_requests: number
+          updated_at: string
+          user_id: string
+          verified_repository_count: number
+          wallet_address: string
+        }
+        Insert: {
+          builder_level?: number
+          builder_score?: number
+          contribution_streak?: number
+          created_at?: string
+          github_avatar_url?: string | null
+          github_bio?: string | null
+          github_connected?: boolean
+          github_id?: number | null
+          github_name?: string | null
+          github_username?: string | null
+          id?: string
+          is_public?: boolean
+          last_synced_at?: string | null
+          merged_pull_requests?: number
+          oss_contributions?: number
+          sui_verified?: boolean
+          total_commits?: number
+          total_pull_requests?: number
+          updated_at?: string
+          user_id: string
+          verified_repository_count?: number
+          wallet_address: string
+        }
+        Update: {
+          builder_level?: number
+          builder_score?: number
+          contribution_streak?: number
+          created_at?: string
+          github_avatar_url?: string | null
+          github_bio?: string | null
+          github_connected?: boolean
+          github_id?: number | null
+          github_name?: string | null
+          github_username?: string | null
+          id?: string
+          is_public?: boolean
+          last_synced_at?: string | null
+          merged_pull_requests?: number
+          oss_contributions?: number
+          sui_verified?: boolean
+          total_commits?: number
+          total_pull_requests?: number
+          updated_at?: string
+          user_id?: string
+          verified_repository_count?: number
+          wallet_address?: string
+        }
+        Relationships: []
+      }
       challenge_entries: {
         Row: {
           challenge_id: string
@@ -146,6 +449,63 @@ export type Database = {
             columns: ["message_id"]
             isOneToOne: false
             referencedRelation: "chat_messages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      city_buildings: {
+        Row: {
+          building_level: number
+          building_type: string
+          city_id: string
+          cosmetic_key: string
+          created_at: string
+          district_key: string
+          id: string
+          position_x: number
+          position_y: number
+          repository_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          building_level?: number
+          building_type: string
+          city_id: string
+          cosmetic_key?: string
+          created_at?: string
+          district_key?: string
+          id?: string
+          position_x?: number
+          position_y?: number
+          repository_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          building_level?: number
+          building_type?: string
+          city_id?: string
+          cosmetic_key?: string
+          created_at?: string
+          district_key?: string
+          id?: string
+          position_x?: number
+          position_y?: number
+          repository_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "city_buildings_city_id_fkey"
+            columns: ["city_id"]
+            isOneToOne: false
+            referencedRelation: "builder_cities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "city_buildings_repository_id_fkey"
+            columns: ["repository_id"]
+            isOneToOne: false
+            referencedRelation: "builder_repositories"
             referencedColumns: ["id"]
           },
         ]
@@ -462,6 +822,47 @@ export type Database = {
           wallet_address?: string
         }
         Relationships: []
+      }
+      repository_signals: {
+        Row: {
+          created_at: string
+          evidence: string | null
+          id: string
+          label: string
+          points: number
+          repository_id: string
+          signal_key: string
+          strength: string
+        }
+        Insert: {
+          created_at?: string
+          evidence?: string | null
+          id?: string
+          label: string
+          points?: number
+          repository_id: string
+          signal_key: string
+          strength: string
+        }
+        Update: {
+          created_at?: string
+          evidence?: string | null
+          id?: string
+          label?: string
+          points?: number
+          repository_id?: string
+          signal_key?: string
+          strength?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "repository_signals_repository_id_fkey"
+            columns: ["repository_id"]
+            isOneToOne: false
+            referencedRelation: "builder_repositories"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       seasons: {
         Row: {
