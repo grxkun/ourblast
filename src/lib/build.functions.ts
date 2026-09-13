@@ -293,3 +293,60 @@ export const getPublicBuilder = createServerFn({ method: "GET" })
     if (error) throw error;
     return builder;
   });
+
+const leaderboardInput = z.object({
+  metric: z.enum(["builder", "city", "blast", "rising", "open-source"]),
+});
+
+export const getBuilderLeaderboard = createServerFn({ method: "GET" })
+  .inputValidator((input) => leaderboardInput.parse(input))
+  .handler(async ({ data }) => {
+    const { createClient } = await import("@supabase/supabase-js");
+    const key = process.env['SUPABASE_PUBLISHABLE_KEY']!;
+    const client = createClient<Database>(process.env['SUPABASE_URL']!, key, {
+      auth: { persistSession: false, autoRefreshToken: false },
+      global: { fetch: (input, init) => {
+        const headers = new Headers(init?.headers);
+        if (key.startsWith("sb_") && headers.get("Authorization") === `Bearer ${key}`) headers.delete("Authorization");
+        headers.set("apikey", key);
+        return fetch(input, { ...init, headers });
+      } },
+    });
+    const { data: builders, error } = await client
+      .from("builders")
+      .select("id, github_username, github_avatar_url, builder_score, builder_level, verified_repository_count, total_commits, merged_pull_requests, oss_contributions, builder_cities(city_level, city_score, blast_committed, tier_key), builder_activity(activity_day, commits, pull_requests, packages, oss_contributions)")
+      .eq("is_public", true)
+      .eq("github_connected", true)
+      .limit(100);
+    if (error) throw error;
+    const sevenDaysAgo = new Date(Date.now() - 7 * 86_400_000).toISOString().slice(0, 10);
+    const rows = (builders ?? []).map((builder) => {
+      const city = builder.builder_cities;
+      const rising = (builder.builder_activity ?? [])
+        .filter((activity) => activity.activity_day >= sevenDaysAgo)
+        .reduce((sum, activity) => sum + activity.commits * 3 + activity.pull_requests * 8 + activity.packages * 12 + activity.oss_contributions * 6, 0);
+      const value = data.metric === "city" ? (city?.city_score ?? 0)
+        : data.metric === "blast" ? Number(city?.blast_committed ?? 0)
+        : data.metric === "rising" ? rising
+        : data.metric === "open-source" ? builder.oss_contributions
+        : builder.builder_score;
+      return {
+        id: builder.id,
+        username: builder.github_username ?? "builder",
+        avatarUrl: builder.github_avatar_url,
+        builderScore: builder.builder_score,
+        builderLevel: builder.builder_level,
+        verifiedProjects: builder.verified_repository_count,
+        commits: builder.total_commits,
+        mergedPullRequests: builder.merged_pull_requests,
+        ossContributions: builder.oss_contributions,
+        cityLevel: city?.city_level ?? 1,
+        cityScore: city?.city_score ?? 0,
+        blastCommitted: Number(city?.blast_committed ?? 0),
+        tier: city?.tier_key ?? "foundation",
+        risingScore: rising,
+        value,
+      };
+    }).sort((a, b) => b.value - a.value || b.builderScore - a.builderScore);
+    return rows.slice(0, 50).map((row, index) => ({ ...row, rank: index + 1 }));
+  });

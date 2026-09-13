@@ -22,3 +22,17 @@
 - [x] Add server-authoritative Sui relevance and Builder Score
 - [x] Add initial repository-to-city visualization and public builder profile
 - [x] Reuse Sui wallet connection and configurable BLAST token detection
+
+## Blast Build — Phase 2
+
+- [ ] Configure the canonical BLAST token type before enabling transactions
+- [ ] Add non-custodial BLAST commit/lock transaction construction
+- [ ] Verify each construction transaction on Sui before changing city state
+- [ ] Add district expansion and repository building upgrades
+- [ ] Animate verified construction and retain a public event history
+
+## Blast Build — Phase 3
+
+- [x] Add separate Builder, City, BLAST, Rising, and Open Source rankings
+- [x] Add a public city atlas that does not require geographic location
+- [x] Link ranking entries to shareable public builder cities
