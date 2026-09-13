@@ -2,6 +2,7 @@ import { Link } from "@tanstack/react-router";
 
 import { PlayerAvatar } from "@/components/blast/PlayerBadge";
 import { useBlast } from "@/components/blast/session";
+import { Button } from "@/components/ui/button";
 import { formatNumber, shortAddress } from "@/lib/blast";
 import { cn } from "@/lib/utils";
 
@@ -31,7 +32,7 @@ export function WalletButton({ className }: { className?: string }) {
   }
 
   return (
-    <button
+    <Button
       type="button"
       onClick={() => void connect()}
       disabled={connecting}
@@ -40,7 +41,7 @@ export function WalletButton({ className }: { className?: string }) {
         className,
       )}
     >
-      {connecting ? "Connecting…" : "Connect Slush"}
-    </button>
+      {connecting ? "Connecting…" : "Connect Sui Wallet"}
+    </Button>
   );
 }

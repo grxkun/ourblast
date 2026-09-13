@@ -91,8 +91,8 @@ function BlastBuild() {
             <p className="mt-6 max-w-2xl text-lg leading-relaxed text-build-muted">Your GitHub code becomes your city. Your Sui activity proves you're a builder. BLAST powers your growth.</p>
           </div>
           <div className="flex flex-col gap-3 sm:flex-row lg:flex-col">
-            {!userId ? <Button size="lg" onClick={() => void connect()} disabled={connecting} className="h-12 rounded-sm bg-build-cyan px-6 text-build-bg hover:bg-build-cyan/85"><WalletCards />{connecting ? "Connecting…" : "Connect Sui wallet"}</Button>
-              : !builder.data?.github_connected ? <Button size="lg" onClick={() => githubMutation.mutate()} disabled={githubMutation.isPending} className="h-12 rounded-sm bg-build-cyan px-6 text-build-bg hover:bg-build-cyan/85"><Github />{githubMutation.isPending ? "Building your city…" : "Connect GitHub"}</Button>
+            {!userId ? <Button size="lg" onClick={() => void connect()} disabled={connecting} className="h-12 rounded-sm bg-build-cyan px-6 text-build-bg hover:bg-build-cyan/85"><WalletCards />{connecting ? "Connecting…" : "1. Connect Sui Wallet"}</Button>
+              : !builder.data?.github_connected ? <Button size="lg" onClick={() => githubMutation.mutate()} disabled={githubMutation.isPending} className="h-12 rounded-sm bg-build-cyan px-6 text-build-bg hover:bg-build-cyan/85"><Github />{githubMutation.isPending ? "Building your city…" : "2. Connect GitHub"}</Button>
               : <Button size="lg" onClick={() => syncMutation.mutate()} disabled={syncMutation.isPending} className="h-12 rounded-sm bg-build-cyan px-6 text-build-bg hover:bg-build-cyan/85"><RefreshCw className={syncMutation.isPending ? "animate-spin" : ""}/>{syncMutation.isPending ? "Analyzing…" : "Sync GitHub"}</Button>}
             <Button asChild size="lg" variant="outline" className="h-12 rounded-sm border-build-line bg-transparent px-6 text-build-text hover:bg-build-panel-2"><Link to="/builders">Explore Sui builders <ArrowRight className="size-4"/></Link></Button>
           </div>
@@ -101,8 +101,8 @@ function BlastBuild() {
           <BuilderCity buildings={cityBuildings} username={builder.data?.github_username ?? "builder"} level={city?.city_level ?? builder.data?.builder_level ?? 1}/>
           <div className="grid content-start gap-px border border-build-line bg-build-line sm:grid-cols-3 lg:grid-cols-1">
             {[
-              ["01 / CODE", "GitHub proves you build", "Public repositories, contribution quality, and dependencies."],
-              ["02 / PROOF", "Sui proves you ship", "Only strong Sui-specific evidence creates a city building."],
+               ["01 / WALLET", "Connect your Sui wallet", "Slush opens as your Sui wallet provider. This creates your player identity."],
+               ["02 / CODE", "Then connect GitHub", "Public repositories and strong Sui-specific evidence create city buildings."],
               ["03 / GROWTH", "Your city expands", "Real development determines capability; BLAST powers expansion."],
             ].map(([n, title, text]) => <div key={n} className="bg-build-panel p-5"><p className="font-mono text-[0.62rem] font-bold text-build-cyan">{n}</p><h2 className="mt-5 font-build text-2xl">{title}</h2><p className="mt-2 text-sm leading-relaxed text-build-muted">{text}</p></div>)}
           </div>
@@ -134,7 +134,7 @@ function BlastBuild() {
           <div className="mt-5 grid grid-cols-4 gap-2 border-t border-build-line pt-4 text-center font-mono text-xs text-build-muted"><span><b className="block text-build-text">{repo.commits}</b>commits</span><span><b className="block text-build-text">{repo.pull_requests}</b>PRs</span><span><b className="block text-build-text">{repo.contributors}</b>people</span><span><b className="block text-build-text">L{repo.building_level}</b>building</span></div>
         </article>)}</div>
       </> : <div className="grid gap-8 lg:grid-cols-3">
-        {[{ icon: Github, n: "01", title: "GitHub proves you build", text: "We inspect public code, dependencies and contribution quality—not repository names alone." },{ icon: ShieldCheck, n: "02", title: "Sui proves you ship", text: "Only projects with strong Sui-specific evidence can become verified city buildings." },{ icon: Sparkles, n: "03", title: "Your city grows", text: "Every verified repository becomes a building sized by real development activity." }].map(({icon: Icon,n,title,text}) => <article key={n} className="border-t border-build-line pt-5"><div className="flex items-center justify-between"><Icon className="size-6 text-build-cyan"/><span className="font-mono text-xs text-build-muted">{n}</span></div><h2 className="mt-8 font-build text-2xl font-bold normal-case">{title}</h2><p className="mt-3 text-sm leading-relaxed text-build-muted">{text}</p></article>)}
+         {[{ icon: WalletCards, n: "01", title: "Connect your Sui wallet", text: "Slush opens as your wallet provider and creates your player identity." },{ icon: Github, n: "02", title: "Then connect GitHub", text: "We inspect public code, dependencies and contribution quality—not repository names alone." },{ icon: Sparkles, n: "03", title: "Your city grows", text: "Every verified Sui repository becomes a building sized by real development activity." }].map(({icon: Icon,n,title,text}) => <article key={n} className="border-t border-build-line pt-5"><div className="flex items-center justify-between"><Icon className="size-6 text-build-cyan"/><span className="font-mono text-xs text-build-muted">{n}</span></div><h2 className="mt-8 font-build text-2xl font-bold normal-case">{title}</h2><p className="mt-3 text-sm leading-relaxed text-build-muted">{text}</p></article>)}
       </div>}
     </section>
   </div>;
