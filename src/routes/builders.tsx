@@ -18,16 +18,26 @@ const metrics: Array<{ key: Metric; label: string; icon: typeof Trophy }> = [
 ];
 
 const suiCoreTeam = [
-  { name: "Sam Blackshear", role: "Creator of Move & Co-Founder / CTO, Mysten Labs", github: "sblackshear", x: "b1ackd0g", district: "MOVE GENESIS" },
-  { name: "Evan Cheng", role: "Co-Founder & CEO, Mysten Labs", github: "evanx", x: "EvanWeb3", district: "EXECUTIVE HQ" },
-  { name: "Adeniyi Abiodun", role: "Co-Founder & CPO, Mysten Labs", github: "emanabio", x: "EmanAbio", district: "PRODUCT QUARTER" },
-  { name: "George Danezis", role: "Co-Founder & Chief Scientist, Mysten Labs", github: "gdanezis", x: "gdanezis", district: "RESEARCH DISTRICT" },
-  { name: "Kostas Chalkias", role: "Co-Founder & Chief Cryptographer, Mysten Labs", github: "kchalkias", x: "kostascrypto", district: "CRYPTOGRAPHY LAB" },
-  { name: "Alberto Sonnino", role: "Research Scientist & Core Engineer (Narwhal/Bullshark)", github: "asonnino", x: "alberto_sonnino", district: "CONSENSUS WORKS" },
-  { name: "Brandon Williams", role: "Core Protocol Infrastructure Engineer", github: "bmwill", x: "bmwill_", district: "PROTOCOL FOUNDRY" },
-  { name: "Damir Shamanaev", role: "Dev Tooling (Move VS Code Extension Creator)", github: "damirka", x: "damirka", district: "TOOLING YARD" },
-  { name: "Long Xuan (Lxfind)", role: "Core Protocol & Move Execution VM Engineer", github: "lxfind", x: "lxfind", district: "EXECUTION DISTRICT" },
-  { name: "Todd Fiala", role: "Head of Engineering, Mysten Labs", github: "tfiala", x: "trfiala", district: "ENGINEERING HQ" },
+  { name: "Sam Blackshear", role: "Move creator / Sui core / Mysten Labs", github: "sblackshear", x: "b1ackd0g", district: "MOVE GENESIS" },
+  { name: "François Garillot", role: "Sui protocol / distributed systems", github: "huitseeker", x: "huitseeker", district: "DISTRIBUTED SYSTEMS" },
+  { name: "Kostas Chalkias", role: "Cryptography / Sui infrastructure", github: "kchalkias", x: "kostascrypto", district: "CRYPTOGRAPHY LAB" },
+  { name: "Alberto Sonnino", role: "Consensus / cryptography / Sui research", github: "asonnino", x: "alberto_sonnino", district: "CONSENSUS WORKS" },
+  { name: "Thomas Nowacki", role: "Move / compiler / Sui core", github: "tnowacki", x: null, district: "COMPILER QUARTER" },
+  { name: "Marco Pitra", role: "Interest Protocol / Sui DeFi / Memez", github: "git-marcopitra", x: "marcopitra", district: "DEFI DISTRICT" },
+  { name: "José Cerqueira", role: "Interest Protocol / Sui / Move", github: "josemvcerqueira", x: null, district: "MOVE FINANCE" },
+  { name: "bmwill", role: "Sui core protocol / validator infrastructure", github: "bmwill", x: null, district: "VALIDATOR WORKS" },
+  { name: "amnn", role: "Sui RPC / infrastructure", github: "amnn", x: null, district: "RPC GRID" },
+  { name: "lxfind", role: "Sui execution / protocol engineering", github: "lxfind", x: null, district: "EXECUTION DISTRICT" },
+  { name: "mystenmark", role: "Consensus / Sui protocol", github: "mystenmark", x: null, district: "CONSENSUS CORE" },
+  { name: "mwtian", role: "Sui consensus / validator engineering", github: "mwtian", x: null, district: "VALIDATOR CORE" },
+  { name: "Dario Russi", role: "Sui framework / Move / core engineering", github: "dariorussi", x: null, district: "FRAMEWORK FOUNDRY" },
+  { name: "Joy Qiu", role: "Cryptography / zkLogin / Sui infrastructure", github: "joyqvq", x: null, district: "ZKLOGIN LAB" },
+  { name: "Tzakian", role: "Move / compiler / tooling", github: "tzakian", x: null, district: "MOVE TOOLING" },
+  { name: "Jonas Lind", role: "Cryptography / Sui infrastructure", github: "jonas-lj", x: null, district: "CRYPTO SYSTEMS" },
+  { name: "Stefan", role: "Sui infrastructure / developer tooling", github: "stefan-mysten", x: null, district: "DEVTOOLS YARD" },
+  { name: "Evan Wall", role: "Sui data / indexing / infrastructure", github: "evan-wall-mysten", x: null, district: "DATA INDEX" },
+  { name: "Randall", role: "Sui protocol / consensus", github: "randall-Mysten", x: null, district: "PROTOCOL CORE" },
+  { name: "Christophe", role: "Move / compiler / Sui tooling", github: "chrstphe", x: null, district: "COMPILER WORKS" },
 ] as const;
 
 export const Route = createFileRoute("/builders")({
@@ -94,7 +104,7 @@ function BuildersPage() {
                 <p className="mt-2 flex-1 text-xs leading-relaxed text-build-muted">{member.role}</p>
                 <div className="mt-4 flex gap-2 border-t border-build-line pt-3">
                   <a href={`https://github.com/${member.github}`} target="_blank" rel="noreferrer" aria-label={`${member.name} on GitHub`} className="inline-flex items-center gap-1.5 font-mono text-xs font-bold hover:text-build-cyan"><Github className="size-4" />@{member.github}</a>
-                  <a href={`https://x.com/${member.x}`} target="_blank" rel="noreferrer" aria-label={`${member.name} on X`} className="ml-auto font-mono text-xs font-bold hover:text-build-cyan">X ↗</a>
+                  {member.x ? <a href={`https://x.com/${member.x}`} target="_blank" rel="noreferrer" aria-label={`${member.name} on X`} className="ml-auto font-mono text-xs font-bold hover:text-build-cyan">X ↗</a> : null}
                 </div>
               </div>
             </article>
