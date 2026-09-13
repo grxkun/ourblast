@@ -71,6 +71,72 @@ export type Database = {
         }
         Relationships: []
       }
+      blast_commitments: {
+        Row: {
+          amount_atomic: number
+          amount_display: number
+          builder_id: string
+          city_id: string
+          created_at: string
+          id: string
+          network: string
+          purpose: string
+          status: string
+          token_type: string
+          transaction_digest: string | null
+          updated_at: string
+          user_id: string
+          verified_at: string | null
+        }
+        Insert: {
+          amount_atomic: number
+          amount_display: number
+          builder_id: string
+          city_id: string
+          created_at?: string
+          id?: string
+          network?: string
+          purpose: string
+          status?: string
+          token_type: string
+          transaction_digest?: string | null
+          updated_at?: string
+          user_id: string
+          verified_at?: string | null
+        }
+        Update: {
+          amount_atomic?: number
+          amount_display?: number
+          builder_id?: string
+          city_id?: string
+          created_at?: string
+          id?: string
+          network?: string
+          purpose?: string
+          status?: string
+          token_type?: string
+          transaction_digest?: string | null
+          updated_at?: string
+          user_id?: string
+          verified_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "blast_commitments_builder_id_fkey"
+            columns: ["builder_id"]
+            isOneToOne: false
+            referencedRelation: "builders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "blast_commitments_city_id_fkey"
+            columns: ["city_id"]
+            isOneToOne: false
+            referencedRelation: "builder_cities"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       builder_activity: {
         Row: {
           activity_day: string
@@ -115,15 +181,58 @@ export type Database = {
           },
         ]
       }
+      builder_badges: {
+        Row: {
+          badge_key: string
+          builder_id: string
+          created_at: string
+          earned_at: string
+          evidence: string
+          id: string
+          label: string
+        }
+        Insert: {
+          badge_key: string
+          builder_id: string
+          created_at?: string
+          earned_at?: string
+          evidence: string
+          id?: string
+          label: string
+        }
+        Update: {
+          badge_key?: string
+          builder_id?: string
+          created_at?: string
+          earned_at?: string
+          evidence?: string
+          id?: string
+          label?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "builder_badges_builder_id_fkey"
+            columns: ["builder_id"]
+            isOneToOne: false
+            referencedRelation: "builders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       builder_cities: {
         Row: {
           blast_committed: number
           builder_id: string
+          builder_power: number
           city_level: number
+          city_power: number
           city_score: number
           created_at: string
+          expanded_land: number
+          free_land: number
           id: string
           land_slots: number
+          progression_version: number
           theme_key: string
           tier_key: string
           updated_at: string
@@ -131,11 +240,16 @@ export type Database = {
         Insert: {
           blast_committed?: number
           builder_id: string
+          builder_power?: number
           city_level?: number
+          city_power?: number
           city_score?: number
           created_at?: string
+          expanded_land?: number
+          free_land?: number
           id?: string
           land_slots?: number
+          progression_version?: number
           theme_key?: string
           tier_key?: string
           updated_at?: string
@@ -143,11 +257,16 @@ export type Database = {
         Update: {
           blast_committed?: number
           builder_id?: string
+          builder_power?: number
           city_level?: number
+          city_power?: number
           city_score?: number
           created_at?: string
+          expanded_land?: number
+          free_land?: number
           id?: string
           land_slots?: number
+          progression_version?: number
           theme_key?: string
           tier_key?: string
           updated_at?: string
@@ -344,6 +463,54 @@ export type Database = {
         }
         Relationships: []
       }
+      building_upgrades: {
+        Row: {
+          building_id: string
+          commitment_id: string | null
+          created_at: string
+          from_level: number
+          id: string
+          status: string
+          to_level: number
+          upgrade_source: string
+        }
+        Insert: {
+          building_id: string
+          commitment_id?: string | null
+          created_at?: string
+          from_level: number
+          id?: string
+          status?: string
+          to_level: number
+          upgrade_source: string
+        }
+        Update: {
+          building_id?: string
+          commitment_id?: string | null
+          created_at?: string
+          from_level?: number
+          id?: string
+          status?: string
+          to_level?: number
+          upgrade_source?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "building_upgrades_building_id_fkey"
+            columns: ["building_id"]
+            isOneToOne: false
+            referencedRelation: "city_buildings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "building_upgrades_commitment_id_fkey"
+            columns: ["commitment_id"]
+            isOneToOne: false
+            referencedRelation: "blast_commitments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       challenge_entries: {
         Row: {
           challenge_id: string
@@ -455,11 +622,14 @@ export type Database = {
       }
       city_buildings: {
         Row: {
+          blast_upgrade_level: number
           building_level: number
           building_type: string
           city_id: string
           cosmetic_key: string
           created_at: string
+          developer_level: number
+          developer_xp: number
           district_key: string
           id: string
           position_x: number
@@ -468,11 +638,14 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          blast_upgrade_level?: number
           building_level?: number
           building_type: string
           city_id: string
           cosmetic_key?: string
           created_at?: string
+          developer_level?: number
+          developer_xp?: number
           district_key?: string
           id?: string
           position_x?: number
@@ -481,11 +654,14 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          blast_upgrade_level?: number
           building_level?: number
           building_type?: string
           city_id?: string
           cosmetic_key?: string
           created_at?: string
+          developer_level?: number
+          developer_xp?: number
           district_key?: string
           id?: string
           position_x?: number
@@ -503,6 +679,104 @@ export type Database = {
           },
           {
             foreignKeyName: "city_buildings_repository_id_fkey"
+            columns: ["repository_id"]
+            isOneToOne: false
+            referencedRelation: "builder_repositories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      city_districts: {
+        Row: {
+          blast_cost: number
+          city_id: string
+          created_at: string
+          district_key: string
+          id: string
+          label: string
+          repository_count: number
+          unlocked_at: string
+          unlocked_by: string
+          updated_at: string
+        }
+        Insert: {
+          blast_cost?: number
+          city_id: string
+          created_at?: string
+          district_key: string
+          id?: string
+          label: string
+          repository_count?: number
+          unlocked_at?: string
+          unlocked_by?: string
+          updated_at?: string
+        }
+        Update: {
+          blast_cost?: number
+          city_id?: string
+          created_at?: string
+          district_key?: string
+          id?: string
+          label?: string
+          repository_count?: number
+          unlocked_at?: string
+          unlocked_by?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "city_districts_city_id_fkey"
+            columns: ["city_id"]
+            isOneToOne: false
+            referencedRelation: "builder_cities"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      city_events: {
+        Row: {
+          city_id: string
+          created_at: string
+          description: string | null
+          event_type: string
+          event_value: number
+          id: string
+          occurred_at: string
+          repository_id: string | null
+          title: string
+        }
+        Insert: {
+          city_id: string
+          created_at?: string
+          description?: string | null
+          event_type: string
+          event_value?: number
+          id?: string
+          occurred_at?: string
+          repository_id?: string | null
+          title: string
+        }
+        Update: {
+          city_id?: string
+          created_at?: string
+          description?: string | null
+          event_type?: string
+          event_value?: number
+          id?: string
+          occurred_at?: string
+          repository_id?: string | null
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "city_events_city_id_fkey"
+            columns: ["city_id"]
+            isOneToOne: false
+            referencedRelation: "builder_cities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "city_events_repository_id_fkey"
             columns: ["repository_id"]
             isOneToOne: false
             referencedRelation: "builder_repositories"
