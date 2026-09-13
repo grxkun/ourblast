@@ -103,7 +103,7 @@ function BlastBuild() {
           </div>
         </div>
         <div className="grid gap-6 border-t border-build-line pt-8 lg:grid-cols-[1.35fr_.65fr]">
-           <BuilderCity buildings={cityBuildings} username={builder.data?.github_username ?? "builder"} level={city?.city_level ?? builder.data?.builder_level ?? 1} profileHref={builder.data?.github_username ? `/builder/${builder.data.github_username}` : undefined}/>
+           <BuilderCity buildings={cityBuildings} username={builder.data?.github_username ?? "builder"} level={city?.city_level ?? builder.data?.builder_level ?? 1} {...(builder.data?.github_username ? { profileHref: `/builder/${builder.data.github_username}` } : {})}/>
           <div className="grid content-start gap-px border border-build-line bg-build-line sm:grid-cols-3 lg:grid-cols-1">
             {[
                ["01 / WALLET", "Connect your Sui wallet", "Slush opens as your Sui wallet provider. This creates your player identity."],
