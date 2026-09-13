@@ -1,66 +1,7 @@
-# Roadmap — OURBLAST
+# Roadmap
 
-- [x] Backend: players, scores, points ledger, challenges, chat, meme battles, achievements, moderation (with access rules)
-- [x] Dark neon design system + shared shell (top nav + mobile bottom bar)
-- [x] Slush wallet sign-in, points, streaks, achievements
-- [x] Home, Arcade (BLAST CLICK), Leaderboard, Meme, Roast, Chat, Profile, Admin pages
-- [x] Daily missions pre-filled for the next 30 days
-- [x] $BLAST landing page restored at `/` (paper/ink look); arcade hub moved to `/hub`
-- [x] Treasury payments: 1 SUI per game and 0.1 SUI per chat message, verified on-chain before rewards
-- [x] Blast Click precision: target hits score; misses reset combo and deduct 5 points
-- [x] Faster chat payments through current Sui indexing and shorter confirmation retries
-- [x] Slush wallet identity metadata with absolute OURBLAST favicon, touch icon, and manifest URLs
-- [ ] Season resets and treasury payout tooling
-- [ ] Real meme submissions to kick off the first meme battle
-- [ ] More arcade games
-
-## Blast Build — Phase 1
-
-- [x] Preserve existing OURBLAST landing and arcade
-- [x] Add Blast Build landing and authenticated builder experience
-- [x] Add GitHub OAuth and public repository ingestion
-- [x] Add server-authoritative Sui relevance and Builder Score
-- [x] Add initial repository-to-city visualization and public builder profile
-- [x] Reuse Sui wallet connection and configurable BLAST token detection
-
-## Blast Build — 3D City Upgrade
-
-- [x] Replace the flat Builder City with an interactive 3D city and detailed landscape
-- [x] Verify desktop/mobile rendering, selection, orbit, and zoom
-
-## Blast Build — Phase 2
-
-- [x] Configure the canonical BLAST token type before enabling transactions
-- [ ] Add non-custodial BLAST commit/lock transaction construction
-- [ ] Verify each construction transaction on Sui before changing city state
-- [ ] Add district expansion and repository building upgrades
-- [ ] Animate verified construction and retain a public event history
-- [x] Separate free Builder Power from optional BLAST City Power
-- [x] Add free land, generated districts, repository XP, badges, and city events
-- [x] Add the city dashboard and safe upgrade previews
-- [x] Add a generated shareable social card
-
-## Blast Build — Phase 3
-
-- [x] Add separate Builder, City, BLAST, Rising, and Open Source rankings
-- [x] Add a public city atlas that does not require geographic location
-- [x] Link ranking entries to shareable public builder cities
-- [x] Add honorary Sui core team cities, separate from app-verified community rankings
-- [x] Add weekly Builder rankings with transparent score windows
-- [x] Add downloadable city social cards for X, Telegram, and Discord
-- [x] Expand verified Builder badges and achievement presentation
-
-## Blast Build — Phase 4
-
-- [x] Detect Sui package IDs from verified repositories and wallet transaction history
-- [x] Verify package ownership and publication on Sui mainnet server-side
-- [x] Add a separate Sui Builder Reputation score with visible evidence
-- [x] Add public ecosystem project discovery and project profiles
-- [x] Add a community/global city generated from verified ecosystem projects
-- [x] Add server-authoritative Builder achievements
-
-## Blast Build — Ecosystem Directory
-
-- [x] Remove auto-published personal repositories without deleting Builder Cities
-- [x] Prevent GitHub sync from publishing personal repositories to the directory
-- [x] Add a live, star-ranked feed of independent Sui developer projects
+- [ ] Fix blank 3D Builder City rendering in browser
+- [ ] Upgrade city skyline and environment visuals
+- [ ] Add rotate, zoom, helicopter view, and level controls
+- [ ] Show repository owner on selected buildings
+- [ ] Verify desktop and mobile 3D interactions
