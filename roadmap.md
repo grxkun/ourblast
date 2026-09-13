@@ -30,6 +30,9 @@
 - [ ] Verify each construction transaction on Sui before changing city state
 - [ ] Add district expansion and repository building upgrades
 - [ ] Animate verified construction and retain a public event history
+- [ ] Separate free Builder Power from optional BLAST City Power
+- [ ] Add free land, generated districts, repository XP, badges, and city events
+- [ ] Add the city dashboard, upgrade previews, and shareable social card
 
 ## Blast Build — Phase 3
 
