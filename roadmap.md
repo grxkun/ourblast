@@ -58,3 +58,9 @@
 - [x] Add public ecosystem project discovery and project profiles
 - [x] Add a community/global city generated from verified ecosystem projects
 - [x] Add server-authoritative Builder achievements
+
+## Blast Build — Ecosystem Directory
+
+- [x] Remove auto-published personal repositories without deleting Builder Cities
+- [x] Prevent GitHub sync from publishing personal repositories to the directory
+- [x] Add a live, star-ranked feed of independent Sui developer projects
