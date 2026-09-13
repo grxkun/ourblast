@@ -56,8 +56,8 @@ export function scoreSuiRepository(repo: RepositoryEvidence) {
   const source = `${repo.moveToml ?? ""}\n${repo.packageJson ?? ""}\n${repo.cargoToml ?? ""}\n${repo.readme ?? ""}`.toLowerCase();
   const topicSet = new Set(repo.topics.map((topic) => topic.toLowerCase()));
 
-  add(signals, { key: "move_toml_sui", label: "Sui Move package", strength: "strong", points: 28, evidence: "Move.toml declares a Sui framework dependency" }, Boolean(repo.moveToml && /mystenlabs\/sui|(^|\n)\s*sui\s*=|sui_system/i.test(repo.moveToml)));
-  add(signals, { key: "move_sources", label: "Sui Move source", strength: "strong", points: 22, evidence: "Move sources and a package manifest are present" }, paths.some((path) => path.endsWith(".move")) && paths.some((path) => path.endsWith("move.toml")));
+  add(signals, { key: "move_toml_sui", label: "Sui Move package", strength: "strong", points: 32, evidence: "Move.toml declares a Sui framework dependency" }, Boolean(repo.moveToml && /mystenlabs\/sui|(^|\n)\s*sui\s*=|sui_system/i.test(repo.moveToml)));
+  add(signals, { key: "move_sources", label: "Sui Move source", strength: "strong", points: 30, evidence: "Move sources and a package manifest are present" }, paths.some((path) => path.endsWith(".move")) && paths.some((path) => path.endsWith("move.toml")));
   add(signals, { key: "mysten_sdk", label: "Mysten Sui SDK", strength: "strong", points: 24, evidence: "Uses an official Mysten Sui JavaScript package" }, /@mysten\/(sui|sui\.js|dapp-kit|wallet-kit)/.test(source));
   add(signals, { key: "rust_sui_sdk", label: "Sui Rust SDK", strength: "strong", points: 22, evidence: "Cargo dependencies reference Sui SDK crates" }, /sui-(sdk|types|json-rpc)|mystenlabs\/sui/.test(repo.cargoToml?.toLowerCase() ?? ""));
   add(signals, { key: "sui_code", label: "Sui-specific code", strength: "strong", points: 18, evidence: "Code references Sui modules, clients, package IDs, or network endpoints" }, /sui::|suiclient|fullnode\.(mainnet|testnet|devnet)\.sui\.io|0x[a-f0-9]{40,}::/.test(source));
