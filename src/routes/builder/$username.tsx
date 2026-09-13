@@ -1,9 +1,8 @@
 import { createFileRoute, Link, notFound } from "@tanstack/react-router";
-import { Award, Github, Share2, Zap } from "lucide-react";
+import { Award, Github, Zap } from "lucide-react";
 
 import { BuilderCity } from "@/components/build/BuilderCity";
 import { CityShareCard } from "@/components/build/CityShareCard";
-import { Button } from "@/components/ui/button";
 import { BUILDING_LABELS, type BuildingType } from "@/lib/blast-build.config";
 import { getPublicBuilder } from "@/lib/build.functions";
 import type { Database } from "@/integrations/supabase/types";
@@ -47,10 +46,6 @@ function PublicBuilder() {
     district_key: repo.building_type, position_x: index % 4, position_y: Math.floor(index / 4),
     builder_repositories: { name: repo.name, sui_relevance: repo.sui_relevance, description: repo.description },
   }));
-  const share = async () => {
-    const data = { title: `@${builder.github_username}'s Sui Builder City`, text: `Builder Score ${builder.builder_score.toLocaleString()} · ${repos.length} verified Sui projects`, url: window.location.href };
-    if (navigator.share) await navigator.share(data); else await navigator.clipboard.writeText(window.location.href);
-  };
   return <div className="theme-build -mx-4 -mt-6 min-h-screen bg-build-bg text-build-text lg:-mb-16">
     <header className="border-b border-build-line px-4 py-5"><div className="mx-auto flex max-w-6xl items-center justify-between"><Link to="/build" className="font-build text-xl font-bold normal-case"><span className="text-build-cyan">BLAST</span> BUILD</Link><CityShareCard compact username={builder.github_username ?? "builder"} cityLevel={city?.city_level ?? builder.builder_level} builderPower={city?.builder_power ?? builder.builder_score} projects={builder.verified_repository_count} commits={builder.total_commits} packages={builder.verified_package_count}/></div></header>
     <main className="mx-auto max-w-6xl px-4 py-10">
