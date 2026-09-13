@@ -5,6 +5,11 @@ import { BuilderCity } from "@/components/build/BuilderCity";
 import { Button } from "@/components/ui/button";
 import { BUILDING_LABELS, type BuildingType } from "@/lib/blast-build.config";
 import { getPublicBuilder } from "@/lib/build.functions";
+import type { Database } from "@/integrations/supabase/types";
+
+type BuilderRepository = Database["public"]["Tables"]["builder_repositories"]["Row"] & {
+  repository_signals: Database["public"]["Tables"]["repository_signals"]["Row"][];
+};
 
 export const Route = createFileRoute("/builder/$username")({
   loader: async ({ params }) => {
@@ -29,8 +34,8 @@ export const Route = createFileRoute("/builder/$username")({
 
 function PublicBuilder() {
   const builder = Route.useLoaderData();
-  const repos = (builder.builder_repositories ?? []).filter((repo) => repo.verified).sort((a, b) => b.sui_relevance - a.sui_relevance);
-  const city = builder.builder_cities?.[0];
+  const repos = ((builder.builder_repositories ?? []) as BuilderRepository[]).filter((repo) => repo.verified).sort((a, b) => b.sui_relevance - a.sui_relevance);
+  const city = builder.builder_cities;
   const buildings = repos.map((repo, index) => ({
     id: repo.id, building_type: repo.building_type, building_level: repo.building_level,
     district_key: repo.building_type, position_x: index % 4, position_y: Math.floor(index / 4),

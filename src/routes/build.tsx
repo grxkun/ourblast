@@ -47,7 +47,7 @@ function BlastBuild() {
   const [syncNote, setSyncNote] = useState<string | null>(null);
   const builder = useQuery({ queryKey: ["blast-build", userId], queryFn: () => getBuilder(), enabled: Boolean(userId) });
   const repositories = (builder.data?.builder_repositories ?? []).slice().sort((a, b) => b.sui_relevance - a.sui_relevance);
-  const city = builder.data?.builder_cities?.[0];
+  const city = builder.data?.builder_cities;
   const cityBuildings = repositories.filter((repo) => repo.verified).map((repo, index) => ({
     id: `building-${repo.id}`, building_type: repo.building_type, building_level: repo.building_level,
     district_key: repo.building_type, position_x: index % 4, position_y: Math.floor(index / 4),

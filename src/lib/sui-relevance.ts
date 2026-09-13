@@ -46,7 +46,7 @@ export function classifyBuilding(repo: RepositoryEvidence): BuildingType {
   if (/sdk|cli|tool|template|starter|framework/.test(text)) return "tooling";
   if (/social|community|chat/.test(text)) return "social";
   if (/meme|memecoin/.test(text)) return "meme";
-  if ((repo.languages.Move ?? 0) > 0) return "move";
+  if ((repo.languages['Move'] ?? 0) > 0) return "move";
   return "dapp";
 }
 
@@ -63,7 +63,7 @@ export function scoreSuiRepository(repo: RepositoryEvidence) {
   add(signals, { key: "sui_code", label: "Sui-specific code", strength: "strong", points: 18, evidence: "Code references Sui modules, clients, package IDs, or network endpoints" }, /sui::|suiclient|fullnode\.(mainnet|testnet|devnet)\.sui\.io|0x[a-f0-9]{40,}::/.test(source));
   add(signals, { key: "sui_topics", label: "Sui repository topics", strength: "medium", points: 12, evidence: "Repository topics identify Sui or Sui Move" }, ["sui", "sui-network", "sui-move", "move-lang"].some((topic) => topicSet.has(topic)));
   add(signals, { key: "sui_readme", label: "Sui project documentation", strength: "medium", points: 10, evidence: "README explicitly describes a Sui project or integration" }, /\bsui (network|blockchain|dapp|move|ecosystem|package|wallet)\b/.test(repo.readme?.toLowerCase() ?? ""));
-  add(signals, { key: "move_language", label: "Move language", strength: "weak", points: 5, evidence: "GitHub detects Move source code" }, (repo.languages.Move ?? 0) > 0);
+  add(signals, { key: "move_language", label: "Move language", strength: "weak", points: 5, evidence: "GitHub detects Move source code" }, (repo.languages['Move'] ?? 0) > 0);
   add(signals, { key: "generic_chain", label: "Blockchain terminology", strength: "weak", points: 2, evidence: "Description includes generic blockchain language" }, /blockchain|web3|smart contract/.test(`${repo.description ?? ""} ${repo.readme ?? ""}`.toLowerCase()));
 
   const hasStrong = signals.some((signal) => signal.strength === "strong");

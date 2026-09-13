@@ -3,6 +3,7 @@ import { getRequest } from "@tanstack/react-start/server";
 import { z } from "zod";
 
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import type { Database } from "@/integrations/supabase/types";
 import { BLAST_BUILD, cityTier } from "./blast-build.config";
 import { scoreSuiRepository, type RepositoryEvidence } from "./sui-relevance";
 
@@ -77,7 +78,7 @@ export const startGitHubConnect = createServerFn({ method: "POST" })
       authorizationUrl: await authorizeGitHub({
         appUserId: context.userId,
         returnUrl: new URL("/oauth/github/return", origin).toString(),
-        connectionAPIKey: existingKey ?? undefined,
+        ...(existingKey ? { connectionAPIKey: existingKey } : {}),
       }),
     };
   });
@@ -132,7 +133,11 @@ export const syncGitHub = createServerFn({ method: "POST" })
         const evidence: RepositoryEvidence = {
           name: repo.name, description: repo.description, topics: repo.topics ?? [], languages,
           treePaths: (tree.tree ?? []).flatMap((item) => item.path ? [item.path] : []),
-          moveToml, packageJson, cargoToml, readme, isFork: repo.fork, archived: repo.archived,
+          ...(moveToml ? { moveToml } : {}),
+          ...(packageJson ? { packageJson } : {}),
+          ...(cargoToml ? { cargoToml } : {}),
+          ...(readme ? { readme } : {}),
+          isFork: repo.fork, archived: repo.archived,
           stars: repo.stargazers_count, forks: repo.forks_count, contributors: contributors.length,
           commits: commits.length, pullRequests: pulls.length,
           mergedPullRequests: pulls.filter((pull) => pull.merged_at).length, issuesResolved: 0,
@@ -181,7 +186,7 @@ export const syncGitHub = createServerFn({ method: "POST" })
     }, { onConflict: "user_id" }).select("id").single();
     if (builderError || !builder) throw builderError ?? new Error("Builder profile could not be saved.");
 
-    const repoIds: string[] = [];
+    const repoIds = new Map<number, string>();
     for (const item of analyzed) {
       const { repo, evidence, result } = item;
       const { data: saved, error } = await supabaseAdmin.from("builder_repositories").upsert({
@@ -198,7 +203,7 @@ export const syncGitHub = createServerFn({ method: "POST" })
         analyzed_at: new Date().toISOString(), updated_at: new Date().toISOString(),
       }, { onConflict: "github_repo_id" }).select("id").single();
       if (error || !saved) throw error ?? new Error("Repository could not be saved.");
-      repoIds.push(saved.id);
+      repoIds.set(repo.id, saved.id);
       await supabaseAdmin.from("repository_signals").delete().eq("repository_id", saved.id);
       if (result.signals.length) await supabaseAdmin.from("repository_signals").insert(result.signals.map((signal) => ({
         repository_id: saved.id, signal_key: signal.key, label: signal.label,
@@ -213,15 +218,18 @@ export const syncGitHub = createServerFn({ method: "POST" })
     }, { onConflict: "builder_id" }).select("id").single();
     if (cityError || !city) throw cityError ?? new Error("Builder City could not be created.");
     await supabaseAdmin.from("city_buildings").delete().eq("city_id", city.id);
-    if (verified.length) await supabaseAdmin.from("city_buildings").insert(verified.map((item, position) => ({
-      city_id: city.id,
-      repository_id: repoIds[analyzed.indexOf(item)],
-      building_type: item.result.buildingType,
-      building_level: item.result.buildingLevel,
-      district_key: item.result.buildingType,
-      position_x: position % 4,
-      position_y: Math.floor(position / 4),
-    })));
+    if (verified.length) await supabaseAdmin.from("city_buildings").insert(verified.flatMap((item, position) => {
+      const repositoryId = repoIds.get(item.repo.id);
+      return repositoryId ? [{
+        city_id: city.id,
+        repository_id: repositoryId,
+        building_type: item.result.buildingType,
+        building_level: item.result.buildingLevel,
+        district_key: item.result.buildingType,
+        position_x: position % 4,
+        position_y: Math.floor(position / 4),
+      }] : [];
+    }));
 
     const activity = new Map<string, number>();
     for (const item of verified) for (const day of item.activity) activity.set(day.date, (activity.get(day.date) ?? 0) + day.count);
@@ -236,7 +244,7 @@ export const getPublicBuilder = createServerFn({ method: "GET" })
   .handler(async ({ data }) => {
     const { createClient } = await import("@supabase/supabase-js");
     const key = process.env['SUPABASE_PUBLISHABLE_KEY']!;
-    const client = createClient(process.env['SUPABASE_URL']!, key, {
+    const client = createClient<Database>(process.env['SUPABASE_URL']!, key, {
       auth: { persistSession: false, autoRefreshToken: false },
       global: { fetch: (input, init) => {
         const headers = new Headers(init?.headers);
