@@ -10,7 +10,7 @@ const NAV = [
   { to: "/arcade", label: "Arcade", icon: "🕹️" },
   { to: "/build", label: "Build", icon: "🏙️" },
   { to: "/builders", label: "Builders", icon: "🏗️" },
-  { to: "/ecosystem", label: "Sui", icon: "💧" },
+  { to: "/ecosystem", label: "Sui", icon: "◇" },
   { to: "/how-to-play", label: "Guide", icon: "📖" },
   { to: "/leaderboard", label: "Ranks", icon: "🏆" },
   { to: "/meme", label: "Meme", icon: "😂" },

@@ -344,6 +344,7 @@ export const syncGitHub = createServerFn({ method: "POST" })
       }
     }
     for (const row of packageRows.values()) await supabaseAdmin.from("builder_sui_packages").upsert(row, { onConflict: "builder_id,package_id,network" });
+    if (packageRows.size) await supabaseAdmin.from("builder_badges").upsert({ builder_id: builder.id, badge_key: "onchain-shipper", label: "Onchain Shipper", evidence: `${packageRows.size} wallet-owned Move package${packageRows.size === 1 ? "" : "s"} verified on Sui mainnet` }, { onConflict: "builder_id,badge_key" });
 
     const achievementRows = [
       { achievement_key: "first-foundation", label: "City Founder", description: "Verify your first Sui repository.", progress: verified.length, target: 1, evidence: { verifiedRepositories: verified.length } },
@@ -449,7 +450,7 @@ export const getBuilderLeaderboard = createServerFn({ method: "GET" })
     });
     const { data: builders, error } = await client
       .from("builders")
-      .select("id, github_username, github_avatar_url, builder_score, builder_level, verified_repository_count, verified_package_count, sui_reputation_score, total_commits, merged_pull_requests, oss_contributions, builder_cities(city_level, city_score, blast_committed, tier_key), builder_activity(activity_day, commits, pull_requests, packages, oss_contributions)")
+      .select("id, github_username, github_avatar_url, builder_score, builder_level, verified_repository_count, verified_package_count, sui_reputation_score, total_commits, merged_pull_requests, oss_contributions, builder_cities(city_level, city_score, blast_committed, tier_key), builder_activity(activity_day, commits, pull_requests, packages, oss_contributions), builder_sui_packages(verified_at)")
       .eq("is_public", true)
       .eq("github_connected", true)
       .limit(100);
@@ -460,7 +461,8 @@ export const getBuilderLeaderboard = createServerFn({ method: "GET" })
       const weekly = (builder.builder_activity ?? [])
         .filter((activity) => activity.activity_day >= sevenDaysAgo)
         .reduce((sum, activity) => sum + activity.commits * 3 + activity.pull_requests * 8 + activity.packages * 12 + activity.oss_contributions * 6, 0);
-      const rising = weekly + Math.min(500, builder.verified_package_count * 100);
+      const recentPackages = (builder.builder_sui_packages ?? []).filter((item) => item.verified_at && item.verified_at >= `${sevenDaysAgo}T00:00:00.000Z`).length;
+      const rising = weekly + Math.min(500, recentPackages * 100);
       const value = data.metric === "city" ? (city?.city_score ?? 0)
         : data.metric === "blast" ? Number(city?.blast_committed ?? 0)
         : data.metric === "weekly" ? weekly

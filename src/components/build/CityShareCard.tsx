@@ -30,7 +30,18 @@ export function CityShareCard({ username, cityLevel, builderPower, projects, com
   const download = () => {
     const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630"><rect width="1200" height="630" fill="#f5edd8"/><path d="M0 90H1200M0 540H1200" stroke="#171410" stroke-width="4"/><text x="72" y="74" font-family="monospace" font-size="22" font-weight="700" fill="#e3262e">OURBLAST / SUI BUILDER CITY</text><text x="72" y="190" font-family="Impact,Arial Black,sans-serif" font-size="84" fill="#171410">@${escapeXml(cleanUsername)}</text><text x="72" y="268" font-family="monospace" font-size="28" fill="#e3262e">CITY LEVEL ${cityLevel}</text><g font-family="monospace" fill="#171410"><text x="72" y="380" font-size="25">BUILDER POWER</text><text x="72" y="438" font-size="54" font-weight="700">${builderPower.toLocaleString()}</text><text x="465" y="380" font-size="25">SUI PROJECTS</text><text x="465" y="438" font-size="54" font-weight="700">${projects}</text><text x="755" y="380" font-size="25">COMMITS</text><text x="755" y="438" font-size="54" font-weight="700">${commits.toLocaleString()}</text><text x="1010" y="380" font-size="25">PACKAGES</text><text x="1010" y="438" font-size="54" font-weight="700">${packages}</text><text x="72" y="590" font-size="24">ourblast.xyz/builder/${escapeXml(cleanUsername)}</text></g></svg>`;
     const href = URL.createObjectURL(new Blob([svg], { type: "image/svg+xml" }));
-    const anchor = document.createElement("a"); anchor.href = href; anchor.download = `${cleanUsername}-sui-city.svg`; anchor.click(); URL.revokeObjectURL(href);
+    const image = new Image();
+    image.onload = () => {
+      const canvas = document.createElement("canvas"); canvas.width = 1200; canvas.height = 630;
+      canvas.getContext("2d")?.drawImage(image, 0, 0);
+      URL.revokeObjectURL(href);
+      canvas.toBlob((blob) => {
+        if (!blob) return;
+        const pngUrl = URL.createObjectURL(blob);
+        const anchor = document.createElement("a"); anchor.href = pngUrl; anchor.download = `${cleanUsername}-sui-city.png`; anchor.click(); URL.revokeObjectURL(pngUrl);
+      }, "image/png");
+    };
+    image.src = href;
   };
 
   if (compact) return <div className="flex flex-wrap gap-2"><Button onClick={() => void share()} className="rounded-sm bg-build-cyan text-build-bg"><Share2/>Share city</Button><Button onClick={() => void download()} variant="outline" className="rounded-sm border-build-line bg-transparent text-build-text"><Download/>Social card</Button></div>;
