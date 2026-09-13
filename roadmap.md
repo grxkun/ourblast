@@ -36,3 +36,4 @@
 - [x] Add separate Builder, City, BLAST, Rising, and Open Source rankings
 - [x] Add a public city atlas that does not require geographic location
 - [x] Link ranking entries to shareable public builder cities
+- [x] Add honorary Sui core team cities, separate from app-verified community rankings
