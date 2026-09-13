@@ -1,5 +1,5 @@
 import { createFileRoute, Link, notFound } from "@tanstack/react-router";
-import { Github, Share2 } from "lucide-react";
+import { Award, Github, Share2, Zap } from "lucide-react";
 
 import { BuilderCity } from "@/components/build/BuilderCity";
 import { Button } from "@/components/ui/button";
@@ -36,6 +36,9 @@ function PublicBuilder() {
   const builder = Route.useLoaderData();
   const repos = ((builder.builder_repositories ?? []) as BuilderRepository[]).filter((repo) => repo.verified).sort((a, b) => b.sui_relevance - a.sui_relevance);
   const city = builder.builder_cities;
+  const badges = builder.builder_badges ?? [];
+  const districts = city?.city_districts ?? [];
+  const events = (city?.city_events ?? []).slice().sort((a, b) => Date.parse(b.occurred_at) - Date.parse(a.occurred_at));
   const buildings = repos.map((repo, index) => ({
     id: repo.id, building_type: repo.building_type, building_level: repo.building_level,
     district_key: repo.building_type, position_x: index % 4, position_y: Math.floor(index / 4),
@@ -56,8 +59,16 @@ function PublicBuilder() {
           <dl className="mt-5 grid grid-cols-2 gap-4 font-mono text-xs text-build-muted"><div><dt>BUILDER LEVEL</dt><dd className="mt-1 text-xl text-build-text">{builder.builder_level}</dd></div><div><dt>SUI PROJECTS</dt><dd className="mt-1 text-xl text-build-text">{builder.verified_repository_count}</dd></div><div><dt>COMMITS</dt><dd className="mt-1 text-xl text-build-text">{builder.total_commits.toLocaleString()}</dd></div><div><dt>MERGED PRS</dt><dd className="mt-1 text-xl text-build-text">{builder.merged_pull_requests}</dd></div></dl>
           <a href={`https://github.com/${builder.github_username}`} target="_blank" rel="noreferrer" className="mt-7 inline-flex items-center gap-2 font-mono text-sm text-build-cyan hover:underline"><Github className="size-4"/>View GitHub</a>
         </div>
-        <BuilderCity buildings={buildings} username={builder.github_username ?? "builder"} level={city?.city_level ?? builder.builder_level}/>
+         <BuilderCity buildings={buildings} username={builder.github_username ?? "builder"} level={city?.city_level ?? builder.builder_level}/>
       </section>
+       <section className="mt-12 grid gap-px border border-build-line bg-build-line sm:grid-cols-2 lg:grid-cols-4">
+         {[["BUILDER POWER", city?.builder_power ?? builder.builder_score], ["CITY POWER", city?.city_power ?? 0], ["FREE LAND", city?.free_land ?? Math.max(6, repos.length + 4)], ["BLAST COMMITTED", Number(city?.blast_committed ?? 0)]].map(([label, value]) => <div key={label} className="bg-build-panel p-5"><p className="font-mono text-[0.62rem] text-build-muted">{label}</p><p className="mt-2 font-build text-3xl text-build-cyan">{Number(value).toLocaleString()}</p></div>)}
+       </section>
+       <section className="mt-12 grid gap-6 lg:grid-cols-2">
+         <div className="border-t-2 border-build-line pt-5"><p className="font-mono text-xs font-bold text-build-cyan">CITY DISTRICTS</p><div className="mt-4 flex flex-wrap gap-2">{districts.map((district) => <span key={district.id} className="border border-build-line bg-build-panel px-3 py-2 font-mono text-xs uppercase">{district.label} · {district.repository_count}</span>)}</div></div>
+         <div className="border-t-2 border-build-line pt-5"><p className="flex items-center gap-2 font-mono text-xs font-bold text-build-cyan"><Award className="size-4"/>BUILDER BADGES</p><div className="mt-4 grid gap-2 sm:grid-cols-2">{badges.map((badge) => <div key={badge.id} className="border border-build-line bg-build-panel p-3"><strong className="font-build text-xl normal-case">{badge.label}</strong><p className="mt-1 text-xs text-build-muted">{badge.evidence}</p></div>)}</div></div>
+       </section>
+       {events.length ? <section className="mt-12 border-t-2 border-build-line pt-5"><p className="flex items-center gap-2 font-mono text-xs font-bold text-build-cyan"><Zap className="size-4"/>CITY ACTIVITY</p><ol className="mt-4 grid gap-px border border-build-line bg-build-line sm:grid-cols-2">{events.slice(0, 8).map((event) => <li key={event.id} className="bg-build-panel p-4"><strong className="block">{event.title}</strong><p className="mt-1 text-sm text-build-muted">{event.description}</p><time className="mt-3 block font-mono text-[0.6rem] text-build-cyan">{new Date(event.occurred_at).toLocaleDateString()}</time></li>)}</ol></section> : null}
       <section className="mt-14"><p className="font-mono text-xs text-build-cyan">VERIFIED CONSTRUCTION</p><h2 className="mt-2 font-build text-4xl font-bold normal-case">Sui projects</h2><div className="mt-6 grid gap-px border border-build-line bg-build-line md:grid-cols-2">{repos.map((repo) => <a href={repo.html_url} target="_blank" rel="noreferrer" key={repo.id} className="bg-build-panel p-5 hover:bg-build-panel-2"><div className="flex justify-between gap-3"><h3 className="font-build text-xl font-bold normal-case">{repo.name}</h3><span className="font-mono text-xs text-build-cyan">{repo.sui_relevance}/100</span></div><p className="mt-2 text-sm text-build-muted">{repo.description ?? BUILDING_LABELS[(repo.building_type in BUILDING_LABELS ? repo.building_type : "dapp") as BuildingType]}</p><p className="mt-5 font-mono text-xs text-build-muted">{BUILDING_LABELS[(repo.building_type in BUILDING_LABELS ? repo.building_type : "dapp") as BuildingType]} · LEVEL {repo.building_level}</p></a>)}</div></section>
     </main>
   </div>;

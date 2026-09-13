@@ -41,7 +41,7 @@ export const getMyBuilder = createServerFn({ method: "GET" })
   .handler(async ({ context }) => {
     const { data, error } = await context.supabase
       .from("builders")
-      .select("*, builder_cities(*), builder_repositories(*, repository_signals(*)), builder_activity(*)")
+      .select("*, builder_cities(*, city_districts(*), city_events(*), city_buildings(*, building_upgrades(*))), builder_repositories(*, repository_signals(*)), builder_activity(*), builder_badges(*)")
       .eq("user_id", context.userId)
       .maybeSingle();
     if (error) throw error;
@@ -57,7 +57,7 @@ export const getBuilderWalletAssets = createServerFn({ method: "GET" })
       .eq("id", context.userId)
       .single();
     if (error || !profile) throw new Error("Sui wallet not found.");
-    const tokenType = process.env['BLAST_TOKEN_TYPE']?.trim() || null;
+    const tokenType = process.env['BLAST_TOKEN_TYPE']?.trim() || BLAST_BUILD.blastTokenType;
     const response = await fetch("https://graphql.mainnet.sui.io/graphql", {
       method: "POST",
       headers: { "content-type": "application/json" },
@@ -75,8 +75,8 @@ export const getBuilderWalletAssets = createServerFn({ method: "GET" })
     return {
       walletAddress: profile.wallet_address,
       sui: Number(sui?.totalBalance ?? 0) / 1_000_000_000,
-      blast: blast ? Number(blast.totalBalance ?? 0) : null,
-      blastConfigured: Boolean(tokenType),
+      blast: blast ? Number(blast.totalBalance ?? 0) / 10 ** BLAST_BUILD.blastDecimals : 0,
+      blastConfigured: true,
     };
   });
 
@@ -244,24 +244,64 @@ export const syncGitHub = createServerFn({ method: "POST" })
     }
 
     const cityTierValue = cityTier(level);
+    const freeLand = BLAST_BUILD.freeLand.base
+      + verified.length * BLAST_BUILD.freeLand.perVerifiedRepository
+      + Math.floor(score / BLAST_BUILD.freeLand.builderScoreStep) * BLAST_BUILD.freeLand.plotsPerScoreStep;
     const { data: city, error: cityError } = await supabaseAdmin.from("builder_cities").upsert({
       builder_id: builder.id, city_level: level, city_score: score,
-      tier_key: cityTierValue.key, land_slots: Math.max(6, verified.length + 1), updated_at: new Date().toISOString(),
+      tier_key: cityTierValue.key, land_slots: freeLand, free_land: freeLand,
+      builder_power: score, updated_at: new Date().toISOString(),
     }, { onConflict: "builder_id" }).select("id").single();
     if (cityError || !city) throw cityError ?? new Error("Builder City could not be created.");
-    await supabaseAdmin.from("city_buildings").delete().eq("city_id", city.id);
-    if (verified.length) await supabaseAdmin.from("city_buildings").insert(verified.flatMap((item, position) => {
+    const activeRepositoryIds = verified.flatMap((item) => {
+      const repositoryId = repoIds.get(item.repo.id);
+      return repositoryId ? [repositoryId] : [];
+    });
+    const { data: existingBuildings } = await supabaseAdmin.from("city_buildings").select("id, repository_id").eq("city_id", city.id);
+    const staleBuildingIds = (existingBuildings ?? []).filter((item) => item.repository_id && !activeRepositoryIds.includes(item.repository_id)).map((item) => item.id);
+    if (staleBuildingIds.length) await supabaseAdmin.from("city_buildings").delete().in("id", staleBuildingIds);
+    for (const row of verified.flatMap((item, position) => {
       const repositoryId = repoIds.get(item.repo.id);
       return repositoryId ? [{
         city_id: city.id,
         repository_id: repositoryId,
         building_type: item.result.buildingType,
         building_level: item.result.buildingLevel,
+        developer_level: item.result.buildingLevel,
+        developer_xp: Math.min(10_000, item.evidence.commits * 3 + item.evidence.mergedPullRequests * 12 + item.evidence.contributors * 20 + item.result.relevance * 2),
         district_key: item.result.buildingType,
         position_x: position % 4,
         position_y: Math.floor(position / 4),
       }] : [];
-    }));
+    })) await supabaseAdmin.from("city_buildings").upsert(row, { onConflict: "city_id,repository_id" });
+
+    const districtCounts = new Map<string, number>();
+    for (const item of verified) districtCounts.set(item.result.buildingType, (districtCounts.get(item.result.buildingType) ?? 0) + 1);
+    for (const [districtKey, repositoryCount] of districtCounts) {
+      await supabaseAdmin.from("city_districts").upsert({
+        city_id: city.id,
+        district_key: districtKey,
+        label: `${districtKey.replace(/(^.|-.)/g, (part) => part.replace("-", " ").toUpperCase())} District`,
+        repository_count: repositoryCount,
+        unlocked_by: "builder",
+        blast_cost: 0,
+      }, { onConflict: "city_id,district_key" });
+    }
+
+    const badges = [
+      ...(verified.length ? [{ badge_key: "sui-builder", label: "Sui Builder", evidence: `${verified.length} verified Sui project${verified.length === 1 ? "" : "s"}` }] : []),
+      ...(verified.some((item) => (item.evidence.languages['Move'] ?? 0) > 0) ? [{ badge_key: "move-developer", label: "Move Developer", evidence: "Verified Move source and package activity" }] : []),
+      ...(verified.some((item) => item.evidence.mergedPullRequests > 0 || item.evidence.contributors > 1) ? [{ badge_key: "open-source-builder", label: "Open Source Builder", evidence: "Verified collaborative repository activity" }] : []),
+      ...(verified.some((item) => item.evidence.pushedAt && Date.now() - Date.parse(item.evidence.pushedAt) < 30 * 86_400_000) ? [{ badge_key: "active-builder", label: "Active Builder", evidence: "Verified Sui project activity in the last 30 days" }] : []),
+    ];
+    for (const badge of badges) await supabaseAdmin.from("builder_badges").upsert({ builder_id: builder.id, ...badge }, { onConflict: "builder_id,badge_key" });
+
+    for (const item of verified) {
+      const repositoryId = repoIds.get(item.repo.id);
+      if (!repositoryId) continue;
+      const { count } = await supabaseAdmin.from("city_events").select("id", { count: "exact", head: true }).eq("city_id", city.id).eq("repository_id", repositoryId).eq("event_type", "repository_verified");
+      if (!count) await supabaseAdmin.from("city_events").insert({ city_id: city.id, repository_id: repositoryId, event_type: "repository_verified", title: `${item.repo.name} joined the city`, description: `Verified at ${item.result.relevance}/100 Sui relevance.`, event_value: item.result.buildingLevel, occurred_at: item.evidence.pushedAt ?? new Date().toISOString() });
+    }
 
     const activity = new Map<string, number>();
     for (const item of verified) for (const day of item.activity) activity.set(day.date, (activity.get(day.date) ?? 0) + day.count);
@@ -286,7 +326,7 @@ export const getPublicBuilder = createServerFn({ method: "GET" })
       } },
     });
     const { data: builder, error } = await client.from("builders")
-      .select("*, builder_cities(*), builder_repositories(*, repository_signals(*)), builder_activity(*)")
+      .select("*, builder_cities(*, city_districts(*), city_events(*), city_buildings(*, building_upgrades(*))), builder_repositories(*, repository_signals(*)), builder_activity(*), builder_badges(*)")
       .ilike("github_username", data.username)
       .eq("is_public", true)
       .maybeSingle();
@@ -297,6 +337,38 @@ export const getPublicBuilder = createServerFn({ method: "GET" })
 const leaderboardInput = z.object({
   metric: z.enum(["builder", "city", "blast", "rising", "open-source"]),
 });
+
+const previewCommitmentInput = z.object({
+  amount: z.number().positive().max(1_000_000),
+  purpose: z.enum(["land", "building", "district", "cosmetic", "landmark"]),
+});
+
+export const previewBlastCommitment = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) => previewCommitmentInput.parse(input))
+  .handler(async ({ context, data }) => {
+    if (!BLAST_BUILD.blastTokenType) throw new Error("BLAST token configuration is unavailable.");
+    const { data: builder, error } = await context.supabase
+      .from("builders")
+      .select("id, builder_cities(id)")
+      .eq("user_id", context.userId)
+      .single();
+    if (error || !builder?.builder_cities) throw new Error("Generate your free Builder City first.");
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: preview, error: previewError } = await supabaseAdmin.from("blast_commitments").insert({
+      builder_id: builder.id,
+      city_id: builder.builder_cities.id,
+      user_id: context.userId,
+      amount_atomic: Math.round(data.amount * 10 ** BLAST_BUILD.blastDecimals),
+      amount_display: data.amount,
+      token_type: BLAST_BUILD.blastTokenType,
+      network: BLAST_BUILD.suiNetwork,
+      purpose: data.purpose,
+      status: "preview",
+    }).select("id, amount_display, purpose, status, created_at").single();
+    if (previewError || !preview) throw previewError ?? new Error("Preview could not be recorded.");
+    return { ...preview, previewOnly: true as const, reason: "Reversible lock contract not yet deployed" };
+  });
 
 export const getBuilderLeaderboard = createServerFn({ method: "GET" })
   .inputValidator((input) => leaderboardInput.parse(input))

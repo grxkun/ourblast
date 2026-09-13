@@ -25,11 +25,15 @@
 
 ## Blast Build — Phase 2
 
-- [ ] Configure the canonical BLAST token type before enabling transactions
+- [x] Configure the canonical BLAST token type before enabling transactions
 - [ ] Add non-custodial BLAST commit/lock transaction construction
 - [ ] Verify each construction transaction on Sui before changing city state
 - [ ] Add district expansion and repository building upgrades
 - [ ] Animate verified construction and retain a public event history
+- [x] Separate free Builder Power from optional BLAST City Power
+- [x] Add free land, generated districts, repository XP, badges, and city events
+- [x] Add the city dashboard and safe upgrade previews
+- [ ] Add a generated shareable social card
 
 ## Blast Build — Phase 3
 

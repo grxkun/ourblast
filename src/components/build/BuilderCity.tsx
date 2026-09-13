@@ -28,11 +28,12 @@ const demo: Building[] = [
   { id: "demo-4", building_type: "tooling", building_level: 6, district_key: "tooling", position_x: 3, position_y: 0, builder_repositories: { name: "move-kit", sui_relevance: 79, description: "Developer tools" } },
 ];
 
-export function BuilderCity({ buildings = [], username = "builder", level = 1, interactive = true }: {
+export function BuilderCity({ buildings = [], username = "builder", level = 1, interactive = true, profileHref }: {
   buildings?: Building[];
   username?: string;
   level?: number;
   interactive?: boolean;
+  profileHref?: string;
 }) {
   const list = buildings.length ? buildings : demo;
   const [selected, setSelected] = useState<Building | null>(null);
@@ -40,7 +41,7 @@ export function BuilderCity({ buildings = [], username = "builder", level = 1, i
     <div className="build-city" aria-label={`${username}'s Sui Builder City`}>
       <div className="build-skyline" aria-hidden="true" />
       <div className="build-grid">
-        <button type="button" className="build-hq" onClick={() => setSelected(null)} aria-label="Builder HQ">
+        <button type="button" className="build-hq" onClick={() => { setSelected(null); if (profileHref) window.location.assign(profileHref); }} aria-label={profileHref ? "Open Builder Profile" : "Builder HQ"}>
           <span className="build-hq-mark">BB</span>
           <span><strong>BUILDER HQ</strong><small>@{username} · LVL {level}</small></span>
         </button>
@@ -48,6 +49,7 @@ export function BuilderCity({ buildings = [], username = "builder", level = 1, i
           const type = building.building_type in icons ? building.building_type as BuildingType : "dapp";
           const Icon = icons[type];
           const repo = building.builder_repositories;
+          const developerLevel = building.building_level;
           return (
             <button
               type="button"
@@ -55,12 +57,12 @@ export function BuilderCity({ buildings = [], username = "builder", level = 1, i
               disabled={!interactive}
               onClick={() => setSelected(building)}
               className={cn("build-building", `build-building-${(index % 5) + 1}`, selected?.id === building.id && "is-selected")}
-              aria-label={`${repo?.name ?? BUILDING_LABELS[type]}, level ${building.building_level}`}
+              aria-label={`${repo?.name ?? BUILDING_LABELS[type]}, developer level ${developerLevel}`}
             >
               <span className="build-roof"><Icon /></span>
               <span className="build-windows" aria-hidden="true"><i /><i /><i /><i /></span>
               <span className="build-label">{repo?.name ?? BUILDING_LABELS[type]}</span>
-              <span className="build-level">L{building.building_level}</span>
+              <span className="build-level">DEV L{developerLevel}</span>
             </button>
           );
         })}
@@ -72,7 +74,7 @@ export function BuilderCity({ buildings = [], username = "builder", level = 1, i
           <p className="text-[0.65rem] font-bold tracking-[0.16em] text-build-cyan uppercase">{BUILDING_LABELS[(selected.building_type in BUILDING_LABELS ? selected.building_type : "dapp") as BuildingType]}</p>
           <h3 className="mt-1 font-build text-lg normal-case">{selected.builder_repositories?.name}</h3>
           <div className="mt-3 flex gap-5 font-mono text-xs text-build-muted">
-            <span>LEVEL <b className="text-build-text">{selected.building_level}</b></span>
+            <span>DEVELOPER LEVEL <b className="text-build-text">{selected.building_level}</b></span>
             <span>SUI <b className="text-build-text">{selected.builder_repositories?.sui_relevance ?? 0}</b></span>
           </div>
         </div>
