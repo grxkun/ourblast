@@ -48,7 +48,8 @@ export function BuilderCity({ buildings = [], username = "builder", level = 1, i
               username={username}
               level={level}
               interactive={interactive}
-              selectedId={selected?.id}
+              {...(selected?.id ? { selectedId: selected.id } : {})}
+              profileEnabled={Boolean(profileHref)}
               onSelect={setSelected}
               onOpenProfile={() => { setSelected(null); if (profileHref) window.location.assign(profileHref); }}
               resetKey={resetKey}

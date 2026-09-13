@@ -18,6 +18,7 @@ export type BuilderCitySceneProps = {
   level: number;
   interactive: boolean;
   selectedId?: string;
+  profileEnabled: boolean;
   onSelect: (building: CityBuilding) => void;
   onOpenProfile: () => void;
 };

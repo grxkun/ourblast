@@ -158,8 +158,7 @@ function Headquarters({ username, level, profileEnabled, onOpen }: { username: s
   </group>;
 }
 
-function Scene({ buildings, username, level, interactive, selectedId, onSelect, onOpenProfile }: BuilderCitySceneProps) {
-  const controls = useRef<any>(null);
+function Scene({ buildings, username, level, interactive, selectedId, profileEnabled, onSelect, onOpenProfile }: BuilderCitySceneProps) {
   const treePositions = useMemo<Array<[number, number, number]>>(() => [
     [-9.2, 0.28, -7], [-7.6, 0.28, 7], [-4.3, 0.28, 7.1], [4.3, 0.28, 7.1], [7.7, 0.28, 7], [9.1, 0.28, -7],
     [-9.4, 0.28, 2.2], [9.4, 0.28, 2.3], [-4.6, 0.28, -7], [4.7, 0.28, -7],
@@ -189,11 +188,10 @@ function Scene({ buildings, username, level, interactive, selectedId, onSelect, 
     {treePositions.map((position, index) => <Tree key={index} position={position} scale={0.78 + (index % 3) * 0.1} />)}
     {[-7.7, -4.7, 4.7, 7.7].flatMap((x) => [-1.7, 1.7].map((z) => <Lamp key={`${x}-${z}`} position={[x, 0.32, z]} />))}
 
-    <Headquarters username={username} level={level} profileEnabled={Boolean(onOpenProfile)} onOpen={onOpenProfile} />
+    <Headquarters username={username} level={level} profileEnabled={profileEnabled} onOpen={onOpenProfile} />
     {buildings.slice(0, 10).map((building, index) => <Building key={building.id} building={building} index={index} selected={selectedId === building.id} interactive={interactive} onSelect={onSelect} />)}
 
     <OrbitControls
-      ref={controls}
       makeDefault
       target={[0, 1.4, 0]}
       minDistance={15}
