@@ -7,7 +7,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Slider } from "@/components/ui/slider";
-import { BLAST_BUILD, BUILDING_LABELS, buildingUpgradePreview, type BuildingType } from "@/lib/blast-build.config";
+import { BLAST_BUILD, buildingUpgradePreview } from "@/lib/blast-build.config";
 import { previewBlastCommitment } from "@/lib/build.functions";
 
 type Project = {
