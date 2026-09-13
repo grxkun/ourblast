@@ -61,7 +61,7 @@ function BlastBuild() {
   const cityBuildings = repositories.filter((repo) => repo.verified).map((repo, index) => ({
     id: `building-${repo.id}`, building_type: repo.building_type, building_level: repo.building_level,
     district_key: repo.building_type, position_x: index % 4, position_y: Math.floor(index / 4),
-    builder_repositories: { name: repo.name, full_name: repo.full_name, owner: repo.full_name.split("/")[0] ?? builder.data?.github_username, sui_relevance: repo.sui_relevance, description: repo.description },
+    builder_repositories: { name: repo.name, full_name: repo.full_name, owner: repo.full_name.split("/")[0] || builder.data?.github_username || null, sui_relevance: repo.sui_relevance, description: repo.description },
   }));
 
   const githubMutation = useMutation({ mutationFn: async () => {

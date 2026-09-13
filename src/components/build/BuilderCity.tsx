@@ -31,8 +31,8 @@ export function BuilderCity({ buildings = [], username = "builder", level = 1, i
   const [visibleLevel, setVisibleLevel] = useState<number | null>(null);
   const levels = useMemo(() => [...new Set(list.map((building) => building.building_level))].sort((a, b) => b - a), [list]);
 
-  const command = (next: Omit<CityCameraCommand, "id">) => {
-    setCameraCommand({ ...next, id: Date.now() } as CityCameraCommand);
+  const command = (next: { type: "rotate" | "zoom"; amount: number } | { type: "preset"; preset: "helicopter" | "isometric" }) => {
+    setCameraCommand({ ...next, id: Date.now() });
   };
 
   useEffect(() => {

@@ -350,11 +350,17 @@
   box-shadow: 8px 8px 0 var(--build-line);
 }
 
-.city-3d-stage { position: absolute; inset: 0; }
+.city-3d-stage { position: absolute; inset: 0; min-height: 100%; background: var(--build-panel-2); }
 .city-3d-stage canvas { cursor: grab; touch-action: none; }
 .city-3d-toolbar { position: absolute; inset: .75rem .75rem auto; z-index: 20; display: flex; align-items: center; justify-content: space-between; pointer-events: none; }
 .city-3d-toolbar > span { display: inline-flex; align-items: center; gap: .55rem; border: 1px solid var(--build-line); background: color-mix(in oklch, var(--build-panel) 88%, transparent); padding: .5rem .7rem; font-family: ui-monospace, monospace; font-size: .62rem; font-weight: 700; backdrop-filter: blur(8px); }
 .city-3d-toolbar button { pointer-events: auto; border-color: var(--build-line); border-radius: 0; background: color-mix(in oklch, var(--build-panel) 88%, transparent); color: var(--build-text); }
+.city-3d-controls { display: flex; pointer-events: auto; }
+.city-3d-controls button + button { margin-left: -1px; }
+.city-level-switcher { position: absolute; left: .8rem; bottom: .65rem; z-index: 20; display: flex; border: 1px solid var(--build-line); background: color-mix(in oklch, var(--build-panel) 88%, transparent); backdrop-filter: blur(8px); }
+.city-level-switcher button { min-width: 2.35rem; border-right: 1px solid var(--build-line); padding: .4rem .5rem; color: var(--build-muted); font-family: ui-monospace, monospace; font-size: .55rem; font-weight: 700; }
+.city-level-switcher button:last-child { border-right: 0; }
+.city-level-switcher button.is-active { background: var(--build-cyan); color: var(--build-panel); }
 .city-3d-help { position: absolute; right: .8rem; bottom: .65rem; z-index: 10; border: 1px solid color-mix(in oklch, var(--build-line) 55%, transparent); background: color-mix(in oklch, var(--build-panel) 82%, transparent); padding: .35rem .55rem; font-family: ui-monospace, monospace; font-size: .52rem; color: var(--build-muted); backdrop-filter: blur(8px); }
 .city-3d-label { min-width: 7rem; border: 1px solid var(--build-line); background: color-mix(in oklch, var(--build-panel) 92%, transparent); padding: .42rem .55rem; color: var(--build-text); text-align: center; box-shadow: 3px 3px 0 color-mix(in oklch, var(--build-line) 65%, transparent); backdrop-filter: blur(7px); }
 .city-3d-label strong, .city-3d-label span { display: block; white-space: nowrap; font-family: ui-monospace, monospace; letter-spacing: 0; }
@@ -386,5 +392,8 @@
   .city-3d-help { display: none; }
   .city-3d-toolbar { inset: .5rem .5rem auto; }
   .city-3d-toolbar > span { font-size: .53rem; }
+  .city-3d-controls { position: absolute; top: 2.65rem; right: 0; }
+  .city-3d-controls button { width: 2rem; height: 2rem; }
+  .city-level-switcher { left: .5rem; bottom: .5rem; max-width: calc(100% - 1rem); overflow-x: auto; }
   .city-3d-detail { inset-inline: .6rem; bottom: .6rem; }
 }
