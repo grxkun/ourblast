@@ -15,7 +15,6 @@ export type LeaderRow = {
   nickname: string | null;
   score: number;
   runs: number;
-  points: number;
   rank: number;
   previousRank: number | null;
 };
@@ -73,7 +72,7 @@ export async function fetchLeaderboard(period: Period): Promise<LeaderRow[]> {
 
   const { data: profiles } = await supabase
     .from("profiles")
-    .select("id, wallet_address, nickname, points")
+    .select("id, wallet_address, nickname")
     .in("id", ids);
 
   return [...byUser.entries()]
@@ -83,7 +82,6 @@ export async function fetchLeaderboard(period: Period): Promise<LeaderRow[]> {
         userId,
         wallet: profile?.wallet_address ?? "0x0",
         nickname: profile?.nickname ?? null,
-        points: profile?.points ?? 0,
         score: agg.score,
         runs: agg.runs,
         rank: 0,
