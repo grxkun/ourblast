@@ -29,11 +29,15 @@ function since(period: Period): string | null {
 }
 
 /**
- * Leaderboards read public data straight from the database. Scores are only
- * ever written by the server, so ranking client-side is safe.
+ * Only paid, verified arcade runs belong on the public leaderboard. Older
+ * demo sessions have no payment_id and are deliberately excluded here.
  */
 export async function fetchLeaderboard(period: Period): Promise<LeaderRow[]> {
-  let query = supabase.from("game_sessions").select("user_id, score, created_at").limit(4000);
+  let query = supabase
+    .from("game_sessions")
+    .select("user_id, score, created_at")
+    .not("payment_id", "is", null)
+    .limit(4000);
   const from = since(period);
   if (from) query = query.gte("created_at", from);
 
