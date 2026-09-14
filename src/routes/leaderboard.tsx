@@ -27,7 +27,7 @@ export const Route = createFileRoute("/leaderboard")({
 });
 
 function LeaderboardPage() {
-  const [period, setPeriod] = useState<Period>("today");
+  const [period, setPeriod] = useState<Period>("all");
   const { userId } = useBlast();
 
   const board = useQuery({
