@@ -109,7 +109,7 @@ function LeaderboardPage() {
                   <div className="min-w-0 flex-1">
                     <PlayerName address={row.wallet} nickname={row.nickname} />
                     <p className="font-body text-xs text-muted-foreground">
-                      {formatNumber(row.runs)} runs · {formatNumber(row.points)} pts
+                      {formatNumber(row.runs)} verified {row.runs === 1 ? "run" : "runs"}
                     </p>
                   </div>
                   {move !== null && move !== 0 ? (
