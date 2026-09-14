@@ -3,12 +3,14 @@ import { Link, createFileRoute } from "@tanstack/react-router";
 import { useRef } from "react";
 
 import { SectionTitle } from "@/components/blast/AppShell";
+import { PlayerAvatar, PlayerName } from "@/components/blast/PlayerBadge";
 import { useBlast } from "@/components/blast/session";
 import { BlastClick } from "@/components/game/BlastClick";
 import { BlastTutorial } from "@/components/game/BlastTutorial";
 import { GamePreview } from "@/components/game/GamePreview";
 import { supabase } from "@/integrations/supabase/client";
 import { POINTS, formatNumber } from "@/lib/blast";
+import { fetchLeaderboard } from "@/lib/leaderboard";
 
 export const Route = createFileRoute("/arcade")({
   head: () => ({
@@ -24,6 +26,8 @@ export const Route = createFileRoute("/arcade")({
         property: "og:description",
         content: "30-second combo clicker with points, ranks and a daily challenge.",
       },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
     ],
   }),
   component: ArcadePage,
@@ -32,6 +36,11 @@ export const Route = createFileRoute("/arcade")({
 function ArcadePage() {
   const { profile, userId } = useBlast();
   const gameRef = useRef<HTMLDivElement>(null);
+
+  const leaderboard = useQuery({
+    queryKey: ["leaderboard", "all"],
+    queryFn: () => fetchLeaderboard("all"),
+  });
 
   const challenge = useQuery({
     queryKey: ["challenge", "today"],
@@ -49,11 +58,13 @@ function ArcadePage() {
     queryKey: ["challenge-entry", challenge.data?.id, userId],
     enabled: Boolean(challenge.data?.id && userId),
     queryFn: async () => {
+      const challengeId = challenge.data?.id;
+      if (!challengeId || !userId) return null;
       const { data } = await supabase
         .from("challenge_entries")
         .select("score")
-        .eq("challenge_id", challenge.data!.id)
-        .eq("user_id", userId!)
+        .eq("challenge_id", challengeId)
+        .eq("user_id", userId)
         .maybeSingle();
       return data;
     },
@@ -93,6 +104,62 @@ function ArcadePage() {
       </div>
 
       <GamePreview />
+
+      <section className="panel overflow-hidden" aria-labelledby="arcade-leaderboard-title">
+        <div className="flex items-end justify-between gap-4 border-b border-border px-5 py-4 sm:px-6">
+          <div>
+            <p className="font-body text-xs font-bold tracking-[0.22em] text-cyber uppercase">
+              Verified players
+            </p>
+            <h2 id="arcade-leaderboard-title" className="mt-1 font-display text-3xl">
+              Arcade leaderboard
+            </h2>
+          </div>
+          <Link
+            to="/leaderboard"
+            className="shrink-0 font-display text-sm text-primary underline decoration-2 underline-offset-4"
+          >
+            View all
+          </Link>
+        </div>
+
+        {leaderboard.isLoading ? (
+          <p className="px-5 py-6 font-body text-sm text-muted-foreground sm:px-6">
+            Counting verified scores…
+          </p>
+        ) : leaderboard.isError ? (
+          <p className="px-5 py-6 font-body text-sm text-muted-foreground sm:px-6">
+            Rankings are taking a breather. Try again shortly.
+          </p>
+        ) : (leaderboard.data?.length ?? 0) === 0 ? (
+          <p className="px-5 py-6 font-body text-sm text-muted-foreground sm:px-6">
+            No verified paid runs yet. Play for real and claim the first spot.
+          </p>
+        ) : (
+          <ol>
+            {leaderboard.data?.slice(0, 5).map((row) => (
+              <li
+                key={row.userId}
+                className={`flex items-center gap-3 border-b border-border px-5 py-3 last:border-0 sm:px-6 ${
+                  row.userId === userId ? "bg-secondary/40" : ""
+                }`}
+              >
+                <span className="w-8 shrink-0 font-display text-lg text-primary">#{row.rank}</span>
+                <PlayerAvatar address={row.wallet} size={36} />
+                <div className="min-w-0 flex-1">
+                  <PlayerName address={row.wallet} nickname={row.nickname} />
+                  <p className="font-body text-xs text-muted-foreground">
+                    {formatNumber(row.runs)} verified {row.runs === 1 ? "run" : "runs"}
+                  </p>
+                </div>
+                <span className="shrink-0 font-display text-xl text-lime">
+                  {formatNumber(row.best)}
+                </span>
+              </li>
+            ))}
+          </ol>
+        )}
+      </section>
 
       <BlastTutorial onPlay={() => gameRef.current?.scrollIntoView({ behavior: "smooth", block: "center" })} />
 
