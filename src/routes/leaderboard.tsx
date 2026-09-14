@@ -46,7 +46,7 @@ function LeaderboardPage() {
         <p className="font-body text-xs font-bold tracking-[0.22em] text-cyber uppercase">Ranks</p>
         <h1 className="mt-1 font-display text-4xl sm:text-5xl">Leaderboard</h1>
         <p className="mt-3 max-w-xl font-body text-muted-foreground">
-          Ranked by each player's latest verified run. Scores are validated before they land here.
+          Ranked by each player's best verified run. Scores are validated before they land here.
         </p>
       </div>
 
@@ -75,7 +75,7 @@ function LeaderboardPage() {
             <PlayerName address={you.wallet} nickname={you.nickname} />
             <p className="font-body text-xs text-muted-foreground">That's you</p>
           </div>
-          <span className="font-display text-2xl text-lime">{formatNumber(you.score)}</span>
+          <span className="font-display text-2xl text-lime">{formatNumber(you.best)}</span>
         </div>
       ) : null}
 
@@ -119,7 +119,7 @@ function LeaderboardPage() {
                       {move > 0 ? `▲ ${move}` : `▼ ${Math.abs(move)}`}
                     </span>
                   ) : null}
-                  <span className="font-display text-xl text-lime">{formatNumber(row.score)}</span>
+                  <span className="font-display text-xl text-lime">{formatNumber(row.best)}</span>
                 </li>
               );
             })}
