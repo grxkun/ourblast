@@ -13,7 +13,7 @@ export type LeaderRow = {
   userId: string;
   wallet: string;
   nickname: string | null;
-  best: number;
+  score: number;
   runs: number;
   points: number;
   rank: number;
@@ -45,12 +45,12 @@ export async function fetchLeaderboard(period: Period): Promise<LeaderRow[]> {
   const { data: sessions, error } = await query;
   if (error) throw error;
 
-  const byUser = new Map<string, { best: number; runs: number }>();
+  const byUser = new Map<string, { score: number; runs: number }>();
   for (const s of sessions ?? []) {
-    const current = byUser.get(s.user_id) ?? { best: 0, runs: 0 };
+    const current = byUser.get(s.user_id);
     byUser.set(s.user_id, {
-      best: Math.max(current.best, s.score ?? 0),
-      runs: current.runs + 1,
+      score: current?.score ?? s.score ?? 0,
+      runs: (current?.runs ?? 0) + 1,
     });
   }
 
@@ -61,7 +61,7 @@ export async function fetchLeaderboard(period: Period): Promise<LeaderRow[]> {
     const past = new Map<string, number>();
     for (const s of sessions ?? []) {
       if (new Date(s.created_at).getTime() > cutoff) continue;
-      past.set(s.user_id, Math.max(past.get(s.user_id) ?? 0, s.score ?? 0));
+      if (!past.has(s.user_id)) past.set(s.user_id, s.score ?? 0);
     }
     [...past.entries()]
       .sort((a, b) => b[1] - a[1])
@@ -84,12 +84,12 @@ export async function fetchLeaderboard(period: Period): Promise<LeaderRow[]> {
         wallet: profile?.wallet_address ?? "0x0",
         nickname: profile?.nickname ?? null,
         points: profile?.points ?? 0,
-        best: agg.best,
+        score: agg.score,
         runs: agg.runs,
         rank: 0,
         previousRank: previous.get(userId) ?? null,
       };
     })
-    .sort((a, b) => b.best - a.best || b.runs - a.runs)
+    .sort((a, b) => b.score - a.score || b.runs - a.runs)
     .map((row, i) => ({ ...row, rank: i + 1 }));
 }
