@@ -153,7 +153,7 @@ function ArcadePage() {
                   </p>
                 </div>
                 <span className="shrink-0 font-display text-xl text-lime">
-                  {formatNumber(row.best)}
+                  {formatNumber(row.score)}
                 </span>
               </li>
             ))}

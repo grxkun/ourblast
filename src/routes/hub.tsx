@@ -202,7 +202,7 @@ function Home() {
                   <span className="w-7 font-display text-lg text-primary">#{row.rank}</span>
                   <PlayerAvatar address={row.wallet} size={34} />
                   <PlayerName address={row.wallet} nickname={row.nickname} className="flex-1" />
-                  <span className="font-display text-lg text-lime">{formatNumber(row.best)}</span>
+                  <span className="font-display text-lg text-lime">{formatNumber(row.score)}</span>
                 </li>
               ))}
             </ol>
