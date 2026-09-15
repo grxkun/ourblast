@@ -4,6 +4,7 @@ import helmet from "@/assets/helmet.jpg.asset.json";
 import mascotStand from "@/assets/mascot-stand.jpg.asset.json";
 import mascotShock from "@/assets/mascot-shock.jpg.asset.json";
 import mascotCoin from "@/assets/mascot-coin.jpg.asset.json";
+import launchReport from "@/assets/BLAST-launch-report.pdf.asset.json";
 import { Ticker } from "@/components/site/Ticker";
 import { CopyAddress } from "@/components/site/CopyAddress";
 import { VaultSizes } from "@/components/site/VaultSizes";
@@ -30,6 +31,8 @@ export const Route = createFileRoute("/")({
         content:
           "A community takeover coin on blast.fun. No dev, no roadmap, LP burned, zero tax. Helmets on.",
       },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
     ],
   }),
   component: Home,
@@ -80,6 +83,9 @@ function Home() {
             </a>
             <a className="hover:text-primary" href="#story">
               The takeover
+            </a>
+            <a className="hover:text-primary" href="#launch-report">
+              Launch report
             </a>
             <a className="hover:text-primary" href="#numbers">
               Numbers
@@ -132,6 +138,9 @@ function Home() {
           </a>
           <a className="shrink-0" href="#story">
             Takeover
+          </a>
+          <a className="shrink-0" href="#launch-report">
+            Report
           </a>
           <a className="shrink-0" href="#numbers">
             Numbers
@@ -202,6 +211,32 @@ function Home() {
       <Ticker />
 
       <BlastChart />
+
+      {/* launch report */}
+      <section id="launch-report" className="border-y-[3px] border-border bg-muted">
+        <div className="mx-auto grid max-w-6xl gap-8 px-5 py-16 sm:py-20 lg:grid-cols-[1fr_auto] lg:items-center">
+          <div>
+            <p className="font-body text-xs font-bold tracking-[0.22em] text-primary uppercase">
+              On-chain verification
+            </p>
+            <h2 className="mt-4 font-display text-[clamp(2.4rem,6vw,4.2rem)] leading-[0.9] uppercase">
+              BLAST Coin Launch Report
+            </h2>
+            <p className="mt-5 max-w-2xl font-body text-lg leading-relaxed text-muted-foreground">
+              Read the five-page report documenting BLAST’s launch date, blast.fun launch event,
+              coin identity, and latest protocol version using public Sui blockchain evidence.
+            </p>
+          </div>
+          <a
+            href={launchReport.url}
+            target="_blank"
+            rel="noreferrer"
+            className="w-fit rounded-xl border-[3px] border-border bg-primary px-8 py-4 font-display text-2xl tracking-wide text-primary-foreground shadow-[var(--shadow-sticker)] transition-transform hover:-translate-y-1 active:translate-y-0.5"
+          >
+            VIEW THE REPORT
+          </a>
+        </div>
+      </section>
 
       {/* arcade */}
       <section id="arcade" className="mx-auto max-w-6xl px-5 py-20 sm:py-24">
