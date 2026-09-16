@@ -170,11 +170,11 @@ function suiDropShape() {
   return shape;
 }
 
-function IslandLayer({ y, depth, scale, color, bevel = false }: { y: number; depth: number; scale: number; color: string; bevel?: boolean }) {
+function IslandLayer({ y, depth, scale, color, bevel = false, opacity = 1 }: { y: number; depth: number; scale: number; color: string; bevel?: boolean; opacity?: number }) {
   const shape = useMemo(suiDropShape, []);
   return <mesh position={[0, y, 0]} rotation-x={-Math.PI / 2} scale={[scale, scale, 1]} receiveShadow castShadow>
     <extrudeGeometry args={[shape, { depth, bevelEnabled: bevel, bevelSize: bevel ? 0.22 : 0, bevelThickness: bevel ? 0.15 : 0, bevelSegments: 1, curveSegments: 20 }]} />
-    <meshStandardMaterial color={color} roughness={0.94} flatShading />
+    <meshStandardMaterial color={color} roughness={0.94} flatShading transparent={opacity < 1} opacity={opacity} />
   </mesh>;
 }
 
@@ -211,6 +211,8 @@ function BlastIsland() {
   return <>
     <mesh position-y={-1.55} receiveShadow><cylinderGeometry args={[48, 48, 0.65, 48]} /><meshStandardMaterial color={CITY.waterDeep} roughness={0.34} metalness={0.08} /></mesh>
     <mesh position-y={-1.18} receiveShadow><cylinderGeometry args={[23, 25, 0.18, 40]} /><meshStandardMaterial color={CITY.water} transparent opacity={0.62} roughness={0.25} /></mesh>
+    <IslandLayer y={-1.03} depth={0.12} scale={1.18} color={CITY.waterShallow} opacity={0.7} />
+    <IslandLayer y={-0.99} depth={0.1} scale={1.12} color={CITY.cream} opacity={0.72} />
     <IslandLayer y={-1.08} depth={1.02} scale={1.055} color={CITY.rock} bevel />
     <IslandLayer y={-0.19} depth={0.48} scale={1.01} color={CITY.sand} bevel />
     <IslandLayer y={0.2} depth={0.31} scale={0.945} color={CITY.grass} bevel />
@@ -221,6 +223,10 @@ function BlastIsland() {
     {[-5.7, -2.9, 2.7, 5.5].map((z) => <mesh key={`lane-${z}`} position={[0, 0.72, z]}><boxGeometry args={[0.11, 0.035, 1.1]} /><meshStandardMaterial color={CITY.sand} /></mesh>)}
     {[-6.8, -3.4, 3.4, 6.8].map((x) => <mesh key={`cross-${x}`} position={[x, 0.72, 0]}><boxGeometry args={[1.25, 0.035, 0.11]} /><meshStandardMaterial color={CITY.sand} /></mesh>)}
     <SuiWaveLagoon />
+    <group position={[0, 0.6, -13.1]}>
+      <mesh receiveShadow><boxGeometry args={[1.7, 0.18, 4.2]} /><meshStandardMaterial color={CITY.path} roughness={1} /></mesh>
+      {[-0.68, 0.68].map((x) => <mesh key={x} position={[x, -0.42, 0]}><cylinderGeometry args={[0.09, 0.11, 1, 7]} /><meshStandardMaterial color={CITY.trunk} /></mesh>)}
+    </group>
     <SatelliteCity position={[-8.25, 0.61, 7.35]} color={CITY.red} rotation={0.18} />
     <SatelliteCity position={[8.15, 0.61, 7.2]} color={CITY.cyan} rotation={-0.22} />
     <SatelliteCity position={[0, 0.61, -9.35]} color={CITY.red} rotation={Math.PI} />
@@ -340,7 +346,7 @@ export default function BuilderCity3D(props: BuilderCitySceneProps & { resetKey:
     key={props.resetKey}
     shadows
     dpr={[1, 1.35]}
-    camera={{ position: [18, 25, 29], fov: 43, near: 0.1, far: 140 }}
+    camera={{ position: [14, 29, 30], fov: 43, near: 0.1, far: 140 }}
     gl={{ antialias: true, alpha: false, powerPreference: "default" }}
     onPointerMissed={() => document.body.style.cursor = "default"}
   >
