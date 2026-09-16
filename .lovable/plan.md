@@ -1,24 +1,20 @@
-# Blast Island — Sui-Shaped Tropical City Map
+# Interactive Blast Island Builder Atlas
 
 ## Goal
-Turn the current 3D builder landscape into Blast Island: a tropical island whose silhouette reads as the Sui droplet/logo from helicopter view, with the builder’s city and several smaller city districts inside it.
+Turn the public Sui Builder Map into Blast Island, where each visible city dot represents one developer and selecting it reveals that builder's city identity.
 
 ## What will change
-- Replace the rectangular ground and distant mainland skyline with layered ocean, beach, and raised green terrain shaped like the Sui droplet.
-- Keep the existing repository buildings and Builder HQ as the main city, then add lightweight decorative city clusters in other parts of the island.
-- Add tropical details including palms, rocks, coves, shallow water rings, paths, and a small lagoon while keeping the cream, ink, red, and cyan Blast Build identity.
-- Rework roads and scenery to fit inside the island silhouette instead of crossing a rectangular platform.
-- Keep building selection, owner/repository labels, level filters, rotate/zoom controls, and the helicopter/isometric camera views unchanged.
-- Rename the viewer status to “BLAST ISLAND” so the new map is immediately identifiable.
+- Replace the current block grid in the public builder atlas with a tropical Sui-droplet island map.
+- Place up to 24 developer city dots deterministically across the island, sized by city level.
+- Make each dot selectable and show the developer, city level, tier, verified project count, and rank value in an island detail panel.
+- Add a clear action from the selected dot to open that developer's existing full 3D Builder City.
+- Keep the leaderboard, rankings, builder records, and individual 3D cities unchanged.
 
 ## Technical details
-- Build the island with deterministic local Three.js geometry; no remote assets or runtime downloads.
-- Use a custom extruded droplet shape with layered rock, sand, and grass meshes so the Sui silhouette remains recognizable from above.
-- Use low-poly, repeated geometry for palms and satellite cities and stay within the existing mobile rendering budget.
-- Keep all interactive buildings in their current data flow; decorative districts will not impersonate repositories or affect scores.
+- Implement the atlas as accessible React/CSS UI, avoiding a second WebGL canvas on the rankings page.
+- Use stable percentage coordinates so markers remain aligned on desktop and mobile.
+- Support keyboard selection, visible focus states, and horizontal-overflow-safe mobile sizing.
 
 ## Verification
-- Check `/build` and a public builder city on desktop and mobile.
-- Confirm helicopter view clearly shows the Sui-shaped island and multiple city clusters.
-- Confirm orbit, zoom, reset, level filters, building selection, and owner details still work.
-- Confirm the scene is lit and nonblank with no overflow, missing assets, or browser errors.
+- Test selecting several developer dots and opening their public city pages.
+- Verify desktop and mobile layouts, keyboard access, no overflow, and no browser errors.
