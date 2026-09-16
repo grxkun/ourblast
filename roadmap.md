@@ -11,3 +11,4 @@
 - [x] Replace the city-dot atlas with a 100-city 3D Blast Island map
 - [x] Scale island city size by real Sui GitHub or verified Builder Score
 - [x] Separate the island map and selected Builder City details
+- [x] Add a central tropical volcano with crater, lava, smoke, and city clearance

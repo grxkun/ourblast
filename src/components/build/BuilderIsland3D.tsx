@@ -30,7 +30,9 @@ function cityLayouts(developers: IslandDeveloper[]) {
     const z = -10.2 + row * 2.25;
     const normalizedZ = (z + 10.2) / 20.25;
     const halfWidth = 10.2 * (0.66 + Math.sin(normalizedZ * Math.PI) * 0.34) * (normalizedZ > 0.82 ? 1.55 - normalizedZ : 1);
-    const x = -halfWidth + (column / 9) * halfWidth * 2 + (hash(developer.username) - 0.5) * 0.55;
+    let x = -halfWidth + (column / 9) * halfWidth * 2 + (hash(developer.username) - 0.5) * 0.55;
+    const volcanoDistance = Math.hypot(x, z - 1.8);
+    if (volcanoDistance < 4.6) x += (x < 0 ? -1 : 1) * (4.8 - volcanoDistance);
     const power = Math.sqrt(Math.max(0, developer.score) / maxScore);
     return { ...developer, x, z, scale: 0.48 + power * 0.72, towers: Math.max(1, Math.min(4, 1 + Math.floor(power * 4))) };
   });
@@ -63,11 +65,53 @@ function TropicalIsland() {
     <IslandLayer y={-0.95} depth={0.72} scale={1.06} color={MAP.sand} />
     <IslandLayer y={-0.32} depth={0.4} scale={1} color={MAP.grass} />
     <mesh position={[0, 0.12, 11]} rotation-x={-Math.PI / 2}><torusGeometry args={[2.15, 0.38, 8, 32, Math.PI * 0.78]} /><meshStandardMaterial color={MAP.water} /></mesh>
+    <Volcano />
     {palms.map(([x, z], index) => <group key={index} position={[x, 0.16, z]} scale={0.72} rotation-y={index}>
       <mesh position-y={1.1} rotation-z={0.08} castShadow><cylinderGeometry args={[0.11, 0.18, 2.2, 6]} /><meshStandardMaterial color={MAP.trunk} /></mesh>
       {Array.from({ length: 5 }).map((_, leaf) => <mesh key={leaf} position-y={2.2} rotation-y={leaf * Math.PI * 0.4} rotation-z={0.75}><coneGeometry args={[0.35, 1.8, 5]} /><meshStandardMaterial color={MAP.palm} flatShading /></mesh>)}
     </group>)}
   </>;
+}
+
+function Volcano() {
+  const smoke = useRef<THREE.Group>(null);
+  useFrame((state) => {
+    if (!smoke.current) return;
+    smoke.current.position.y = Math.sin(state.clock.elapsedTime * 0.75) * 0.16;
+    smoke.current.rotation.y = state.clock.elapsedTime * 0.08;
+  });
+  return <group position={[0, 0.14, 1.8]}>
+    <mesh position-y={1.25} castShadow receiveShadow>
+      <coneGeometry args={[4.15, 2.5, 10, 4, true]} />
+      <meshStandardMaterial color={MAP.grassDark} roughness={1} flatShading />
+    </mesh>
+    <mesh position-y={2.55} castShadow receiveShadow>
+      <cylinderGeometry args={[1.15, 2.2, 1.25, 10, 1, true]} />
+      <meshStandardMaterial color={MAP.road} roughness={0.96} flatShading />
+    </mesh>
+    <mesh position-y={3.2} rotation-x={Math.PI / 2}>
+      <torusGeometry args={[0.87, 0.34, 8, 18]} />
+      <meshStandardMaterial color={MAP.ink} roughness={0.9} flatShading />
+    </mesh>
+    <mesh position-y={3.18} rotation-x={-Math.PI / 2}>
+      <circleGeometry args={[0.72, 18]} />
+      <meshStandardMaterial color={MAP.red} emissive={MAP.red} emissiveIntensity={1.8} roughness={0.36} />
+    </mesh>
+    <mesh position={[0.55, 1.7, 1.65]} rotation={[0.12, -0.28, -0.35]}>
+      <boxGeometry args={[0.3, 3.5, 0.08]} />
+      <meshStandardMaterial color={MAP.red} emissive={MAP.red} emissiveIntensity={1.15} />
+    </mesh>
+    <mesh position={[-1.35, 1.05, 1.42]} rotation={[0.1, 0.22, 0.72]}>
+      <boxGeometry args={[0.2, 2.5, 0.06]} />
+      <meshStandardMaterial color={MAP.red} emissive={MAP.red} emissiveIntensity={0.9} />
+    </mesh>
+    <group ref={smoke} position={[0, 4.15, 0]}>
+      {[[0, 0, 0, .62], [.45, .7, .1, .48], [-.3, 1.25, -.1, .4], [.28, 1.75, 0, .3]].map(([x, y, z, size], index) => <mesh key={index} position={[x ?? 0, y ?? 0, z ?? 0]} scale={size ?? 1}>
+        <icosahedronGeometry args={[1, 1]} />
+        <meshStandardMaterial color={MAP.cream} transparent opacity={0.7 - index * 0.1} roughness={1} flatShading />
+      </mesh>)}
+    </group>
+  </group>;
 }
 
 function CityInstances({ cities, selectedIndex, onSelect }: { cities: CityLayout[]; selectedIndex: number; onSelect: (index: number) => void }) {
