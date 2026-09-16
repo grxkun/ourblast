@@ -57,6 +57,35 @@ function IslandLayer({ y, depth, scale, color }: { y: number; depth: number; sca
   </mesh>;
 }
 
+function Road({ position, size, rotation = 0 }: { position: [number, number, number]; size: [number, number]; rotation?: number }) {
+  const dashCount = Math.max(2, Math.floor(size[1] / 2.2));
+  return <group position={position} rotation-y={rotation}>
+    <mesh receiveShadow><boxGeometry args={[size[0], 0.12, size[1]]} /><meshStandardMaterial color={MAP.road} roughness={0.94} /></mesh>
+    {Array.from({ length: dashCount }).map((_, index) => <mesh key={index} position={[0, 0.075, -size[1] / 2 + 1.05 + index * 2.2]}>
+      <boxGeometry args={[0.08, 0.025, 0.72]} /><meshStandardMaterial color={MAP.sand} roughness={0.8} />
+    </mesh>)}
+  </group>;
+}
+
+function RoadNetwork() {
+  return <group>
+    <Road position={[-7.25, 0.2, 0]} size={[0.62, 19.5]} />
+    <Road position={[7.25, 0.2, 0]} size={[0.62, 19.5]} />
+    <Road position={[0, 0.2, -7.9]} size={[0.62, 20.5]} rotation={Math.PI / 2} />
+    <Road position={[0, 0.2, 7.9]} size={[0.62, 16]} rotation={Math.PI / 2} />
+    <Road position={[0, 0.2, -2.6]} size={[0.52, 20]} rotation={Math.PI / 2} />
+    <mesh position={[0, 0.25, 1.8]} rotation-x={Math.PI / 2}>
+      <torusGeometry args={[5.05, 0.28, 6, 64]} /><meshStandardMaterial color={MAP.road} roughness={0.94} />
+    </mesh>
+    <mesh position={[0, 0.29, 1.8]} rotation-x={Math.PI / 2}>
+      <torusGeometry args={[5.05, 0.035, 4, 64]} /><meshStandardMaterial color={MAP.sand} roughness={0.8} />
+    </mesh>
+    {[[-7.25, -7.9], [7.25, -7.9], [-7.25, 7.9], [7.25, 7.9]].map(([x, z], index) => <mesh key={index} position={[x, 0.29, z]} rotation-x={Math.PI / 2}>
+      <circleGeometry args={[0.52, 16]} /><meshStandardMaterial color={MAP.cream} roughness={0.82} />
+    </mesh>)}
+  </group>;
+}
+
 function TropicalIsland() {
   const palms = [[-10, -5], [10, -5], [-8.5, 6.5], [8.5, 6.5], [-5.5, 11], [5.5, 11]] as const;
   return <>
@@ -64,6 +93,7 @@ function TropicalIsland() {
     <mesh position-y={-1.05} receiveShadow><cylinderGeometry args={[28, 31, 0.15, 48]} /><meshStandardMaterial color={MAP.water} transparent opacity={0.62} /></mesh>
     <IslandLayer y={-0.95} depth={0.72} scale={1.06} color={MAP.sand} />
     <IslandLayer y={-0.32} depth={0.4} scale={1} color={MAP.grass} />
+    <RoadNetwork />
     <mesh position={[0, 0.12, 11]} rotation-x={-Math.PI / 2}><torusGeometry args={[2.15, 0.38, 8, 32, Math.PI * 0.78]} /><meshStandardMaterial color={MAP.water} /></mesh>
     <Volcano />
     {palms.map(([x, z], index) => <group key={index} position={[x, 0.16, z]} scale={0.72} rotation-y={index}>
@@ -81,31 +111,38 @@ function Volcano() {
     smoke.current.rotation.y = state.clock.elapsedTime * 0.08;
   });
   return <group position={[0, 0.14, 1.8]}>
-    <mesh position-y={1.25} castShadow receiveShadow>
-      <coneGeometry args={[4.15, 2.5, 10, 4, true]} />
+    <mesh position-y={0.72} castShadow receiveShadow>
+      <coneGeometry args={[5, 1.45, 12, 3, false]} />
       <meshStandardMaterial color={MAP.grassDark} roughness={1} flatShading />
     </mesh>
-    <mesh position-y={2.55} castShadow receiveShadow>
-      <cylinderGeometry args={[1.15, 2.2, 1.25, 10, 1, true]} />
+    <mesh position-y={1.65} castShadow receiveShadow rotation-y={0.22}>
+      <coneGeometry args={[3.45, 2.35, 11, 4, false]} />
+      <meshStandardMaterial color={MAP.trunk} roughness={1} flatShading />
+    </mesh>
+    <mesh position-y={2.75} castShadow receiveShadow rotation-y={0.08}>
+      <cylinderGeometry args={[1.2, 2.15, 1.2, 11, 2, true]} />
       <meshStandardMaterial color={MAP.road} roughness={0.96} flatShading />
     </mesh>
-    <mesh position-y={3.2} rotation-x={Math.PI / 2}>
-      <torusGeometry args={[0.87, 0.34, 8, 18]} />
+    <mesh position-y={3.38} rotation-x={Math.PI / 2}>
+      <torusGeometry args={[0.92, 0.42, 8, 18]} />
       <meshStandardMaterial color={MAP.ink} roughness={0.9} flatShading />
     </mesh>
-    <mesh position-y={3.18} rotation-x={-Math.PI / 2}>
-      <circleGeometry args={[0.72, 18]} />
+    <mesh position-y={3.35} rotation-x={-Math.PI / 2}>
+      <circleGeometry args={[0.76, 18]} />
       <meshStandardMaterial color={MAP.red} emissive={MAP.red} emissiveIntensity={1.8} roughness={0.36} />
     </mesh>
-    <mesh position={[0.55, 1.7, 1.65]} rotation={[0.12, -0.28, -0.35]}>
-      <boxGeometry args={[0.3, 3.5, 0.08]} />
+    <mesh position={[0.56, 1.74, 1.88]} rotation={[0.12, -0.28, -0.35]}>
+      <boxGeometry args={[0.34, 4.1, 0.1]} />
       <meshStandardMaterial color={MAP.red} emissive={MAP.red} emissiveIntensity={1.15} />
     </mesh>
-    <mesh position={[-1.35, 1.05, 1.42]} rotation={[0.1, 0.22, 0.72]}>
-      <boxGeometry args={[0.2, 2.5, 0.06]} />
+    <mesh position={[-1.55, 1.12, 1.52]} rotation={[0.1, 0.22, 0.72]}>
+      <boxGeometry args={[0.24, 3.1, 0.08]} />
       <meshStandardMaterial color={MAP.red} emissive={MAP.red} emissiveIntensity={0.9} />
     </mesh>
-    <group ref={smoke} position={[0, 4.15, 0]}>
+    {[[2.7, .72, -.5, .62], [-2.45, .58, .82, .5], [1.8, .48, 2.75, .42], [-3.2, .4, -1.5, .38]].map(([x, y, z, size], index) => <mesh key={`rock-${index}`} position={[x ?? 0, y ?? 0, z ?? 0]} scale={size ?? 1} castShadow>
+      <dodecahedronGeometry args={[1, 0]} /><meshStandardMaterial color={MAP.road} roughness={1} flatShading />
+    </mesh>)}
+    <group ref={smoke} position={[0, 4.38, 0]}>
       {[[0, 0, 0, .62], [.45, .7, .1, .48], [-.3, 1.25, -.1, .4], [.28, 1.75, 0, .3]].map(([x, y, z, size], index) => <mesh key={index} position={[x ?? 0, y ?? 0, z ?? 0]} scale={size ?? 1}>
         <icosahedronGeometry args={[1, 1]} />
         <meshStandardMaterial color={MAP.cream} transparent opacity={0.7 - index * 0.1} roughness={1} flatShading />
@@ -130,13 +167,13 @@ function CityInstances({ cities, selectedIndex, onSelect }: { cities: CityLayout
   useEffect(() => {
     const matrix = new THREE.Matrix4();
     cities.forEach((city, index) => {
-      matrix.compose(new THREE.Vector3(city.x, 0.16, city.z), new THREE.Quaternion(), new THREE.Vector3(city.scale * 1.25, 0.13, city.scale * 1.25));
+      matrix.compose(new THREE.Vector3(city.x, 0.3, city.z), new THREE.Quaternion(), new THREE.Vector3(city.scale * 1.25, 0.13, city.scale * 1.25));
       padRef.current?.setMatrixAt(index, matrix);
       padRef.current?.setColorAt(index, new THREE.Color(index === selectedIndex ? MAP.red : MAP.cream));
     });
     if (padRef.current) { padRef.current.instanceMatrix.needsUpdate = true; if (padRef.current.instanceColor) padRef.current.instanceColor.needsUpdate = true; }
     towerGroups.forEach((group, tone) => group.forEach((tower, index) => {
-      matrix.compose(new THREE.Vector3(tower.x, tower.height / 2 + 0.22, tower.z), new THREE.Quaternion(), new THREE.Vector3(tower.width, tower.height, tower.width));
+      matrix.compose(new THREE.Vector3(tower.x, tower.height / 2 + 0.36, tower.z), new THREE.Quaternion(), new THREE.Vector3(tower.width, tower.height, tower.width));
       const ref = towerRefs[tone];
       ref?.current?.setMatrixAt(index, matrix);
     }));

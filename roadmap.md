@@ -12,3 +12,4 @@
 - [x] Scale island city size by real Sui GitHub or verified Builder Score
 - [x] Separate the island map and selected Builder City details
 - [x] Add a central tropical volcano with crater, lava, smoke, and city clearance
+- [x] Add visible island roads, junctions, roundabout, and enhanced volcanic terrain
