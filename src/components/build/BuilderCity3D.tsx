@@ -214,10 +214,12 @@ function BlastIsland() {
     <IslandLayer y={-1.08} depth={1.02} scale={1.055} color={CITY.rock} bevel />
     <IslandLayer y={-0.19} depth={0.48} scale={1.01} color={CITY.sand} bevel />
     <IslandLayer y={0.2} depth={0.31} scale={0.945} color={CITY.grass} bevel />
-    <mesh position={[0, 0.53, -0.2]} receiveShadow><boxGeometry args={[2.55, 0.11, 16.1]} /><meshStandardMaterial color={CITY.road} roughness={0.94} /></mesh>
-    <mesh position={[0, 0.54, 0]} receiveShadow><boxGeometry args={[18.6, 0.11, 2.25]} /><meshStandardMaterial color={CITY.road} roughness={0.94} /></mesh>
-    {[-5.3, 5.3].map((x) => <mesh key={x} position={[x, 0.56, 0]}><boxGeometry args={[0.14, 0.05, 2.27]} /><meshStandardMaterial color={CITY.cream} /></mesh>)}
-    {[-4.7, 4.4].map((z) => <mesh key={z} position={[0, 0.56, z]}><boxGeometry args={[2.57, 0.05, 0.14]} /><meshStandardMaterial color={CITY.cream} /></mesh>)}
+    <mesh position={[0, 0.62, -0.2]} receiveShadow><boxGeometry args={[2.55, 0.14, 16.1]} /><meshStandardMaterial color={CITY.road} roughness={0.94} /></mesh>
+    <mesh position={[0, 0.63, 0]} receiveShadow><boxGeometry args={[18.6, 0.14, 2.25]} /><meshStandardMaterial color={CITY.road} roughness={0.94} /></mesh>
+    {[-5.3, 5.3].map((x) => <mesh key={x} position={[x, 0.72, 0]}><boxGeometry args={[0.14, 0.035, 2.27]} /><meshStandardMaterial color={CITY.cream} /></mesh>)}
+    {[-4.7, 4.4].map((z) => <mesh key={z} position={[0, 0.72, z]}><boxGeometry args={[2.57, 0.035, 0.14]} /><meshStandardMaterial color={CITY.cream} /></mesh>)}
+    {[-5.7, -2.9, 2.7, 5.5].map((z) => <mesh key={`lane-${z}`} position={[0, 0.72, z]}><boxGeometry args={[0.11, 0.035, 1.1]} /><meshStandardMaterial color={CITY.sand} /></mesh>)}
+    {[-6.8, -3.4, 3.4, 6.8].map((x) => <mesh key={`cross-${x}`} position={[x, 0.72, 0]}><boxGeometry args={[1.25, 0.035, 0.11]} /><meshStandardMaterial color={CITY.sand} /></mesh>)}
     <SuiWaveLagoon />
     <SatelliteCity position={[-8.25, 0.61, 7.35]} color={CITY.red} rotation={0.18} />
     <SatelliteCity position={[8.15, 0.61, 7.2]} color={CITY.cyan} rotation={-0.22} />
@@ -338,7 +340,7 @@ export default function BuilderCity3D(props: BuilderCitySceneProps & { resetKey:
     key={props.resetKey}
     shadows
     dpr={[1, 1.35]}
-    camera={{ position: [20, 19, 26], fov: 43, near: 0.1, far: 140 }}
+    camera={{ position: [18, 25, 29], fov: 43, near: 0.1, far: 140 }}
     gl={{ antialias: true, alpha: false, powerPreference: "default" }}
     onPointerMissed={() => document.body.style.cursor = "default"}
   >

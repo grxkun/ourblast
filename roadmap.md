@@ -13,3 +13,4 @@
 - [x] Separate the island map and selected Builder City details
 - [x] Add a central tropical volcano with crater, lava, smoke, and city clearance
 - [x] Add visible island roads, junctions, roundabout, and enhanced volcanic terrain
+- [x] Make individual Builder City views read clearly as islands with raised roads and a wider island-first camera
