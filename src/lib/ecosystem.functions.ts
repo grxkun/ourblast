@@ -44,6 +44,9 @@ const SEARCHES = [
   "topic:sui language:Move stars:>=3 fork:false archived:false",
   "topic:sui-move stars:>=3 fork:false archived:false",
   '"Sui blockchain" in:description stars:>=5 fork:false archived:false',
+  "topic:sui stars:>=1 fork:false archived:false",
+  '"Sui Move" in:name,description stars:>=1 fork:false archived:false',
+  '"Sui Network" in:description stars:>=1 fork:false archived:false',
 ];
 
 function isSuiProject(repo: GitHubRepository) {
@@ -79,7 +82,7 @@ async function discoverSuiProjects() {
     url.searchParams.set("q", query);
     url.searchParams.set("sort", "stars");
     url.searchParams.set("order", "desc");
-    url.searchParams.set("per_page", "50");
+    url.searchParams.set("per_page", "100");
     const response = await fetch(url, { headers: { Accept: "application/vnd.github+json", "User-Agent": "OURBLAST-Sui-Directory", "X-GitHub-Api-Version": "2022-11-28" }, signal: AbortSignal.timeout(8_000) });
     if (!response.ok) throw new Error(`GitHub discovery failed (${response.status})`);
     return (await response.json() as { items?: GitHubRepository[] }).items ?? [];
