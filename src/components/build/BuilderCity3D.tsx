@@ -257,7 +257,7 @@ function MountainRidge() {
   </group>;
 }
 
-function BlastIsland() {
+function IslandTerrain() {
   const palms = useMemo<Array<{ position: [number, number, number]; scale: number; rotation: number }>>(() => [
     { position: [-10.1, 0.57, -2.8], scale: 0.76, rotation: 0.2 }, { position: [10.2, 0.57, -2.6], scale: 0.7, rotation: 1.8 },
     { position: [-9.4, 0.57, 4.1], scale: 0.62, rotation: 0.8 }, { position: [9.5, 0.57, 4.2], scale: 0.68, rotation: 2.5 },
@@ -273,25 +273,31 @@ function BlastIsland() {
     <IslandLayer y={-0.19} depth={0.48} scale={1.01} color={CITY.sand} bevel />
     <IslandLayer y={0.2} depth={0.31} scale={0.945} color={CITY.grass} bevel />
     <MountainRidge />
+    <SuiWaveLagoon />
+    <group position={[0, 0.6, -13.1]}>
+      <mesh receiveShadow><boxGeometry args={[1.7, 0.18, 4.2]} /><meshStandardMaterial color={CITY.path} roughness={1} /></mesh>
+      {[-0.68, 0.68].map((x) => <mesh key={x} position={[x, -0.42, 0]}><cylinderGeometry args={[0.09, 0.11, 1, 7]} /><meshStandardMaterial color={CITY.trunk} /></mesh>)}
+    </group>
+    {palms.map((palm, index) => <Palm key={index} {...palm} />)}
+    {[-1, 1].flatMap((side) => [0, 1, 2].map((index) => <mesh key={`${side}-${index}`} position={[side * (11.1 - index * 0.48), 0.55, 8.2 + index * 1.05]} scale={0.42 + index * 0.08} castShadow>
+      <dodecahedronGeometry args={[1, 0]} /><meshStandardMaterial color={index % 2 ? CITY.rock : CITY.sand} flatShading roughness={1} />
+    </mesh>))}
+  </>;
+}
+
+function CityInfrastructure({ level }: { level: number }) {
+  return <group>
     <mesh position={[0, 0.62, -0.2]} receiveShadow><boxGeometry args={[2.55, 0.14, 16.1]} /><meshStandardMaterial color={CITY.road} roughness={0.94} /></mesh>
     <mesh position={[0, 0.63, 0]} receiveShadow><boxGeometry args={[18.6, 0.14, 2.25]} /><meshStandardMaterial color={CITY.road} roughness={0.94} /></mesh>
     {[-5.3, 5.3].map((x) => <mesh key={x} position={[x, 0.72, 0]}><boxGeometry args={[0.14, 0.035, 2.27]} /><meshStandardMaterial color={CITY.cream} /></mesh>)}
     {[-4.7, 4.4].map((z) => <mesh key={z} position={[0, 0.72, z]}><boxGeometry args={[2.57, 0.035, 0.14]} /><meshStandardMaterial color={CITY.cream} /></mesh>)}
     {[-5.7, -2.9, 2.7, 5.5].map((z) => <mesh key={`lane-${z}`} position={[0, 0.72, z]}><boxGeometry args={[0.11, 0.035, 1.1]} /><meshStandardMaterial color={CITY.sand} /></mesh>)}
     {[-6.8, -3.4, 3.4, 6.8].map((x) => <mesh key={`cross-${x}`} position={[x, 0.72, 0]}><boxGeometry args={[1.25, 0.035, 0.11]} /><meshStandardMaterial color={CITY.sand} /></mesh>)}
-    <SuiWaveLagoon />
-    <group position={[0, 0.6, -13.1]}>
-      <mesh receiveShadow><boxGeometry args={[1.7, 0.18, 4.2]} /><meshStandardMaterial color={CITY.path} roughness={1} /></mesh>
-      {[-0.68, 0.68].map((x) => <mesh key={x} position={[x, -0.42, 0]}><cylinderGeometry args={[0.09, 0.11, 1, 7]} /><meshStandardMaterial color={CITY.trunk} /></mesh>)}
-    </group>
+    <UrbanSkyline level={level} />
     <SatelliteCity position={[-8.25, 0.61, 7.35]} color={CITY.red} rotation={0.18} />
     <SatelliteCity position={[8.15, 0.61, 7.2]} color={CITY.cyan} rotation={-0.22} />
     <SatelliteCity position={[0, 0.61, -9.35]} color={CITY.red} rotation={Math.PI} />
-    {palms.map((palm, index) => <Palm key={index} {...palm} />)}
-    {[-1, 1].flatMap((side) => [0, 1, 2].map((index) => <mesh key={`${side}-${index}`} position={[side * (11.1 - index * 0.48), 0.55, 8.2 + index * 1.05]} scale={0.42 + index * 0.08} castShadow>
-      <dodecahedronGeometry args={[1, 0]} /><meshStandardMaterial color={index % 2 ? CITY.rock : CITY.sand} flatShading roughness={1} />
-    </mesh>))}
-  </>;
+  </group>;
 }
 
 function CameraRig({ cameraCommand, controls }: { cameraCommand: BuilderCitySceneProps["cameraCommand"]; controls: React.RefObject<OrbitControlsImpl | null> }) {
@@ -369,8 +375,8 @@ function Scene({ buildings, username, level, interactive, selectedId, profileEna
       <Lightformer intensity={0.7} color={CITY.cyan} position={[-10, 3, -4]} rotation-y={Math.PI / 2} scale={[12, 3, 1]} />
     </Environment>
 
-    <BlastIsland />
-    <UrbanSkyline level={level} />
+    <IslandTerrain />
+    <CityInfrastructure level={level} />
     {treePositions.map((position, index) => <Tree key={index} position={[position[0], 0.56, position[2]]} scale={0.62 + (index % 3) * 0.08} />)}
     {[-7.7, -4.7, 4.7, 7.7].flatMap((x) => [-1.7, 1.7].map((z) => <Lamp key={`${x}-${z}`} position={[x, 0.58, z]} />))}
 

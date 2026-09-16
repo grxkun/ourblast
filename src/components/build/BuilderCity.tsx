@@ -44,7 +44,7 @@ export function BuilderCity({ buildings = [], username = "builder", level = 1, i
   return (
     <div className="build-city" aria-label={`${username}'s Sui Builder City`}>
       <div className="city-3d-toolbar">
-        <span><span className="build-status-dot" /> BLAST ISLAND · {list.length} BUILDINGS</span>
+        <span><span className="build-status-dot" /> BUILDER CITY · BLAST ISLAND · {list.length} LANDMARKS</span>
         <div className="city-3d-controls" aria-label="City camera controls">
           <Button type="button" variant="outline" size="icon" onClick={() => command({ type: "rotate", amount: -0.42 })} aria-label="Rotate city left" title="Rotate left"><Rotate3D className="-scale-x-100" /></Button>
           <Button type="button" variant="outline" size="icon" onClick={() => command({ type: "rotate", amount: 0.42 })} aria-label="Rotate city right" title="Rotate right"><Rotate3D /></Button>
