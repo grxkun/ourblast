@@ -8,3 +8,6 @@
 - [x] Shape the 3D map into tropical Blast Island with satellite cities
 - [x] Add a Blast Island atlas where each city dot represents one developer
 - [x] Let visitors select a developer dot and open that builder's full city
+- [x] Replace the city-dot atlas with a 100-city 3D Blast Island map
+- [x] Scale island city size by real Sui GitHub or verified Builder Score
+- [x] Separate the island map and selected Builder City details

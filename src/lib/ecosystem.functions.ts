@@ -87,7 +87,7 @@ async function discoverSuiProjects() {
   const repositories = settled.flatMap((result) => result.status === "fulfilled" ? result.value : []);
   const projects = [...new Map(repositories.filter(isSuiProject).map((repo) => [repo.id, toDiscoveredProject(repo)])).values()]
     .sort((a, b) => b.stars - a.stars || (Date.parse(b.pushedAt ?? "") || 0) - (Date.parse(a.pushedAt ?? "") || 0))
-    .slice(0, 36);
+    .slice(0, 200);
   if (projects.length) discoveryCache = { expiresAt: Date.now() + 15 * 60_000, projects };
   return projects.length ? projects : discoveryCache?.projects ?? [];
 }
@@ -106,7 +106,43 @@ function publicClient() {
 }
 
 export const getEcosystemProjects = createServerFn({ method: "GET" }).handler(async () => {
-  return discoverSuiProjects();
+  return (await discoverSuiProjects()).slice(0, 36);
+});
+
+export const getBlastIslandDevelopers = createServerFn({ method: "GET" }).handler(async () => {
+  const [projects, { data: builders, error }] = await Promise.all([
+    discoverSuiProjects(),
+    publicClient().from("builders")
+      .select("id, github_username, github_avatar_url, builder_score, builder_level, verified_repository_count, builder_cities(city_level, tier_key)")
+      .eq("is_public", true).eq("github_connected", true).limit(100),
+  ]);
+  if (error) throw error;
+  const registered = new Map((builders ?? []).map((builder) => [(builder.github_username ?? "").toLowerCase(), builder]));
+  const discovered = new Map<string, { username: string; avatarUrl: string; githubUrl: string; score: number; projects: number }>();
+  for (const project of projects) {
+    const key = project.owner.toLowerCase();
+    const current = discovered.get(key) ?? { username: project.owner, avatarUrl: project.ownerAvatarUrl, githubUrl: project.ownerUrl, score: 0, projects: 0 };
+    current.score += project.stars;
+    current.projects += 1;
+    discovered.set(key, current);
+  }
+  const usernames = new Set([...registered.keys(), ...discovered.keys()]);
+  return [...usernames].map((key) => {
+    const profile = registered.get(key);
+    const github = discovered.get(key);
+    const city = profile?.builder_cities;
+    return {
+      id: profile?.id ?? `github-${key}`,
+      username: profile?.github_username ?? github?.username ?? key,
+      avatarUrl: profile?.github_avatar_url ?? github?.avatarUrl ?? null,
+      githubUrl: github?.githubUrl ?? `https://github.com/${profile?.github_username ?? key}`,
+      score: profile?.builder_score ?? github?.score ?? 0,
+      projects: profile?.verified_repository_count ?? github?.projects ?? 0,
+      cityLevel: city?.city_level ?? Math.max(1, Math.min(20, Math.floor(Math.sqrt(github?.score ?? 0)) + 1)),
+      tier: city?.tier_key ?? "discovered",
+      registered: Boolean(profile),
+    };
+  }).sort((a, b) => b.score - a.score || b.projects - a.projects).slice(0, 100);
 });
 
 export const getEcosystemProject = createServerFn({ method: "GET" })
@@ -128,7 +164,7 @@ export const getEcosystemProject = createServerFn({ method: "GET" })
 export const getCommunityCity = createServerFn({ method: "GET" }).handler(async () => {
   const client = publicClient();
   const [projects, { data: builders, error: builderError }] = await Promise.all([
-    discoverSuiProjects(),
+    discoverSuiProjects().then((items) => items.slice(0, 36)),
     client.from("builders").select("id, github_username, builder_level, sui_reputation_score, verified_repository_count, verified_package_count, builder_cities(city_level, tier_key)").eq("is_public", true).eq("github_connected", true).order("sui_reputation_score", { ascending: false }).limit(100),
   ]);
   if (builderError) throw builderError;
