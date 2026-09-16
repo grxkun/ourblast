@@ -76,7 +76,10 @@ function CityInstances({ cities, selectedIndex, onSelect }: { cities: CityLayout
     const radius = towerIndex === 0 ? 0 : 0.42 * city.scale;
     return { cityIndex, x: city.x + Math.cos(angle) * radius, z: city.z + Math.sin(angle) * radius, height: (0.5 + city.scale * (0.72 + hash(`${city.id}-h-${towerIndex}`) * 1.2)) * (towerIndex === 0 ? 1.25 : 0.82), width: 0.34 + city.scale * 0.24, tone: towerIndex % 3 };
   })), [cities]);
-  const towerRefs = [useRef<THREE.InstancedMesh>(null), useRef<THREE.InstancedMesh>(null), useRef<THREE.InstancedMesh>(null)];
+  const towerRef0 = useRef<THREE.InstancedMesh>(null);
+  const towerRef1 = useRef<THREE.InstancedMesh>(null);
+  const towerRef2 = useRef<THREE.InstancedMesh>(null);
+  const towerRefs = useMemo(() => [towerRef0, towerRef1, towerRef2], []);
   const padRef = useRef<THREE.InstancedMesh>(null);
   const towerGroups = useMemo(() => [0, 1, 2].map((tone) => towers.filter((tower) => tower.tone === tone)), [towers]);
 
@@ -90,7 +93,8 @@ function CityInstances({ cities, selectedIndex, onSelect }: { cities: CityLayout
     if (padRef.current) { padRef.current.instanceMatrix.needsUpdate = true; if (padRef.current.instanceColor) padRef.current.instanceColor.needsUpdate = true; }
     towerGroups.forEach((group, tone) => group.forEach((tower, index) => {
       matrix.compose(new THREE.Vector3(tower.x, tower.height / 2 + 0.22, tower.z), new THREE.Quaternion(), new THREE.Vector3(tower.width, tower.height, tower.width));
-      towerRefs[tone].current?.setMatrixAt(index, matrix);
+      const ref = towerRefs[tone];
+      ref?.current?.setMatrixAt(index, matrix);
     }));
     towerRefs.forEach((ref) => { if (ref.current) ref.current.instanceMatrix.needsUpdate = true; });
   }, [cities, selectedIndex, towerGroups, towerRefs]);
@@ -100,9 +104,9 @@ function CityInstances({ cities, selectedIndex, onSelect }: { cities: CityLayout
     <instancedMesh ref={padRef} args={[undefined, undefined, cities.length]} onClick={selectPad} onPointerOver={() => { document.body.style.cursor = "pointer"; }} onPointerOut={() => { document.body.style.cursor = "grab"; }} receiveShadow>
       <cylinderGeometry args={[1, 1, 1, 8]} /><meshStandardMaterial vertexColors roughness={0.9} />
     </instancedMesh>
-    {towerGroups.map((group, tone) => <instancedMesh key={tone} ref={towerRefs[tone]} args={[undefined, undefined, group.length]} onClick={(event) => { event.stopPropagation(); const tower = event.instanceId === undefined ? undefined : group[event.instanceId]; if (tower) onSelect(tower.cityIndex); }} castShadow receiveShadow>
-      <boxGeometry args={[1, 1, 1]} /><meshStandardMaterial color={tone === 0 ? MAP.cream : tone === 1 ? MAP.red : MAP.cyan} roughness={0.68} />
-    </instancedMesh>)}
+    <instancedMesh ref={towerRef0} args={[undefined, undefined, towerGroups[0]?.length ?? 0]} onClick={(event) => { event.stopPropagation(); const tower = event.instanceId === undefined ? undefined : towerGroups[0]?.[event.instanceId]; if (tower) onSelect(tower.cityIndex); }} castShadow receiveShadow><boxGeometry args={[1, 1, 1]} /><meshStandardMaterial color={MAP.cream} roughness={0.68} /></instancedMesh>
+    <instancedMesh ref={towerRef1} args={[undefined, undefined, towerGroups[1]?.length ?? 0]} onClick={(event) => { event.stopPropagation(); const tower = event.instanceId === undefined ? undefined : towerGroups[1]?.[event.instanceId]; if (tower) onSelect(tower.cityIndex); }} castShadow receiveShadow><boxGeometry args={[1, 1, 1]} /><meshStandardMaterial color={MAP.red} roughness={0.68} /></instancedMesh>
+    <instancedMesh ref={towerRef2} args={[undefined, undefined, towerGroups[2]?.length ?? 0]} onClick={(event) => { event.stopPropagation(); const tower = event.instanceId === undefined ? undefined : towerGroups[2]?.[event.instanceId]; if (tower) onSelect(tower.cityIndex); }} castShadow receiveShadow><boxGeometry args={[1, 1, 1]} /><meshStandardMaterial color={MAP.cyan} roughness={0.68} /></instancedMesh>
     {cities[selectedIndex] ? <Html position={[cities[selectedIndex].x, 2.4 + cities[selectedIndex].scale, cities[selectedIndex].z]} center distanceFactor={19} style={{ pointerEvents: "none" }}>
       <div className="city-3d-label"><strong>@{cities[selectedIndex].username}</strong><span>{cities[selectedIndex].registered ? "VERIFIED BUILDER CITY" : "SUI DEVELOPER CITY"}</span></div>
     </Html> : null}
@@ -148,7 +152,7 @@ function Scene({ developers, selectedIndex, onSelect, cameraCommand }: { develop
     <Environment><Lightformer intensity={1.8} position={[0, 12, 4]} scale={[22, 12, 1]} /><Lightformer intensity={0.7} color={MAP.cyan} position={[-12, 4, -5]} rotation-y={Math.PI / 2} scale={[14, 4, 1]} /></Environment>
     <TropicalIsland /><CityInstances cities={cities} selectedIndex={selectedIndex} onSelect={onSelect} />
     <OrbitControls ref={controls} makeDefault target={[0, 0, 0]} minDistance={20} maxDistance={68} minPolarAngle={0.15} maxPolarAngle={1.22} enablePan={false} dampingFactor={0.08} />
-    <MapCamera command={cameraCommand} controls={controls} cities={cities} />
+    <MapCamera {...(cameraCommand ? { command: cameraCommand } : {})} controls={controls} cities={cities} />
   </>;
 }
 

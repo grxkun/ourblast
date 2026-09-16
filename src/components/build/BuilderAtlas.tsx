@@ -14,7 +14,7 @@ export function BuilderAtlas({ builders }: { builders: IslandDeveloper[] }) {
   const [webgl, setWebgl] = useState(true);
   const [cameraCommand, setCameraCommand] = useState<IslandCameraCommand>();
   const selected = visibleBuilders[selectedIndex];
-  const command = (next: Omit<IslandCameraCommand, "id">) => setCameraCommand({ ...next, id: Date.now() } as IslandCameraCommand);
+  const command = (next: { type: "rotate" | "zoom"; amount: number } | { type: "reset" } | { type: "focus"; index: number }) => setCameraCommand({ ...next, id: Date.now() });
   useEffect(() => {
     const canvas = document.createElement("canvas");
     setWebgl(Boolean(canvas.getContext("webgl2") || canvas.getContext("webgl")));
