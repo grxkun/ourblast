@@ -159,22 +159,31 @@ function Lamp({ position }: { position: [number, number, number] }) {
   </group>;
 }
 
-function suiDropShape() {
+function ruggedIslandShape() {
   const shape = new THREE.Shape();
-  shape.moveTo(0, 14.6);
-  shape.bezierCurveTo(2.1, 10.6, 11.7, 2.8, 12.2, -3.1);
-  shape.bezierCurveTo(12.8, -9.3, 7.5, -13.8, 0, -14.1);
-  shape.bezierCurveTo(-7.5, -13.8, -12.8, -9.3, -12.2, -3.1);
-  shape.bezierCurveTo(-11.7, 2.8, -2.1, 10.6, 0, 14.6);
+  const points = Array.from({ length: 48 }, (_, index) => {
+    const angle = (index / 48) * Math.PI * 2;
+    const noise = 1 + Math.sin(angle * 5 + 0.7) * 0.055 + Math.sin(angle * 11) * 0.025;
+    const eastCape = Math.max(0, Math.cos(angle)) ** 8 * 2.4;
+    const westCape = Math.max(0, -Math.cos(angle)) ** 10 * 1.25;
+    return new THREE.Vector2(
+      Math.cos(angle) * (13.6 * noise + eastCape + westCape),
+      Math.sin(angle) * (10.4 * noise) + Math.sin(angle * 3) * 0.34,
+    );
+  });
+  const first = points[0];
+  if (!first) return shape;
+  shape.moveTo(first.x, first.y);
+  points.slice(1).forEach((point) => shape.lineTo(point.x, point.y));
   shape.closePath();
   return shape;
 }
 
-function IslandLayer({ y, depth, scale, color, bevel = false }: { y: number; depth: number; scale: number; color: string; bevel?: boolean }) {
-  const shape = useMemo(suiDropShape, []);
+function IslandLayer({ y, depth, scale, color, bevel = false, opacity = 1 }: { y: number; depth: number; scale: number; color: string; bevel?: boolean; opacity?: number }) {
+  const shape = useMemo(ruggedIslandShape, []);
   return <mesh position={[0, y, 0]} rotation-x={-Math.PI / 2} scale={[scale, scale, 1]} receiveShadow castShadow>
     <extrudeGeometry args={[shape, { depth, bevelEnabled: bevel, bevelSize: bevel ? 0.22 : 0, bevelThickness: bevel ? 0.15 : 0, bevelSegments: 1, curveSegments: 20 }]} />
-    <meshStandardMaterial color={color} roughness={0.94} flatShading />
+    <meshStandardMaterial color={color} roughness={0.94} flatShading transparent={opacity < 1} opacity={opacity} />
   </mesh>;
 }
 
@@ -194,6 +203,35 @@ function SatelliteCity({ position, color, rotation = 0 }: { position: [number, n
   </group>;
 }
 
+function UrbanSkyline({ level }: { level: number }) {
+  const blocks = useMemo(() => {
+    const candidates: Array<{ x: number; z: number; height: number; width: number; tone: string }> = [];
+    const columns = [-9.2, -7.6, -5.4, -3.5, 3.5, 5.4, 7.6, 9.2];
+    const rows = [-7.2, -2.55, 2.55, 6.2];
+    rows.forEach((z, row) => columns.forEach((x, column) => {
+      const seed = (row * 17 + column * 11 + level * 3) % 13;
+      const height = 1.5 + (seed / 12) * 3.8 + Math.min(level, 12) * 0.08;
+      candidates.push({ x, z, height, width: 0.88 + (seed % 4) * 0.12, tone: (row + column) % 5 === 0 ? CITY.cyan : (row + column) % 7 === 0 ? CITY.red : CITY.cream });
+    }));
+    return candidates.slice(0, Math.min(candidates.length, 18 + Math.max(0, level) * 2));
+  }, [level]);
+  return <group>
+    {blocks.map((block, index) => <group key={index} position={[block.x, 0.75, block.z]}>
+      <mesh position-y={block.height / 2} castShadow receiveShadow>
+        <boxGeometry args={[block.width, block.height, block.width * 0.92]} />
+        <meshStandardMaterial color={block.tone} roughness={0.72} />
+      </mesh>
+      {Array.from({ length: Math.max(2, Math.floor(block.height)) }).map((_, floor) => <mesh key={floor} position={[0, 0.75 + floor * 0.72, block.width * 0.47]}>
+        <boxGeometry args={[block.width * 0.58, 0.16, 0.035]} />
+        <meshStandardMaterial color={CITY.glass} emissive={CITY.glass} emissiveIntensity={0.11} />
+      </mesh>)}
+      <mesh position-y={block.height + 0.1} rotation-y={Math.PI / 4} castShadow>
+        <boxGeometry args={[block.width * 0.72, 0.2, block.width * 0.72]} /><meshStandardMaterial color={CITY.ink} roughness={0.75} />
+      </mesh>
+    </group>)}
+  </group>;
+}
+
 function SuiWaveLagoon() {
   return <group position={[0, 0.67, 9.25]} rotation-y={Math.PI}>
     <mesh rotation-x={-Math.PI / 2} rotation-z={0.3}><torusGeometry args={[2.7, 0.4, 8, 34, Math.PI * 0.74]} /><meshStandardMaterial color={CITY.waterShallow} roughness={0.22} metalness={0.08} /></mesh>
@@ -201,7 +239,25 @@ function SuiWaveLagoon() {
   </group>;
 }
 
-function BlastIsland() {
+function MountainRidge() {
+  const peaks: Array<readonly [number, number, number, number, string]> = [
+    [-8.6, 1.2, 5.8, 2.8, CITY.grassDark], [-6.1, 1.35, 6.7, 3.2, CITY.rock],
+    [-3.8, 1.05, 7.4, 2.35, CITY.grassDark], [4.2, 1.1, 7.2, 2.5, CITY.rock],
+    [7.1, 1.25, 6.1, 2.95, CITY.grassDark], [9.4, 0.8, 4.7, 1.9, CITY.rock],
+  ];
+  return <group>
+    {peaks.map(([x, y, z, size, color], index) => <group key={index} position={[x, y, z]} scale={[size, size * 0.82, size]}>
+      <mesh castShadow receiveShadow rotation-y={index * 0.37}>
+        <coneGeometry args={[1, 1.55, 7, 3]} /><meshStandardMaterial color={color} roughness={1} flatShading />
+      </mesh>
+      <mesh position={[0, 0.72, 0]} scale={[0.52, 0.38, 0.52]} castShadow>
+        <coneGeometry args={[1, 1.05, 7]} /><meshStandardMaterial color={CITY.sand} roughness={1} flatShading />
+      </mesh>
+    </group>)}
+  </group>;
+}
+
+function IslandTerrain() {
   const palms = useMemo<Array<{ position: [number, number, number]; scale: number; rotation: number }>>(() => [
     { position: [-10.1, 0.57, -2.8], scale: 0.76, rotation: 0.2 }, { position: [10.2, 0.57, -2.6], scale: 0.7, rotation: 1.8 },
     { position: [-9.4, 0.57, 4.1], scale: 0.62, rotation: 0.8 }, { position: [9.5, 0.57, 4.2], scale: 0.68, rotation: 2.5 },
@@ -211,22 +267,37 @@ function BlastIsland() {
   return <>
     <mesh position-y={-1.55} receiveShadow><cylinderGeometry args={[48, 48, 0.65, 48]} /><meshStandardMaterial color={CITY.waterDeep} roughness={0.34} metalness={0.08} /></mesh>
     <mesh position-y={-1.18} receiveShadow><cylinderGeometry args={[23, 25, 0.18, 40]} /><meshStandardMaterial color={CITY.water} transparent opacity={0.62} roughness={0.25} /></mesh>
+    <IslandLayer y={-1.03} depth={0.12} scale={1.18} color={CITY.waterShallow} opacity={0.7} />
+    <IslandLayer y={-0.99} depth={0.1} scale={1.12} color={CITY.cream} opacity={0.72} />
     <IslandLayer y={-1.08} depth={1.02} scale={1.055} color={CITY.rock} bevel />
     <IslandLayer y={-0.19} depth={0.48} scale={1.01} color={CITY.sand} bevel />
     <IslandLayer y={0.2} depth={0.31} scale={0.945} color={CITY.grass} bevel />
-    <mesh position={[0, 0.53, -0.2]} receiveShadow><boxGeometry args={[2.55, 0.11, 16.1]} /><meshStandardMaterial color={CITY.road} roughness={0.94} /></mesh>
-    <mesh position={[0, 0.54, 0]} receiveShadow><boxGeometry args={[18.6, 0.11, 2.25]} /><meshStandardMaterial color={CITY.road} roughness={0.94} /></mesh>
-    {[-5.3, 5.3].map((x) => <mesh key={x} position={[x, 0.56, 0]}><boxGeometry args={[0.14, 0.05, 2.27]} /><meshStandardMaterial color={CITY.cream} /></mesh>)}
-    {[-4.7, 4.4].map((z) => <mesh key={z} position={[0, 0.56, z]}><boxGeometry args={[2.57, 0.05, 0.14]} /><meshStandardMaterial color={CITY.cream} /></mesh>)}
+    <MountainRidge />
     <SuiWaveLagoon />
-    <SatelliteCity position={[-8.25, 0.61, 7.35]} color={CITY.red} rotation={0.18} />
-    <SatelliteCity position={[8.15, 0.61, 7.2]} color={CITY.cyan} rotation={-0.22} />
-    <SatelliteCity position={[0, 0.61, -9.35]} color={CITY.red} rotation={Math.PI} />
+    <group position={[0, 0.6, -13.1]}>
+      <mesh receiveShadow><boxGeometry args={[1.7, 0.18, 4.2]} /><meshStandardMaterial color={CITY.path} roughness={1} /></mesh>
+      {[-0.68, 0.68].map((x) => <mesh key={x} position={[x, -0.42, 0]}><cylinderGeometry args={[0.09, 0.11, 1, 7]} /><meshStandardMaterial color={CITY.trunk} /></mesh>)}
+    </group>
     {palms.map((palm, index) => <Palm key={index} {...palm} />)}
     {[-1, 1].flatMap((side) => [0, 1, 2].map((index) => <mesh key={`${side}-${index}`} position={[side * (11.1 - index * 0.48), 0.55, 8.2 + index * 1.05]} scale={0.42 + index * 0.08} castShadow>
       <dodecahedronGeometry args={[1, 0]} /><meshStandardMaterial color={index % 2 ? CITY.rock : CITY.sand} flatShading roughness={1} />
     </mesh>))}
   </>;
+}
+
+function CityInfrastructure({ level }: { level: number }) {
+  return <group>
+    <mesh position={[0, 0.62, -0.2]} receiveShadow><boxGeometry args={[2.55, 0.14, 16.1]} /><meshStandardMaterial color={CITY.road} roughness={0.94} /></mesh>
+    <mesh position={[0, 0.63, 0]} receiveShadow><boxGeometry args={[18.6, 0.14, 2.25]} /><meshStandardMaterial color={CITY.road} roughness={0.94} /></mesh>
+    {[-5.3, 5.3].map((x) => <mesh key={x} position={[x, 0.72, 0]}><boxGeometry args={[0.14, 0.035, 2.27]} /><meshStandardMaterial color={CITY.cream} /></mesh>)}
+    {[-4.7, 4.4].map((z) => <mesh key={z} position={[0, 0.72, z]}><boxGeometry args={[2.57, 0.035, 0.14]} /><meshStandardMaterial color={CITY.cream} /></mesh>)}
+    {[-5.7, -2.9, 2.7, 5.5].map((z) => <mesh key={`lane-${z}`} position={[0, 0.72, z]}><boxGeometry args={[0.11, 0.035, 1.1]} /><meshStandardMaterial color={CITY.sand} /></mesh>)}
+    {[-6.8, -3.4, 3.4, 6.8].map((x) => <mesh key={`cross-${x}`} position={[x, 0.72, 0]}><boxGeometry args={[1.25, 0.035, 0.11]} /><meshStandardMaterial color={CITY.sand} /></mesh>)}
+    <UrbanSkyline level={level} />
+    <SatelliteCity position={[-8.25, 0.61, 7.35]} color={CITY.red} rotation={0.18} />
+    <SatelliteCity position={[8.15, 0.61, 7.2]} color={CITY.cyan} rotation={-0.22} />
+    <SatelliteCity position={[0, 0.61, -9.35]} color={CITY.red} rotation={Math.PI} />
+  </group>;
 }
 
 function CameraRig({ cameraCommand, controls }: { cameraCommand: BuilderCitySceneProps["cameraCommand"]; controls: React.RefObject<OrbitControlsImpl | null> }) {
@@ -304,7 +375,8 @@ function Scene({ buildings, username, level, interactive, selectedId, profileEna
       <Lightformer intensity={0.7} color={CITY.cyan} position={[-10, 3, -4]} rotation-y={Math.PI / 2} scale={[12, 3, 1]} />
     </Environment>
 
-    <BlastIsland />
+    <IslandTerrain />
+    <CityInfrastructure level={level} />
     {treePositions.map((position, index) => <Tree key={index} position={[position[0], 0.56, position[2]]} scale={0.62 + (index % 3) * 0.08} />)}
     {[-7.7, -4.7, 4.7, 7.7].flatMap((x) => [-1.7, 1.7].map((z) => <Lamp key={`${x}-${z}`} position={[x, 0.58, z]} />))}
 
@@ -338,7 +410,7 @@ export default function BuilderCity3D(props: BuilderCitySceneProps & { resetKey:
     key={props.resetKey}
     shadows
     dpr={[1, 1.35]}
-    camera={{ position: [20, 19, 26], fov: 43, near: 0.1, far: 140 }}
+    camera={{ position: [14, 29, 30], fov: 43, near: 0.1, far: 140 }}
     gl={{ antialias: true, alpha: false, powerPreference: "default" }}
     onPointerMissed={() => document.body.style.cursor = "default"}
   >
