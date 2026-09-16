@@ -68,6 +68,7 @@ function Road({ position, size, rotation = 0 }: { position: [number, number, num
 }
 
 function RoadNetwork() {
+  const junctions: Array<readonly [number, number]> = [[-7.25, -7.9], [7.25, -7.9], [-7.25, 7.9], [7.25, 7.9]];
   return <group>
     <Road position={[-7.25, 0.2, 0]} size={[0.62, 19.5]} />
     <Road position={[7.25, 0.2, 0]} size={[0.62, 19.5]} />
@@ -80,7 +81,7 @@ function RoadNetwork() {
     <mesh position={[0, 0.29, 1.8]} rotation-x={Math.PI / 2}>
       <torusGeometry args={[5.05, 0.035, 4, 64]} /><meshStandardMaterial color={MAP.sand} roughness={0.8} />
     </mesh>
-    {[[-7.25, -7.9], [7.25, -7.9], [-7.25, 7.9], [7.25, 7.9]].map(([x, z], index) => <mesh key={index} position={[x, 0.29, z]} rotation-x={Math.PI / 2}>
+    {junctions.map(([x, z], index) => <mesh key={index} position={[x, 0.29, z]} rotation-x={Math.PI / 2}>
       <circleGeometry args={[0.52, 16]} /><meshStandardMaterial color={MAP.cream} roughness={0.82} />
     </mesh>)}
   </group>;
@@ -105,6 +106,8 @@ function TropicalIsland() {
 
 function Volcano() {
   const smoke = useRef<THREE.Group>(null);
+  const rocks: Array<readonly [number, number, number, number]> = [[2.7, .72, -.5, .62], [-2.45, .58, .82, .5], [1.8, .48, 2.75, .42], [-3.2, .4, -1.5, .38]];
+  const smokePuffs: Array<readonly [number, number, number, number]> = [[0, 0, 0, .62], [.45, .7, .1, .48], [-.3, 1.25, -.1, .4], [.28, 1.75, 0, .3]];
   useFrame((state) => {
     if (!smoke.current) return;
     smoke.current.position.y = Math.sin(state.clock.elapsedTime * 0.75) * 0.16;
@@ -139,11 +142,11 @@ function Volcano() {
       <boxGeometry args={[0.24, 3.1, 0.08]} />
       <meshStandardMaterial color={MAP.red} emissive={MAP.red} emissiveIntensity={0.9} />
     </mesh>
-    {[[2.7, .72, -.5, .62], [-2.45, .58, .82, .5], [1.8, .48, 2.75, .42], [-3.2, .4, -1.5, .38]].map(([x, y, z, size], index) => <mesh key={`rock-${index}`} position={[x ?? 0, y ?? 0, z ?? 0]} scale={size ?? 1} castShadow>
+    {rocks.map(([x, y, z, size], index) => <mesh key={`rock-${index}`} position={[x, y, z]} scale={size} castShadow>
       <dodecahedronGeometry args={[1, 0]} /><meshStandardMaterial color={MAP.road} roughness={1} flatShading />
     </mesh>)}
     <group ref={smoke} position={[0, 4.38, 0]}>
-      {[[0, 0, 0, .62], [.45, .7, .1, .48], [-.3, 1.25, -.1, .4], [.28, 1.75, 0, .3]].map(([x, y, z, size], index) => <mesh key={index} position={[x ?? 0, y ?? 0, z ?? 0]} scale={size ?? 1}>
+      {smokePuffs.map(([x, y, z, size], index) => <mesh key={index} position={[x, y, z]} scale={size}>
         <icosahedronGeometry args={[1, 1]} />
         <meshStandardMaterial color={MAP.cream} transparent opacity={0.7 - index * 0.1} roughness={1} flatShading />
       </mesh>)}
