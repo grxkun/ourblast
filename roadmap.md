@@ -14,3 +14,4 @@
 - [x] Add a central tropical volcano with crater, lava, smoke, and city clearance
 - [x] Add visible island roads, junctions, roundabout, and enhanced volcanic terrain
 - [x] Make individual Builder City views read clearly as islands with raised roads and a wider island-first camera
+- [x] Reshape individual cities as rugged, elongated tropical islands with irregular coastlines and mountain ridges

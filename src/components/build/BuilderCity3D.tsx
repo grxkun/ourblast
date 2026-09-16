@@ -159,19 +159,28 @@ function Lamp({ position }: { position: [number, number, number] }) {
   </group>;
 }
 
-function suiDropShape() {
+function ruggedIslandShape() {
   const shape = new THREE.Shape();
-  shape.moveTo(0, 14.6);
-  shape.bezierCurveTo(2.1, 10.6, 11.7, 2.8, 12.2, -3.1);
-  shape.bezierCurveTo(12.8, -9.3, 7.5, -13.8, 0, -14.1);
-  shape.bezierCurveTo(-7.5, -13.8, -12.8, -9.3, -12.2, -3.1);
-  shape.bezierCurveTo(-11.7, 2.8, -2.1, 10.6, 0, 14.6);
+  const points = Array.from({ length: 48 }, (_, index) => {
+    const angle = (index / 48) * Math.PI * 2;
+    const noise = 1 + Math.sin(angle * 5 + 0.7) * 0.055 + Math.sin(angle * 11) * 0.025;
+    const eastCape = Math.max(0, Math.cos(angle)) ** 8 * 2.4;
+    const westCape = Math.max(0, -Math.cos(angle)) ** 10 * 1.25;
+    return new THREE.Vector2(
+      Math.cos(angle) * (13.6 * noise + eastCape + westCape),
+      Math.sin(angle) * (10.4 * noise) + Math.sin(angle * 3) * 0.34,
+    );
+  });
+  const first = points[0];
+  if (!first) return shape;
+  shape.moveTo(first.x, first.y);
+  points.slice(1).forEach((point) => shape.lineTo(point.x, point.y));
   shape.closePath();
   return shape;
 }
 
 function IslandLayer({ y, depth, scale, color, bevel = false, opacity = 1 }: { y: number; depth: number; scale: number; color: string; bevel?: boolean; opacity?: number }) {
-  const shape = useMemo(suiDropShape, []);
+  const shape = useMemo(ruggedIslandShape, []);
   return <mesh position={[0, y, 0]} rotation-x={-Math.PI / 2} scale={[scale, scale, 1]} receiveShadow castShadow>
     <extrudeGeometry args={[shape, { depth, bevelEnabled: bevel, bevelSize: bevel ? 0.22 : 0, bevelThickness: bevel ? 0.15 : 0, bevelSegments: 1, curveSegments: 20 }]} />
     <meshStandardMaterial color={color} roughness={0.94} flatShading transparent={opacity < 1} opacity={opacity} />
@@ -201,6 +210,24 @@ function SuiWaveLagoon() {
   </group>;
 }
 
+function MountainRidge() {
+  const peaks: Array<readonly [number, number, number, number, string]> = [
+    [-8.6, 1.2, 5.8, 2.8, CITY.grassDark], [-6.1, 1.35, 6.7, 3.2, CITY.rock],
+    [-3.8, 1.05, 7.4, 2.35, CITY.grassDark], [4.2, 1.1, 7.2, 2.5, CITY.rock],
+    [7.1, 1.25, 6.1, 2.95, CITY.grassDark], [9.4, 0.8, 4.7, 1.9, CITY.rock],
+  ];
+  return <group>
+    {peaks.map(([x, y, z, size, color], index) => <group key={index} position={[x, y, z]} scale={[size, size * 0.82, size]}>
+      <mesh castShadow receiveShadow rotation-y={index * 0.37}>
+        <coneGeometry args={[1, 1.55, 7, 3]} /><meshStandardMaterial color={color} roughness={1} flatShading />
+      </mesh>
+      <mesh position={[0, 0.72, 0]} scale={[0.52, 0.38, 0.52]} castShadow>
+        <coneGeometry args={[1, 1.05, 7]} /><meshStandardMaterial color={CITY.sand} roughness={1} flatShading />
+      </mesh>
+    </group>)}
+  </group>;
+}
+
 function BlastIsland() {
   const palms = useMemo<Array<{ position: [number, number, number]; scale: number; rotation: number }>>(() => [
     { position: [-10.1, 0.57, -2.8], scale: 0.76, rotation: 0.2 }, { position: [10.2, 0.57, -2.6], scale: 0.7, rotation: 1.8 },
@@ -216,6 +243,7 @@ function BlastIsland() {
     <IslandLayer y={-1.08} depth={1.02} scale={1.055} color={CITY.rock} bevel />
     <IslandLayer y={-0.19} depth={0.48} scale={1.01} color={CITY.sand} bevel />
     <IslandLayer y={0.2} depth={0.31} scale={0.945} color={CITY.grass} bevel />
+    <MountainRidge />
     <mesh position={[0, 0.62, -0.2]} receiveShadow><boxGeometry args={[2.55, 0.14, 16.1]} /><meshStandardMaterial color={CITY.road} roughness={0.94} /></mesh>
     <mesh position={[0, 0.63, 0]} receiveShadow><boxGeometry args={[18.6, 0.14, 2.25]} /><meshStandardMaterial color={CITY.road} roughness={0.94} /></mesh>
     {[-5.3, 5.3].map((x) => <mesh key={x} position={[x, 0.72, 0]}><boxGeometry args={[0.14, 0.035, 2.27]} /><meshStandardMaterial color={CITY.cream} /></mesh>)}
