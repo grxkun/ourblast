@@ -8,24 +8,27 @@ import { BUILDING_LABELS, type BuildingType } from "@/lib/blast-build.config";
 import type { BuilderCitySceneProps, CityBuilding } from "./builder-city.types";
 
 const CITY = {
-  sky: "#b8d9df",
-  fog: "#d7e7e3",
+  sky: "#b8e1e3",
+  fog: "#d8ece6",
   grass: "#79965f",
   grassDark: "#536b45",
+  grassLight: "#96ad6d",
   road: "#292d2d",
   sidewalk: "#d9cdb5",
+  sand: "#e8d3a4",
+  rock: "#667064",
   ink: "#171410",
   cream: "#f6eed9",
   red: "#d9342b",
   cyan: "#36a7ae",
   glass: "#9bc7ca",
   water: "#5ba9b6",
+  waterDeep: "#267d91",
+  waterShallow: "#76c7c2",
   trunk: "#6d4935",
   foliage: "#477a4c",
+  palm: "#3f8050",
   light: "#ffe5a1",
-  hill: "#6e8c67",
-  skyline: "#768b86",
-  skylineDark: "#526664",
   path: "#bda98b",
 } as const;
 
@@ -135,6 +138,20 @@ function Tree({ position, scale = 1 }: { position: [number, number, number]; sca
   </group>;
 }
 
+function Palm({ position, scale = 1, rotation = 0 }: { position: [number, number, number]; scale?: number; rotation?: number }) {
+  return <group position={position} scale={scale} rotation-y={rotation}>
+    <mesh position-y={1.15} rotation-z={-0.08} castShadow>
+      <cylinderGeometry args={[0.12, 0.2, 2.3, 7]} />
+      <meshStandardMaterial color={CITY.trunk} roughness={1} />
+    </mesh>
+    {Array.from({ length: 6 }).map((_, index) => <mesh key={index} position={[0, 2.3, 0]} rotation-y={(Math.PI * 2 * index) / 6} rotation-z={0.72} castShadow>
+      <coneGeometry args={[0.42, 2.25, 5]} />
+      <meshStandardMaterial color={index % 2 ? CITY.palm : CITY.foliage} flatShading roughness={1} />
+    </mesh>)}
+    <mesh position={[0, 2.08, 0]} castShadow><sphereGeometry args={[0.28, 8, 6]} /><meshStandardMaterial color={CITY.trunk} /></mesh>
+  </group>;
+}
+
 function Lamp({ position }: { position: [number, number, number] }) {
   return <group position={position}>
     <mesh position-y={0.8} castShadow><cylinderGeometry args={[0.045, 0.07, 1.6, 7]} /><meshStandardMaterial color={CITY.ink} /></mesh>
@@ -142,49 +159,73 @@ function Lamp({ position }: { position: [number, number, number] }) {
   </group>;
 }
 
-function DistantSkyline() {
-  const towers = useMemo(() => Array.from({ length: 22 }, (_, index) => {
-    const side = index < 11 ? -1 : 1;
-    const lane = index % 11;
-    return {
-      x: -15 + lane * 3,
-      z: side * (13.4 + (lane % 3) * 1.05),
-      height: 2.4 + ((index * 17) % 6) * 0.68,
-      width: 1.7 + (index % 3) * 0.38,
-      color: index % 3 === 0 ? CITY.skylineDark : CITY.skyline,
-    };
-  }), []);
-  return <group>
-    {towers.map((tower, index) => <group key={index} position={[tower.x, tower.height / 2 - 0.1, tower.z]}>
-      <mesh castShadow receiveShadow>
-        <boxGeometry args={[tower.width, tower.height, tower.width * 0.8]} />
-        <meshStandardMaterial color={tower.color} roughness={0.88} />
-      </mesh>
-      {Array.from({ length: Math.max(2, Math.floor(tower.height)) }).map((_, floor) => <mesh key={floor} position={[0, -tower.height / 2 + 0.65 + floor * 0.72, sideFacing(tower.z)]}>
-        <boxGeometry args={[tower.width * 0.58, 0.16, 0.035]} />
-        <meshStandardMaterial color={CITY.glass} emissive={CITY.glass} emissiveIntensity={0.13} />
-      </mesh>)}
+function suiDropShape() {
+  const shape = new THREE.Shape();
+  shape.moveTo(0, 14.6);
+  shape.bezierCurveTo(2.1, 10.6, 11.7, 2.8, 12.2, -3.1);
+  shape.bezierCurveTo(12.8, -9.3, 7.5, -13.8, 0, -14.1);
+  shape.bezierCurveTo(-7.5, -13.8, -12.8, -9.3, -12.2, -3.1);
+  shape.bezierCurveTo(-11.7, 2.8, -2.1, 10.6, 0, 14.6);
+  shape.closePath();
+  return shape;
+}
+
+function IslandLayer({ y, depth, scale, color, bevel = false }: { y: number; depth: number; scale: number; color: string; bevel?: boolean }) {
+  const shape = useMemo(suiDropShape, []);
+  return <mesh position={[0, y, 0]} rotation-x={-Math.PI / 2} scale={[scale, scale, 1]} receiveShadow castShadow>
+    <extrudeGeometry args={[shape, { depth, bevelEnabled: bevel, bevelSize: bevel ? 0.22 : 0, bevelThickness: bevel ? 0.15 : 0, bevelSegments: 1, curveSegments: 20 }]} />
+    <meshStandardMaterial color={color} roughness={0.94} flatShading />
+  </mesh>;
+}
+
+function SatelliteCity({ position, color, rotation = 0 }: { position: [number, number, number]; color: string; rotation?: number }) {
+  const towers = [
+    { x: -0.9, z: 0.25, h: 1.75, w: 1.05 },
+    { x: 0.15, z: -0.2, h: 2.65, w: 1.15 },
+    { x: 1.15, z: 0.35, h: 1.35, w: 0.9 },
+  ];
+  return <group position={position} rotation-y={rotation}>
+    <mesh position-y={0.05} receiveShadow><cylinderGeometry args={[2.25, 2.45, 0.12, 10]} /><meshStandardMaterial color={CITY.sidewalk} /></mesh>
+    {towers.map((tower, index) => <group key={index} position={[tower.x, tower.h / 2 + 0.12, tower.z]}>
+      <mesh castShadow receiveShadow><boxGeometry args={[tower.w, tower.h, tower.w]} /><meshStandardMaterial color={index === 1 ? color : CITY.cream} roughness={0.72} /></mesh>
+      <mesh position={[0, 0.1, tower.w / 2 + 0.012]}><boxGeometry args={[tower.w * 0.58, tower.h * 0.52, 0.025]} /><meshStandardMaterial color={CITY.glass} emissive={CITY.glass} emissiveIntensity={0.1} /></mesh>
+      <mesh position-y={tower.h / 2 + 0.18} rotation-y={Math.PI / 4}><boxGeometry args={[tower.w * 0.72, 0.22, tower.w * 0.72]} /><meshStandardMaterial color={CITY.ink} /></mesh>
     </group>)}
   </group>;
 }
 
-function sideFacing(z: number) {
-  return z < 0 ? 0.82 : -0.82;
+function SuiWaveLagoon() {
+  return <group position={[0, 0.67, 9.25]} rotation-y={Math.PI}>
+    <mesh rotation-x={-Math.PI / 2} rotation-z={0.3}><torusGeometry args={[2.7, 0.4, 8, 34, Math.PI * 0.74]} /><meshStandardMaterial color={CITY.waterShallow} roughness={0.22} metalness={0.08} /></mesh>
+    <mesh position={[0.35, 0.02, 1.05]} rotation-x={-Math.PI / 2} rotation-z={0.15}><torusGeometry args={[1.85, 0.3, 8, 28, Math.PI * 0.68]} /><meshStandardMaterial color={CITY.water} roughness={0.2} /></mesh>
+  </group>;
 }
 
-function Landscape() {
-  const hills = useMemo(() => Array.from({ length: 13 }, (_, index) => ({
-    x: -24 + index * 4,
-    z: index % 2 === 0 ? -20 : 20,
-    scale: 3.2 + (index % 4) * 0.75,
-  })), []);
+function BlastIsland() {
+  const palms = useMemo<Array<{ position: [number, number, number]; scale: number; rotation: number }>>(() => [
+    { position: [-10.1, 0.57, -2.8], scale: 0.76, rotation: 0.2 }, { position: [10.2, 0.57, -2.6], scale: 0.7, rotation: 1.8 },
+    { position: [-9.4, 0.57, 4.1], scale: 0.62, rotation: 0.8 }, { position: [9.5, 0.57, 4.2], scale: 0.68, rotation: 2.5 },
+    { position: [-6.2, 0.57, 10.3], scale: 0.76, rotation: 1.2 }, { position: [6.1, 0.57, 10.4], scale: 0.72, rotation: 2.9 },
+    { position: [-4.3, 0.57, -9.4], scale: 0.62, rotation: 0.5 }, { position: [4.2, 0.57, -9.5], scale: 0.65, rotation: 2.2 },
+  ], []);
   return <>
-    <mesh position-y={-0.9} receiveShadow><cylinderGeometry args={[25, 27, 1.8, 12]} /><meshStandardMaterial color={CITY.grassDark} roughness={1} /></mesh>
-    <mesh position-y={-0.05} receiveShadow><boxGeometry args={[45, 0.42, 34]} /><meshStandardMaterial color={CITY.grass} roughness={1} /></mesh>
-    {hills.map((hill, index) => <mesh key={index} position={[hill.x, 0.45, hill.z]} scale={[hill.scale, 1.1 + (index % 3) * 0.35, hill.scale]} castShadow>
-      <dodecahedronGeometry args={[1, 0]} /><meshStandardMaterial color={index % 2 ? CITY.hill : CITY.grassDark} flatShading roughness={1} />
-    </mesh>)}
-    <DistantSkyline />
+    <mesh position-y={-1.55} receiveShadow><cylinderGeometry args={[48, 48, 0.65, 48]} /><meshStandardMaterial color={CITY.waterDeep} roughness={0.34} metalness={0.08} /></mesh>
+    <mesh position-y={-1.18} receiveShadow><cylinderGeometry args={[23, 25, 0.18, 40]} /><meshStandardMaterial color={CITY.water} transparent opacity={0.62} roughness={0.25} /></mesh>
+    <IslandLayer y={-1.08} depth={1.02} scale={1.055} color={CITY.rock} bevel />
+    <IslandLayer y={-0.19} depth={0.48} scale={1.01} color={CITY.sand} bevel />
+    <IslandLayer y={0.2} depth={0.31} scale={0.945} color={CITY.grass} bevel />
+    <mesh position={[0, 0.53, -0.2]} receiveShadow><boxGeometry args={[2.55, 0.11, 16.1]} /><meshStandardMaterial color={CITY.road} roughness={0.94} /></mesh>
+    <mesh position={[0, 0.54, 0]} receiveShadow><boxGeometry args={[18.6, 0.11, 2.25]} /><meshStandardMaterial color={CITY.road} roughness={0.94} /></mesh>
+    {[-5.3, 5.3].map((x) => <mesh key={x} position={[x, 0.56, 0]}><boxGeometry args={[0.14, 0.05, 2.27]} /><meshStandardMaterial color={CITY.cream} /></mesh>)}
+    {[-4.7, 4.4].map((z) => <mesh key={z} position={[0, 0.56, z]}><boxGeometry args={[2.57, 0.05, 0.14]} /><meshStandardMaterial color={CITY.cream} /></mesh>)}
+    <SuiWaveLagoon />
+    <SatelliteCity position={[-8.25, 0.61, 7.35]} color={CITY.red} rotation={0.18} />
+    <SatelliteCity position={[8.15, 0.61, 7.2]} color={CITY.cyan} rotation={-0.22} />
+    <SatelliteCity position={[0, 0.61, -9.35]} color={CITY.red} rotation={Math.PI} />
+    {palms.map((palm, index) => <Palm key={index} {...palm} />)}
+    {[-1, 1].flatMap((side) => [0, 1, 2].map((index) => <mesh key={`${side}-${index}`} position={[side * (11.1 - index * 0.48), 0.55, 8.2 + index * 1.05]} scale={0.42 + index * 0.08} castShadow>
+      <dodecahedronGeometry args={[1, 0]} /><meshStandardMaterial color={index % 2 ? CITY.rock : CITY.sand} flatShading roughness={1} />
+    </mesh>))}
   </>;
 }
 
@@ -263,32 +304,24 @@ function Scene({ buildings, username, level, interactive, selectedId, profileEna
       <Lightformer intensity={0.7} color={CITY.cyan} position={[-10, 3, -4]} rotation-y={Math.PI / 2} scale={[12, 3, 1]} />
     </Environment>
 
-    <Landscape />
-    <mesh position-y={-0.55} receiveShadow><cylinderGeometry args={[16.7, 17.3, 1.2, 8]} /><meshStandardMaterial color={CITY.grassDark} roughness={1} /></mesh>
-    <mesh position-y={0} receiveShadow><boxGeometry args={[25.5, 0.35, 20]} /><meshStandardMaterial color={CITY.grass} roughness={1} /></mesh>
+    <BlastIsland />
+    {treePositions.map((position, index) => <Tree key={index} position={[position[0], 0.56, position[2]]} scale={0.62 + (index % 3) * 0.08} />)}
+    {[-7.7, -4.7, 4.7, 7.7].flatMap((x) => [-1.7, 1.7].map((z) => <Lamp key={`${x}-${z}`} position={[x, 0.58, z]} />))}
 
-    <mesh position={[0, 0.22, 0]} receiveShadow><boxGeometry args={[3.1, 0.16, 20.1]} /><meshStandardMaterial color={CITY.road} roughness={0.92} /></mesh>
-    <mesh position={[0, 0.23, 0]} receiveShadow><boxGeometry args={[25.6, 0.16, 2.6]} /><meshStandardMaterial color={CITY.road} roughness={0.92} /></mesh>
-    {[-8.2, -4.1, 4.1, 8.2].map((z) => <mesh key={`road-z-${z}`} position={[0, 0.32, z]} receiveShadow><boxGeometry args={[25.5, 0.09, 0.16]} /><meshStandardMaterial color={CITY.cream} /></mesh>)}
-    {[-10.2, -6.1, -2, 2, 6.1, 10.2].map((x) => <mesh key={`road-x-${x}`} position={[x, 0.32, 0]} receiveShadow><boxGeometry args={[0.16, 0.09, 2.62]} /><meshStandardMaterial color={CITY.cream} /></mesh>)}
-
-    <mesh position={[-10.25, 0.34, 7.2]} receiveShadow><cylinderGeometry args={[2.15, 2.15, 0.14, 24]} /><meshStandardMaterial color={CITY.water} roughness={0.25} metalness={0.1} /></mesh>
-    <mesh position={[-10.25, 0.42, 7.2]} rotation-x={-Math.PI / 2}><torusGeometry args={[2.25, 0.22, 8, 32]} /><meshStandardMaterial color={CITY.sidewalk} /></mesh>
-    {treePositions.map((position, index) => <Tree key={index} position={position} scale={0.78 + (index % 3) * 0.1} />)}
-    {[-7.7, -4.7, 4.7, 7.7].flatMap((x) => [-1.7, 1.7].map((z) => <Lamp key={`${x}-${z}`} position={[x, 0.32, z]} />))}
-
-    <Headquarters username={username} level={level} profileEnabled={profileEnabled} onOpen={onOpenProfile} />
+    <group position-y={0.31}>
+      <Headquarters username={username} level={level} profileEnabled={profileEnabled} onOpen={onOpenProfile} />
     {visibleBuildings.slice(0, 10).map((building) => {
       const index = buildings.findIndex((candidate) => candidate.id === building.id);
       return <Building key={building.id} building={building} index={index} selected={selectedId === building.id} interactive={interactive} onSelect={onSelect} />;
     })}
+    </group>
 
     <OrbitControls
       ref={controls}
       makeDefault
       target={[0, 1.4, 0]}
       minDistance={15}
-      maxDistance={48}
+      maxDistance={52}
       minPolarAngle={0.08}
       maxPolarAngle={1.45}
       enablePan={false}
@@ -305,7 +338,7 @@ export default function BuilderCity3D(props: BuilderCitySceneProps & { resetKey:
     key={props.resetKey}
     shadows
     dpr={[1, 1.35]}
-    camera={{ position: [18, 17, 23], fov: 42, near: 0.1, far: 120 }}
+    camera={{ position: [20, 19, 26], fov: 43, near: 0.1, far: 140 }}
     gl={{ antialias: true, alpha: false, powerPreference: "default" }}
     onPointerMissed={() => document.body.style.cursor = "default"}
   >
