@@ -203,6 +203,35 @@ function SatelliteCity({ position, color, rotation = 0 }: { position: [number, n
   </group>;
 }
 
+function UrbanSkyline({ level }: { level: number }) {
+  const blocks = useMemo(() => {
+    const candidates: Array<{ x: number; z: number; height: number; width: number; tone: string }> = [];
+    const columns = [-9.2, -7.6, -5.4, -3.5, 3.5, 5.4, 7.6, 9.2];
+    const rows = [-7.2, -2.55, 2.55, 6.2];
+    rows.forEach((z, row) => columns.forEach((x, column) => {
+      const seed = (row * 17 + column * 11 + level * 3) % 13;
+      const height = 1.5 + (seed / 12) * 3.8 + Math.min(level, 12) * 0.08;
+      candidates.push({ x, z, height, width: 0.88 + (seed % 4) * 0.12, tone: (row + column) % 5 === 0 ? CITY.cyan : (row + column) % 7 === 0 ? CITY.red : CITY.cream });
+    }));
+    return candidates.slice(0, Math.min(candidates.length, 18 + Math.max(0, level) * 2));
+  }, [level]);
+  return <group>
+    {blocks.map((block, index) => <group key={index} position={[block.x, 0.75, block.z]}>
+      <mesh position-y={block.height / 2} castShadow receiveShadow>
+        <boxGeometry args={[block.width, block.height, block.width * 0.92]} />
+        <meshStandardMaterial color={block.tone} roughness={0.72} />
+      </mesh>
+      {Array.from({ length: Math.max(2, Math.floor(block.height)) }).map((_, floor) => <mesh key={floor} position={[0, 0.75 + floor * 0.72, block.width * 0.47]}>
+        <boxGeometry args={[block.width * 0.58, 0.16, 0.035]} />
+        <meshStandardMaterial color={CITY.glass} emissive={CITY.glass} emissiveIntensity={0.11} />
+      </mesh>)}
+      <mesh position-y={block.height + 0.1} rotation-y={Math.PI / 4} castShadow>
+        <boxGeometry args={[block.width * 0.72, 0.2, block.width * 0.72]} /><meshStandardMaterial color={CITY.ink} roughness={0.75} />
+      </mesh>
+    </group>)}
+  </group>;
+}
+
 function SuiWaveLagoon() {
   return <group position={[0, 0.67, 9.25]} rotation-y={Math.PI}>
     <mesh rotation-x={-Math.PI / 2} rotation-z={0.3}><torusGeometry args={[2.7, 0.4, 8, 34, Math.PI * 0.74]} /><meshStandardMaterial color={CITY.waterShallow} roughness={0.22} metalness={0.08} /></mesh>
@@ -341,6 +370,7 @@ function Scene({ buildings, username, level, interactive, selectedId, profileEna
     </Environment>
 
     <BlastIsland />
+    <UrbanSkyline level={level} />
     {treePositions.map((position, index) => <Tree key={index} position={[position[0], 0.56, position[2]]} scale={0.62 + (index % 3) * 0.08} />)}
     {[-7.7, -4.7, 4.7, 7.7].flatMap((x) => [-1.7, 1.7].map((z) => <Lamp key={`${x}-${z}`} position={[x, 0.58, z]} />))}
 
