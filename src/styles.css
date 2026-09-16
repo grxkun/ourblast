@@ -408,7 +408,7 @@
 .builder-atlas-marker:hover,
 .builder-atlas-marker:focus-visible,
 .builder-atlas-marker.is-selected { z-index: 7; background: var(--build-cyan); color: var(--build-panel); transform: translate(-50%, -50%) scale(1.18); }
-.builder-atlas-marker-label { position: absolute; left: 50%; top: calc(100% + .35rem); display: none; max-width: 8rem; transform: translateX(-50%); overflow: hidden; border: 1px solid var(--build-line); background: var(--build-panel); padding: .2rem .35rem; color: var(--build-text); font-family: ui-monospace, monospace; font-size: .5rem; text-overflow: ellipsis; white-space: nowrap; box-shadow: 2px 2px 0 var(--build-line); }
+.builder-atlas-marker-label { pointer-events: none; position: absolute; left: 50%; top: calc(100% + .35rem); display: none; max-width: 8rem; transform: translateX(-50%); overflow: hidden; border: 1px solid var(--build-line); background: var(--build-panel); padding: .2rem .35rem; color: var(--build-text); font-family: ui-monospace, monospace; font-size: .5rem; text-overflow: ellipsis; white-space: nowrap; box-shadow: 2px 2px 0 var(--build-line); }
 .builder-atlas-marker:hover .builder-atlas-marker-label,
 .builder-atlas-marker:focus-visible .builder-atlas-marker-label,
 .builder-atlas-marker.is-selected .builder-atlas-marker-label { display: block; }
@@ -447,5 +447,8 @@
   .builder-atlas-map::after { border-width: .4rem; }
   .builder-atlas-marker { width: 2rem; height: 2rem; }
   .builder-atlas-marker svg { width: .85rem; height: .85rem; }
+  .builder-atlas-marker:hover .builder-atlas-marker-label,
+  .builder-atlas-marker:focus-visible .builder-atlas-marker-label,
+  .builder-atlas-marker.is-selected .builder-atlas-marker-label { display: none; }
   .builder-atlas-heading { left: .55rem; top: .55rem; font-size: .52rem; }
 }
