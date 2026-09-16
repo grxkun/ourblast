@@ -7,6 +7,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { BuilderAtlas } from "@/components/build/BuilderAtlas";
 import { getBuilderLeaderboard } from "@/lib/build.functions";
+import { getBlastIslandDevelopers } from "@/lib/ecosystem.functions";
 
 type Metric = "builder" | "city" | "blast" | "weekly" | "rising" | "open-source" | "reputation";
 
@@ -63,7 +64,9 @@ function metricValue(metric: Metric, row: { value: number }) {
 function BuildersPage() {
   const [metric, setMetric] = useState<Metric>("builder");
   const fetchBoard = useServerFn(getBuilderLeaderboard);
+  const fetchIsland = useServerFn(getBlastIslandDevelopers);
   const board = useQuery({ queryKey: ["builder-leaderboard", metric], queryFn: () => fetchBoard({ data: { metric } }) });
+  const island = useQuery({ queryKey: ["blast-island-developers"], queryFn: () => fetchIsland() });
   const rows = board.data ?? [];
   return <div className="theme-build -mx-4 -mt-6 min-h-screen bg-build-bg px-4 py-10 text-build-text lg:-mb-16 sm:py-16">
     <main className="mx-auto max-w-6xl">
@@ -117,7 +120,7 @@ function BuildersPage() {
 
       <section className="mt-14 border-t-2 border-build-line pt-8" aria-labelledby="map-title">
         <p className="font-mono text-xs font-bold text-build-cyan">FUTURE-READY / NO LOCATION REQUIRED</p><h2 id="map-title" className="mt-2 font-build text-5xl">SUI BUILDER MAP</h2>
-         <BuilderAtlas builders={rows}/>
+         {island.data ? <BuilderAtlas builders={island.data}/> : <div className="mt-6 min-h-80 border-2 border-build-line bg-build-panel p-8 font-mono text-sm text-build-muted">Mapping Sui developer cities…</div>}
          <div className="mt-4 flex justify-end"><Button asChild variant="outline" className="rounded-sm border-build-line bg-transparent text-build-text"><Link to="/community-city"><Building2/>Open global city</Link></Button></div>
       </section>
     </main>

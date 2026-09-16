@@ -387,51 +387,22 @@
   box-shadow: 0 0 0 4px color-mix(in oklch, var(--build-cyan) 16%, transparent);
 }
 
-.builder-atlas { display: grid; overflow: hidden; }
-.builder-atlas-map { position: relative; min-height: 36rem; overflow: hidden; background: oklch(0.72 0.11 206); isolation: isolate; }
-.builder-atlas-map::before,
-.builder-atlas-map::after { content: ""; position: absolute; inset: 0; pointer-events: none; }
-.builder-atlas-map::before { background-image: radial-gradient(circle at 18% 24%, color-mix(in oklch, var(--build-panel) 35%, transparent) 0 1px, transparent 2px), radial-gradient(circle at 72% 62%, color-mix(in oklch, var(--build-panel) 28%, transparent) 0 1px, transparent 2px); background-size: 54px 54px, 70px 70px; opacity: .7; }
-.builder-atlas-map::after { border: .8rem solid color-mix(in oklch, var(--build-panel) 45%, transparent); z-index: 6; }
-.builder-atlas-ocean { position: absolute; right: 1rem; bottom: 1rem; color: color-mix(in oklch, var(--build-panel) 70%, transparent); }
-.builder-atlas-ocean svg { width: 4rem; height: 4rem; }
-.builder-atlas-island { position: absolute; left: 50%; top: 3.2rem; width: min(78%, 34rem); aspect-ratio: .88; transform: translateX(-50%); clip-path: polygon(50% 0, 58% 12%, 74% 29%, 88% 48%, 96% 67%, 92% 82%, 81% 93%, 65% 99%, 35% 99%, 19% 93%, 8% 82%, 4% 67%, 12% 48%, 26% 29%, 42% 12%); background: oklch(0.78 0.11 133); box-shadow: inset 0 0 0 .8rem var(--build-panel-2); filter: drop-shadow(0 1rem 0 color-mix(in oklch, var(--build-line) 38%, transparent)); z-index: 1; }
-.builder-atlas-island::before { content: ""; position: absolute; inset: .65rem; clip-path: inherit; border: .35rem solid var(--build-panel); }
-.builder-atlas-road { position: absolute; background: color-mix(in oklch, var(--build-line) 72%, var(--build-panel)); opacity: .62; }
-.builder-atlas-road-x { left: 14%; right: 14%; top: 51%; height: .45rem; }
-.builder-atlas-road-y { top: 18%; bottom: 14%; left: calc(50% - .22rem); width: .45rem; }
-.builder-atlas-lagoon { position: absolute; left: 50%; bottom: 8%; width: 7rem; height: 3rem; transform: translateX(-50%); }
-.builder-atlas-lagoon span { position: absolute; inset: 0; border: .45rem solid oklch(0.68 0.12 209); border-top-color: transparent; border-left-color: transparent; border-radius: 50%; transform: rotate(45deg); }
-.builder-atlas-lagoon span + span { inset: .65rem 1.2rem -.15rem; }
+.builder-atlas-map { position: relative; min-height: 42rem; overflow: hidden; isolation: isolate; }
+.builder-atlas-stage { position: absolute; inset: 0; background: var(--build-panel-2); }
+.builder-atlas-stage canvas { cursor: grab; touch-action: none; }
 .builder-atlas-heading { position: absolute; left: .8rem; top: .8rem; z-index: 8; display: flex; align-items: center; gap: .55rem; border: 1px solid var(--build-line); background: color-mix(in oklch, var(--build-panel) 92%, transparent); padding: .55rem .7rem; font-family: ui-monospace, monospace; font-size: .62rem; font-weight: 700; backdrop-filter: blur(7px); }
-.builder-atlas-marker { position: absolute; z-index: 5; width: 2.3rem; height: 2.3rem; border: 2px solid var(--build-line); border-radius: 50%; background: var(--build-panel); color: var(--build-text); box-shadow: .2rem .25rem 0 color-mix(in oklch, var(--build-line) 65%, transparent); transform: translate(-50%, -50%); }
-.builder-atlas-marker:hover,
-.builder-atlas-marker:focus-visible,
-.builder-atlas-marker.is-selected { z-index: 7; background: var(--build-cyan); color: var(--build-panel); transform: translate(-50%, -50%) scale(1.18); }
-.builder-atlas-marker-label { pointer-events: none; position: absolute; left: 50%; top: calc(100% + .35rem); display: none; max-width: 8rem; transform: translateX(-50%); overflow: hidden; border: 1px solid var(--build-line); background: var(--build-panel); padding: .2rem .35rem; color: var(--build-text); font-family: ui-monospace, monospace; font-size: .5rem; text-overflow: ellipsis; white-space: nowrap; box-shadow: 2px 2px 0 var(--build-line); }
-.builder-atlas-marker:hover .builder-atlas-marker-label,
-.builder-atlas-marker:focus-visible .builder-atlas-marker-label,
-.builder-atlas-marker.is-selected .builder-atlas-marker-label { display: block; }
-.builder-atlas-empty { position: absolute; inset: 0; z-index: 5; display: grid; place-content: center; justify-items: center; gap: .75rem; color: var(--build-text); }
-.builder-atlas-empty svg { color: var(--build-cyan); }
-.builder-atlas-detail { position: relative; z-index: 9; display: grid; gap: 1rem; border-top: 2px solid var(--build-line); background: var(--build-panel); padding: 1.2rem; }
+.builder-atlas-controls { position: absolute; right: .8rem; top: .8rem; z-index: 8; display: flex; }
+.builder-atlas-controls button { border-radius: 0; border-color: var(--build-line); background: color-mix(in oklch, var(--build-panel) 90%, transparent); color: var(--build-text); }
+.builder-atlas-controls button + button { margin-left: -1px; }
+.builder-atlas-help { position: absolute; right: .8rem; bottom: .8rem; z-index: 8; border: 1px solid var(--build-line); background: color-mix(in oklch, var(--build-panel) 86%, transparent); padding: .4rem .6rem; font-family: ui-monospace, monospace; font-size: .55rem; color: var(--build-muted); backdrop-filter: blur(7px); }
+.builder-atlas-detail { position: relative; display: grid; gap: 1rem; padding: 1.2rem; box-shadow: 7px 7px 0 var(--build-line); }
 .builder-atlas-stats { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); border: 1px solid var(--build-line); }
 .builder-atlas-stats div { min-width: 0; border-right: 1px solid var(--build-line); border-bottom: 1px solid var(--build-line); padding: .6rem; }
 .builder-atlas-stats div:nth-child(2n) { border-right: 0; }
 .builder-atlas-stats div:nth-last-child(-n+2) { border-bottom: 0; }
 .builder-atlas-stats dt { font-family: ui-monospace, monospace; font-size: .52rem; text-transform: uppercase; color: var(--build-muted); }
 .builder-atlas-stats dd { margin-top: .2rem; overflow: hidden; font-family: var(--font-build); font-size: 1.3rem; text-overflow: ellipsis; text-transform: uppercase; white-space: nowrap; }
-.atlas-marker-0 { left: 50%; top: 20%; } .atlas-marker-1 { left: 42%; top: 29%; } .atlas-marker-2 { left: 58%; top: 29%; }
-.atlas-marker-3 { left: 34%; top: 38%; } .atlas-marker-4 { left: 50%; top: 40%; } .atlas-marker-5 { left: 66%; top: 38%; }
-.atlas-marker-6 { left: 27%; top: 49%; } .atlas-marker-7 { left: 41%; top: 50%; } .atlas-marker-8 { left: 59%; top: 50%; } .atlas-marker-9 { left: 73%; top: 49%; }
-.atlas-marker-10 { left: 22%; top: 61%; } .atlas-marker-11 { left: 35%; top: 61%; } .atlas-marker-12 { left: 50%; top: 61%; } .atlas-marker-13 { left: 65%; top: 61%; } .atlas-marker-14 { left: 78%; top: 61%; }
-.atlas-marker-15 { left: 27%; top: 72%; } .atlas-marker-16 { left: 41%; top: 73%; } .atlas-marker-17 { left: 59%; top: 73%; } .atlas-marker-18 { left: 73%; top: 72%; }
-.atlas-marker-19 { left: 35%; top: 83%; } .atlas-marker-20 { left: 50%; top: 84%; } .atlas-marker-21 { left: 65%; top: 83%; } .atlas-marker-22 { left: 43%; top: 92%; } .atlas-marker-23 { left: 57%; top: 92%; }
-
-@media (min-width: 768px) {
-  .builder-atlas { grid-template-columns: minmax(0, 1fr) 20rem; }
-  .builder-atlas-detail { align-content: center; border-top: 0; border-left: 2px solid var(--build-line); padding: 1.5rem; }
-}
+@media (min-width: 768px) { .builder-atlas-detail { grid-template-columns: minmax(15rem, .8fr) 1fr auto; align-items: center; padding: 1.5rem; } }
 
 @media (max-width: 640px) {
   .build-city { min-height: 29rem; box-shadow: 5px 5px 0 var(--build-line); }
@@ -442,13 +413,9 @@
   .city-3d-controls button { width: 2rem; height: 2rem; }
   .city-level-switcher { left: .5rem; bottom: .5rem; max-width: calc(100% - 1rem); overflow-x: auto; }
   .city-3d-detail { inset-inline: .6rem; bottom: .6rem; }
-  .builder-atlas-map { min-height: 31rem; }
-  .builder-atlas-island { top: 3.7rem; width: 112%; }
-  .builder-atlas-map::after { border-width: .4rem; }
-  .builder-atlas-marker { width: 2rem; height: 2rem; }
-  .builder-atlas-marker svg { width: .85rem; height: .85rem; }
-  .builder-atlas-marker:hover .builder-atlas-marker-label,
-  .builder-atlas-marker:focus-visible .builder-atlas-marker-label,
-  .builder-atlas-marker.is-selected .builder-atlas-marker-label { display: none; }
+  .builder-atlas-map { min-height: 32rem; }
   .builder-atlas-heading { left: .55rem; top: .55rem; font-size: .52rem; }
+  .builder-atlas-controls { right: .55rem; top: 3.35rem; }
+  .builder-atlas-controls button { width: 2rem; height: 2rem; }
+  .builder-atlas-help { display: none; }
 }
