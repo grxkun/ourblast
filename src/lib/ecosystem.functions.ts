@@ -56,7 +56,7 @@ function isSuiProject(repo: GitHubRepository) {
   const moveProject = repo.language === "Move" && (topics.has("sui") || explicitSui);
   const topicProject = (topics.has("sui") || topics.has("sui-move") || topics.has("sui-network"))
     && (["move", "blockchain", "dapp", "smart-contracts", "web3"].some((topic) => topics.has(topic)) || explicitSui);
-  return repo.owner.type === "User" && !repo.archived && !repo.fork && repo.stargazers_count >= 3 && (moveProject || topicProject || explicitSui);
+  return repo.owner.type === "User" && !repo.archived && !repo.fork && repo.stargazers_count >= 1 && (moveProject || topicProject || explicitSui);
 }
 
 function toDiscoveredProject(repo: GitHubRepository): DiscoveredSuiProject {
