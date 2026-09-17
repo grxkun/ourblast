@@ -24,4 +24,5 @@
 - [x] Build the conversational terminal with command suggestions, history, attachments, and launch configuration
 - [x] Add a transport-neutral intent parser, allowlisted tool registry, transaction states, and Blast.fun adapter
 - [x] Reuse the Sui wallet session and prepare the X account connection abstraction
-- [ ] Verify desktop, tablet, and mobile terminal flows without simulated transaction success
+- [x] Verify desktop, tablet, and mobile terminal flows without simulated transaction success
+- [x] Lock the Terminal behind a tester allowlist (0x46e5…2b5a)
