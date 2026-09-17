@@ -8,7 +8,7 @@ export function TerminalMessage({ entry, onCopy, onRerun, children }: { entry: T
   const state = entry.result.status === "FAILED" ? "output-error" : "output-available";
   return (
     <div className="space-y-4">
-      <Message from="user"><MessageContent className="bg-secondary text-secondary-foreground"><span className="font-mono">&gt; {entry.command}</span></MessageContent><MessageActions className="justify-end"><MessageAction tooltip="Copy command" onClick={onCopy}><Copy /></MessageAction><MessageAction tooltip="Run again" onClick={onRerun}><RotateCcw /></MessageAction></MessageActions></Message>
+      <Message from="user"><MessageContent className="group-[.is-user]:border group-[.is-user]:border-border group-[.is-user]:bg-muted group-[.is-user]:text-foreground"><span className="font-mono">&gt; {entry.command}</span></MessageContent><MessageActions className="justify-end"><MessageAction tooltip="Copy command" onClick={onCopy}><Copy /></MessageAction><MessageAction tooltip="Run again" onClick={onRerun}><RotateCcw /></MessageAction></MessageActions></Message>
       <Message from="assistant">
         <MessageContent className="w-full"><MessageResponse>{entry.result.message}</MessageResponse>{children}</MessageContent>
         <Tool defaultOpen={false} className="mt-2 max-w-xl rounded-none">
