@@ -73,9 +73,26 @@ export function AppShell({ children }: { children: ReactNode }) {
                 {item.label}
               </Link>
             ))}
+            {isStaff ? (
+              <Link
+                to="/admin"
+                activeProps={{ className: "bg-secondary text-secondary-foreground" }}
+                className="rounded-full px-4 py-2 font-body text-sm font-medium text-primary transition-colors hover:text-foreground"
+              >
+                Admin
+              </Link>
+            ) : null}
           </nav>
 
           <div className="flex items-center gap-2">
+            {isStaff ? (
+              <Link
+                to="/admin"
+                className="rounded-full border-2 border-border px-3 py-1.5 font-body text-xs font-bold uppercase text-primary lg:hidden"
+              >
+                Admin
+              </Link>
+            ) : null}
             <WalletButton />
           </div>
         </div>
