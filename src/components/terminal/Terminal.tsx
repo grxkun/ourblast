@@ -5,7 +5,7 @@ import { toast } from "sonner";
 
 import { Attachment, AttachmentPreview, AttachmentRemove, Attachments } from "@/components/ai-elements/attachments";
 import { Conversation, ConversationContent, ConversationScrollButton } from "@/components/ai-elements/conversation";
-import { PromptInput, PromptInputButton, PromptInputFooter, PromptInputHeader, type PromptInputMessage, PromptInputSubmit, PromptInputTextarea, PromptInputTools } from "@/components/ai-elements/prompt-input";
+import { PromptInput, PromptInputButton, PromptInputFooter, PromptInputHeader, type PromptInputMessage, PromptInputSubmit, PromptInputTextarea, PromptInputTools, usePromptInputAttachments } from "@/components/ai-elements/prompt-input";
 import { Shimmer } from "@/components/ai-elements/shimmer";
 import { useBlast } from "@/components/blast/session";
 import { Button } from "@/components/ui/button";
@@ -43,10 +43,15 @@ export function Terminal() {
     queryFn: async () => {
       const { data, error } = await supabase.from("terminal_history").select("id, command, intent, response, status, result, created_at").order("created_at", { ascending: true }).limit(100);
       if (error) throw error;
-      return (data ?? []).map((row): TerminalEntry => ({
-        id: row.id, command: row.command, intent: row.intent as TerminalIntentName, createdAt: row.created_at,
-        result: { tool: row.intent as TerminalIntentName, status: row.status as TerminalStatus, message: row.response, ...(typeof row.result === "object" && row.result && !Array.isArray(row.result) ? { data: row.result as Record<string, unknown> } : {}) },
-      }));
+      return (data ?? []).map((row): TerminalEntry => {
+        const saved = typeof row.result === "object" && row.result && !Array.isArray(row.result) ? row.result as Record<string, unknown> : {};
+        const launch = typeof saved["launch"] === "object" && saved["launch"] ? saved["launch"] as LaunchConfiguration : undefined;
+        const storedData = typeof saved["data"] === "object" && saved["data"] && !Array.isArray(saved["data"]) ? saved["data"] as Record<string, unknown> : undefined;
+        return {
+          id: row.id, command: row.command, intent: row.intent as TerminalIntentName, createdAt: row.created_at,
+          result: { tool: row.intent as TerminalIntentName, status: row.status as TerminalStatus, message: row.response, ...(storedData ? { data: storedData } : {}), ...(launch ? { launch } : {}) },
+        };
+      });
     },
   });
 
@@ -57,7 +62,9 @@ export function Terminal() {
 
   const saveEntry = useCallback(async (entry: TerminalEntry) => {
     if (!userId) { setAnonymousHistory((current) => [...current, entry].slice(-100)); return; }
-    const { error } = await supabase.from("terminal_history").insert({ user_id: userId, command: entry.command, intent: entry.intent, response: entry.result.message, status: entry.result.status, result: (entry.result.data ?? {}) as Json });
+    const launch = entry.result.launch ? { ...entry.result.launch, image: null, imageName: undefined } : undefined;
+    const result = { ...(entry.result.data ? { data: entry.result.data } : {}), ...(launch ? { launch } : {}) };
+    const { error } = await supabase.from("terminal_history").insert({ user_id: userId, command: entry.command, intent: entry.intent, response: entry.result.message, status: entry.result.status, result: result as Json });
     if (error) throw error;
     await queryClient.invalidateQueries({ queryKey: ["terminal-history", userId] });
   }, [queryClient, userId]);
@@ -79,7 +86,18 @@ export function Terminal() {
 
   const handleSubmit = async (message: PromptInputMessage) => {
     const image = message.files.find((file) => file.mediaType?.startsWith("image/"));
-    await run(message.text || (image ? "launch $TOKEN Token Name" : ""), image ? { url: image.url, ...(image.filename ? { filename: image.filename } : {}) } : undefined);
+    let stableImage: { url: string; filename?: string } | undefined;
+    if (image) {
+      const blob = await fetch(image.url).then((response) => response.blob());
+      const url = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => typeof reader.result === "string" ? resolve(reader.result) : reject(new Error("Image could not be read."));
+        reader.onerror = () => reject(new Error("Image could not be read."));
+        reader.readAsDataURL(blob);
+      });
+      stableImage = { url, ...(image.filename ? { filename: image.filename } : {}) };
+    }
+    await run(message.text || (stableImage ? "launch $TOKEN Token Name" : ""), stableImage);
     setDraft("");
   };
 
@@ -130,20 +148,12 @@ export function Terminal() {
 }
 
 function ComposerAttachments() {
-  const { files, remove } = requireAttachments();
+  const { files, remove } = usePromptInputAttachments();
   if (!files.length) return null;
   return <Attachments variant="inline">{files.map((file) => <Attachment key={file.id} data={file} onRemove={() => remove(file.id)}><AttachmentPreview /><AttachmentRemove /></Attachment>)}</Attachments>;
 }
 
 function AttachmentButton() {
-  const { openFileDialog } = requireAttachments();
+  const { openFileDialog } = usePromptInputAttachments();
   return <PromptInputButton type="button" tooltip="Attach token artwork" onClick={openFileDialog}><ImagePlus /></PromptInputButton>;
 }
-
-function requireAttachments() {
-  // Kept in a helper so both controls consume the PromptInput's local attachment context.
-  // eslint-disable-next-line react-hooks/rules-of-hooks
-  return requirePromptAttachments();
-}
-
-import { usePromptInputAttachments as requirePromptAttachments } from "@/components/ai-elements/prompt-input";

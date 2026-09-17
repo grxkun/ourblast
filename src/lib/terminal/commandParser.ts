@@ -10,8 +10,8 @@ export function parseTerminalCommand(rawInput: string): ParsedIntent {
   const raw = rawInput.trim().replace(/^@ourblast\s+/i, "");
   const launch = raw.match(/^(?:launch|create(?:\s+token)?)\s+(?:a\s+meme\s+coin\s+called\s+)?(?:\$([a-z0-9]{1,10})\s+)?(?:called\s+)?(.+?)(?:\s+\$([a-z0-9]{1,10}))?$/i);
   if (launch) {
-    const symbol = cleanSymbol(launch[1] || launch[3]);
     const name = launch[2]?.replace(/^token\s+/i, "").trim() ?? "";
+    const symbol = cleanSymbol(launch[1] || launch[3]) || name.replace(/[^a-z0-9]/gi, "").toUpperCase().slice(0, 10);
     return intent(/^create/i.test(raw) ? "createToken" : "launchToken", raw, { name, symbol });
   }
 
