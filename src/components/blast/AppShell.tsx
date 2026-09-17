@@ -16,10 +16,9 @@ const NAV = [
   { to: "/meme", label: "Meme", icon: "😂" },
   { to: "/roast", label: "Roast", icon: "🔥" },
   { to: "/chat", label: "Chat", icon: "💬" },
+  { to: "/terminal", label: "Terminal", icon: "⌨️" },
   { to: "/profile", label: "You", icon: "👾" },
 ] as const;
-
-
 
 export function AppShell({ children }: { children: ReactNode }) {
   const pathname = useRouterState({ select: (state) => state.location.pathname });
@@ -45,7 +44,13 @@ export function AppShell({ children }: { children: ReactNode }) {
           </Link>
 
           <nav className="hidden items-center gap-1 lg:flex">
-            {NAV.filter((item) => item.to !== "/how-to-play" && item.to !== "/profile" && item.to !== "/builders").map((item) => (
+            {NAV.filter(
+              (item) =>
+                item.to !== "/how-to-play" &&
+                item.to !== "/profile" &&
+                item.to !== "/builders" &&
+                item.to !== "/terminal"
+            ).map((item) => (
               <Link
                 key={item.to}
                 to={item.to}
@@ -58,7 +63,16 @@ export function AppShell({ children }: { children: ReactNode }) {
             ))}
           </nav>
 
-          <WalletButton />
+          <div className="flex items-center gap-2">
+            <Link
+              to="/terminal"
+              className="hidden lg:flex items-center gap-2 rounded-full border border-border bg-background/40 px-4 py-2 font-mono text-xs font-bold text-cyber transition-colors hover:bg-secondary"
+            >
+              <span className="size-2 animate-pulse rounded-full bg-cyber" />
+              TERMINAL
+            </Link>
+            <WalletButton />
+          </div>
         </div>
       </header>
 
@@ -66,7 +80,13 @@ export function AppShell({ children }: { children: ReactNode }) {
 
       <nav className="fixed bottom-0 left-0 z-50 w-full border-t border-border bg-background/90 backdrop-blur-xl lg:hidden">
         <div className="mx-auto flex max-w-lg items-stretch justify-between px-1 py-1.5">
-          {NAV.filter((item) => item.to !== "/how-to-play" && item.to !== "/builders" && item.to !== "/roast").map((item) => (
+          {NAV.filter(
+            (item) =>
+              item.to !== "/how-to-play" &&
+              item.to !== "/builders" &&
+              item.to !== "/roast" &&
+              item.to !== "/ecosystem"
+          ).map((item) => (
             <Link
               key={item.to}
               to={item.to}

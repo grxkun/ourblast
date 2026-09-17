@@ -1,5 +1,5 @@
 import React from "react";
-import { motion } from "motion/react";
+import { motion } from "motion";
 import { cn } from "@/lib/utils";
 
 export type LineType = "user" | "system" | "ai" | "error" | "command";
