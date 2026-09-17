@@ -4,7 +4,7 @@ import type { LaunchConfiguration, ParsedIntent, TerminalAgentContext, TerminalI
 export type TerminalTool = (intent: ParsedIntent, context: TerminalAgentContext) => Promise<TerminalToolResult>;
 
 const walletRequired = (tool: TerminalIntentName, context: TerminalAgentContext): TerminalToolResult | null =>
-  context.walletConnected ? null : { tool, status: "NOT_CONNECTED", message: "🔐 Connect your Sui wallet first." };
+  context.walletConnected ? null : { tool, status: "NOT_CONNECTED", message: "Connect your Sui wallet first." };
 
 export function launchFromIntent(intent: ParsedIntent): LaunchConfiguration | null {
   const name = String(intent.input["name"] ?? "").trim().slice(0, 64);
@@ -19,7 +19,7 @@ const launchTool: TerminalTool = async (intent, context) => {
   return {
     tool: intent.name,
     status: context.walletConnected ? "READY" : "NOT_CONNECTED",
-    message: context.walletConnected ? "Launch configuration prepared. Review every field before continuing." : "Launch configuration prepared. 🔐 Connect your Sui wallet before launching.",
+    message: context.walletConnected ? "Launch configuration prepared. Review every field before continuing." : "Launch configuration prepared. Connect your Sui wallet before launching.",
     launch,
   };
 };
@@ -32,7 +32,7 @@ export const terminalTools: Record<Exclude<TerminalIntentName, "unknown">, Termi
   getToken: async (intent) => blastFunAdapter.getLaunchStatus(String(intent.input["symbol"] ?? "")),
   getWallet: async (_intent, context) => context.walletConnected
     ? { tool: "getWallet", status: "READY", message: `Sui wallet connected: ${context.walletAddress ?? "Connected"}.`, data: { address: context.walletAddress } }
-    : { tool: "getWallet", status: "NOT_CONNECTED", message: "🔐 Connect your Sui wallet first." },
+    : { tool: "getWallet", status: "NOT_CONNECTED", message: "Connect your Sui wallet first." },
   getPortfolio: async (_intent, context) => walletRequired("getPortfolio", context) ?? unavailableRead("getPortfolio", "Portfolio indexing"),
   getLaunches: async (_intent, context) => walletRequired("getLaunches", context) ?? unavailableRead("getLaunches", "Blast.fun launch history"),
   getBondingCurve: async (intent) => blastFunAdapter.getBondingCurve(String(intent.input["symbol"] ?? "")),

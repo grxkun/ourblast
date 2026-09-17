@@ -1,6 +1,6 @@
 import { ChartNoAxesCombined, CircleDollarSign, Coins, Search, WalletCards, Zap } from "lucide-react";
 
-import { Suggestion, Suggestions } from "@/components/ai-elements/suggestion";
+import { Suggestion } from "@/components/ai-elements/suggestion";
 
 const suggestions = [
   { icon: Zap, label: "Launch a token", command: "launch $DOG Sui Dog" },
@@ -13,12 +13,12 @@ const suggestions = [
 
 export function CommandSuggestions({ onSelect }: { onSelect: (command: string) => void }) {
   return (
-    <Suggestions className="flex-wrap justify-center overflow-visible px-0">
+    <div className="flex flex-wrap justify-center gap-2">
       {suggestions.map(({ icon: Icon, label, command }) => (
         <Suggestion key={label} suggestion={command} onClick={() => onSelect(command)}>
           <Icon className="size-4" /> {label}
         </Suggestion>
       ))}
-    </Suggestions>
+    </div>
   );
 }
