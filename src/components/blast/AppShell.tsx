@@ -1,8 +1,12 @@
+import { useQuery } from "@tanstack/react-query";
 import { Link, useRouterState } from "@tanstack/react-router";
+import { useServerFn } from "@tanstack/react-start";
 import type { ReactNode } from "react";
 
 import helmet from "@/assets/helmet.jpg.asset.json";
+import { useBlast } from "@/components/blast/session";
 import { WalletButton } from "@/components/blast/WalletButton";
+import { amIStaff } from "@/lib/admin.functions";
 
 const NAV = [
   { to: "/", label: "$BLAST", icon: "💥" },
