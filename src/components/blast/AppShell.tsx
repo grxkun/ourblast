@@ -26,6 +26,15 @@ const NAV = [
 
 export function AppShell({ children }: { children: ReactNode }) {
   const pathname = useRouterState({ select: (state) => state.location.pathname });
+  const { userId } = useBlast();
+  const staffFn = useServerFn(amIStaff);
+  const staff = useQuery({
+    queryKey: ["am-i-staff", userId],
+    enabled: Boolean(userId),
+    staleTime: 5 * 60_000,
+    queryFn: () => staffFn({}),
+  });
+  const isStaff = Boolean(staff.data?.staff);
 
   // The $BLAST landing page brings its own header and footer.
   if (pathname === "/") return <>{children}</>;
