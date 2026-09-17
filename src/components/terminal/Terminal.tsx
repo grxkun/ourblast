@@ -10,6 +10,7 @@ import { Shimmer } from "@/components/ai-elements/shimmer";
 import { useBlast } from "@/components/blast/session";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
+import type { Json } from "@/integrations/supabase/types";
 import { runTerminalAgent } from "@/lib/terminal/agent";
 import type { LaunchConfiguration, TerminalEntry, TerminalIntentName, TerminalStatus } from "@/lib/terminal/types";
 
@@ -44,7 +45,7 @@ export function Terminal() {
       if (error) throw error;
       return (data ?? []).map((row): TerminalEntry => ({
         id: row.id, command: row.command, intent: row.intent as TerminalIntentName, createdAt: row.created_at,
-        result: { tool: row.intent as TerminalIntentName, status: row.status as TerminalStatus, message: row.response, data: typeof row.result === "object" && row.result && !Array.isArray(row.result) ? row.result as Record<string, unknown> : undefined },
+        result: { tool: row.intent as TerminalIntentName, status: row.status as TerminalStatus, message: row.response, ...(typeof row.result === "object" && row.result && !Array.isArray(row.result) ? { data: row.result as Record<string, unknown> } : {}) },
       }));
     },
   });
@@ -56,7 +57,7 @@ export function Terminal() {
 
   const saveEntry = useCallback(async (entry: TerminalEntry) => {
     if (!userId) { setAnonymousHistory((current) => [...current, entry].slice(-100)); return; }
-    const { error } = await supabase.from("terminal_history").insert({ user_id: userId, command: entry.command, intent: entry.intent, response: entry.result.message, status: entry.result.status, result: entry.result.data ?? {} });
+    const { error } = await supabase.from("terminal_history").insert({ user_id: userId, command: entry.command, intent: entry.intent, response: entry.result.message, status: entry.result.status, result: (entry.result.data ?? {}) as Json });
     if (error) throw error;
     await queryClient.invalidateQueries({ queryKey: ["terminal-history", userId] });
   }, [queryClient, userId]);
