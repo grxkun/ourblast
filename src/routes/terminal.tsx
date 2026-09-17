@@ -1,5 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { AtSign, ShieldCheck } from "lucide-react";
+
 import { Terminal } from "@/components/terminal/Terminal";
+import { WalletButton } from "@/components/blast/WalletButton";
+import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/terminal")({
   head: () => ({
@@ -7,8 +12,12 @@ export const Route = createFileRoute("/terminal")({
       { title: "Conversational Terminal | OURBLAST" },
       {
         name: "description",
-        content: "Secure command-line interface for the Blast ecosystem. Direct AI-assisted building and community coordination.",
+        content: "A conversational Sui terminal for token launches, wallet actions, Blast.fun tools, and on-chain discovery.",
       },
+      { property: "og:title", content: "OURBLAST Terminal — Sui Agent Interface" },
+      { property: "og:description", content: "Parse natural-language Sui and Blast.fun actions through a secure allowlisted terminal." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
     ],
   }),
   component: TerminalPage,
@@ -16,43 +25,19 @@ export const Route = createFileRoute("/terminal")({
 
 function TerminalPage() {
   return (
-    <div className="space-y-6 max-w-4xl mx-auto py-10">
-      <div>
-        <p className="font-body text-xs font-bold tracking-[0.22em] text-cyber uppercase">
-          Command Center
-        </p>
-        <h1 className="mt-1 font-display text-4xl sm:text-5xl">Blast Terminal</h1>
-        <p className="mt-3 max-w-xl font-body text-muted-foreground">
-          A secure, wallet-verified conversational interface for managing your Blast assets and interacting with the island's core infrastructure.
-        </p>
+    <div className="terminal-page">
+      <div className="terminal-page-header">
+        <div>
+          <p className="font-body text-xs font-bold uppercase text-primary">Sui agent interface</p>
+          <h1 className="mt-1 font-display text-4xl sm:text-5xl">Terminal</h1>
+        </div>
+        <div className="flex flex-wrap items-center justify-end gap-2">
+          <span className="hidden items-center gap-2 text-xs text-muted-foreground sm:flex"><ShieldCheck className="size-4" /> Allowlisted actions</span>
+          <Button type="button" variant="outline" onClick={() => toast("X connection is coming soon / not connected.")}><AtSign /> Connect X</Button>
+          <WalletButton />
+        </div>
       </div>
-
       <Terminal />
-
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="panel p-4 space-y-2">
-          <h3 className="text-xs font-bold text-cyber uppercase tracking-wider">Quick Commands</h3>
-          <ul className="text-xs font-mono space-y-1 opacity-70">
-            <li>/points - Check balance</li>
-            <li>/build - View city stats</li>
-            <li>/vault - Treasury status</li>
-          </ul>
-        </div>
-        <div className="panel p-4 space-y-2">
-          <h3 className="text-xs font-bold text-cyber uppercase tracking-wider">AI Assistant</h3>
-          <p className="text-xs font-mono opacity-70">
-            Ask natural language questions about the Blast ecosystem or SUI development.
-          </p>
-        </div>
-        <div className="panel p-4 space-y-2">
-          <h3 className="text-xs font-bold text-cyber uppercase tracking-wider">Verification</h3>
-          <p className="text-xs font-mono opacity-70">
-            Session: <span className="text-green-500">ENCRYPTED</span>
-            <br />
-            Auth: Wallet Verified
-          </p>
-        </div>
-      </div>
     </div>
   );
 }

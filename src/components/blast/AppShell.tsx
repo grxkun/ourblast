@@ -48,8 +48,7 @@ export function AppShell({ children }: { children: ReactNode }) {
               (item) =>
                 item.to !== "/how-to-play" &&
                 item.to !== "/profile" &&
-                item.to !== "/builders" &&
-                item.to !== "/terminal"
+                item.to !== "/builders"
             ).map((item) => (
               <Link
                 key={item.to}
@@ -64,13 +63,6 @@ export function AppShell({ children }: { children: ReactNode }) {
           </nav>
 
           <div className="flex items-center gap-2">
-            <Link
-              to="/terminal"
-              className="hidden lg:flex items-center gap-2 rounded-full border border-border bg-background/40 px-4 py-2 font-mono text-xs font-bold text-cyber transition-colors hover:bg-secondary"
-            >
-              <span className="size-2 animate-pulse rounded-full bg-cyber" />
-              TERMINAL
-            </Link>
             <WalletButton />
           </div>
         </div>

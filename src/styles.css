@@ -303,6 +303,22 @@
   @apply font-display tracking-tight uppercase;
 }
 
+.terminal-page { min-height: calc(100vh - 8rem); padding-block: 1rem; }
+.terminal-page-header { display: flex; align-items: end; justify-content: space-between; gap: 1rem; border-bottom: 2px solid var(--border); padding-bottom: 1rem; }
+.terminal-shell { display: grid; min-height: 42rem; height: calc(100vh - 12rem); margin-top: 1rem; overflow: hidden; border: 2px solid var(--border); background: var(--card); box-shadow: 8px 8px 0 var(--border); }
+.terminal-recent { min-width: 0; border-right: 1px solid var(--border); background: var(--muted); }
+.terminal-main { display: flex; min-width: 0; min-height: 0; flex-direction: column; }
+.terminal-composer-wrap { position: relative; z-index: 10; border-top: 1px solid var(--border); background: var(--background); padding: .75rem 1rem; }
+.terminal-composer { margin-inline: auto; max-width: 48rem; border: 2px solid var(--border); border-radius: 0; background: var(--card); box-shadow: 4px 4px 0 var(--border); }
+.terminal-launch-card { width: min(100%, 35rem); margin-top: .75rem; border: 2px solid var(--border); background: var(--card); box-shadow: 5px 5px 0 var(--border); }
+.terminal-agent-mark { display: grid; width: 4.25rem; height: 4.25rem; place-items: center; border: 3px solid var(--border); background: var(--primary); color: var(--primary-foreground); font-family: var(--font-display); font-size: 1.5rem; box-shadow: 6px 6px 0 var(--border); }
+.terminal-agent-mark span { animation: terminal-blink 1s steps(1) infinite; }
+.terminal-status-dot { width: .55rem; height: .55rem; border-radius: 999px; background: var(--primary); animation: pulse-ring 1.2s ease-out infinite; }
+@keyframes terminal-blink { 50% { opacity: 0; } }
+@media (min-width: 900px) { .terminal-shell { grid-template-columns: 17rem minmax(0, 1fr); } }
+@media (max-width: 899px) { .terminal-shell { height: calc(100vh - 13rem); min-height: 36rem; } .terminal-recent { display: none; } }
+@media (max-width: 640px) { .terminal-page { padding-top: 0; } .terminal-page-header { align-items: flex-start; } .terminal-page-header h1 { font-size: 2.25rem; } .terminal-page-header > div:last-child > span { display: none; } .terminal-shell { height: calc(100dvh - 13.5rem); min-height: 31rem; margin-top: .75rem; box-shadow: 4px 4px 0 var(--border); } .terminal-composer-wrap { position: sticky; bottom: 0; padding: .5rem; } }
+
 @keyframes zap {
   0%,
   92%,
