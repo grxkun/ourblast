@@ -1,8 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { AtSign, ShieldCheck } from "lucide-react";
+import { AtSign, Lock, ShieldCheck } from "lucide-react";
 
 import { Terminal } from "@/components/terminal/Terminal";
 import { WalletButton } from "@/components/blast/WalletButton";
+import { useBlast } from "@/components/blast/session";
+import { isTerminalAllowed } from "@/lib/terminal/allowlist";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 
