@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { AtSign, Lock, ShieldCheck } from "lucide-react";
 
 import { Terminal } from "@/components/terminal/Terminal";
+import { XMentionInbox } from "@/components/terminal/XMentionInbox";
 import { WalletButton } from "@/components/blast/WalletButton";
 import { useBlast } from "@/components/blast/session";
 import { isTerminalAllowed } from "@/lib/terminal/allowlist";
@@ -42,7 +43,16 @@ function TerminalPage() {
           <WalletButton />
         </div>
       </div>
-      {allowed ? <Terminal /> : <TerminalLocked connected={Boolean(profile)} ready={ready} connecting={connecting} onConnect={() => void connect()} />}
+      {allowed ? (
+        <>
+          <Terminal />
+          <div className="mt-6">
+            <XMentionInbox />
+          </div>
+        </>
+      ) : (
+        <TerminalLocked connected={Boolean(profile)} ready={ready} connecting={connecting} onConnect={() => void connect()} />
+      )}
     </div>
   );
 }
