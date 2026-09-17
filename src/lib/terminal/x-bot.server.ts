@@ -41,7 +41,7 @@ export async function handleXMention(payload: XMentionPayload, source: "webhook"
         reply_text: outcome.reply,
         posted: outcome.posted,
         source,
-        result: { dryRun: X_BOT_DRY_RUN, launch: result.launch ?? null, message: result.message },
+        result: { dryRun: X_BOT_DRY_RUN, launch: result.launch ? { ...result.launch } : null, message: result.message } as unknown as Record<string, never>,
       },
       { onConflict: "x_post_id", ignoreDuplicates: true },
     );

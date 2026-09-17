@@ -1,0 +1,82 @@
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
+import { Send } from "lucide-react";
+import { useState } from "react";
+import { toast } from "sonner";
+
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { supabase } from "@/integrations/supabase/client";
+import { simulateXMention } from "@/lib/terminal/x-bot.functions";
+import { X_BOT_DRY_RUN, X_BOT_HANDLE } from "@/lib/terminal/x-bot";
+
+export function XMentionInbox() {
+  const [draft, setDraft] = useState(`${X_BOT_HANDLE} launch $DOG Sui Dog`);
+  const queryClient = useQueryClient();
+  const simulate = useServerFn(simulateXMention);
+
+  const mentions = useQuery({
+    queryKey: ["x-mentions"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("x_mentions")
+        .select("id, x_username, text, intent, status, reply_text, posted, created_at")
+        .order("created_at", { ascending: false })
+        .limit(20);
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
+  const run = useMutation({
+    mutationFn: async (text: string) => simulate({ data: { text, username: "ourblast_tester" } }),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["x-mentions"] });
+      toast.success("Reply drafted");
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
+
+  return (
+    <section className="rounded-lg border border-border bg-card p-4">
+      <header className="mb-3 flex flex-wrap items-center gap-2">
+        <h2 className="text-sm font-semibold tracking-wide uppercase">{X_BOT_HANDLE} launch calls</h2>
+        {X_BOT_DRY_RUN ? <Badge variant="outline">Dry run · replies not posted</Badge> : <Badge>Live</Badge>}
+      </header>
+      <p className="mb-3 text-xs text-muted-foreground">
+        Tweets mentioning {X_BOT_HANDLE} run through the same parser and tools as this terminal. Replies are drafted and
+        stored here; posting turns on once the X account credentials are saved.
+      </p>
+      <form
+        className="mb-4 flex flex-col gap-2 sm:flex-row"
+        onSubmit={(event) => {
+          event.preventDefault();
+          if (draft.trim()) run.mutate(draft.trim());
+        }}
+      >
+        <Input value={draft} onChange={(event) => setDraft(event.target.value)} maxLength={500} placeholder={`${X_BOT_HANDLE} launch $DOG Sui Dog`} />
+        <Button type="submit" disabled={run.isPending}>
+          <Send className="size-4" /> Test mention
+        </Button>
+      </form>
+      <ul className="space-y-2">
+        {(mentions.data ?? []).map((row) => (
+          <li key={row.id} className="rounded-md border border-border/70 p-3 text-sm">
+            <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+              <span className="font-medium text-foreground">@{row.x_username}</span>
+              <Badge variant="outline">{row.intent}</Badge>
+              <Badge variant="outline">{row.status}</Badge>
+              {row.posted ? <Badge>Posted</Badge> : <Badge variant="outline">Not posted</Badge>}
+            </div>
+            <p className="mt-2 break-words">{row.text}</p>
+            <p className="mt-2 break-words rounded bg-muted p-2 text-xs">{row.reply_text}</p>
+          </li>
+        ))}
+        {!mentions.isLoading && (mentions.data ?? []).length === 0 ? (
+          <li className="text-xs text-muted-foreground">No launch calls yet.</li>
+        ) : null}
+      </ul>
+    </section>
+  );
+}
