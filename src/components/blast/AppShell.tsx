@@ -1,8 +1,12 @@
+import { useQuery } from "@tanstack/react-query";
 import { Link, useRouterState } from "@tanstack/react-router";
+import { useServerFn } from "@tanstack/react-start";
 import type { ReactNode } from "react";
 
 import helmet from "@/assets/helmet.jpg.asset.json";
+import { useBlast } from "@/components/blast/session";
 import { WalletButton } from "@/components/blast/WalletButton";
+import { amIStaff } from "@/lib/admin.functions";
 
 const NAV = [
   { to: "/", label: "$BLAST", icon: "💥" },
@@ -22,6 +26,15 @@ const NAV = [
 
 export function AppShell({ children }: { children: ReactNode }) {
   const pathname = useRouterState({ select: (state) => state.location.pathname });
+  const { userId } = useBlast();
+  const staffFn = useServerFn(amIStaff);
+  const staff = useQuery({
+    queryKey: ["am-i-staff", userId],
+    enabled: Boolean(userId),
+    staleTime: 5 * 60_000,
+    queryFn: () => staffFn({}),
+  });
+  const isStaff = Boolean(staff.data?.staff);
 
   // The $BLAST landing page brings its own header and footer.
   if (pathname === "/") return <>{children}</>;
@@ -60,9 +73,26 @@ export function AppShell({ children }: { children: ReactNode }) {
                 {item.label}
               </Link>
             ))}
+            {isStaff ? (
+              <Link
+                to="/admin"
+                activeProps={{ className: "bg-secondary text-secondary-foreground" }}
+                className="rounded-full px-4 py-2 font-body text-sm font-medium text-primary transition-colors hover:text-foreground"
+              >
+                Admin
+              </Link>
+            ) : null}
           </nav>
 
           <div className="flex items-center gap-2">
+            {isStaff ? (
+              <Link
+                to="/admin"
+                className="rounded-full border-2 border-border px-3 py-1.5 font-body text-xs font-bold uppercase text-primary lg:hidden"
+              >
+                Admin
+              </Link>
+            ) : null}
             <WalletButton />
           </div>
         </div>
