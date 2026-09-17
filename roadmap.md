@@ -17,3 +17,11 @@
 - [x] Reshape individual cities as rugged, elongated tropical islands with irregular coastlines and mountain ridges
 - [x] Add a dense supporting skyline so each island reads as a real city while repository buildings remain landmarks
 - [x] Separate island terrain from city infrastructure and buildings in the individual Builder City scene
+
+## OURBLAST Terminal
+
+- [ ] Add `/terminal` and expose it in desktop and mobile navigation
+- [ ] Build the conversational terminal with command suggestions, history, attachments, and launch configuration
+- [ ] Add a transport-neutral intent parser, allowlisted tool registry, transaction states, and Blast.fun adapter
+- [ ] Reuse the Sui wallet session and prepare the X account connection abstraction
+- [ ] Verify desktop, tablet, and mobile terminal flows without simulated transaction success
