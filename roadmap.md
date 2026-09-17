@@ -20,8 +20,8 @@
 
 ## OURBLAST Terminal
 
-- [ ] Add `/terminal` and expose it in desktop and mobile navigation
-- [ ] Build the conversational terminal with command suggestions, history, attachments, and launch configuration
-- [ ] Add a transport-neutral intent parser, allowlisted tool registry, transaction states, and Blast.fun adapter
-- [ ] Reuse the Sui wallet session and prepare the X account connection abstraction
+- [x] Add `/terminal` and expose it in desktop and mobile navigation
+- [x] Build the conversational terminal with command suggestions, history, attachments, and launch configuration
+- [x] Add a transport-neutral intent parser, allowlisted tool registry, transaction states, and Blast.fun adapter
+- [x] Reuse the Sui wallet session and prepare the X account connection abstraction
 - [ ] Verify desktop, tablet, and mobile terminal flows without simulated transaction success

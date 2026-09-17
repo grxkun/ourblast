@@ -1389,6 +1389,39 @@ export type Database = {
         }
         Relationships: []
       }
+      terminal_history: {
+        Row: {
+          command: string
+          created_at: string
+          id: string
+          intent: string
+          response: string
+          result: Json
+          status: string
+          user_id: string
+        }
+        Insert: {
+          command: string
+          created_at?: string
+          id?: string
+          intent: string
+          response: string
+          result?: Json
+          status?: string
+          user_id: string
+        }
+        Update: {
+          command?: string
+          created_at?: string
+          id?: string
+          intent?: string
+          response?: string
+          result?: Json
+          status?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_achievements: {
         Row: {
           achievement_key: string

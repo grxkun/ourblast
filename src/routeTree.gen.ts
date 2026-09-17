@@ -24,6 +24,7 @@ import { Route as MemeRouteImport } from './routes/meme'
 import { Route as ProfileRouteImport } from './routes/profile'
 import { Route as RoastRouteImport } from './routes/roast'
 import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
+import { Route as TerminalRouteImport } from './routes/terminal'
 import { Route as BuilderUsernameRouteImport } from './routes/builder/$username'
 import { Route as EcosystemProjectSlugRouteImport } from './routes/ecosystem-project.$slug'
 import { Route as OauthGithubReturnRouteImport } from './routes/oauth/github/return'
@@ -103,6 +104,11 @@ const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
   path: '/sitemap.xml',
   getParentRoute: () => rootRouteImport,
 } as any)
+const TerminalRoute = TerminalRouteImport.update({
+  id: '/terminal',
+  path: '/terminal',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const BuilderUsernameRoute = BuilderUsernameRouteImport.update({
   id: '/builder/$username',
   path: '/builder/$username',
@@ -135,6 +141,7 @@ export interface FileRoutesByFullPath {
   '/profile': typeof ProfileRoute
   '/roast': typeof RoastRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
+  '/terminal': typeof TerminalRoute
   '/builder/$username': typeof BuilderUsernameRoute
   '/ecosystem-project/$slug': typeof EcosystemProjectSlugRoute
   '/oauth/github/return': typeof OauthGithubReturnRoute
@@ -155,6 +162,7 @@ export interface FileRoutesByTo {
   '/profile': typeof ProfileRoute
   '/roast': typeof RoastRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
+  '/terminal': typeof TerminalRoute
   '/builder/$username': typeof BuilderUsernameRoute
   '/ecosystem-project/$slug': typeof EcosystemProjectSlugRoute
   '/oauth/github/return': typeof OauthGithubReturnRoute
@@ -176,6 +184,7 @@ export interface FileRoutesById {
   '/profile': typeof ProfileRoute
   '/roast': typeof RoastRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
+  '/terminal': typeof TerminalRoute
   '/builder/$username': typeof BuilderUsernameRoute
   '/ecosystem-project/$slug': typeof EcosystemProjectSlugRoute
   '/oauth/github/return': typeof OauthGithubReturnRoute
@@ -198,6 +207,7 @@ export interface FileRouteTypes {
     | '/profile'
     | '/roast'
     | '/sitemap.xml'
+    | '/terminal'
     | '/builder/$username'
     | '/ecosystem-project/$slug'
     | '/oauth/github/return'
@@ -218,6 +228,7 @@ export interface FileRouteTypes {
     | '/profile'
     | '/roast'
     | '/sitemap.xml'
+    | '/terminal'
     | '/builder/$username'
     | '/ecosystem-project/$slug'
     | '/oauth/github/return'
@@ -238,6 +249,7 @@ export interface FileRouteTypes {
     | '/profile'
     | '/roast'
     | '/sitemap.xml'
+    | '/terminal'
     | '/builder/$username'
     | '/ecosystem-project/$slug'
     | '/oauth/github/return'
@@ -259,6 +271,7 @@ export interface RootRouteChildren {
   ProfileRoute: typeof ProfileRoute
   RoastRoute: typeof RoastRoute
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
+  TerminalRoute: typeof TerminalRoute
   BuilderUsernameRoute: typeof BuilderUsernameRoute
   EcosystemProjectSlugRoute: typeof EcosystemProjectSlugRoute
   OauthGithubReturnRoute: typeof OauthGithubReturnRoute
@@ -371,6 +384,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SitemapDotxmlRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/terminal': {
+      id: '/terminal'
+      path: '/terminal'
+      fullPath: '/terminal'
+      preLoaderRoute: typeof TerminalRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/builder/$username': {
       id: '/builder/$username'
       path: '/builder/$username'
@@ -411,6 +431,7 @@ const rootRouteChildren: RootRouteChildren = {
   ProfileRoute: ProfileRoute,
   RoastRoute: RoastRoute,
   SitemapDotxmlRoute: SitemapDotxmlRoute,
+  TerminalRoute: TerminalRoute,
   BuilderUsernameRoute: BuilderUsernameRoute,
   EcosystemProjectSlugRoute: EcosystemProjectSlugRoute,
   OauthGithubReturnRoute: OauthGithubReturnRoute,
