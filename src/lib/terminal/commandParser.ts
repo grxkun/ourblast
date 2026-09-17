@@ -32,7 +32,7 @@ export function parseTerminalCommand(rawInput: string): ParsedIntent {
   if (sell) return intent("sellToken", raw, { percent: Number(sell[1]), symbol: cleanSymbol(sell[2]) });
 
   const tx = raw.match(/^(?:transaction|tx)\s+([a-z0-9]+)$/i);
-  if (tx) return intent("getTransaction", raw, { digest: tx[1] });
+  if (tx?.[1]) return intent("getTransaction", raw, { digest: tx[1] });
 
   return intent("unknown", raw);
 }

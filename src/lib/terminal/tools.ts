@@ -7,8 +7,8 @@ const walletRequired = (tool: TerminalIntentName, context: TerminalAgentContext)
   context.walletConnected ? null : { tool, status: "NOT_CONNECTED", message: "🔐 Connect your Sui wallet first." };
 
 export function launchFromIntent(intent: ParsedIntent): LaunchConfiguration | null {
-  const name = String(intent.input.name ?? "").trim().slice(0, 64);
-  const symbol = String(intent.input.symbol ?? "").replace(/[^a-z0-9]/gi, "").toUpperCase().slice(0, 10);
+  const name = String(intent.input["name"] ?? "").trim().slice(0, 64);
+  const symbol = String(intent.input["symbol"] ?? "").replace(/[^a-z0-9]/gi, "").toUpperCase().slice(0, 10);
   if (!name || !symbol) return null;
   return { name, symbol, description: "", image: null, network: "sui", launchpad: "blast.fun" };
 }
@@ -29,13 +29,13 @@ const unavailableRead = (tool: TerminalIntentName, label: string): TerminalToolR
 export const terminalTools: Record<Exclude<TerminalIntentName, "unknown">, TerminalTool> = {
   createToken: launchTool,
   launchToken: launchTool,
-  getToken: async (intent) => blastFunAdapter.getLaunchStatus(String(intent.input.symbol ?? "")),
+  getToken: async (intent) => blastFunAdapter.getLaunchStatus(String(intent.input["symbol"] ?? "")),
   getWallet: async (_intent, context) => context.walletConnected
     ? { tool: "getWallet", status: "READY", message: `Sui wallet connected: ${context.walletAddress ?? "Connected"}.`, data: { address: context.walletAddress } }
     : { tool: "getWallet", status: "NOT_CONNECTED", message: "🔐 Connect your Sui wallet first." },
   getPortfolio: async (_intent, context) => walletRequired("getPortfolio", context) ?? unavailableRead("getPortfolio", "Portfolio indexing"),
   getLaunches: async (_intent, context) => walletRequired("getLaunches", context) ?? unavailableRead("getLaunches", "Blast.fun launch history"),
-  getBondingCurve: async (intent) => blastFunAdapter.getBondingCurve(String(intent.input.symbol ?? "")),
+  getBondingCurve: async (intent) => blastFunAdapter.getBondingCurve(String(intent.input["symbol"] ?? "")),
   buyToken: async (_intent, context) => walletRequired("buyToken", context) ?? unavailableRead("buyToken", "Blast.fun trading"),
   sellToken: async (_intent, context) => walletRequired("sellToken", context) ?? unavailableRead("sellToken", "Blast.fun trading"),
   getTransaction: async () => unavailableRead("getTransaction", "Sui transaction lookup"),
