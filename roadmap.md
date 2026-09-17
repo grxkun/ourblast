@@ -26,3 +26,7 @@
 - [x] Reuse the Sui wallet session and prepare the X account connection abstraction
 - [x] Verify desktop, tablet, and mobile terminal flows without simulated transaction success
 - [x] Lock the Terminal behind a tester allowlist (0x46e5…2b5a)
+
+## X bot (@ourblast)
+- [x] Mention pipeline: shared parser/tools, reply composer, dry-run inbox, secret-verified /api/public/x-mention
+- [ ] Save @ourblast X app credentials, then flip X_BOT_DRY_RUN off and add mention polling + reply posting
