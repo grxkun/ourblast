@@ -9,6 +9,7 @@ import { PromptInput, PromptInputButton, PromptInputFooter, PromptInputHeader, t
 import { Shimmer } from "@/components/ai-elements/shimmer";
 import { useBlast } from "@/components/blast/session";
 import { Button } from "@/components/ui/button";
+import { TooltipProvider } from "@/components/ui/tooltip";
 import { supabase } from "@/integrations/supabase/client";
 import type { Json } from "@/integrations/supabase/types";
 import { runTerminalAgent } from "@/lib/terminal/agent";
@@ -112,6 +113,7 @@ export function Terminal() {
   const recent = useMemo(() => [...history].reverse().slice(0, 8), [history]);
 
   return (
+    <TooltipProvider>
     <div className="terminal-shell">
       <aside className="terminal-recent">
         <div className="flex items-center justify-between border-b border-border p-4"><span className="flex items-center gap-2 font-display text-lg uppercase"><History className="size-4" /> Recent</span><Button type="button" variant="ghost" size="icon-sm" aria-label="Clear terminal history" onClick={() => void clearHistory()} disabled={!history.length}><Trash2 /></Button></div>
@@ -144,6 +146,7 @@ export function Terminal() {
         </div>
       </section>
     </div>
+    </TooltipProvider>
   );
 }
 
