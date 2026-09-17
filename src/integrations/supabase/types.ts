@@ -1493,6 +1493,48 @@ export type Database = {
         }
         Relationships: []
       }
+      x_mentions: {
+        Row: {
+          created_at: string
+          id: string
+          intent: string
+          posted: boolean
+          reply_text: string
+          result: Json
+          source: string
+          status: string
+          text: string
+          x_post_id: string
+          x_username: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          intent: string
+          posted?: boolean
+          reply_text: string
+          result?: Json
+          source?: string
+          status: string
+          text: string
+          x_post_id: string
+          x_username: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          intent?: string
+          posted?: boolean
+          reply_text?: string
+          result?: Json
+          source?: string
+          status?: string
+          text?: string
+          x_post_id?: string
+          x_username?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
