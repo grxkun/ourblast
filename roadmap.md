@@ -30,5 +30,7 @@
 ## X bot (@ourblastbot)
 - [x] Mention pipeline: shared parser/tools, reply composer, dry-run inbox, secret-verified /api/public/x-mention
 - [x] Rename the bot handle to @ourblastbot (parser accepts both)
-- [ ] Save @ourblastbot X credentials, then flip X_BOT_DRY_RUN off and add mention polling + reply posting
-- [ ] Switch the launch platform to suipump.org once their API docs are available
+- [x] Live reply posting (OAuth 1.0a) + mention poller; goes live automatically once the four X secrets are saved
+- [ ] Save the four @ourblastbot X credentials
+- [x] Launch platform config supports SuiPump and Maelstrom (selectable per launch)
+- [ ] Wire real token creation once SuiPump / Maelstrom API docs are available
