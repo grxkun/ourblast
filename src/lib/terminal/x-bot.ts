@@ -50,7 +50,10 @@ export function composeXReply(result: TerminalToolResult): string {
     const lp = ` LP ${launch.liquidity} $${launch.pairToken}.`;
     const rawNotes = Array.isArray(result.data?.["notes"]) ? (result.data["notes"] as string[]) : [];
     const note = rawNotes[0] ? ` ${rawNotes[0]}` : "";
-    return fit(`Okayyyy blasting a new token on ${pad}${pair}: $${launch.symbol} ${launch.name} 🚀${lp}${note} Sign it with your Sui wallet here, buy link drops right after: ${link}`);
+    const head = `Okayyyy blasting a new token on ${pad}${pair}: $${launch.symbol} ${launch.name} 🚀${lp}`;
+    const tail = ` Sign it with your Sui wallet here, buy link drops right after: ${link}`;
+    // The link must survive; the explanatory note is the first thing dropped.
+    return fit(head.length + note.length + tail.length <= 280 ? head + note + tail : head + tail);
   }
 
   switch (result.status) {
