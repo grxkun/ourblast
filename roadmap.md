@@ -34,8 +34,13 @@
 - [ ] Save the four @ourblastbot X credentials
 - [x] Launch platform config supports SuiPump and Maelstrom (selectable per launch)
 - [x] X OAuth 2.0 (PKCE) user connect: /oauth/x/return callback, encrypted token storage, Connect X button on the terminal
-- [ ] Save X_CLIENT_ID and X_CLIENT_SECRET (callback https://ourblast.xyz/oauth/x/return)
+- [x] Save X_CLIENT_ID and X_CLIENT_SECRET (callback https://ourblast.xyz/oauth/x/return)
 - [ ] Wire real token creation once SuiPump / Maelstrom API docs are available
+- [x] Harden tweet parsing: mentions anywhere, polite filler, emoji/links/hashtags, launch synonyms, 280-char safe replies
+- [x] Custom LP settings (pair token, starting LP, dev buy, supply) parsed from commands/tweets, editable in the launch card, clamped per pad
+- [x] Launch links from X prefill the terminal composer with the parsed launch
+- [x] Fee policy: 0 launch fee; creator fee splits 20% OURBLAST treasury / 10% developer / 70% launcher
+- [ ] Route the 20/10/70 creator-fee split on-chain once the launchpad exposes fee-recipient configuration
 
 ## Legal pages
 - [x] /terms and /privacy published, linked in the landing footer and listed in the sitemap (for the X app form)
