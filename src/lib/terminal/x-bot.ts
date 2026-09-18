@@ -33,10 +33,19 @@ const terminalLink = (params?: Record<string, string>) => {
 export function composeXReply(result: TerminalToolResult): string {
   const launch = result.launch;
   if (launch) {
-    const link = terminalLink({ symbol: launch.symbol, name: launch.name, pad: launch.launchpad, pair: launch.pairToken });
+    const link = terminalLink({
+      symbol: launch.symbol,
+      name: launch.name,
+      pad: launch.launchpad,
+      pair: launch.pairToken,
+      lp: String(launch.liquidity),
+      devbuy: String(launch.devBuy),
+      supply: String(launch.totalSupply),
+    });
     const pad = launch.launchpad || LAUNCHPAD.label;
     const pair = launch.pairToken && launch.pairToken !== "SUI" ? ` paired with $${launch.pairToken}` : "";
-    return `Okayyyy blasting a new token on ${pad}${pair}: $${launch.symbol} ${launch.name} 🚀 Sign it with your Sui wallet here, buy link drops right after: ${link}`;
+    const lp = ` LP ${launch.liquidity} $${launch.pairToken}.`;
+    return `Okayyyy blasting a new token on ${pad}${pair}: $${launch.symbol} ${launch.name} 🚀${lp} Sign it with your Sui wallet here, buy link drops right after: ${link}`;
   }
 
   switch (result.status) {

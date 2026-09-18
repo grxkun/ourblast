@@ -112,6 +112,31 @@ export function Terminal({ tryCommand }: { tryCommand?: { command: string; nonce
 
   const recent = useMemo(() => [...history].reverse().slice(0, 8), [history]);
 
+  // A launch call answered on X links here with the parsed details; rebuild the command so the
+  // caller only has to press send.
+  const prefilled = useRef(false);
+  useEffect(() => {
+    if (prefilled.current || typeof window === "undefined") return;
+    prefilled.current = true;
+    const params = new URLSearchParams(window.location.search);
+    const symbol = (params.get("symbol") ?? "").replace(/[^a-z0-9]/gi, "").toUpperCase().slice(0, 10);
+    if (!symbol) return;
+    const parts = [`launch $${symbol}`];
+    const name = (params.get("name") ?? "").trim().slice(0, 64);
+    if (name) parts.push(name);
+    const pad = params.get("pad");
+    if (pad) parts.push(`on ${pad}`);
+    const pair = params.get("pair");
+    if (pair) parts.push(`paired with $${pair.replace(/^\$/, "")}`);
+    const lp = params.get("lp");
+    if (lp) parts.push(`with ${lp} liquidity`);
+    const devBuy = params.get("devbuy");
+    if (devBuy && Number(devBuy) > 0) parts.push(`dev buy ${devBuy}`);
+    const supply = params.get("supply");
+    if (supply) parts.push(`supply ${supply}`);
+    setDraft(parts.join(" "));
+  }, []);
+
   const lastTry = useRef(0);
   useEffect(() => {
     if (tryCommand && tryCommand.nonce !== lastTry.current) {
