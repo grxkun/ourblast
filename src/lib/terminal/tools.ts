@@ -19,10 +19,15 @@ export function launchFromIntent(intent: ParsedIntent): LaunchConfiguration | nu
 const launchTool: TerminalTool = async (intent, context) => {
   const launch = launchFromIntent(intent);
   if (!launch) return { tool: intent.name, status: "FAILED", message: "Include both a token name and symbol, for example: launch $DOG Sui Dog." };
+  const pad = resolveLaunchpad(launch.launchpad);
+  const requested = typeof intent.input["pairToken"] === "string" ? (intent.input["pairToken"] as string).toUpperCase() : null;
+  const pairNote = requested && requested !== launch.pairToken
+    ? ` ${pad.label} cannot pair against $${requested} yet, so the LP is set to $${launch.pairToken}.`
+    : ` LP pairing: $${launch.pairToken}.`;
   return {
     tool: intent.name,
     status: context.walletConnected ? "READY" : "NOT_CONNECTED",
-    message: context.walletConnected ? "Launch configuration prepared. Review every field before continuing." : "Launch configuration prepared. Connect your Sui wallet before launching.",
+    message: (context.walletConnected ? "Launch configuration prepared. Review every field before continuing." : "Launch configuration prepared. Connect your Sui wallet before launching.") + pairNote,
     launch,
   };
 };
