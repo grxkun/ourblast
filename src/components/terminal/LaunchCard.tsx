@@ -2,6 +2,7 @@ import { ImageIcon, Pencil, Rocket, WandSparkles } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { LAUNCHPADS } from "@/lib/terminal/launchpad";
 import type { LaunchConfiguration } from "@/lib/terminal/types";
 
 export function LaunchCard({ launch, editing, onEdit, onChange, onLaunch, onGenerate }: {
