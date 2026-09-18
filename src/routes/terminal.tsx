@@ -1,8 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { AtSign, Lock, ShieldCheck } from "lucide-react";
+import { Lock, ShieldCheck } from "lucide-react";
 
 import { Terminal } from "@/components/terminal/Terminal";
 import { XMentionInbox } from "@/components/terminal/XMentionInbox";
+import { XConnectButton } from "@/components/terminal/XConnectButton";
 import { WalletButton } from "@/components/blast/WalletButton";
 import { useBlast } from "@/components/blast/session";
 import { isTerminalAllowed } from "@/lib/terminal/allowlist";
