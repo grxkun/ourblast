@@ -33,8 +33,10 @@ const terminalLink = (params?: Record<string, string>) => {
 export function composeXReply(result: TerminalToolResult): string {
   const launch = result.launch;
   if (launch) {
-    const link = terminalLink({ symbol: launch.symbol, name: launch.name });
-    return `Okayyyy blasting a new token on ${LAUNCHPAD.label}: $${launch.symbol} ${launch.name} 🚀 Sign it with your Sui wallet here, buy link drops right after: ${link}`;
+    const link = terminalLink({ symbol: launch.symbol, name: launch.name, pad: launch.launchpad, pair: launch.pairToken });
+    const pad = launch.launchpad || LAUNCHPAD.label;
+    const pair = launch.pairToken && launch.pairToken !== "SUI" ? ` paired with $${launch.pairToken}` : "";
+    return `Okayyyy blasting a new token on ${pad}${pair}: $${launch.symbol} ${launch.name} 🚀 Sign it with your Sui wallet here, buy link drops right after: ${link}`;
   }
 
   switch (result.status) {
