@@ -32,3 +32,24 @@ export const FEE_SUMMARY = "0 launch fee. Creator fees from the pad split 20% OU
 export function shareOf(amount: number, share: number): number {
   return Math.round(amount * share * 1_000_000) / 1_000_000;
 }
+
+/**
+ * Gas policy. OURBLAST never charges a launch fee, but Sui still charges gas for
+ * the transaction itself:
+ * - terminal launches are signed by the launcher, so they pay their own gas;
+ * - launches called in from X are sponsored from the @ourblastbot SUI reserve.
+ */
+export type GasPayer = "launcher" | "bot-reserve";
+
+export function gasPayerFor(source: "terminal" | "x"): GasPayer {
+  return source === "x" ? "bot-reserve" : "launcher";
+}
+
+export function describeGasPolicy(source: "terminal" | "x"): string {
+  return gasPayerFor(source) === "bot-reserve"
+    ? "Gas is covered by the @ourblastbot SUI reserve."
+    : "Sui network gas is paid from your own wallet when you sign.";
+}
+
+export const GAS_NOTE_TERMINAL = describeGasPolicy("terminal");
+export const GAS_NOTE_X = describeGasPolicy("x");

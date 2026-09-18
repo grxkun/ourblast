@@ -1,5 +1,5 @@
 import { LAUNCHPAD, resolveLaunchpad } from "./launchpad";
-import { FEE_SUMMARY } from "./fees";
+import { FEE_SUMMARY, describeGasPolicy, gasPayerFor } from "./fees";
 import { describeLaunchSettings, normalizeLaunchSettings } from "./launchSettings";
 import { launchpadAdapter } from "./launchpadAdapter";
 import type { LaunchConfiguration, ParsedIntent, TerminalAgentContext, TerminalIntentName, TerminalToolResult } from "./types";
@@ -53,9 +53,9 @@ const launchTool: TerminalTool = async (intent, context) => {
         ? "Launch configuration prepared. Review every field before continuing."
         : "Launch configuration prepared. Connect your Sui wallet before launching.") +
       summary +
-      ` ${FEE_SUMMARY}` +
+      ` ${FEE_SUMMARY} ${describeGasPolicy(context.source)}` +
       (notes.length ? ` ${notes.join(" ")}` : ""),
-    data: { notes },
+    data: { notes, gasPayer: gasPayerFor(context.source) },
     launch,
   };
 };
