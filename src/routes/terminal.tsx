@@ -1,7 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { Lock, ShieldCheck } from "lucide-react";
+import { useState } from "react";
 
 import { Terminal } from "@/components/terminal/Terminal";
+import { TerminalTutorial } from "@/components/terminal/TerminalTutorial";
 import { XMentionInbox } from "@/components/terminal/XMentionInbox";
 import { XConnectButton } from "@/components/terminal/XConnectButton";
 import { WalletButton } from "@/components/blast/WalletButton";
@@ -30,6 +32,7 @@ export const Route = createFileRoute("/terminal")({
 function TerminalPage() {
   const { profile, ready, connecting, connect } = useBlast();
   const allowed = isTerminalAllowed(profile?.wallet_address);
+  const [tryCommand, setTryCommand] = useState<{ command: string; nonce: number } | undefined>();
 
   return (
     <div className="terminal-page">
@@ -46,7 +49,10 @@ function TerminalPage() {
       </div>
       {allowed ? (
         <>
-          <Terminal />
+          <div className="mb-4">
+            <TerminalTutorial onTry={(command) => setTryCommand({ command, nonce: Date.now() })} />
+          </div>
+          <Terminal tryCommand={tryCommand} />
           <div className="mt-6">
             <XMentionInbox />
           </div>

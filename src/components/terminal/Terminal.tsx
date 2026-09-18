@@ -28,7 +28,7 @@ function sessionHistory(): TerminalEntry[] {
   try { return JSON.parse(sessionStorage.getItem(SESSION_KEY) ?? "[]") as TerminalEntry[]; } catch { return []; }
 }
 
-export function Terminal() {
+export function Terminal({ tryCommand }: { tryCommand?: { command: string; nonce: number } | undefined }) {
   const { userId, profile, connect, connecting } = useBlast();
   const queryClient = useQueryClient();
   const [anonymousHistory, setAnonymousHistory] = useState<TerminalEntry[]>(sessionHistory);
@@ -111,6 +111,14 @@ export function Terminal() {
   };
 
   const recent = useMemo(() => [...history].reverse().slice(0, 8), [history]);
+
+  const lastTry = useRef(0);
+  useEffect(() => {
+    if (tryCommand && tryCommand.nonce !== lastTry.current) {
+      lastTry.current = tryCommand.nonce;
+      void run(tryCommand.command);
+    }
+  }, [tryCommand, run]);
 
   return (
     <TooltipProvider>
