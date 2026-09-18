@@ -41,7 +41,8 @@
 - [x] Launch links from X prefill the terminal composer with the parsed launch
 - [x] Fee policy: 0 launch fee; creator fee splits 20% OURBLAST treasury / 10% developer / 70% launcher
 - [x] Gas policy: terminal launchers pay their own Sui gas; X launch calls are sponsored by the @ourblastbot SUI reserve
-- [ ] Fund and wire the @ourblastbot SUI gas reserve (sponsored transactions) once real launches go live
+- [x] Gas reserve account: generated server-side, key encrypted at rest and never exposed; public address + balance shown on the terminal; 0.01 SUI per creator-fee claim recorded as a top-up
+- [ ] Fund the reserve with 1 SUI and wire sponsored transactions once real launches go live
 - [ ] Route the 20/10/70 creator-fee split on-chain once the launchpad exposes fee-recipient configuration
 
 ## Legal pages

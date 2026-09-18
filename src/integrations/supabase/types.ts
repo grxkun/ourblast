@@ -1056,6 +1056,57 @@ export type Database = {
           },
         ]
       }
+      gas_reserve: {
+        Row: {
+          address: string
+          contributed_sui: number
+          created_at: string
+          id: boolean
+          secret_ciphertext: string
+          updated_at: string
+        }
+        Insert: {
+          address: string
+          contributed_sui?: number
+          created_at?: string
+          id?: boolean
+          secret_ciphertext: string
+          updated_at?: string
+        }
+        Update: {
+          address?: string
+          contributed_sui?: number
+          created_at?: string
+          id?: boolean
+          secret_ciphertext?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      gas_reserve_contributions: {
+        Row: {
+          amount_sui: number
+          created_at: string
+          id: string
+          reference: string | null
+          source: string
+        }
+        Insert: {
+          amount_sui: number
+          created_at?: string
+          id?: string
+          reference?: string | null
+          source: string
+        }
+        Update: {
+          amount_sui?: number
+          created_at?: string
+          id?: string
+          reference?: string | null
+          source?: string
+        }
+        Relationships: []
+      }
       meme_battles: {
         Row: {
           created_at: string
