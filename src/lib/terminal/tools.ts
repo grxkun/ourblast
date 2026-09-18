@@ -1,4 +1,4 @@
-import { LAUNCHPAD, resolveLaunchpad } from "./launchpad";
+import { LAUNCHPAD, resolveLaunchpad, resolvePairToken } from "./launchpad";
 import { launchpadAdapter } from "./launchpadAdapter";
 import type { LaunchConfiguration, ParsedIntent, TerminalAgentContext, TerminalIntentName, TerminalToolResult } from "./types";
 
@@ -12,7 +12,8 @@ export function launchFromIntent(intent: ParsedIntent): LaunchConfiguration | nu
   const symbol = String(intent.input["symbol"] ?? "").replace(/[^a-z0-9]/gi, "").toUpperCase().slice(0, 10);
   if (!name || !symbol) return null;
   const pad = resolveLaunchpad(typeof intent.input["launchpad"] === "string" ? (intent.input["launchpad"] as string) : null);
-  return { name, symbol, description: "", image: null, network: "sui", launchpad: pad.label };
+  const pairToken = resolvePairToken(pad, typeof intent.input["pairToken"] === "string" ? (intent.input["pairToken"] as string) : null);
+  return { name, symbol, description: "", image: null, network: "sui", launchpad: pad.label, pairToken };
 }
 
 const launchTool: TerminalTool = async (intent, context) => {

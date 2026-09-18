@@ -25,7 +25,7 @@ export function parseTerminalCommand(rawInput: string): ParsedIntent {
   if (launch) {
     const name = launch[2]?.replace(/^token\s+/i, "").trim() ?? "";
     const symbol = cleanSymbol(launch[1] || launch[3]) || name.replace(/[^a-z0-9]/gi, "").toUpperCase().slice(0, 10);
-    return intent(/^create/i.test(body) ? "createToken" : "launchToken", raw, { name, symbol, launchpad });
+    return intent(/^create/i.test(body) ? "createToken" : "launchToken", raw, { name, symbol, launchpad, pairToken });
   }
 
   if (/^(?:show\s+)?my\s+launches$/i.test(raw)) return intent("getLaunches", raw);
