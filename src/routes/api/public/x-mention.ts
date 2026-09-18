@@ -15,7 +15,7 @@ const constantTimeEqual = (a: string, b: string) => {
 };
 
 /**
- * Transport endpoint for "@ourblast launch $DOG Sui Dog" mentions.
+ * Transport endpoint for "@ourblastbot launch $DOG Sui Dog" mentions.
  * Caller must present the shared X_BOT_WEBHOOK_SECRET; the reply is composed but
  * not posted while the bot runs in dry-run.
  */
