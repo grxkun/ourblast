@@ -68,7 +68,7 @@ export interface DeploymentResult {
   name: string;
   symbol: string;
   network: "sui";
-  launchpad: "blast.fun";
+  launchpad: string;
   tokenAddress: string;
   factoryAddress: string;
   transactionDigest: string;
