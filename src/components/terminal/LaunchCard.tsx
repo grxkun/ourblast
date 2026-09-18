@@ -33,6 +33,28 @@ export function LaunchCard({ launch, editing, onEdit, onChange, onLaunch, onGene
   const draft = (next: LaunchConfiguration) => onChange(next);
   const settle = () => apply(launch);
 
+  const makeClaimLink = useServerFn(createFeeClaimLink);
+  const [claimLink, setClaimLink] = useState<string | null>(null);
+  const [creatingLink, setCreatingLink] = useState(false);
+
+  const generateClaimLink = async () => {
+    if (!launch.feePayout.xUsername) return;
+    setCreatingLink(true);
+    try {
+      const result = await makeClaimLink({
+        data: { symbol: launch.symbol, xUsername: launch.feePayout.xUsername, amountSui: 0 },
+      });
+      const url = `${window.location.origin}${result.path}`;
+      setClaimLink(url);
+      await navigator.clipboard.writeText(url).catch(() => undefined);
+      toast.success(`Claim link for @${result.xUsername} copied.`);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not create the claim link.");
+    } finally {
+      setCreatingLink(false);
+    }
+  };
+
   return (
     <div className="terminal-launch-card">
       <div className="flex items-center justify-between gap-3 border-b border-border px-4 py-3">
