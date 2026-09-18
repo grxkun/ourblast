@@ -1493,6 +1493,45 @@ export type Database = {
         }
         Relationships: []
       }
+      x_accounts: {
+        Row: {
+          access_token_ciphertext: string
+          avatar_url: string | null
+          created_at: string
+          display_name: string | null
+          expires_at: string | null
+          refresh_token_ciphertext: string | null
+          updated_at: string
+          user_id: string
+          username: string
+          x_user_id: string
+        }
+        Insert: {
+          access_token_ciphertext: string
+          avatar_url?: string | null
+          created_at?: string
+          display_name?: string | null
+          expires_at?: string | null
+          refresh_token_ciphertext?: string | null
+          updated_at?: string
+          user_id: string
+          username: string
+          x_user_id: string
+        }
+        Update: {
+          access_token_ciphertext?: string
+          avatar_url?: string | null
+          created_at?: string
+          display_name?: string | null
+          expires_at?: string | null
+          refresh_token_ciphertext?: string | null
+          updated_at?: string
+          user_id?: string
+          username?: string
+          x_user_id?: string
+        }
+        Relationships: []
+      }
       x_bot_state: {
         Row: {
           bot_user_id: string | null
@@ -1562,6 +1601,30 @@ export type Database = {
           text?: string
           x_post_id?: string
           x_username?: string
+        }
+        Relationships: []
+      }
+      x_oauth_states: {
+        Row: {
+          code_verifier: string
+          created_at: string
+          redirect_uri: string
+          state: string
+          user_id: string
+        }
+        Insert: {
+          code_verifier: string
+          created_at?: string
+          redirect_uri: string
+          state: string
+          user_id: string
+        }
+        Update: {
+          code_verifier?: string
+          created_at?: string
+          redirect_uri?: string
+          state?: string
+          user_id?: string
         }
         Relationships: []
       }
