@@ -11,7 +11,8 @@ export function launchFromIntent(intent: ParsedIntent): LaunchConfiguration | nu
   const name = String(intent.input["name"] ?? "").trim().slice(0, 64);
   const symbol = String(intent.input["symbol"] ?? "").replace(/[^a-z0-9]/gi, "").toUpperCase().slice(0, 10);
   if (!name || !symbol) return null;
-  return { name, symbol, description: "", image: null, network: "sui", launchpad: LAUNCHPAD.label };
+  const pad = resolveLaunchpad(typeof intent.input["launchpad"] === "string" ? (intent.input["launchpad"] as string) : null);
+  return { name, symbol, description: "", image: null, network: "sui", launchpad: pad.label };
 }
 
 const launchTool: TerminalTool = async (intent, context) => {
