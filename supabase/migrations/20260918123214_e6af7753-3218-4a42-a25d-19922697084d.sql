@@ -1,0 +1,1 @@
+CREATE POLICY "x_bot_state service role only" ON public.x_bot_state FOR ALL TO service_role USING (true) WITH CHECK (true);
