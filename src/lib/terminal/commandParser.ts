@@ -125,6 +125,9 @@ export function parseTerminalCommand(rawInput: string): ParsedIntent {
       liquidity,
       devBuy,
       totalSupply,
+      feeMode,
+      feeWallet,
+      feeX,
     });
   }
 
