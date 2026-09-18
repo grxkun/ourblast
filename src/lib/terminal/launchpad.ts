@@ -11,6 +11,10 @@ export interface LaunchpadConfig {
   factoryPackage: string | null;
   factoryObject: string | null;
   version: string | null;
+  /** Pads like Maelstrom ("strom") can pair the bonding-curve LP against a chosen token. */
+  supportsCustomPair: boolean;
+  /** Tokens the pad can pair the LP against. First entry is the default. */
+  pairTokens: string[];
 }
 
 export const LAUNCHPADS: LaunchpadConfig[] = [
@@ -22,6 +26,8 @@ export const LAUNCHPADS: LaunchpadConfig[] = [
     factoryPackage: null,
     factoryObject: null,
     version: null,
+    supportsCustomPair: false,
+    pairTokens: ["SUI"],
   },
   {
     id: "maelstrom",
@@ -31,6 +37,8 @@ export const LAUNCHPADS: LaunchpadConfig[] = [
     factoryPackage: null,
     factoryObject: null,
     version: null,
+    supportsCustomPair: true,
+    pairTokens: ["SUI", "USDC", "BLAST", "DEEP", "WAL"],
   },
 ];
 
