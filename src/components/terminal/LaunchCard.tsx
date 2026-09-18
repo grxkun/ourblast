@@ -31,7 +31,7 @@ export function LaunchCard({ launch, editing, onEdit, onChange, onLaunch, onGene
         )}
         <dl className="grid grid-cols-[auto_1fr] gap-x-6 gap-y-2 border-y border-border py-3 text-sm">
           <dt className="text-muted-foreground">Network</dt><dd className="font-bold">Sui</dd>
-          <dt className="text-muted-foreground">Launchpad</dt><dd className="font-bold">Blast.fun</dd>
+          <dt className="text-muted-foreground">Launchpad</dt><dd className="font-bold">{launch.launchpad}</dd>
           <dt className="text-muted-foreground">Image</dt><dd className="font-bold">{launch.imageName ?? "Not provided"}</dd>
         </dl>
         <div className="flex flex-wrap gap-2">
