@@ -26,9 +26,10 @@ export interface XOAuthClient {
 }
 
 export function readXOAuthClient(): XOAuthClient | null {
-  const clientId = process.env["X_OAUTH_CLIENT_ID"];
+  const clientId = process.env["X_CLIENT_ID"] ?? process.env["X_OAUTH_CLIENT_ID"];
   if (!clientId) return null;
-  return { clientId, clientSecret: process.env["X_OAUTH_CLIENT_SECRET"] ?? null };
+  const clientSecret = process.env["X_CLIENT_SECRET"] ?? process.env["X_OAUTH_CLIENT_SECRET"] ?? null;
+  return { clientId, clientSecret };
 }
 
 const base64url = (input: Buffer) => input.toString("base64url");
