@@ -32,6 +32,7 @@ import { Route as EcosystemProjectSlugRouteImport } from './routes/ecosystem-pro
 import { Route as ApiPublicXMentionRouteImport } from './routes/api/public/x-mention'
 import { Route as ApiPublicXPollRouteImport } from './routes/api/public/x-poll'
 import { Route as OauthGithubReturnRouteImport } from './routes/oauth/github/return'
+import { Route as OauthXReturnRouteImport } from './routes/oauth/x/return'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -148,6 +149,11 @@ const OauthGithubReturnRoute = OauthGithubReturnRouteImport.update({
   path: '/oauth/github/return',
   getParentRoute: () => rootRouteImport,
 } as any)
+const OauthXReturnRoute = OauthXReturnRouteImport.update({
+  id: '/oauth/x/return',
+  path: '/oauth/x/return',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -173,6 +179,7 @@ export interface FileRoutesByFullPath {
   '/api/public/x-mention': typeof ApiPublicXMentionRoute
   '/api/public/x-poll': typeof ApiPublicXPollRoute
   '/oauth/github/return': typeof OauthGithubReturnRoute
+  '/oauth/x/return': typeof OauthXReturnRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -198,6 +205,7 @@ export interface FileRoutesByTo {
   '/api/public/x-mention': typeof ApiPublicXMentionRoute
   '/api/public/x-poll': typeof ApiPublicXPollRoute
   '/oauth/github/return': typeof OauthGithubReturnRoute
+  '/oauth/x/return': typeof OauthXReturnRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -224,6 +232,7 @@ export interface FileRoutesById {
   '/api/public/x-mention': typeof ApiPublicXMentionRoute
   '/api/public/x-poll': typeof ApiPublicXPollRoute
   '/oauth/github/return': typeof OauthGithubReturnRoute
+  '/oauth/x/return': typeof OauthXReturnRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -251,6 +260,7 @@ export interface FileRouteTypes {
     | '/api/public/x-mention'
     | '/api/public/x-poll'
     | '/oauth/github/return'
+    | '/oauth/x/return'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -276,6 +286,7 @@ export interface FileRouteTypes {
     | '/api/public/x-mention'
     | '/api/public/x-poll'
     | '/oauth/github/return'
+    | '/oauth/x/return'
   id:
     | '__root__'
     | '/'
@@ -301,6 +312,7 @@ export interface FileRouteTypes {
     | '/api/public/x-mention'
     | '/api/public/x-poll'
     | '/oauth/github/return'
+    | '/oauth/x/return'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -327,6 +339,7 @@ export interface RootRouteChildren {
   ApiPublicXMentionRoute: typeof ApiPublicXMentionRoute
   ApiPublicXPollRoute: typeof ApiPublicXPollRoute
   OauthGithubReturnRoute: typeof OauthGithubReturnRoute
+  OauthXReturnRoute: typeof OauthXReturnRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -492,6 +505,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof OauthGithubReturnRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/oauth/x/return': {
+      id: '/oauth/x/return'
+      path: '/oauth/x/return'
+      fullPath: '/oauth/x/return'
+      preLoaderRoute: typeof OauthXReturnRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -519,6 +539,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicXMentionRoute: ApiPublicXMentionRoute,
   ApiPublicXPollRoute: ApiPublicXPollRoute,
   OauthGithubReturnRoute: OauthGithubReturnRoute,
+  OauthXReturnRoute: OauthXReturnRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

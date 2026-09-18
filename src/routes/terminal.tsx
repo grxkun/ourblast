@@ -1,8 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { AtSign, Lock, ShieldCheck } from "lucide-react";
+import { Lock, ShieldCheck } from "lucide-react";
 
 import { Terminal } from "@/components/terminal/Terminal";
 import { XMentionInbox } from "@/components/terminal/XMentionInbox";
+import { XConnectButton } from "@/components/terminal/XConnectButton";
 import { WalletButton } from "@/components/blast/WalletButton";
 import { useBlast } from "@/components/blast/session";
 import { isTerminalAllowed } from "@/lib/terminal/allowlist";
@@ -39,7 +40,7 @@ function TerminalPage() {
         </div>
         <div className="flex flex-wrap items-center justify-end gap-2">
           <span className="hidden items-center gap-2 text-xs text-muted-foreground sm:flex"><ShieldCheck className="size-4" /> Allowlisted actions</span>
-          <Button type="button" variant="outline" onClick={() => toast("X connection is coming soon / not connected.")}><AtSign /> Connect X</Button>
+          <XConnectButton />
           <WalletButton />
         </div>
       </div>

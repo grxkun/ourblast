@@ -33,6 +33,8 @@
 - [x] Live reply posting (OAuth 1.0a) + mention poller; goes live automatically once the four X secrets are saved
 - [ ] Save the four @ourblastbot X credentials
 - [x] Launch platform config supports SuiPump and Maelstrom (selectable per launch)
+- [x] X OAuth 2.0 (PKCE) user connect: /oauth/x/return callback, encrypted token storage, Connect X button on the terminal
+- [ ] Save X_CLIENT_ID and X_CLIENT_SECRET (callback https://ourblast.xyz/oauth/x/return)
 - [ ] Wire real token creation once SuiPump / Maelstrom API docs are available
 
 ## Legal pages
