@@ -1493,12 +1493,36 @@ export type Database = {
         }
         Relationships: []
       }
+      x_bot_state: {
+        Row: {
+          bot_user_id: string | null
+          id: boolean
+          last_mention_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          bot_user_id?: string | null
+          id?: boolean
+          last_mention_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          bot_user_id?: string | null
+          id?: boolean
+          last_mention_id?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       x_mentions: {
         Row: {
           created_at: string
           id: string
           intent: string
+          post_error: string | null
           posted: boolean
+          posted_at: string | null
+          reply_post_id: string | null
           reply_text: string
           result: Json
           source: string
@@ -1511,7 +1535,10 @@ export type Database = {
           created_at?: string
           id?: string
           intent: string
+          post_error?: string | null
           posted?: boolean
+          posted_at?: string | null
+          reply_post_id?: string | null
           reply_text: string
           result?: Json
           source?: string
@@ -1524,7 +1551,10 @@ export type Database = {
           created_at?: string
           id?: string
           intent?: string
+          post_error?: string | null
           posted?: boolean
+          posted_at?: string | null
+          reply_post_id?: string | null
           reply_text?: string
           result?: Json
           source?: string
