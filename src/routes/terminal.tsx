@@ -40,7 +40,7 @@ function TerminalPage() {
         </div>
         <div className="flex flex-wrap items-center justify-end gap-2">
           <span className="hidden items-center gap-2 text-xs text-muted-foreground sm:flex"><ShieldCheck className="size-4" /> Allowlisted actions</span>
-          <Button type="button" variant="outline" onClick={() => toast("X connection is coming soon / not connected.")}><AtSign /> Connect X</Button>
+          <XConnectButton />
           <WalletButton />
         </div>
       </div>
