@@ -2,7 +2,7 @@ import { CircleCheck, CircleDashed, CircleX, LockKeyhole } from "lucide-react";
 
 import type { TerminalStatus } from "@/lib/terminal/types";
 
-const steps = ["Preparing", "Awaiting wallet signature", "Submitting transaction", "Confirming on Sui", "Blast.fun launch created", "Bonding curve live"];
+const steps = ["Preparing", "Awaiting wallet signature", "Submitting transaction", "Confirming on Sui", "Launchpad listing created", "Bonding curve live"];
 
 export function TransactionCard({ status }: { status: TerminalStatus }) {
   const blocked = status === "NOT_CONNECTED" || status === "NOT_IMPLEMENTED" || status === "FAILED";
