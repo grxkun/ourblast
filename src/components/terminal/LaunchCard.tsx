@@ -206,6 +206,17 @@ export function LaunchCard({ launch, editing, onEdit, onChange, onLaunch, onGene
                 <p className="mt-1 text-[0.65rem] text-muted-foreground">
                   OURBLAST generates a claim link for that account; they connect Slush on the link to pull the fees.
                 </p>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  className="mt-2"
+                  disabled={!launch.feePayout.xUsername || creatingLink}
+                  onClick={() => void generateClaimLink()}
+                >
+                  <Link2 /> {creatingLink ? "Creating…" : "Create claim link"}
+                </Button>
+                {claimLink ? <p className="mt-1 break-all text-[0.65rem] text-muted-foreground">{claimLink}</p> : null}
               </>
             ) : null}
             <p className="mt-2 text-[0.65rem] text-muted-foreground">{describeFeePayout(launch.feePayout)}</p>
