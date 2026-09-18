@@ -453,10 +453,20 @@ function Home() {
             </div>
           </div>
 
-          <p className="mt-12 border-t border-secondary-foreground/20 pt-8 font-body text-sm text-secondary-foreground/60">
-            $BLAST is a meme coin with no intrinsic value and no expectation of financial
-            return. Nothing here is financial advice. Do your own research.
-          </p>
+          <div className="mt-12 border-t border-secondary-foreground/20 pt-8">
+            <p className="font-body text-sm text-secondary-foreground/60">
+              $BLAST is a meme coin with no intrinsic value and no expectation of financial
+              return. Nothing here is financial advice. Do your own research.
+            </p>
+            <div className="mt-4 flex flex-wrap items-center gap-4 font-body text-sm">
+              <Link to="/terms" className="text-secondary-foreground/80 underline">
+                Terms of Service
+              </Link>
+              <Link to="/privacy" className="text-secondary-foreground/80 underline">
+                Privacy Policy
+              </Link>
+            </div>
+          </div>
         </div>
       </footer>
     </main>
