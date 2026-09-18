@@ -22,10 +22,10 @@ export const launchpadAdapter: LaunchpadAdapter = {
     return LAUNCHPAD;
   },
   async createToken(config) {
-    return unavailable("createToken", `${config.name} is configured, but ${LAUNCHPAD.label} token creation is not connected yet.`);
+    return unavailable("createToken", `${config.name} is configured for ${config.launchpad} with an LP paired against $${config.pairToken}, but token creation is not connected yet.`);
   },
   async launchToken(config) {
-    return unavailable("launchToken", `${config.name} is ready for review. ${LAUNCHPAD.label} deployment is not connected yet.`);
+    return unavailable("launchToken", `${config.name} is ready for review on ${config.launchpad} (LP pair $${config.pairToken}). Deployment is not connected yet.`);
   },
   async getBondingCurve(symbol) {
     return unavailable("getBondingCurve", `$${symbol || "TOKEN"} bonding-curve data is coming soon / not connected.`);

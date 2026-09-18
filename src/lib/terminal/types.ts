@@ -32,6 +32,8 @@ export interface LaunchConfiguration {
   network: "sui";
   /** Launch platform id/label, e.g. "suipump.org". Configured in ./launchpad.ts. */
   launchpad: string;
+  /** Token the bonding-curve LP is paired against. Pads without custom pairing use SUI. */
+  pairToken: string;
 }
 
 export interface ParsedIntent {

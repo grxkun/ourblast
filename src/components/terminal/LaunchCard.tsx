@@ -2,7 +2,7 @@ import { ImageIcon, Pencil, Rocket, WandSparkles } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { LAUNCHPADS } from "@/lib/terminal/launchpad";
+import { LAUNCHPADS, resolveLaunchpad, resolvePairToken } from "@/lib/terminal/launchpad";
 import type { LaunchConfiguration } from "@/lib/terminal/types";
 
 export function LaunchCard({ launch, editing, onEdit, onChange, onLaunch, onGenerate }: {
@@ -13,6 +13,7 @@ export function LaunchCard({ launch, editing, onEdit, onChange, onLaunch, onGene
   onLaunch: () => void;
   onGenerate: () => void;
 }) {
+  const activePad = resolveLaunchpad(launch.launchpad);
   return (
     <div className="terminal-launch-card">
       <div className="flex items-center justify-between gap-3 border-b border-border px-4 py-3">
@@ -38,15 +39,34 @@ export function LaunchCard({ launch, editing, onEdit, onChange, onLaunch, onGene
               type="button"
               size="sm"
               variant={launch.launchpad === pad.label ? "default" : "outline"}
-              onClick={() => onChange({ ...launch, launchpad: pad.label })}
+              onClick={() => onChange({ ...launch, launchpad: pad.label, pairToken: resolvePairToken(pad, launch.pairToken) })}
             >
               {pad.label}
             </Button>
           ))}
         </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-xs font-bold uppercase text-muted-foreground">LP pairing</span>
+          {activePad.supportsCustomPair ? (
+            activePad.pairTokens.map((token) => (
+              <Button
+                key={token}
+                type="button"
+                size="sm"
+                variant={launch.pairToken === token ? "default" : "outline"}
+                onClick={() => onChange({ ...launch, pairToken: token })}
+              >
+                ${token}
+              </Button>
+            ))
+          ) : (
+            <span className="text-xs text-muted-foreground">{activePad.label} pairs every launch against $SUI.</span>
+          )}
+        </div>
         <dl className="grid grid-cols-[auto_1fr] gap-x-6 gap-y-2 border-y border-border py-3 text-sm">
           <dt className="text-muted-foreground">Network</dt><dd className="font-bold">Sui</dd>
           <dt className="text-muted-foreground">Launchpad</dt><dd className="font-bold">{launch.launchpad}</dd>
+          <dt className="text-muted-foreground">LP pair</dt><dd className="font-bold">${launch.pairToken}</dd>
           <dt className="text-muted-foreground">Image</dt><dd className="font-bold">{launch.imageName ?? "Not provided"}</dd>
         </dl>
         <div className="flex flex-wrap gap-2">

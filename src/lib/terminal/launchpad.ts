@@ -11,6 +11,10 @@ export interface LaunchpadConfig {
   factoryPackage: string | null;
   factoryObject: string | null;
   version: string | null;
+  /** Pads like Maelstrom ("strom") can pair the bonding-curve LP against a chosen token. */
+  supportsCustomPair: boolean;
+  /** Tokens the pad can pair the LP against. First entry is the default. */
+  pairTokens: string[];
 }
 
 export const LAUNCHPADS: LaunchpadConfig[] = [
@@ -22,6 +26,8 @@ export const LAUNCHPADS: LaunchpadConfig[] = [
     factoryPackage: null,
     factoryObject: null,
     version: null,
+    supportsCustomPair: false,
+    pairTokens: ["SUI"],
   },
   {
     id: "maelstrom",
@@ -31,16 +37,43 @@ export const LAUNCHPADS: LaunchpadConfig[] = [
     factoryPackage: null,
     factoryObject: null,
     version: null,
+    supportsCustomPair: true,
+    pairTokens: ["SUI", "USDC", "BLAST", "DEEP", "WAL"],
   },
 ];
 
 /** Default pad used when a command does not name one. */
 export const LAUNCHPAD: LaunchpadConfig = LAUNCHPADS[0] as LaunchpadConfig;
 
+/** Short aliases people actually type / tweet. */
+const PAD_ALIASES: Record<string, string> = {
+  strom: "maelstrom",
+  mael: "maelstrom",
+  pump: "suipump",
+  "suipump.org": "suipump",
+};
+
 export function resolveLaunchpad(value?: string | null): LaunchpadConfig {
   if (!value) return LAUNCHPAD;
-  const needle = value.trim().toLowerCase();
+  const raw = value.trim().toLowerCase();
+  const needle = PAD_ALIASES[raw] ?? raw;
   return (
     LAUNCHPADS.find((pad) => pad.id === needle || pad.label.toLowerCase() === needle) ?? LAUNCHPAD
   );
+}
+
+export function padByLabel(label: string): LaunchpadConfig {
+  return resolveLaunchpad(label);
+}
+
+/**
+ * Normalises a requested LP pairing against what the pad can do.
+ * Pads without custom pairing always fall back to SUI.
+ */
+export function resolvePairToken(pad: LaunchpadConfig, requested?: string | null): string {
+  const fallback = pad.pairTokens[0] ?? "SUI";
+  if (!requested) return fallback;
+  const needle = requested.replace(/^\$/, "").trim().toUpperCase();
+  if (!pad.supportsCustomPair) return fallback;
+  return pad.pairTokens.includes(needle) ? needle : fallback;
 }

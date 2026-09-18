@@ -1,4 +1,4 @@
-import { LAUNCHPAD, resolveLaunchpad } from "./launchpad";
+import { LAUNCHPAD, resolveLaunchpad, resolvePairToken } from "./launchpad";
 import { launchpadAdapter } from "./launchpadAdapter";
 import type { LaunchConfiguration, ParsedIntent, TerminalAgentContext, TerminalIntentName, TerminalToolResult } from "./types";
 
@@ -12,16 +12,22 @@ export function launchFromIntent(intent: ParsedIntent): LaunchConfiguration | nu
   const symbol = String(intent.input["symbol"] ?? "").replace(/[^a-z0-9]/gi, "").toUpperCase().slice(0, 10);
   if (!name || !symbol) return null;
   const pad = resolveLaunchpad(typeof intent.input["launchpad"] === "string" ? (intent.input["launchpad"] as string) : null);
-  return { name, symbol, description: "", image: null, network: "sui", launchpad: pad.label };
+  const pairToken = resolvePairToken(pad, typeof intent.input["pairToken"] === "string" ? (intent.input["pairToken"] as string) : null);
+  return { name, symbol, description: "", image: null, network: "sui", launchpad: pad.label, pairToken };
 }
 
 const launchTool: TerminalTool = async (intent, context) => {
   const launch = launchFromIntent(intent);
   if (!launch) return { tool: intent.name, status: "FAILED", message: "Include both a token name and symbol, for example: launch $DOG Sui Dog." };
+  const pad = resolveLaunchpad(launch.launchpad);
+  const requested = typeof intent.input["pairToken"] === "string" ? (intent.input["pairToken"] as string).toUpperCase() : null;
+  const pairNote = requested && requested !== launch.pairToken
+    ? ` ${pad.label} cannot pair against $${requested} yet, so the LP is set to $${launch.pairToken}.`
+    : ` LP pairing: $${launch.pairToken}.`;
   return {
     tool: intent.name,
     status: context.walletConnected ? "READY" : "NOT_CONNECTED",
-    message: context.walletConnected ? "Launch configuration prepared. Review every field before continuing." : "Launch configuration prepared. Connect your Sui wallet before launching.",
+    message: (context.walletConnected ? "Launch configuration prepared. Review every field before continuing." : "Launch configuration prepared. Connect your Sui wallet before launching.") + pairNote,
     launch,
   };
 };
