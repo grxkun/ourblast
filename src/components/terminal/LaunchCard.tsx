@@ -52,7 +52,7 @@ export function LaunchCard({ launch, editing, onEdit, onChange, onLaunch, onGene
               type="button"
               size="sm"
               variant={launch.launchpad === pad.label ? "default" : "outline"}
-              onClick={() => onChange({ ...launch, launchpad: pad.label, pairToken: resolvePairToken(pad, launch.pairToken) })}
+              onClick={() => apply({ ...launch, launchpad: pad.label })}
             >
               {pad.label}
             </Button>
@@ -82,7 +82,8 @@ export function LaunchCard({ launch, editing, onEdit, onChange, onLaunch, onGene
             <Input
               inputMode="decimal"
               value={String(launch.liquidity)}
-              onChange={(event) => apply({ ...launch, liquidity: Number(event.target.value.replace(/[^0-9.]/g, "")) || 0 })}
+              onChange={(event) => draft({ ...launch, liquidity: Number(event.target.value.replace(/[^0-9.]/g, "")) || 0 })}
+              onBlur={settle}
               className="mt-1"
             />
             <span className="mt-1 block font-body text-[0.65rem] normal-case text-muted-foreground">{activePad.liquidity.min}–{activePad.liquidity.max}</span>
@@ -92,7 +93,8 @@ export function LaunchCard({ launch, editing, onEdit, onChange, onLaunch, onGene
             <Input
               inputMode="decimal"
               value={String(launch.devBuy)}
-              onChange={(event) => apply({ ...launch, devBuy: Number(event.target.value.replace(/[^0-9.]/g, "")) || 0 })}
+              onChange={(event) => draft({ ...launch, devBuy: Number(event.target.value.replace(/[^0-9.]/g, "")) || 0 })}
+              onBlur={settle}
               className="mt-1"
             />
             <span className="mt-1 block font-body text-[0.65rem] normal-case text-muted-foreground">0 = no first buy</span>
@@ -102,7 +104,8 @@ export function LaunchCard({ launch, editing, onEdit, onChange, onLaunch, onGene
             <Input
               inputMode="numeric"
               value={String(launch.totalSupply)}
-              onChange={(event) => apply({ ...launch, totalSupply: Number(event.target.value.replace(/[^0-9]/g, "")) || 0 })}
+              onChange={(event) => draft({ ...launch, totalSupply: Number(event.target.value.replace(/[^0-9]/g, "")) || 0 })}
+              onBlur={settle}
               className="mt-1"
             />
             <span className="mt-1 block font-body text-[0.65rem] normal-case text-muted-foreground">{activePad.supply.min.toLocaleString()}–{activePad.supply.max.toLocaleString()}</span>
