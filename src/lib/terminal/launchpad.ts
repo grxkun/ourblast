@@ -15,6 +15,10 @@ export interface LaunchpadConfig {
   supportsCustomPair: boolean;
   /** Tokens the pad can pair the LP against. First entry is the default. */
   pairTokens: string[];
+  /** Starting LP size, denominated in the pairing token. */
+  liquidity: { min: number; max: number; default: number };
+  /** Token supply minted at launch. */
+  supply: { min: number; max: number; default: number };
 }
 
 export const LAUNCHPADS: LaunchpadConfig[] = [
@@ -28,6 +32,8 @@ export const LAUNCHPADS: LaunchpadConfig[] = [
     version: null,
     supportsCustomPair: false,
     pairTokens: ["SUI"],
+    liquidity: { min: 1, max: 5_000, default: 10 },
+    supply: { min: 1_000_000, max: 10_000_000_000, default: 1_000_000_000 },
   },
   {
     id: "maelstrom",
@@ -39,6 +45,8 @@ export const LAUNCHPADS: LaunchpadConfig[] = [
     version: null,
     supportsCustomPair: true,
     pairTokens: ["SUI", "USDC", "BLAST", "DEEP", "WAL"],
+    liquidity: { min: 1, max: 25_000, default: 25 },
+    supply: { min: 1_000_000, max: 100_000_000_000, default: 1_000_000_000 },
   },
 ];
 

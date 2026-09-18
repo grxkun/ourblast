@@ -1,8 +1,11 @@
 import { ImageIcon, Pencil, Rocket, WandSparkles } from "lucide-react";
+import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { LAUNCHPADS, resolveLaunchpad, resolvePairToken } from "@/lib/terminal/launchpad";
+import { CREATOR_FEE_ROUTES, LAUNCHER_SHARE_USES, LAUNCH_FEE_SUI } from "@/lib/terminal/fees";
+import { LAUNCHPADS, resolveLaunchpad } from "@/lib/terminal/launchpad";
+import { normalizeLaunchConfig } from "@/lib/terminal/launchSettings";
 import type { LaunchConfiguration } from "@/lib/terminal/types";
 
 export function LaunchCard({ launch, editing, onEdit, onChange, onLaunch, onGenerate }: {
@@ -14,6 +17,17 @@ export function LaunchCard({ launch, editing, onEdit, onChange, onLaunch, onGene
   onGenerate: () => void;
 }) {
   const activePad = resolveLaunchpad(launch.launchpad);
+  const [notes, setNotes] = useState<string[]>([]);
+
+  /** Keeps typing free-form; the pad's real limits are applied when the field loses focus. */
+  const apply = (next: LaunchConfiguration) => {
+    const normalized = normalizeLaunchConfig(next);
+    setNotes(normalized.notes);
+    onChange(normalized.config);
+  };
+  const draft = (next: LaunchConfiguration) => onChange(next);
+  const settle = () => apply(launch);
+
   return (
     <div className="terminal-launch-card">
       <div className="flex items-center justify-between gap-3 border-b border-border px-4 py-3">
@@ -39,7 +53,7 @@ export function LaunchCard({ launch, editing, onEdit, onChange, onLaunch, onGene
               type="button"
               size="sm"
               variant={launch.launchpad === pad.label ? "default" : "outline"}
-              onClick={() => onChange({ ...launch, launchpad: pad.label, pairToken: resolvePairToken(pad, launch.pairToken) })}
+              onClick={() => apply({ ...launch, launchpad: pad.label })}
             >
               {pad.label}
             </Button>
@@ -54,21 +68,76 @@ export function LaunchCard({ launch, editing, onEdit, onChange, onLaunch, onGene
                 type="button"
                 size="sm"
                 variant={launch.pairToken === token ? "default" : "outline"}
-                onClick={() => onChange({ ...launch, pairToken: token })}
+                onClick={() => apply({ ...launch, pairToken: token })}
               >
                 ${token}
               </Button>
             ))
           ) : (
-            <span className="text-xs text-muted-foreground">{activePad.label} pairs every launch against $SUI.</span>
+            <span className="text-xs text-muted-foreground">{activePad.label} pairs every launch against ${activePad.pairTokens[0] ?? "SUI"}.</span>
           )}
         </div>
+        <div className="grid gap-3 sm:grid-cols-3">
+          <label className="text-xs font-bold uppercase text-muted-foreground">
+            Starting LP (${launch.pairToken})
+            <Input
+              inputMode="decimal"
+              value={String(launch.liquidity)}
+              onChange={(event) => draft({ ...launch, liquidity: Number(event.target.value.replace(/[^0-9.]/g, "")) || 0 })}
+              onBlur={settle}
+              className="mt-1"
+            />
+            <span className="mt-1 block font-body text-[0.65rem] normal-case text-muted-foreground">{activePad.liquidity.min}–{activePad.liquidity.max}</span>
+          </label>
+          <label className="text-xs font-bold uppercase text-muted-foreground">
+            Dev buy (${launch.pairToken})
+            <Input
+              inputMode="decimal"
+              value={String(launch.devBuy)}
+              onChange={(event) => draft({ ...launch, devBuy: Number(event.target.value.replace(/[^0-9.]/g, "")) || 0 })}
+              onBlur={settle}
+              className="mt-1"
+            />
+            <span className="mt-1 block font-body text-[0.65rem] normal-case text-muted-foreground">0 = no first buy</span>
+          </label>
+          <label className="text-xs font-bold uppercase text-muted-foreground">
+            Token supply
+            <Input
+              inputMode="numeric"
+              value={String(launch.totalSupply)}
+              onChange={(event) => draft({ ...launch, totalSupply: Number(event.target.value.replace(/[^0-9]/g, "")) || 0 })}
+              onBlur={settle}
+              className="mt-1"
+            />
+            <span className="mt-1 block font-body text-[0.65rem] normal-case text-muted-foreground">{activePad.supply.min.toLocaleString()}–{activePad.supply.max.toLocaleString()}</span>
+          </label>
+        </div>
+        {notes.length ? (
+          <ul className="space-y-1 border-l-2 border-primary pl-3 text-xs text-muted-foreground">
+            {notes.map((note) => <li key={note}>{note}</li>)}
+          </ul>
+        ) : null}
         <dl className="grid grid-cols-[auto_1fr] gap-x-6 gap-y-2 border-y border-border py-3 text-sm">
           <dt className="text-muted-foreground">Network</dt><dd className="font-bold">Sui</dd>
           <dt className="text-muted-foreground">Launchpad</dt><dd className="font-bold">{launch.launchpad}</dd>
           <dt className="text-muted-foreground">LP pair</dt><dd className="font-bold">${launch.pairToken}</dd>
+          <dt className="text-muted-foreground">Starting LP</dt><dd className="font-bold">{launch.liquidity} ${launch.pairToken}</dd>
+          <dt className="text-muted-foreground">Dev buy</dt><dd className="font-bold">{launch.devBuy > 0 ? `${launch.devBuy} $${launch.pairToken}` : "None"}</dd>
+          <dt className="text-muted-foreground">Supply</dt><dd className="font-bold">{launch.totalSupply.toLocaleString()}</dd>
           <dt className="text-muted-foreground">Image</dt><dd className="font-bold">{launch.imageName ?? "Not provided"}</dd>
         </dl>
+        <div className="border border-border p-3">
+          <p className="font-display text-sm uppercase">Fees · {LAUNCH_FEE_SUI === 0 ? "0 launch fee" : `${LAUNCH_FEE_SUI} SUI launch fee`}</p>
+          <ul className="mt-2 space-y-1 text-xs text-muted-foreground">
+            {CREATOR_FEE_ROUTES.map((route) => (
+              <li key={route.label} className="flex items-center justify-between gap-3">
+                <span>{route.label}</span>
+                <span className="font-bold text-foreground">{Math.round(route.share * 100)}%</span>
+              </li>
+            ))}
+          </ul>
+          <p className="mt-2 text-[0.65rem] text-muted-foreground">Of the creator fee the launchpad pays on trading volume. Your 70%: {LAUNCHER_SHARE_USES}.</p>
+        </div>
         <div className="flex flex-wrap gap-2">
           <Button type="button" variant="outline" onClick={onEdit}><Pencil /> {editing ? "Done" : "Edit"}</Button>
           <Button type="button" variant="outline" onClick={onGenerate}><WandSparkles /> Generate image</Button>

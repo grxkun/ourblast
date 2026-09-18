@@ -1,4 +1,6 @@
-import { LAUNCHPAD, resolveLaunchpad, resolvePairToken } from "./launchpad";
+import { LAUNCHPAD, resolveLaunchpad } from "./launchpad";
+import { FEE_SUMMARY } from "./fees";
+import { describeLaunchSettings, normalizeLaunchSettings } from "./launchSettings";
 import { launchpadAdapter } from "./launchpadAdapter";
 import type { LaunchConfiguration, ParsedIntent, TerminalAgentContext, TerminalIntentName, TerminalToolResult } from "./types";
 
@@ -7,27 +9,53 @@ export type TerminalTool = (intent: ParsedIntent, context: TerminalAgentContext)
 const walletRequired = (tool: TerminalIntentName, context: TerminalAgentContext): TerminalToolResult | null =>
   context.walletConnected ? null : { tool, status: "NOT_CONNECTED", message: "Connect your Sui wallet first." };
 
-export function launchFromIntent(intent: ParsedIntent): LaunchConfiguration | null {
+const numberInput = (value: string | number | null | undefined): number | null =>
+  typeof value === "number" && Number.isFinite(value) ? value : null;
+
+export function launchFromIntent(intent: ParsedIntent): { launch: LaunchConfiguration; notes: string[] } | null {
   const name = String(intent.input["name"] ?? "").trim().slice(0, 64);
   const symbol = String(intent.input["symbol"] ?? "").replace(/[^a-z0-9]/gi, "").toUpperCase().slice(0, 10);
   if (!name || !symbol) return null;
   const pad = resolveLaunchpad(typeof intent.input["launchpad"] === "string" ? (intent.input["launchpad"] as string) : null);
-  const pairToken = resolvePairToken(pad, typeof intent.input["pairToken"] === "string" ? (intent.input["pairToken"] as string) : null);
-  return { name, symbol, description: "", image: null, network: "sui", launchpad: pad.label, pairToken };
+  const settings = normalizeLaunchSettings(pad, {
+    pairToken: typeof intent.input["pairToken"] === "string" ? (intent.input["pairToken"] as string) : null,
+    liquidity: numberInput(intent.input["liquidity"]),
+    devBuy: numberInput(intent.input["devBuy"]),
+    totalSupply: numberInput(intent.input["totalSupply"]),
+  });
+  return {
+    launch: {
+      name,
+      symbol,
+      description: "",
+      image: null,
+      network: "sui",
+      launchpad: pad.label,
+      pairToken: settings.pairToken,
+      liquidity: settings.liquidity,
+      devBuy: settings.devBuy,
+      totalSupply: settings.totalSupply,
+    },
+    notes: settings.notes,
+  };
 }
 
 const launchTool: TerminalTool = async (intent, context) => {
-  const launch = launchFromIntent(intent);
-  if (!launch) return { tool: intent.name, status: "FAILED", message: "Include both a token name and symbol, for example: launch $DOG Sui Dog." };
-  const pad = resolveLaunchpad(launch.launchpad);
-  const requested = typeof intent.input["pairToken"] === "string" ? (intent.input["pairToken"] as string).toUpperCase() : null;
-  const pairNote = requested && requested !== launch.pairToken
-    ? ` ${pad.label} cannot pair against $${requested} yet, so the LP is set to $${launch.pairToken}.`
-    : ` LP pairing: $${launch.pairToken}.`;
+  const prepared = launchFromIntent(intent);
+  if (!prepared) return { tool: intent.name, status: "FAILED", message: "Include both a token name and symbol, for example: launch $DOG Sui Dog." };
+  const { launch, notes } = prepared;
+  const summary = ` ${describeLaunchSettings(launch)} on ${launch.launchpad}.`;
   return {
     tool: intent.name,
     status: context.walletConnected ? "READY" : "NOT_CONNECTED",
-    message: (context.walletConnected ? "Launch configuration prepared. Review every field before continuing." : "Launch configuration prepared. Connect your Sui wallet before launching.") + pairNote,
+    message:
+      (context.walletConnected
+        ? "Launch configuration prepared. Review every field before continuing."
+        : "Launch configuration prepared. Connect your Sui wallet before launching.") +
+      summary +
+      ` ${FEE_SUMMARY}` +
+      (notes.length ? ` ${notes.join(" ")}` : ""),
+    data: { notes },
     launch,
   };
 };

@@ -34,6 +34,12 @@ export interface LaunchConfiguration {
   launchpad: string;
   /** Token the bonding-curve LP is paired against. Pads without custom pairing use SUI. */
   pairToken: string;
+  /** Starting LP size in the pairing token. */
+  liquidity: number;
+  /** Optional creator's first buy, in the pairing token. 0 = none. */
+  devBuy: number;
+  /** Token supply minted at launch. */
+  totalSupply: number;
 }
 
 export interface ParsedIntent {
