@@ -7,6 +7,7 @@ import { CREATOR_FEE_ROUTES, GAS_NOTE_TERMINAL, LAUNCHER_SHARE_USES, LAUNCH_FEE_
 import { X_BOT_HANDLE } from "@/lib/terminal/x-bot";
 import { LAUNCHPADS, resolveLaunchpad } from "@/lib/terminal/launchpad";
 import { normalizeLaunchConfig } from "@/lib/terminal/launchSettings";
+import { describeFeePayout, normalizeXUsername, type FeePayoutMode } from "@/lib/terminal/feePayout";
 import type { LaunchConfiguration } from "@/lib/terminal/types";
 
 export function LaunchCard({ launch, editing, onEdit, onChange, onLaunch, onGenerate }: {
@@ -139,6 +140,50 @@ export function LaunchCard({ launch, editing, onEdit, onChange, onLaunch, onGene
           </ul>
           <p className="mt-2 text-[0.65rem] text-muted-foreground">Of the creator fee the launchpad pays on trading volume. Your 70%: {LAUNCHER_SHARE_USES}.</p>
           <p className="mt-1 text-[0.65rem] text-muted-foreground">{GAS_NOTE_TERMINAL} Launch calls from {X_BOT_HANDLE} on X are gas-sponsored from the bot reserve.</p>
+          <div className="mt-3 border-t border-border pt-3">
+            <p className="font-display text-sm uppercase">Who claims your 70%</p>
+            <div className="mt-2 flex flex-wrap gap-2">
+              {([
+                { mode: "creator" as FeePayoutMode, label: "Me (default)" },
+                { mode: "wallet" as FeePayoutMode, label: "Another wallet" },
+                { mode: "x" as FeePayoutMode, label: "An X account" },
+              ]).map((option) => (
+                <Button
+                  key={option.mode}
+                  type="button"
+                  size="sm"
+                  variant={launch.feePayout.mode === option.mode ? "default" : "outline"}
+                  onClick={() => draft({ ...launch, feePayout: { ...launch.feePayout, mode: option.mode } })}
+                >
+                  {option.label}
+                </Button>
+              ))}
+            </div>
+            {launch.feePayout.mode === "wallet" ? (
+              <Input
+                value={launch.feePayout.wallet ?? ""}
+                placeholder="0x… destination Sui wallet"
+                onChange={(event) => draft({ ...launch, feePayout: { ...launch.feePayout, wallet: event.target.value.trim() } })}
+                onBlur={settle}
+                className="mt-2"
+              />
+            ) : null}
+            {launch.feePayout.mode === "x" ? (
+              <>
+                <Input
+                  value={launch.feePayout.xUsername ? `@${launch.feePayout.xUsername}` : ""}
+                  placeholder="@handle"
+                  onChange={(event) => draft({ ...launch, feePayout: { ...launch.feePayout, xUsername: normalizeXUsername(event.target.value) } })}
+                  onBlur={settle}
+                  className="mt-2"
+                />
+                <p className="mt-1 text-[0.65rem] text-muted-foreground">
+                  OURBLAST generates a claim link for that account; they connect Slush on the link to pull the fees.
+                </p>
+              </>
+            ) : null}
+            <p className="mt-2 text-[0.65rem] text-muted-foreground">{describeFeePayout(launch.feePayout)}</p>
+          </div>
         </div>
         <div className="flex flex-wrap gap-2">
           <Button type="button" variant="outline" onClick={onEdit}><Pencil /> {editing ? "Done" : "Edit"}</Button>
