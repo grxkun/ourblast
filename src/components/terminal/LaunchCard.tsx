@@ -3,7 +3,8 @@ import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { CREATOR_FEE_ROUTES, LAUNCHER_SHARE_USES, LAUNCH_FEE_SUI } from "@/lib/terminal/fees";
+import { CREATOR_FEE_ROUTES, GAS_NOTE_TERMINAL, LAUNCHER_SHARE_USES, LAUNCH_FEE_SUI } from "@/lib/terminal/fees";
+import { X_BOT_HANDLE } from "@/lib/terminal/x-bot";
 import { LAUNCHPADS, resolveLaunchpad } from "@/lib/terminal/launchpad";
 import { normalizeLaunchConfig } from "@/lib/terminal/launchSettings";
 import type { LaunchConfiguration } from "@/lib/terminal/types";
@@ -137,6 +138,7 @@ export function LaunchCard({ launch, editing, onEdit, onChange, onLaunch, onGene
             ))}
           </ul>
           <p className="mt-2 text-[0.65rem] text-muted-foreground">Of the creator fee the launchpad pays on trading volume. Your 70%: {LAUNCHER_SHARE_USES}.</p>
+          <p className="mt-1 text-[0.65rem] text-muted-foreground">{GAS_NOTE_TERMINAL} Launch calls from {X_BOT_HANDLE} on X are gas-sponsored from the bot reserve.</p>
         </div>
         <div className="flex flex-wrap gap-2">
           <Button type="button" variant="outline" onClick={onEdit}><Pencil /> {editing ? "Done" : "Edit"}</Button>
