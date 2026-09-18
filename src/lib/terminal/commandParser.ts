@@ -42,8 +42,30 @@ const numberFrom = (value: string): number | null => {
   return Number(match[1]) * scale;
 };
 
+/**
+ * "... fee to @alice" / "... fees to 0xabc…" — read before mentions are stripped,
+ * otherwise the destination handle would be removed as a normal @mention.
+ */
+const FEE_DESTINATION = /\b(?:creator\s+)?fees?\s*(?:go(?:es)?\s+)?(?:payout\s+)?to\s+(?:@([a-z0-9_]{1,15})|(0x[a-f0-9]{6,66}))/i;
+
 export function parseTerminalCommand(rawInput: string): ParsedIntent {
-  const raw = normalizeCommandText(rawInput);
+  let source = rawInput;
+  let feeMode: string | null = null;
+  let feeWallet: string | null = null;
+  let feeX: string | null = null;
+  const feeMatch = source.match(FEE_DESTINATION);
+  if (feeMatch) {
+    if (feeMatch[1]) {
+      feeMode = "x";
+      feeX = feeMatch[1];
+    } else if (feeMatch[2]) {
+      feeMode = "wallet";
+      feeWallet = feeMatch[2];
+    }
+    source = (source.slice(0, feeMatch.index) + source.slice((feeMatch.index ?? 0) + feeMatch[0].length)).trim();
+  }
+
+  const raw = normalizeCommandText(source);
   let body = raw;
 
   // Optional "... paired with USDC" / "... pair $BLAST" / "... lp usdc" custom LP pairing.
