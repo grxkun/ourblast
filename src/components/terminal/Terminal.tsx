@@ -134,6 +134,10 @@ export function Terminal({ tryCommand }: { tryCommand?: { command: string; nonce
     if (devBuy && Number(devBuy) > 0) parts.push(`dev buy ${devBuy}`);
     const supply = params.get("supply");
     if (supply) parts.push(`supply ${supply}`);
+    const feeWallet = params.get("feewallet");
+    const feeX = params.get("feex");
+    if (feeWallet) parts.push(`fee to ${feeWallet}`);
+    else if (feeX) parts.push(`fee to @${feeX.replace(/^@/, "")}`);
     setDraft(parts.join(" "));
   }, []);
 
