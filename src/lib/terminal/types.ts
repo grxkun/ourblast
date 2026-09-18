@@ -30,7 +30,8 @@ export interface LaunchConfiguration {
   image: string | null;
   imageName?: string;
   network: "sui";
-  launchpad: "blast.fun";
+  /** Launch platform id/label, e.g. "suipump.org". Configured in ./launchpad.ts. */
+  launchpad: string;
 }
 
 export interface ParsedIntent {
@@ -67,7 +68,7 @@ export interface DeploymentResult {
   name: string;
   symbol: string;
   network: "sui";
-  launchpad: "blast.fun";
+  launchpad: string;
   tokenAddress: string;
   factoryAddress: string;
   transactionDigest: string;

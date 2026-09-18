@@ -1,14 +1,8 @@
+import { LAUNCHPAD, type LaunchpadConfig } from "./launchpad";
 import type { LaunchConfiguration, TerminalToolResult } from "./types";
 
-export interface BlastFunConfig {
-  network: "sui";
-  factoryPackage: string | null;
-  factoryObject: string | null;
-  version: string | null;
-}
-
-export interface BlastFunAdapter {
-  getFactory(): Promise<BlastFunConfig>;
+export interface LaunchpadAdapter {
+  getFactory(): Promise<LaunchpadConfig>;
   createToken(config: LaunchConfiguration): Promise<TerminalToolResult>;
   launchToken(config: LaunchConfiguration): Promise<TerminalToolResult>;
   getBondingCurve(symbol: string): Promise<TerminalToolResult>;
@@ -16,29 +10,22 @@ export interface BlastFunAdapter {
   getMigrationStatus(symbol: string): Promise<TerminalToolResult>;
 }
 
-export const blastFunConfig: BlastFunConfig = {
-  network: "sui",
-  factoryPackage: null,
-  factoryObject: null,
-  version: null,
-};
-
 const unavailable = (tool: TerminalToolResult["tool"], message: string): TerminalToolResult => ({
   tool,
   status: "NOT_IMPLEMENTED",
   message,
-  data: { network: blastFunConfig.network, factoryConfigured: false },
+  data: { network: LAUNCHPAD.network, launchpad: LAUNCHPAD.label, factoryConfigured: false },
 });
 
-export const blastFunAdapter: BlastFunAdapter = {
+export const launchpadAdapter: LaunchpadAdapter = {
   async getFactory() {
-    return blastFunConfig;
+    return LAUNCHPAD;
   },
   async createToken(config) {
-    return unavailable("createToken", `${config.name} is configured, but Blast.fun token creation is not connected yet.`);
+    return unavailable("createToken", `${config.name} is configured, but ${LAUNCHPAD.label} token creation is not connected yet.`);
   },
   async launchToken(config) {
-    return unavailable("launchToken", `${config.name} is ready for review. Blast.fun deployment is not connected yet.`);
+    return unavailable("launchToken", `${config.name} is ready for review. ${LAUNCHPAD.label} deployment is not connected yet.`);
   },
   async getBondingCurve(symbol) {
     return unavailable("getBondingCurve", `$${symbol || "TOKEN"} bonding-curve data is coming soon / not connected.`);

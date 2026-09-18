@@ -19,3 +19,11 @@ export const simulateXMention = createServerFn({ method: "POST" })
       "simulation",
     );
   });
+
+/** Whether the bot can actually post replies (all four X credentials saved). */
+export const getXBotStatus = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async () => {
+    const { xBotIsLive } = await import("./x-bot.server");
+    return { live: xBotIsLive() };
+  });

@@ -1,11 +1,15 @@
 import { runTerminalAgent } from "./agent";
-import { composeXReply, X_BOT_DRY_RUN, type XMentionOutcome, type XMentionPayload } from "./x-bot";
+import { composeXReply, type XMentionOutcome, type XMentionPayload } from "./x-bot";
+import { postReply, readXCredentials } from "./x-api.server";
+
+/** Live posting only when all four @ourblastbot credentials are saved. */
+export const xBotIsLive = () => readXCredentials() !== null;
 
 /**
  * Single entry point for launch calls arriving from X. Uses the very same parser and
  * tool registry as the web terminal — there is no X-specific command implementation.
  */
-export async function handleXMention(payload: XMentionPayload, source: "webhook" | "simulation"): Promise<XMentionOutcome> {
+export async function handleXMention(payload: XMentionPayload, source: "webhook" | "simulation" | "poll"): Promise<XMentionOutcome> {
   const username = payload.username.replace(/^@/, "").slice(0, 40);
   const text = payload.text.trim().slice(0, 1000);
 
@@ -18,6 +22,18 @@ export async function handleXMention(payload: XMentionPayload, source: "webhook"
   });
 
   const reply = composeXReply(result).slice(0, 600);
+  const credentials = source === "simulation" ? null : readXCredentials();
+
+  let replyPostId: string | null = null;
+  let postError: string | null = null;
+  if (credentials) {
+    try {
+      replyPostId = await postReply(credentials, payload.postId, reply);
+    } catch (error) {
+      postError = error instanceof Error ? error.message.slice(0, 500) : "Reply could not be posted.";
+    }
+  }
+
   const outcome: XMentionOutcome = {
     postId: payload.postId,
     username,
@@ -25,7 +41,9 @@ export async function handleXMention(payload: XMentionPayload, source: "webhook"
     intent: intent.name,
     status: result.status,
     reply,
-    posted: false,
+    posted: Boolean(replyPostId),
+    replyPostId,
+    postError,
   };
 
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
@@ -40,8 +58,11 @@ export async function handleXMention(payload: XMentionPayload, source: "webhook"
         status: outcome.status,
         reply_text: outcome.reply,
         posted: outcome.posted,
+        reply_post_id: replyPostId,
+        post_error: postError,
+        posted_at: replyPostId ? new Date().toISOString() : null,
         source,
-        result: { dryRun: X_BOT_DRY_RUN, launch: result.launch ? { ...result.launch } : null, message: result.message } as unknown as Record<string, never>,
+        result: { live: Boolean(credentials), launch: result.launch ? { ...result.launch } : null, message: result.message } as unknown as Record<string, never>,
       },
       { onConflict: "x_post_id", ignoreDuplicates: true },
     );

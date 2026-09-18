@@ -1,14 +1,9 @@
+import { LAUNCHPAD } from "./launchpad";
 import type { TerminalToolResult } from "./types";
 
 /** The X account that receives launch calls, e.g. "@ourblastbot launch $DOG Sui Dog". */
 export const X_BOT_HANDLE = "@ourblastbot";
 export const X_BOT_SITE = "https://ourblast.xyz";
-
-/**
- * Posting replies needs X app credentials for @ourblastbot. Until those are saved the
- * pipeline runs in dry-run: replies are composed and stored, never posted.
- */
-export const X_BOT_DRY_RUN = true;
 
 export interface XMentionPayload {
   postId: string;
@@ -24,6 +19,8 @@ export interface XMentionOutcome {
   status: string;
   reply: string;
   posted: boolean;
+  replyPostId?: string | null;
+  postError?: string | null;
 }
 
 const terminalLink = (params?: Record<string, string>) => {
@@ -32,12 +29,12 @@ const terminalLink = (params?: Record<string, string>) => {
   return url.toString();
 };
 
-/** Never claims an on-chain launch happened — Blast.fun deployment is not wired up yet. */
+/** Never claims an on-chain launch happened — launchpad deployment is not wired up yet. */
 export function composeXReply(result: TerminalToolResult): string {
   const launch = result.launch;
   if (launch) {
     const link = terminalLink({ symbol: launch.symbol, name: launch.name });
-    return `Okayyyy blasting a new token: $${launch.symbol} ${launch.name} 🚀 Sign it with your Sui wallet here, buy link drops right after: ${link}`;
+    return `Okayyyy blasting a new token on ${LAUNCHPAD.label}: $${launch.symbol} ${launch.name} 🚀 Sign it with your Sui wallet here, buy link drops right after: ${link}`;
   }
 
   switch (result.status) {
