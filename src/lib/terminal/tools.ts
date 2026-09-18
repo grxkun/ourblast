@@ -1,4 +1,4 @@
-import { LAUNCHPAD } from "./launchpad";
+import { LAUNCHPAD, resolveLaunchpad } from "./launchpad";
 import { launchpadAdapter } from "./launchpadAdapter";
 import type { LaunchConfiguration, ParsedIntent, TerminalAgentContext, TerminalIntentName, TerminalToolResult } from "./types";
 
