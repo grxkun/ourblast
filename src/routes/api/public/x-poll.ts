@@ -30,9 +30,19 @@ export const Route = createFileRoute("/api/public/x-poll")({
           .maybeSingle();
 
         let botUserId = state?.bot_user_id ?? null;
-        if (!botUserId) botUserId = (await getBotAccount(credentials)).id;
-
-        const mentions = await listMentions(credentials, botUserId, state?.last_mention_id ?? null);
+        let mentions;
+        try {
+          if (!botUserId) botUserId = (await getBotAccount(credentials)).id;
+          mentions = await listMentions(credentials, botUserId, state?.last_mention_id ?? null);
+        } catch (error) {
+          const message = error instanceof Error ? error.message : "X read failed";
+          // A 402/429 from X is an account-plan or rate issue, not a bug: report it plainly.
+          console.error(`X mention poll failed: ${message}`);
+          return Response.json(
+            { live: true, handled: 0, error: message.slice(0, 500) },
+            { status: 200 },
+          );
+        }
         const { handleXMention } = await import("@/lib/terminal/x-bot.server");
 
         const handled: string[] = [];
