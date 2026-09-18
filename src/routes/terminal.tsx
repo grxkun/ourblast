@@ -32,6 +32,7 @@ export const Route = createFileRoute("/terminal")({
 function TerminalPage() {
   const { profile, ready, connecting, connect } = useBlast();
   const allowed = isTerminalAllowed(profile?.wallet_address);
+  const [tryCommand, setTryCommand] = useState<{ command: string; nonce: number } | undefined>();
 
   return (
     <div className="terminal-page">
