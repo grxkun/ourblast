@@ -48,3 +48,5 @@
 ## Legal pages
 - [x] /terms and /privacy published, linked in the landing footer and listed in the sitemap (for the X app form)
 - [ ] Replace the Telegram-only contact with a real email + operator name if you want one
+- [x] Creator fee payout options: claim yourself (default), send to another Sui wallet, or park for an X account with a one-time OURBLAST claim link (/claim/<token>)
+- [ ] Release parked X-account fees on-chain once the launchpad exposes fee-recipient configuration
