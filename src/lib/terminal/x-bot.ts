@@ -48,17 +48,19 @@ export function composeXReply(result: TerminalToolResult): string {
     const pad = launch.launchpad || LAUNCHPAD.label;
     const pair = launch.pairToken && launch.pairToken !== "SUI" ? ` paired with $${launch.pairToken}` : "";
     const lp = ` LP ${launch.liquidity} $${launch.pairToken}.`;
-    return `Okayyyy blasting a new token on ${pad}${pair}: $${launch.symbol} ${launch.name} 🚀${lp} Sign it with your Sui wallet here, buy link drops right after: ${link}`;
+    const rawNotes = Array.isArray(result.data?.["notes"]) ? (result.data["notes"] as string[]) : [];
+    const note = rawNotes[0] ? ` ${rawNotes[0]}` : "";
+    return fit(`Okayyyy blasting a new token on ${pad}${pair}: $${launch.symbol} ${launch.name} 🚀${lp}${note} Sign it with your Sui wallet here, buy link drops right after: ${link}`);
   }
 
   switch (result.status) {
     case "NOT_CONNECTED":
-      return `Gotcha — connect your Sui wallet first and I'll take it from there: ${terminalLink()}`;
+      return fit(`Gotcha — connect your Sui wallet first and I'll take it from there: ${terminalLink()}`);
     case "NOT_IMPLEMENTED":
-      return `${result.message} Follow along here: ${terminalLink()}`;
+      return fit(`${result.message} Follow along here: ${terminalLink()}`);
     case "FAILED":
-      return `Hmm, I couldn't read that one. Try: "${X_BOT_HANDLE} launch $DOG Sui Dog"`;
+      return fit(`Hmm, I couldn't read that one. Try: "${X_BOT_HANDLE} launch $DOG Sui Dog paired with $USDC"`);
     default:
-      return `${result.message} ${terminalLink()}`;
+      return fit(`${result.message} ${terminalLink()}`);
   }
 }
