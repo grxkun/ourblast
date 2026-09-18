@@ -28,7 +28,7 @@ function sessionHistory(): TerminalEntry[] {
   try { return JSON.parse(sessionStorage.getItem(SESSION_KEY) ?? "[]") as TerminalEntry[]; } catch { return []; }
 }
 
-export function Terminal() {
+export function Terminal({ tryCommand }: { tryCommand?: { command: string; nonce: number } }) {
   const { userId, profile, connect, connecting } = useBlast();
   const queryClient = useQueryClient();
   const [anonymousHistory, setAnonymousHistory] = useState<TerminalEntry[]>(sessionHistory);
