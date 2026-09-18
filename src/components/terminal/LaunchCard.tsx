@@ -54,19 +54,59 @@ export function LaunchCard({ launch, editing, onEdit, onChange, onLaunch, onGene
                 type="button"
                 size="sm"
                 variant={launch.pairToken === token ? "default" : "outline"}
-                onClick={() => onChange({ ...launch, pairToken: token })}
+                onClick={() => apply({ ...launch, pairToken: token })}
               >
                 ${token}
               </Button>
             ))
           ) : (
-            <span className="text-xs text-muted-foreground">{activePad.label} pairs every launch against $SUI.</span>
+            <span className="text-xs text-muted-foreground">{activePad.label} pairs every launch against ${activePad.pairTokens[0] ?? "SUI"}.</span>
           )}
         </div>
+        <div className="grid gap-3 sm:grid-cols-3">
+          <label className="text-xs font-bold uppercase text-muted-foreground">
+            Starting LP (${launch.pairToken})
+            <Input
+              inputMode="decimal"
+              value={String(launch.liquidity)}
+              onChange={(event) => apply({ ...launch, liquidity: Number(event.target.value.replace(/[^0-9.]/g, "")) || 0 })}
+              className="mt-1"
+            />
+            <span className="mt-1 block font-body text-[0.65rem] normal-case text-muted-foreground">{activePad.liquidity.min}–{activePad.liquidity.max}</span>
+          </label>
+          <label className="text-xs font-bold uppercase text-muted-foreground">
+            Dev buy (${launch.pairToken})
+            <Input
+              inputMode="decimal"
+              value={String(launch.devBuy)}
+              onChange={(event) => apply({ ...launch, devBuy: Number(event.target.value.replace(/[^0-9.]/g, "")) || 0 })}
+              className="mt-1"
+            />
+            <span className="mt-1 block font-body text-[0.65rem] normal-case text-muted-foreground">0 = no first buy</span>
+          </label>
+          <label className="text-xs font-bold uppercase text-muted-foreground">
+            Token supply
+            <Input
+              inputMode="numeric"
+              value={String(launch.totalSupply)}
+              onChange={(event) => apply({ ...launch, totalSupply: Number(event.target.value.replace(/[^0-9]/g, "")) || 0 })}
+              className="mt-1"
+            />
+            <span className="mt-1 block font-body text-[0.65rem] normal-case text-muted-foreground">{activePad.supply.min.toLocaleString()}–{activePad.supply.max.toLocaleString()}</span>
+          </label>
+        </div>
+        {notes.length ? (
+          <ul className="space-y-1 border-l-2 border-primary pl-3 text-xs text-muted-foreground">
+            {notes.map((note) => <li key={note}>{note}</li>)}
+          </ul>
+        ) : null}
         <dl className="grid grid-cols-[auto_1fr] gap-x-6 gap-y-2 border-y border-border py-3 text-sm">
           <dt className="text-muted-foreground">Network</dt><dd className="font-bold">Sui</dd>
           <dt className="text-muted-foreground">Launchpad</dt><dd className="font-bold">{launch.launchpad}</dd>
           <dt className="text-muted-foreground">LP pair</dt><dd className="font-bold">${launch.pairToken}</dd>
+          <dt className="text-muted-foreground">Starting LP</dt><dd className="font-bold">{launch.liquidity} ${launch.pairToken}</dd>
+          <dt className="text-muted-foreground">Dev buy</dt><dd className="font-bold">{launch.devBuy > 0 ? `${launch.devBuy} $${launch.pairToken}` : "None"}</dd>
+          <dt className="text-muted-foreground">Supply</dt><dd className="font-bold">{launch.totalSupply.toLocaleString()}</dd>
           <dt className="text-muted-foreground">Image</dt><dd className="font-bold">{launch.imageName ?? "Not provided"}</dd>
         </dl>
         <div className="flex flex-wrap gap-2">
