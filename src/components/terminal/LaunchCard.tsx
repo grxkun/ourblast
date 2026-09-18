@@ -13,6 +13,7 @@ export function LaunchCard({ launch, editing, onEdit, onChange, onLaunch, onGene
   onLaunch: () => void;
   onGenerate: () => void;
 }) {
+  const activePad = resolveLaunchpad(launch.launchpad);
   return (
     <div className="terminal-launch-card">
       <div className="flex items-center justify-between gap-3 border-b border-border px-4 py-3">
