@@ -21,10 +21,12 @@ import { Route as HowToPlayRouteImport } from './routes/how-to-play'
 import { Route as HubRouteImport } from './routes/hub'
 import { Route as LeaderboardRouteImport } from './routes/leaderboard'
 import { Route as MemeRouteImport } from './routes/meme'
+import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as ProfileRouteImport } from './routes/profile'
 import { Route as RoastRouteImport } from './routes/roast'
 import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
 import { Route as TerminalRouteImport } from './routes/terminal'
+import { Route as TermsRouteImport } from './routes/terms'
 import { Route as BuilderUsernameRouteImport } from './routes/builder/$username'
 import { Route as EcosystemProjectSlugRouteImport } from './routes/ecosystem-project.$slug'
 import { Route as ApiPublicXMentionRouteImport } from './routes/api/public/x-mention'
@@ -91,6 +93,11 @@ const MemeRoute = MemeRouteImport.update({
   path: '/meme',
   getParentRoute: () => rootRouteImport,
 } as any)
+const PrivacyRoute = PrivacyRouteImport.update({
+  id: '/privacy',
+  path: '/privacy',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ProfileRoute = ProfileRouteImport.update({
   id: '/profile',
   path: '/profile',
@@ -109,6 +116,11 @@ const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
 const TerminalRoute = TerminalRouteImport.update({
   id: '/terminal',
   path: '/terminal',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TermsRoute = TermsRouteImport.update({
+  id: '/terms',
+  path: '/terms',
   getParentRoute: () => rootRouteImport,
 } as any)
 const BuilderUsernameRoute = BuilderUsernameRouteImport.update({
@@ -150,10 +162,12 @@ export interface FileRoutesByFullPath {
   '/hub': typeof HubRoute
   '/leaderboard': typeof LeaderboardRoute
   '/meme': typeof MemeRoute
+  '/privacy': typeof PrivacyRoute
   '/profile': typeof ProfileRoute
   '/roast': typeof RoastRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/terminal': typeof TerminalRoute
+  '/terms': typeof TermsRoute
   '/builder/$username': typeof BuilderUsernameRoute
   '/ecosystem-project/$slug': typeof EcosystemProjectSlugRoute
   '/api/public/x-mention': typeof ApiPublicXMentionRoute
@@ -173,10 +187,12 @@ export interface FileRoutesByTo {
   '/hub': typeof HubRoute
   '/leaderboard': typeof LeaderboardRoute
   '/meme': typeof MemeRoute
+  '/privacy': typeof PrivacyRoute
   '/profile': typeof ProfileRoute
   '/roast': typeof RoastRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/terminal': typeof TerminalRoute
+  '/terms': typeof TermsRoute
   '/builder/$username': typeof BuilderUsernameRoute
   '/ecosystem-project/$slug': typeof EcosystemProjectSlugRoute
   '/api/public/x-mention': typeof ApiPublicXMentionRoute
@@ -197,10 +213,12 @@ export interface FileRoutesById {
   '/hub': typeof HubRoute
   '/leaderboard': typeof LeaderboardRoute
   '/meme': typeof MemeRoute
+  '/privacy': typeof PrivacyRoute
   '/profile': typeof ProfileRoute
   '/roast': typeof RoastRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/terminal': typeof TerminalRoute
+  '/terms': typeof TermsRoute
   '/builder/$username': typeof BuilderUsernameRoute
   '/ecosystem-project/$slug': typeof EcosystemProjectSlugRoute
   '/api/public/x-mention': typeof ApiPublicXMentionRoute
@@ -222,10 +240,12 @@ export interface FileRouteTypes {
     | '/hub'
     | '/leaderboard'
     | '/meme'
+    | '/privacy'
     | '/profile'
     | '/roast'
     | '/sitemap.xml'
     | '/terminal'
+    | '/terms'
     | '/builder/$username'
     | '/ecosystem-project/$slug'
     | '/api/public/x-mention'
@@ -245,10 +265,12 @@ export interface FileRouteTypes {
     | '/hub'
     | '/leaderboard'
     | '/meme'
+    | '/privacy'
     | '/profile'
     | '/roast'
     | '/sitemap.xml'
     | '/terminal'
+    | '/terms'
     | '/builder/$username'
     | '/ecosystem-project/$slug'
     | '/api/public/x-mention'
@@ -268,10 +290,12 @@ export interface FileRouteTypes {
     | '/hub'
     | '/leaderboard'
     | '/meme'
+    | '/privacy'
     | '/profile'
     | '/roast'
     | '/sitemap.xml'
     | '/terminal'
+    | '/terms'
     | '/builder/$username'
     | '/ecosystem-project/$slug'
     | '/api/public/x-mention'
@@ -292,10 +316,12 @@ export interface RootRouteChildren {
   HubRoute: typeof HubRoute
   LeaderboardRoute: typeof LeaderboardRoute
   MemeRoute: typeof MemeRoute
+  PrivacyRoute: typeof PrivacyRoute
   ProfileRoute: typeof ProfileRoute
   RoastRoute: typeof RoastRoute
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
   TerminalRoute: typeof TerminalRoute
+  TermsRoute: typeof TermsRoute
   BuilderUsernameRoute: typeof BuilderUsernameRoute
   EcosystemProjectSlugRoute: typeof EcosystemProjectSlugRoute
   ApiPublicXMentionRoute: typeof ApiPublicXMentionRoute
@@ -389,6 +415,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof MemeRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/privacy': {
+      id: '/privacy'
+      path: '/privacy'
+      fullPath: '/privacy'
+      preLoaderRoute: typeof PrivacyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/profile': {
       id: '/profile'
       path: '/profile'
@@ -415,6 +448,13 @@ declare module '@tanstack/react-router' {
       path: '/terminal'
       fullPath: '/terminal'
       preLoaderRoute: typeof TerminalRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/terms': {
+      id: '/terms'
+      path: '/terms'
+      fullPath: '/terms'
+      preLoaderRoute: typeof TermsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/builder/$username': {
@@ -468,10 +508,12 @@ const rootRouteChildren: RootRouteChildren = {
   HubRoute: HubRoute,
   LeaderboardRoute: LeaderboardRoute,
   MemeRoute: MemeRoute,
+  PrivacyRoute: PrivacyRoute,
   ProfileRoute: ProfileRoute,
   RoastRoute: RoastRoute,
   SitemapDotxmlRoute: SitemapDotxmlRoute,
   TerminalRoute: TerminalRoute,
+  TermsRoute: TermsRoute,
   BuilderUsernameRoute: BuilderUsernameRoute,
   EcosystemProjectSlugRoute: EcosystemProjectSlugRoute,
   ApiPublicXMentionRoute: ApiPublicXMentionRoute,
