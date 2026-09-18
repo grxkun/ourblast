@@ -1,8 +1,10 @@
 import { ImageIcon, Pencil, Rocket, WandSparkles } from "lucide-react";
+import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { LAUNCHPADS, resolveLaunchpad, resolvePairToken } from "@/lib/terminal/launchpad";
+import { LAUNCHPADS, resolveLaunchpad } from "@/lib/terminal/launchpad";
+import { normalizeLaunchConfig } from "@/lib/terminal/launchSettings";
 import type { LaunchConfiguration } from "@/lib/terminal/types";
 
 export function LaunchCard({ launch, editing, onEdit, onChange, onLaunch, onGenerate }: {
@@ -14,6 +16,17 @@ export function LaunchCard({ launch, editing, onEdit, onChange, onLaunch, onGene
   onGenerate: () => void;
 }) {
   const activePad = resolveLaunchpad(launch.launchpad);
+  const [notes, setNotes] = useState<string[]>([]);
+
+  /** Keeps typing free-form; the pad's real limits are applied when the field loses focus. */
+  const apply = (next: LaunchConfiguration) => {
+    const normalized = normalizeLaunchConfig(next);
+    setNotes(normalized.notes);
+    onChange(normalized.config);
+  };
+  const draft = (next: LaunchConfiguration) => onChange(next);
+  const settle = () => apply(launch);
+
   return (
     <div className="terminal-launch-card">
       <div className="flex items-center justify-between gap-3 border-b border-border px-4 py-3">
