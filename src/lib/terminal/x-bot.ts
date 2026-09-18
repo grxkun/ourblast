@@ -1,11 +1,11 @@
 import type { TerminalToolResult } from "./types";
 
-/** The X account that receives launch calls, e.g. "@ourblast launch $DOG Sui Dog". */
-export const X_BOT_HANDLE = "@ourblast";
+/** The X account that receives launch calls, e.g. "@ourblastbot launch $DOG Sui Dog". */
+export const X_BOT_HANDLE = "@ourblastbot";
 export const X_BOT_SITE = "https://ourblast.xyz";
 
 /**
- * Posting replies needs X app credentials for @ourblast. Until those are saved the
+ * Posting replies needs X app credentials for @ourblastbot. Until those are saved the
  * pipeline runs in dry-run: replies are composed and stored, never posted.
  */
 export const X_BOT_DRY_RUN = true;

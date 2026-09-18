@@ -7,7 +7,7 @@ function intent(name: TerminalIntentName, raw: string, input: ParsedIntent["inpu
 }
 
 export function parseTerminalCommand(rawInput: string): ParsedIntent {
-  const raw = rawInput.trim().replace(/^@ourblast\s+/i, "");
+  const raw = rawInput.trim().replace(/^@ourblast(?:bot)?\s+/i, "");
   const launch = raw.match(/^(?:launch|create(?:\s+token)?)\s+(?:a\s+meme\s+coin\s+called\s+)?(?:\$([a-z0-9]{1,10})\s+)?(?:called\s+)?(.+?)(?:\s+\$([a-z0-9]{1,10}))?$/i);
   if (launch) {
     const name = launch[2]?.replace(/^token\s+/i, "").trim() ?? "";
