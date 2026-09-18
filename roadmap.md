@@ -34,3 +34,7 @@
 - [ ] Save the four @ourblastbot X credentials
 - [x] Launch platform config supports SuiPump and Maelstrom (selectable per launch)
 - [ ] Wire real token creation once SuiPump / Maelstrom API docs are available
+
+## Legal pages
+- [x] /terms and /privacy published, linked in the landing footer and listed in the sitemap (for the X app form)
+- [ ] Replace the Telegram-only contact with a real email + operator name if you want one
