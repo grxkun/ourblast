@@ -7,7 +7,8 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 /** The callback X redirects to. Registered in the X developer app. */
 function callbackUrl() {
   const request = getRequest();
-  const fallback = "https://ourblast.xyz/oauth/x/return";
+  const configured = process.env["X_CALLBACK_URL"];
+  const fallback = configured ?? "https://ourblast.xyz/oauth/x/return";
   if (!request) return fallback;
   const url = new URL(request.url);
   // Keep localhost working for development; everything else uses the public origin.
