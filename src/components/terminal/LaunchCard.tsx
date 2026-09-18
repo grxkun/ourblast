@@ -7,7 +7,7 @@ import { CREATOR_FEE_ROUTES, GAS_NOTE_TERMINAL, LAUNCHER_SHARE_USES, LAUNCH_FEE_
 import { X_BOT_HANDLE } from "@/lib/terminal/x-bot";
 import { LAUNCHPADS, resolveLaunchpad } from "@/lib/terminal/launchpad";
 import { normalizeLaunchConfig } from "@/lib/terminal/launchSettings";
-import { describeFeePayout, normalizeXUsername, type FeePayoutMode } from "@/lib/terminal/feePayout";
+import { describeFeePayout, normalizeXUsername, shortFeePayout, type FeePayoutMode } from "@/lib/terminal/feePayout";
 import type { LaunchConfiguration } from "@/lib/terminal/types";
 
 export function LaunchCard({ launch, editing, onEdit, onChange, onLaunch, onGenerate }: {
@@ -126,6 +126,7 @@ export function LaunchCard({ launch, editing, onEdit, onChange, onLaunch, onGene
           <dt className="text-muted-foreground">Starting LP</dt><dd className="font-bold">{launch.liquidity} ${launch.pairToken}</dd>
           <dt className="text-muted-foreground">Dev buy</dt><dd className="font-bold">{launch.devBuy > 0 ? `${launch.devBuy} $${launch.pairToken}` : "None"}</dd>
           <dt className="text-muted-foreground">Supply</dt><dd className="font-bold">{launch.totalSupply.toLocaleString()}</dd>
+          <dt className="text-muted-foreground">Fee payout</dt><dd className="font-bold">{shortFeePayout(launch.feePayout)}</dd>
           <dt className="text-muted-foreground">Image</dt><dd className="font-bold">{launch.imageName ?? "Not provided"}</dd>
         </dl>
         <div className="border border-border p-3">
