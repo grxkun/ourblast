@@ -40,6 +40,8 @@
 - [x] Custom LP settings (pair token, starting LP, dev buy, supply) parsed from commands/tweets, editable in the launch card, clamped per pad
 - [x] Launch links from X prefill the terminal composer with the parsed launch
 - [x] Fee policy: 0 launch fee; creator fee splits 20% OURBLAST treasury / 10% developer / 70% launcher
+- [x] Gas policy: terminal launchers pay their own Sui gas; X launch calls are sponsored by the @ourblastbot SUI reserve
+- [ ] Fund and wire the @ourblastbot SUI gas reserve (sponsored transactions) once real launches go live
 - [ ] Route the 20/10/70 creator-fee split on-chain once the launchpad exposes fee-recipient configuration
 
 ## Legal pages
