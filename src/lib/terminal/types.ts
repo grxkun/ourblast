@@ -23,6 +23,8 @@ export type TerminalIntentName =
   | "getTransaction"
   | "unknown";
 
+import type { FeePayout } from "./feePayout";
+
 export interface LaunchConfiguration {
   name: string;
   symbol: string;
@@ -40,6 +42,8 @@ export interface LaunchConfiguration {
   devBuy: number;
   /** Token supply minted at launch. */
   totalSupply: number;
+  /** Where the creator's share of the launchpad creator fee is paid. */
+  feePayout: FeePayout;
 }
 
 export interface ParsedIntent {

@@ -1,12 +1,16 @@
-import { ImageIcon, Pencil, Rocket, WandSparkles } from "lucide-react";
+import { ImageIcon, Link2, Pencil, Rocket, WandSparkles } from "lucide-react";
 import { useState } from "react";
+import { useServerFn } from "@tanstack/react-start";
+import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
+import { createFeeClaimLink } from "@/lib/terminal/feePayout.functions";
 import { Input } from "@/components/ui/input";
 import { CREATOR_FEE_ROUTES, GAS_NOTE_TERMINAL, LAUNCHER_SHARE_USES, LAUNCH_FEE_SUI } from "@/lib/terminal/fees";
 import { X_BOT_HANDLE } from "@/lib/terminal/x-bot";
 import { LAUNCHPADS, resolveLaunchpad } from "@/lib/terminal/launchpad";
 import { normalizeLaunchConfig } from "@/lib/terminal/launchSettings";
+import { describeFeePayout, normalizeXUsername, shortFeePayout, type FeePayoutMode } from "@/lib/terminal/feePayout";
 import type { LaunchConfiguration } from "@/lib/terminal/types";
 
 export function LaunchCard({ launch, editing, onEdit, onChange, onLaunch, onGenerate }: {
@@ -28,6 +32,28 @@ export function LaunchCard({ launch, editing, onEdit, onChange, onLaunch, onGene
   };
   const draft = (next: LaunchConfiguration) => onChange(next);
   const settle = () => apply(launch);
+
+  const makeClaimLink = useServerFn(createFeeClaimLink);
+  const [claimLink, setClaimLink] = useState<string | null>(null);
+  const [creatingLink, setCreatingLink] = useState(false);
+
+  const generateClaimLink = async () => {
+    if (!launch.feePayout.xUsername) return;
+    setCreatingLink(true);
+    try {
+      const result = await makeClaimLink({
+        data: { symbol: launch.symbol, xUsername: launch.feePayout.xUsername, amountSui: 0 },
+      });
+      const url = `${window.location.origin}${result.path}`;
+      setClaimLink(url);
+      await navigator.clipboard.writeText(url).catch(() => undefined);
+      toast.success(`Claim link for @${result.xUsername} copied.`);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not create the claim link.");
+    } finally {
+      setCreatingLink(false);
+    }
+  };
 
   return (
     <div className="terminal-launch-card">
@@ -125,6 +151,7 @@ export function LaunchCard({ launch, editing, onEdit, onChange, onLaunch, onGene
           <dt className="text-muted-foreground">Starting LP</dt><dd className="font-bold">{launch.liquidity} ${launch.pairToken}</dd>
           <dt className="text-muted-foreground">Dev buy</dt><dd className="font-bold">{launch.devBuy > 0 ? `${launch.devBuy} $${launch.pairToken}` : "None"}</dd>
           <dt className="text-muted-foreground">Supply</dt><dd className="font-bold">{launch.totalSupply.toLocaleString()}</dd>
+          <dt className="text-muted-foreground">Fee payout</dt><dd className="font-bold">{shortFeePayout(launch.feePayout)}</dd>
           <dt className="text-muted-foreground">Image</dt><dd className="font-bold">{launch.imageName ?? "Not provided"}</dd>
         </dl>
         <div className="border border-border p-3">
@@ -139,6 +166,61 @@ export function LaunchCard({ launch, editing, onEdit, onChange, onLaunch, onGene
           </ul>
           <p className="mt-2 text-[0.65rem] text-muted-foreground">Of the creator fee the launchpad pays on trading volume. Your 70%: {LAUNCHER_SHARE_USES}.</p>
           <p className="mt-1 text-[0.65rem] text-muted-foreground">{GAS_NOTE_TERMINAL} Launch calls from {X_BOT_HANDLE} on X are gas-sponsored from the bot reserve.</p>
+          <div className="mt-3 border-t border-border pt-3">
+            <p className="font-display text-sm uppercase">Who claims your 70%</p>
+            <div className="mt-2 flex flex-wrap gap-2">
+              {([
+                { mode: "creator" as FeePayoutMode, label: "Me (default)" },
+                { mode: "wallet" as FeePayoutMode, label: "Another wallet" },
+                { mode: "x" as FeePayoutMode, label: "An X account" },
+              ]).map((option) => (
+                <Button
+                  key={option.mode}
+                  type="button"
+                  size="sm"
+                  variant={launch.feePayout.mode === option.mode ? "default" : "outline"}
+                  onClick={() => draft({ ...launch, feePayout: { ...launch.feePayout, mode: option.mode } })}
+                >
+                  {option.label}
+                </Button>
+              ))}
+            </div>
+            {launch.feePayout.mode === "wallet" ? (
+              <Input
+                value={launch.feePayout.wallet ?? ""}
+                placeholder="0x… destination Sui wallet"
+                onChange={(event) => draft({ ...launch, feePayout: { ...launch.feePayout, wallet: event.target.value.trim() } })}
+                onBlur={settle}
+                className="mt-2"
+              />
+            ) : null}
+            {launch.feePayout.mode === "x" ? (
+              <>
+                <Input
+                  value={launch.feePayout.xUsername ? `@${launch.feePayout.xUsername}` : ""}
+                  placeholder="@handle"
+                  onChange={(event) => draft({ ...launch, feePayout: { ...launch.feePayout, xUsername: normalizeXUsername(event.target.value) } })}
+                  onBlur={settle}
+                  className="mt-2"
+                />
+                <p className="mt-1 text-[0.65rem] text-muted-foreground">
+                  OURBLAST generates a claim link for that account; they connect Slush on the link to pull the fees.
+                </p>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  className="mt-2"
+                  disabled={!launch.feePayout.xUsername || creatingLink}
+                  onClick={() => void generateClaimLink()}
+                >
+                  <Link2 /> {creatingLink ? "Creating…" : "Create claim link"}
+                </Button>
+                {claimLink ? <p className="mt-1 break-all text-[0.65rem] text-muted-foreground">{claimLink}</p> : null}
+              </>
+            ) : null}
+            <p className="mt-2 text-[0.65rem] text-muted-foreground">{describeFeePayout(launch.feePayout)}</p>
+          </div>
         </div>
         <div className="flex flex-wrap gap-2">
           <Button type="button" variant="outline" onClick={onEdit}><Pencil /> {editing ? "Done" : "Edit"}</Button>

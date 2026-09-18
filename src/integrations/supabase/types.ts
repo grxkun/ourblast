@@ -1002,6 +1002,48 @@ export type Database = {
           },
         ]
       }
+      fee_claim_links: {
+        Row: {
+          amount_sui: number
+          claimed_at: string | null
+          claimed_wallet: string | null
+          created_at: string
+          created_by: string | null
+          id: string
+          launch_symbol: string
+          status: string
+          token: string
+          updated_at: string
+          x_username: string
+        }
+        Insert: {
+          amount_sui?: number
+          claimed_at?: string | null
+          claimed_wallet?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          launch_symbol: string
+          status?: string
+          token: string
+          updated_at?: string
+          x_username: string
+        }
+        Update: {
+          amount_sui?: number
+          claimed_at?: string | null
+          claimed_wallet?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          launch_symbol?: string
+          status?: string
+          token?: string
+          updated_at?: string
+          x_username?: string
+        }
+        Relationships: []
+      }
       game_sessions: {
         Row: {
           clicks: number
@@ -1104,6 +1146,42 @@ export type Database = {
           id?: string
           reference?: string | null
           source?: string
+        }
+        Relationships: []
+      }
+      launch_fee_payouts: {
+        Row: {
+          created_at: string
+          destination_wallet: string | null
+          destination_x_username: string | null
+          id: string
+          launch_symbol: string
+          launchpad: string
+          mode: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          destination_wallet?: string | null
+          destination_x_username?: string | null
+          id?: string
+          launch_symbol: string
+          launchpad: string
+          mode?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          destination_wallet?: string | null
+          destination_x_username?: string | null
+          id?: string
+          launch_symbol?: string
+          launchpad?: string
+          mode?: string
+          updated_at?: string
+          user_id?: string
         }
         Relationships: []
       }

@@ -44,6 +44,8 @@ export function composeXReply(result: TerminalToolResult): string {
       lp: String(launch.liquidity),
       devbuy: String(launch.devBuy),
       supply: String(launch.totalSupply),
+      ...(launch.feePayout.mode === "wallet" && launch.feePayout.wallet ? { feewallet: launch.feePayout.wallet } : {}),
+      ...(launch.feePayout.mode === "x" && launch.feePayout.xUsername ? { feex: launch.feePayout.xUsername } : {}),
     });
     const pad = launch.launchpad || LAUNCHPAD.label;
     const pair = launch.pairToken && launch.pairToken !== "SUI" ? ` paired with $${launch.pairToken}` : "";
