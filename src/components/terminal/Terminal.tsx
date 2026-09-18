@@ -112,6 +112,14 @@ export function Terminal({ tryCommand }: { tryCommand?: { command: string; nonce
 
   const recent = useMemo(() => [...history].reverse().slice(0, 8), [history]);
 
+  const lastTry = useRef(0);
+  useEffect(() => {
+    if (tryCommand && tryCommand.nonce !== lastTry.current) {
+      lastTry.current = tryCommand.nonce;
+      void run(tryCommand.command);
+    }
+  }, [tryCommand, run]);
+
   return (
     <TooltipProvider>
     <div className="terminal-shell">
