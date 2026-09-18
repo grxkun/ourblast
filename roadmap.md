@@ -27,6 +27,8 @@
 - [x] Verify desktop, tablet, and mobile terminal flows without simulated transaction success
 - [x] Lock the Terminal behind a tester allowlist (0x46e5…2b5a)
 
-## X bot (@ourblast)
+## X bot (@ourblastbot)
 - [x] Mention pipeline: shared parser/tools, reply composer, dry-run inbox, secret-verified /api/public/x-mention
-- [ ] Save @ourblast X app credentials, then flip X_BOT_DRY_RUN off and add mention polling + reply posting
+- [x] Rename the bot handle to @ourblastbot (parser accepts both)
+- [ ] Save @ourblastbot X credentials, then flip X_BOT_DRY_RUN off and add mention polling + reply posting
+- [ ] Switch the launch platform to suipump.org once their API docs are available
