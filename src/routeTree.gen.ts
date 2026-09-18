@@ -28,6 +28,7 @@ import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
 import { Route as TerminalRouteImport } from './routes/terminal'
 import { Route as TermsRouteImport } from './routes/terms'
 import { Route as BuilderUsernameRouteImport } from './routes/builder/$username'
+import { Route as ClaimTokenRouteImport } from './routes/claim.$token'
 import { Route as EcosystemProjectSlugRouteImport } from './routes/ecosystem-project.$slug'
 import { Route as ApiPublicXMentionRouteImport } from './routes/api/public/x-mention'
 import { Route as ApiPublicXPollRouteImport } from './routes/api/public/x-poll'
@@ -129,6 +130,11 @@ const BuilderUsernameRoute = BuilderUsernameRouteImport.update({
   path: '/builder/$username',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ClaimTokenRoute = ClaimTokenRouteImport.update({
+  id: '/claim/$token',
+  path: '/claim/$token',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const EcosystemProjectSlugRoute = EcosystemProjectSlugRouteImport.update({
   id: '/ecosystem-project/$slug',
   path: '/ecosystem-project/$slug',
@@ -175,6 +181,7 @@ export interface FileRoutesByFullPath {
   '/terminal': typeof TerminalRoute
   '/terms': typeof TermsRoute
   '/builder/$username': typeof BuilderUsernameRoute
+  '/claim/$token': typeof ClaimTokenRoute
   '/ecosystem-project/$slug': typeof EcosystemProjectSlugRoute
   '/api/public/x-mention': typeof ApiPublicXMentionRoute
   '/api/public/x-poll': typeof ApiPublicXPollRoute
@@ -201,6 +208,7 @@ export interface FileRoutesByTo {
   '/terminal': typeof TerminalRoute
   '/terms': typeof TermsRoute
   '/builder/$username': typeof BuilderUsernameRoute
+  '/claim/$token': typeof ClaimTokenRoute
   '/ecosystem-project/$slug': typeof EcosystemProjectSlugRoute
   '/api/public/x-mention': typeof ApiPublicXMentionRoute
   '/api/public/x-poll': typeof ApiPublicXPollRoute
@@ -228,6 +236,7 @@ export interface FileRoutesById {
   '/terminal': typeof TerminalRoute
   '/terms': typeof TermsRoute
   '/builder/$username': typeof BuilderUsernameRoute
+  '/claim/$token': typeof ClaimTokenRoute
   '/ecosystem-project/$slug': typeof EcosystemProjectSlugRoute
   '/api/public/x-mention': typeof ApiPublicXMentionRoute
   '/api/public/x-poll': typeof ApiPublicXPollRoute
@@ -256,6 +265,7 @@ export interface FileRouteTypes {
     | '/terminal'
     | '/terms'
     | '/builder/$username'
+    | '/claim/$token'
     | '/ecosystem-project/$slug'
     | '/api/public/x-mention'
     | '/api/public/x-poll'
@@ -282,6 +292,7 @@ export interface FileRouteTypes {
     | '/terminal'
     | '/terms'
     | '/builder/$username'
+    | '/claim/$token'
     | '/ecosystem-project/$slug'
     | '/api/public/x-mention'
     | '/api/public/x-poll'
@@ -308,6 +319,7 @@ export interface FileRouteTypes {
     | '/terminal'
     | '/terms'
     | '/builder/$username'
+    | '/claim/$token'
     | '/ecosystem-project/$slug'
     | '/api/public/x-mention'
     | '/api/public/x-poll'
@@ -335,6 +347,7 @@ export interface RootRouteChildren {
   TerminalRoute: typeof TerminalRoute
   TermsRoute: typeof TermsRoute
   BuilderUsernameRoute: typeof BuilderUsernameRoute
+  ClaimTokenRoute: typeof ClaimTokenRoute
   EcosystemProjectSlugRoute: typeof EcosystemProjectSlugRoute
   ApiPublicXMentionRoute: typeof ApiPublicXMentionRoute
   ApiPublicXPollRoute: typeof ApiPublicXPollRoute
@@ -477,6 +490,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof BuilderUsernameRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/claim/$token': {
+      id: '/claim/$token'
+      path: '/claim/$token'
+      fullPath: '/claim/$token'
+      preLoaderRoute: typeof ClaimTokenRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/ecosystem-project/$slug': {
       id: '/ecosystem-project/$slug'
       path: '/ecosystem-project/$slug'
@@ -535,6 +555,7 @@ const rootRouteChildren: RootRouteChildren = {
   TerminalRoute: TerminalRoute,
   TermsRoute: TermsRoute,
   BuilderUsernameRoute: BuilderUsernameRoute,
+  ClaimTokenRoute: ClaimTokenRoute,
   EcosystemProjectSlugRoute: EcosystemProjectSlugRoute,
   ApiPublicXMentionRoute: ApiPublicXMentionRoute,
   ApiPublicXPollRoute: ApiPublicXPollRoute,
