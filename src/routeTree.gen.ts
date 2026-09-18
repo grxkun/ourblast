@@ -28,6 +28,7 @@ import { Route as TerminalRouteImport } from './routes/terminal'
 import { Route as BuilderUsernameRouteImport } from './routes/builder/$username'
 import { Route as EcosystemProjectSlugRouteImport } from './routes/ecosystem-project.$slug'
 import { Route as ApiPublicXMentionRouteImport } from './routes/api/public/x-mention'
+import { Route as ApiPublicXPollRouteImport } from './routes/api/public/x-poll'
 import { Route as OauthGithubReturnRouteImport } from './routes/oauth/github/return'
 
 const IndexRoute = IndexRouteImport.update({
@@ -125,6 +126,11 @@ const ApiPublicXMentionRoute = ApiPublicXMentionRouteImport.update({
   path: '/api/public/x-mention',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicXPollRoute = ApiPublicXPollRouteImport.update({
+  id: '/api/public/x-poll',
+  path: '/api/public/x-poll',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const OauthGithubReturnRoute = OauthGithubReturnRouteImport.update({
   id: '/oauth/github/return',
   path: '/oauth/github/return',
@@ -151,6 +157,7 @@ export interface FileRoutesByFullPath {
   '/builder/$username': typeof BuilderUsernameRoute
   '/ecosystem-project/$slug': typeof EcosystemProjectSlugRoute
   '/api/public/x-mention': typeof ApiPublicXMentionRoute
+  '/api/public/x-poll': typeof ApiPublicXPollRoute
   '/oauth/github/return': typeof OauthGithubReturnRoute
 }
 export interface FileRoutesByTo {
@@ -173,6 +180,7 @@ export interface FileRoutesByTo {
   '/builder/$username': typeof BuilderUsernameRoute
   '/ecosystem-project/$slug': typeof EcosystemProjectSlugRoute
   '/api/public/x-mention': typeof ApiPublicXMentionRoute
+  '/api/public/x-poll': typeof ApiPublicXPollRoute
   '/oauth/github/return': typeof OauthGithubReturnRoute
 }
 export interface FileRoutesById {
@@ -196,6 +204,7 @@ export interface FileRoutesById {
   '/builder/$username': typeof BuilderUsernameRoute
   '/ecosystem-project/$slug': typeof EcosystemProjectSlugRoute
   '/api/public/x-mention': typeof ApiPublicXMentionRoute
+  '/api/public/x-poll': typeof ApiPublicXPollRoute
   '/oauth/github/return': typeof OauthGithubReturnRoute
 }
 export interface FileRouteTypes {
@@ -220,6 +229,7 @@ export interface FileRouteTypes {
     | '/builder/$username'
     | '/ecosystem-project/$slug'
     | '/api/public/x-mention'
+    | '/api/public/x-poll'
     | '/oauth/github/return'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -242,6 +252,7 @@ export interface FileRouteTypes {
     | '/builder/$username'
     | '/ecosystem-project/$slug'
     | '/api/public/x-mention'
+    | '/api/public/x-poll'
     | '/oauth/github/return'
   id:
     | '__root__'
@@ -264,6 +275,7 @@ export interface FileRouteTypes {
     | '/builder/$username'
     | '/ecosystem-project/$slug'
     | '/api/public/x-mention'
+    | '/api/public/x-poll'
     | '/oauth/github/return'
   fileRoutesById: FileRoutesById
 }
@@ -287,6 +299,7 @@ export interface RootRouteChildren {
   BuilderUsernameRoute: typeof BuilderUsernameRoute
   EcosystemProjectSlugRoute: typeof EcosystemProjectSlugRoute
   ApiPublicXMentionRoute: typeof ApiPublicXMentionRoute
+  ApiPublicXPollRoute: typeof ApiPublicXPollRoute
   OauthGithubReturnRoute: typeof OauthGithubReturnRoute
 }
 
@@ -425,6 +438,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicXMentionRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/x-poll': {
+      id: '/api/public/x-poll'
+      path: '/api/public/x-poll'
+      fullPath: '/api/public/x-poll'
+      preLoaderRoute: typeof ApiPublicXPollRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/oauth/github/return': {
       id: '/oauth/github/return'
       path: '/oauth/github/return'
@@ -455,6 +475,7 @@ const rootRouteChildren: RootRouteChildren = {
   BuilderUsernameRoute: BuilderUsernameRoute,
   EcosystemProjectSlugRoute: EcosystemProjectSlugRoute,
   ApiPublicXMentionRoute: ApiPublicXMentionRoute,
+  ApiPublicXPollRoute: ApiPublicXPollRoute,
   OauthGithubReturnRoute: OauthGithubReturnRoute,
 }
 export const routeTree = rootRouteImport

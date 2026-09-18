@@ -12,11 +12,11 @@ export const Route = createFileRoute("/api/public/x-poll")({
         if (!secret) return new Response("Poller not configured", { status: 503 });
 
         const provided = (request.headers.get("authorization") ?? "").replace(/^Bearer\s+/i, "");
-        const expected = new TextEncoder().encode(secret);
-        const actual = new TextEncoder().encode(provided);
-        if (actual.length !== expected.length || !crypto.subtle.timingSafeEqual?.(actual, expected)) {
-          if (provided !== secret) return new Response("Unauthorized", { status: 401 });
+        let mismatch = provided.length === secret.length ? 0 : 1;
+        for (let index = 0; index < Math.max(provided.length, secret.length); index += 1) {
+          mismatch |= (provided.charCodeAt(index) || 0) ^ (secret.charCodeAt(index) || 0);
         }
+        if (mismatch !== 0) return new Response("Unauthorized", { status: 401 });
 
         const { readXCredentials, getBotAccount, listMentions } = await import("@/lib/terminal/x-api.server");
         const credentials = readXCredentials();
