@@ -29,6 +29,20 @@ export function LaunchCard({ launch, editing, onEdit, onChange, onLaunch, onGene
         ) : (
           <div><h3 className="font-display text-3xl normal-case">{launch.name}</h3><p className="font-display text-xl text-primary">${launch.symbol}</p></div>
         )}
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-xs font-bold uppercase text-muted-foreground">Launch pad</span>
+          {LAUNCHPADS.map((pad) => (
+            <Button
+              key={pad.id}
+              type="button"
+              size="sm"
+              variant={launch.launchpad === pad.label ? "default" : "outline"}
+              onClick={() => onChange({ ...launch, launchpad: pad.label })}
+            >
+              {pad.label}
+            </Button>
+          ))}
+        </div>
         <dl className="grid grid-cols-[auto_1fr] gap-x-6 gap-y-2 border-y border-border py-3 text-sm">
           <dt className="text-muted-foreground">Network</dt><dd className="font-bold">Sui</dd>
           <dt className="text-muted-foreground">Launchpad</dt><dd className="font-bold">{launch.launchpad}</dd>
