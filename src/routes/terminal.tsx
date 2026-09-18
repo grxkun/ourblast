@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { Lock, ShieldCheck } from "lucide-react";
+import { ShieldCheck } from "lucide-react";
 import { useState } from "react";
 
 import { Terminal } from "@/components/terminal/Terminal";
@@ -8,9 +8,6 @@ import { XMentionInbox } from "@/components/terminal/XMentionInbox";
 import { XConnectButton } from "@/components/terminal/XConnectButton";
 import { WalletButton } from "@/components/blast/WalletButton";
 import { useBlast } from "@/components/blast/session";
-import { isTerminalAllowed } from "@/lib/terminal/allowlist";
-import { Button } from "@/components/ui/button";
-import { toast } from "sonner";
 
 export const Route = createFileRoute("/terminal")({
   head: () => ({
@@ -21,7 +18,7 @@ export const Route = createFileRoute("/terminal")({
         content: "A conversational Sui terminal for token launches, wallet actions, Blast.fun tools, and on-chain discovery.",
       },
       { property: "og:title", content: "OURBLAST Terminal — Sui Agent Interface" },
-      { property: "og:description", content: "Parse natural-language Sui and Blast.fun actions through a secure allowlisted terminal." },
+      { property: "og:description", content: "Parse natural-language Sui and Blast.fun actions through a secure conversational terminal." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
     ],
@@ -30,8 +27,6 @@ export const Route = createFileRoute("/terminal")({
 });
 
 function TerminalPage() {
-  const { profile, ready, connecting, connect } = useBlast();
-  const allowed = isTerminalAllowed(profile?.wallet_address);
   const [tryCommand, setTryCommand] = useState<{ command: string; nonce: number } | undefined>();
 
   return (
@@ -47,43 +42,13 @@ function TerminalPage() {
           <WalletButton />
         </div>
       </div>
-      {allowed ? (
-        <>
-          <div className="mb-4">
-            <TerminalTutorial onTry={(command) => setTryCommand({ command, nonce: Date.now() })} />
-          </div>
-          <Terminal tryCommand={tryCommand} />
-          <div className="mt-6">
-            <XMentionInbox />
-          </div>
-        </>
-      ) : (
-        <TerminalLocked connected={Boolean(profile)} ready={ready} connecting={connecting} onConnect={() => void connect()} />
-      )}
-    </div>
-  );
-}
-
-function TerminalLocked({ connected, ready, connecting, onConnect }: { connected: boolean; ready: boolean; connecting: boolean; onConnect: () => void }) {
-  return (
-    <div className="mx-auto mt-10 max-w-xl border-2 border-border bg-card p-8 text-center">
-      <span className="mx-auto flex size-12 items-center justify-center rounded-full bg-secondary text-secondary-foreground"><Lock className="size-6" /></span>
-      <h2 className="mt-4 font-display text-2xl">Private testing</h2>
-      {connected ? (
-        <p className="mt-3 text-sm text-muted-foreground">
-          This wallet is not on the tester list yet. The terminal is open to a small group of testers while we wire up
-          real Blast.fun launches.
-        </p>
-      ) : (
-        <>
-          <p className="mt-3 text-sm text-muted-foreground">
-            Connect your Sui wallet to check access. Only testers can open the terminal right now.
-          </p>
-          <Button type="button" className="mt-5" onClick={onConnect} disabled={connecting || !ready}>
-            {connecting ? "Connecting…" : "Connect Sui Wallet"}
-          </Button>
-        </>
-      )}
+      <div className="mb-4">
+        <TerminalTutorial onTry={(command) => setTryCommand({ command, nonce: Date.now() })} />
+      </div>
+      <Terminal tryCommand={tryCommand} />
+      <div className="mt-6">
+        <XMentionInbox />
+      </div>
     </div>
   );
 }
