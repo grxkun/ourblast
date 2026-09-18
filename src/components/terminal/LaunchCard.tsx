@@ -3,6 +3,7 @@ import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { CREATOR_FEE_ROUTES, LAUNCHER_SHARE_USES, LAUNCH_FEE_SUI } from "@/lib/terminal/fees";
 import { LAUNCHPADS, resolveLaunchpad } from "@/lib/terminal/launchpad";
 import { normalizeLaunchConfig } from "@/lib/terminal/launchSettings";
 import type { LaunchConfiguration } from "@/lib/terminal/types";
@@ -125,6 +126,18 @@ export function LaunchCard({ launch, editing, onEdit, onChange, onLaunch, onGene
           <dt className="text-muted-foreground">Supply</dt><dd className="font-bold">{launch.totalSupply.toLocaleString()}</dd>
           <dt className="text-muted-foreground">Image</dt><dd className="font-bold">{launch.imageName ?? "Not provided"}</dd>
         </dl>
+        <div className="border border-border p-3">
+          <p className="font-display text-sm uppercase">Fees · {LAUNCH_FEE_SUI === 0 ? "0 launch fee" : `${LAUNCH_FEE_SUI} SUI launch fee`}</p>
+          <ul className="mt-2 space-y-1 text-xs text-muted-foreground">
+            {CREATOR_FEE_ROUTES.map((route) => (
+              <li key={route.label} className="flex items-center justify-between gap-3">
+                <span>{route.label}</span>
+                <span className="font-bold text-foreground">{Math.round(route.share * 100)}%</span>
+              </li>
+            ))}
+          </ul>
+          <p className="mt-2 text-[0.65rem] text-muted-foreground">Of the creator fee the launchpad pays on trading volume. Your 70%: {LAUNCHER_SHARE_USES}.</p>
+        </div>
         <div className="flex flex-wrap gap-2">
           <Button type="button" variant="outline" onClick={onEdit}><Pencil /> {editing ? "Done" : "Edit"}</Button>
           <Button type="button" variant="outline" onClick={onGenerate}><WandSparkles /> Generate image</Button>
