@@ -53,6 +53,7 @@ const launchTool: TerminalTool = async (intent, context) => {
         : "Launch configuration prepared. Connect your Sui wallet before launching.") +
       summary +
       (notes.length ? ` ${notes.join(" ")}` : ""),
+    data: { notes },
     launch,
   };
 };

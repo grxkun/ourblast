@@ -29,6 +29,9 @@ const terminalLink = (params?: Record<string, string>) => {
   return url.toString();
 };
 
+/** X hard-limits a post to 280 characters. */
+const fit = (text: string) => (text.length <= 280 ? text : `${text.slice(0, 277).trimEnd()}…`);
+
 /** Never claims an on-chain launch happened — launchpad deployment is not wired up yet. */
 export function composeXReply(result: TerminalToolResult): string {
   const launch = result.launch;
