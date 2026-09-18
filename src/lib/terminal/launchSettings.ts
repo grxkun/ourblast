@@ -63,6 +63,7 @@ export function normalizeLaunchSettings(pad: LaunchpadConfig, input: LaunchSetti
 export function normalizeLaunchConfig(config: LaunchConfiguration): { config: LaunchConfiguration; notes: string[] } {
   const pad = resolveLaunchpad(config.launchpad);
   const settings = normalizeLaunchSettings(pad, config);
+  const payout = normalizeFeePayout(config.feePayout);
   return {
     config: {
       ...config,
@@ -71,12 +72,13 @@ export function normalizeLaunchConfig(config: LaunchConfiguration): { config: La
       liquidity: settings.liquidity,
       devBuy: settings.devBuy,
       totalSupply: settings.totalSupply,
+      feePayout: payout.payout,
     },
-    notes: settings.notes,
+    notes: [...settings.notes, ...payout.notes],
   };
 }
 
 export function describeLaunchSettings(config: LaunchConfiguration): string {
   const dev = config.devBuy > 0 ? `, dev buy ${config.devBuy} $${config.pairToken}` : "";
-  return `LP ${config.liquidity} $${config.pairToken}${dev}, supply ${config.totalSupply.toLocaleString()}`;
+  return `LP ${config.liquidity} $${config.pairToken}${dev}, supply ${config.totalSupply.toLocaleString()}. ${describeFeePayout(config.feePayout)}`;
 }

@@ -1,6 +1,7 @@
 import { LAUNCHPAD, resolveLaunchpad } from "./launchpad";
 import { FEE_SUMMARY, describeGasPolicy, gasPayerFor } from "./fees";
 import { describeLaunchSettings, normalizeLaunchSettings } from "./launchSettings";
+import { normalizeFeePayout, type FeePayoutMode } from "./feePayout";
 import { launchpadAdapter } from "./launchpadAdapter";
 import type { LaunchConfiguration, ParsedIntent, TerminalAgentContext, TerminalIntentName, TerminalToolResult } from "./types";
 
@@ -23,6 +24,11 @@ export function launchFromIntent(intent: ParsedIntent): { launch: LaunchConfigur
     devBuy: numberInput(intent.input["devBuy"]),
     totalSupply: numberInput(intent.input["totalSupply"]),
   });
+  const payout = normalizeFeePayout({
+    mode: (intent.input["feeMode"] as FeePayoutMode | undefined) ?? "creator",
+    wallet: typeof intent.input["feeWallet"] === "string" ? (intent.input["feeWallet"] as string) : null,
+    xUsername: typeof intent.input["feeX"] === "string" ? (intent.input["feeX"] as string) : null,
+  });
   return {
     launch: {
       name,
@@ -35,8 +41,9 @@ export function launchFromIntent(intent: ParsedIntent): { launch: LaunchConfigur
       liquidity: settings.liquidity,
       devBuy: settings.devBuy,
       totalSupply: settings.totalSupply,
+      feePayout: payout.payout,
     },
-    notes: settings.notes,
+    notes: [...settings.notes, ...payout.notes],
   };
 }
 
