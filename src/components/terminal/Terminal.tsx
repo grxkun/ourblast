@@ -95,7 +95,7 @@ export function Terminal({ tryCommand }: { tryCommand?: { command: string; nonce
     } catch (error) {
       toast.error("Terminal history was not saved", { description: error instanceof Error ? error.message : "Try again." });
     } finally { setProcessing(false); }
-  }, [processing, profile?.wallet_address, saveEntry, userId]);
+  }, [interpret, processing, profile?.wallet_address, saveEntry, userId]);
 
   const handleSubmit = async (message: PromptInputMessage) => {
     const image = message.files.find((file) => file.mediaType?.startsWith("image/"));
