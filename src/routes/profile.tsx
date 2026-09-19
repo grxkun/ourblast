@@ -8,7 +8,7 @@ import { SectionTitle } from "@/components/blast/AppShell";
 import { PlayerAvatar } from "@/components/blast/PlayerBadge";
 import { useBlast } from "@/components/blast/session";
 import { supabase } from "@/integrations/supabase/client";
-import { formatNumber, shortAddress, timeAgo } from "@/lib/blast";
+import { formatNumber, playerAvatarSeed, playerLabel, timeAgo } from "@/lib/blast";
 import { fetchSuiBalance, formatSui } from "@/lib/sui-balance";
 import { amIStaff } from "@/lib/admin.functions";
 

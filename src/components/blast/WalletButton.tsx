@@ -3,7 +3,7 @@ import { Link } from "@tanstack/react-router";
 import { PlayerAvatar } from "@/components/blast/PlayerBadge";
 import { useBlast } from "@/components/blast/session";
 import { Button } from "@/components/ui/button";
-import { formatNumber, shortAddress } from "@/lib/blast";
+import { formatNumber, playerAvatarSeed, playerLabel } from "@/lib/blast";
 import { cn } from "@/lib/utils";
 
 export function WalletButton({ className }: { className?: string }) {
@@ -16,10 +16,10 @@ export function WalletButton({ className }: { className?: string }) {
           to="/profile"
           className="panel flex items-center gap-3 px-3 py-2 transition-transform hover:-translate-y-0.5"
         >
-          <PlayerAvatar address={profile.wallet_address} size={32} />
+          <PlayerAvatar address={playerAvatarSeed(profile)} size={32} />
           <span className="hidden leading-tight sm:block">
             <span className="block font-body text-xs text-muted-foreground">
-              {shortAddress(profile.wallet_address)}
+              {playerLabel(profile)}
             </span>
             <span className="block font-display text-sm text-lime">
               {formatNumber(profile.points)} PTS
@@ -30,8 +30,8 @@ export function WalletButton({ className }: { className?: string }) {
           type="button"
           variant="outline"
           onClick={() => void disconnect()}
-          title="Disconnect wallet"
-          aria-label="Disconnect wallet"
+          title="Sign out"
+          aria-label="Sign out"
           className="rounded-full border-2 border-border px-3 py-1.5 font-body text-xs uppercase"
         >
           Disconnect
