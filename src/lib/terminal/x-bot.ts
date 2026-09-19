@@ -65,7 +65,7 @@ export function composeXReply(result: TerminalToolResult): string {
     case "NOT_IMPLEMENTED":
       return fit(`${result.message} Follow along here: ${terminalLink()}`);
     case "FAILED":
-      return fit(`Hmm, I couldn't read that one. Try: "${X_BOT_HANDLE} launch $DOG Sui Dog paired with $USDC"`);
+      return fit(`Hmm, I couldn't read that one. Try: "${X_BOT_HANDLE} launch $DOG Sui Dog paired with USDC"`);
     default:
       return fit(`${result.message} ${terminalLink()}`);
   }
