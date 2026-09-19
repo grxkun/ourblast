@@ -5,49 +5,18 @@ import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { useBlast } from "@/components/blast/session";
-import {
-  completeXConnect,
-  disconnectXAccount,
-  getXConnectionStatus,
-  startXConnect,
-} from "@/lib/terminal/x-oauth.functions";
+import { disconnectXAccount, getXConnectionStatus, startXConnect } from "@/lib/terminal/x-oauth.functions";
 
-/** Wait for the popup to post the one-time code back to this window. */
-function waitForCode(popup: Window | null) {
-  return new Promise<{ code: string; state: string } | null>((resolve) => {
-    if (!popup) return resolve(null);
-    const cleanup = () => {
-      window.removeEventListener("message", onMessage);
-      window.clearInterval(closedTimer);
-    };
-    const onMessage = (event: MessageEvent) => {
-      if (event.origin !== window.location.origin) return;
-      const data = event.data as { type?: string; code?: string; state?: string };
-      if (data?.type === "xOAuthComplete" && data.code && data.state) {
-        cleanup();
-        resolve({ code: data.code, state: data.state });
-      }
-      if (data?.type === "xOAuthFailed") {
-        cleanup();
-        resolve(null);
-      }
-    };
-    const closedTimer = window.setInterval(() => {
-      if (popup.closed) {
-        cleanup();
-        resolve(null);
-      }
-    }, 500);
-    window.addEventListener("message", onMessage);
-  });
-}
-
+/**
+ * Connect X uses a same-tab redirect (no popup): popup blockers on mobile
+ * silently killed the old flow. X sends the user back to /oauth/x/return,
+ * which completes the exchange and lands them back on /terminal.
+ */
 export function XConnectButton() {
   const { userId } = useBlast();
   const queryClient = useQueryClient();
   const statusFn = useServerFn(getXConnectionStatus);
   const startFn = useServerFn(startXConnect);
-  const completeFn = useServerFn(completeXConnect);
   const disconnectFn = useServerFn(disconnectXAccount);
 
   const status = useQuery({
@@ -59,23 +28,8 @@ export function XConnectButton() {
 
   const connect = useMutation({
     mutationFn: async () => {
-      // Open during the click so the browser does not block the popup.
-      const popup = window.open("about:blank", "x-oauth", "width=600,height=760");
-      try {
-        const { authorizationUrl } = await startFn({});
-        if (popup) popup.location.href = authorizationUrl;
-        else window.location.href = authorizationUrl;
-      } catch (error) {
-        popup?.close();
-        throw error;
-      }
-      const result = await waitForCode(popup);
-      if (!result) throw new Error("X connection was cancelled.");
-      return completeFn({ data: result });
-    },
-    onSuccess: (result) => {
-      toast.success(`Connected 𝕏 @${result.account.username}`);
-      void queryClient.invalidateQueries({ queryKey: ["x-connection", userId] });
+      const { authorizationUrl } = await startFn({});
+      window.location.assign(authorizationUrl);
     },
     onError: (error) => toast.error(error instanceof Error ? error.message : "Could not connect X."),
   });

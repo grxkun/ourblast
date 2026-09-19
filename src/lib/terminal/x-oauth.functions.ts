@@ -15,9 +15,9 @@ function callbackUrl() {
   if (url.hostname === "localhost" || url.hostname === "127.0.0.1") {
     return new URL("/oauth/x/return", url.origin).toString();
   }
-  const forwarded = request.headers.get("x-forwarded-host");
-  const origin = forwarded ? `https://${forwarded}` : url.origin;
-  return new URL("/oauth/x/return", origin).toString();
+  // Always use the registered public callback: X rejects any redirect_uri
+  // that is not listed in the app settings, so the preview origin would fail.
+  return fallback;
 }
 
 export const getXConnectionStatus = createServerFn({ method: "GET" })
