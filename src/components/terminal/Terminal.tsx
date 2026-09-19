@@ -13,6 +13,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { supabase } from "@/integrations/supabase/client";
 import type { Json } from "@/integrations/supabase/types";
 import { runTerminalAgent } from "@/lib/terminal/agent";
+import { interpretCommand } from "@/lib/terminal/nlu.functions";
 import type { LaunchConfiguration, TerminalEntry, TerminalIntentName, TerminalStatus } from "@/lib/terminal/types";
 
 import { CommandSuggestions } from "./CommandSuggestions";
