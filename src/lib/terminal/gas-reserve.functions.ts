@@ -66,6 +66,32 @@ export const createGasReserve = createServerFn({ method: "POST" })
   });
 
 /**
+ * Replaces the reserve with the operator-supplied @ourblastbot wallet. Admin
+ * only; the key never leaves the backend and the caller only sees the address.
+ */
+export const adoptBotGasReserve = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  .handler(async ({ context }: { context: any }) => {
+    const { data: staff } = await context.supabase
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", context.userId);
+    const roles = ((staff ?? []) as { role: string }[]).map((r) => r.role);
+    if (!roles.includes("admin")) throw new Error("Admins only.");
+
+    const { importReserveAccountFromSecret } = await import("./gas-reserve.server");
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const account = importReserveAccountFromSecret();
+    const { error } = await supabaseAdmin.from("gas_reserve").upsert(
+      { id: true, address: account.address, secret_ciphertext: account.secretCiphertext },
+      { onConflict: "id" },
+    );
+    if (error) throw new Error("Could not set the @ourblastbot gas wallet.");
+    return statusFor(await loadReserve());
+  });
+
+/**
  * Records a top-up that has been skimmed from a creator fee claim. The transfer
  * itself happens on-chain; this keeps the running total the UI shows honest.
  */

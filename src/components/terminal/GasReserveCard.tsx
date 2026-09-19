@@ -5,7 +5,7 @@ import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { useBlast } from "@/components/blast/session";
-import { createGasReserve, getGasReserveStatus } from "@/lib/terminal/gas-reserve.functions";
+import { adoptBotGasReserve, createGasReserve, getGasReserveStatus } from "@/lib/terminal/gas-reserve.functions";
 import { GAS_RESERVE_INITIAL_SUI, GAS_RESERVE_TOPUP_SUI } from "@/lib/terminal/gas-reserve";
 import { formatSui } from "@/lib/sui-balance";
 import { X_BOT_HANDLE } from "@/lib/terminal/x-bot";
@@ -31,6 +31,16 @@ export function GasReserveCard() {
     onError: (error: Error) => toast.error(error.message || "Could not create the gas reserve."),
   });
 
+  const adoptFn = useServerFn(adoptBotGasReserve);
+  const adopt = useMutation({
+    mutationFn: () => adoptFn({}),
+    onSuccess: () => {
+      toast.success("The @ourblastbot wallet is now the gas source.");
+      void queryClient.invalidateQueries({ queryKey: ["gas-reserve"] });
+    },
+    onError: (error: Error) => toast.error(error.message || "Could not set the @ourblastbot wallet."),
+  });
+
   const data = status.data;
 
   return (
@@ -45,8 +55,8 @@ export function GasReserveCard() {
       </header>
 
       <p className="mt-2 text-sm text-muted-foreground">
-        Launch calls from {X_BOT_HANDLE} on X are signed with gas from this reserve. Its key is generated and
-        encrypted on the backend — nobody holds it, so the balance can only be spent sponsoring launches.
+        Launch calls from {X_BOT_HANDLE} on X are signed with gas from this reserve. Its key is stored encrypted on
+        the backend and never reaches the browser, so the balance can only be spent sponsoring launches.
       </p>
 
       {data?.created && data.address ? (
@@ -69,14 +79,31 @@ export function GasReserveCard() {
             Send {GAS_RESERVE_INITIAL_SUI} SUI here to start sponsoring. Every creator-fee claim adds{" "}
             {GAS_RESERVE_TOPUP_SUI} SUI back to it — {formatSui(data.contributedSui)} SUI contributed so far.
           </p>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => adopt.mutate()}
+            disabled={!userId || adopt.isPending}
+          >
+            {adopt.isPending ? "Switching…" : `Use the ${X_BOT_HANDLE} wallet`}
+          </Button>
         </div>
       ) : (
-        <div className="mt-3 space-y-2">
-          <p className="text-xs text-muted-foreground">
-            No reserve yet. An admin creates it once; the address then stays fixed and public.
+        <div className="mt-3 flex flex-wrap gap-2">
+          <p className="w-full text-xs text-muted-foreground">
+            No reserve yet. An admin sets it once; the address then stays fixed and public.
           </p>
-          <Button type="button" onClick={() => create.mutate()} disabled={!userId || create.isPending}>
-            {create.isPending ? "Creating…" : "Create gas reserve"}
+          <Button type="button" onClick={() => adopt.mutate()} disabled={!userId || adopt.isPending}>
+            {adopt.isPending ? "Setting…" : `Use the ${X_BOT_HANDLE} wallet`}
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => create.mutate()}
+            disabled={!userId || create.isPending}
+          >
+            {create.isPending ? "Creating…" : "Generate a new one"}
           </Button>
         </div>
       )}
