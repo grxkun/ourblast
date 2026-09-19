@@ -28,6 +28,7 @@ export function XConnectButton() {
 
   const connect = useMutation({
     mutationFn: async () => {
+      sessionStorage.setItem("ourblast.x.flow", "connect");
       const { authorizationUrl } = await startFn({});
       window.location.assign(authorizationUrl);
     },
@@ -45,7 +46,7 @@ export function XConnectButton() {
 
   if (!userId) {
     return (
-      <Button type="button" variant="outline" onClick={() => toast("Connect your Sui wallet first.")}>
+      <Button type="button" variant="outline" onClick={() => toast("Sign in first, then connect X.")}>
         <AtSign /> Connect X
       </Button>
     );

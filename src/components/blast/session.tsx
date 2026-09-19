@@ -223,6 +223,7 @@ export function BlastProvider({ children }: { children: React.ReactNode }) {
   const loginWithX = useCallback(async () => {
     setConnecting(true);
     try {
+      sessionStorage.setItem("ourblast.x.flow", "login");
       const { authorizationUrl } = await startXLogin();
       window.location.href = authorizationUrl;
     } catch (error) {
