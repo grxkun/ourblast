@@ -49,7 +49,7 @@ export async function interpretFreeText(text: string): Promise<string | null> {
       body: JSON.stringify({
         model: MODEL,
         temperature: 0,
-        max_tokens: 60,
+        max_tokens: 512,
         messages: [
           { role: "system", content: SYSTEM },
           { role: "user", content: clean },
