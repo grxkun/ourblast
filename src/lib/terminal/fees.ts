@@ -34,21 +34,18 @@ export function shareOf(amount: number, share: number): number {
 }
 
 /**
- * Gas policy. OURBLAST never charges a launch fee, but Sui still charges gas for
- * the transaction itself:
- * - terminal launches are signed by the launcher, so they pay their own gas;
- * - launches called in from X are sponsored from the @ourblastbot SUI reserve.
+ * Gas policy. OURBLAST never charges a launch fee, and Sui network gas is
+ * always sponsored from the @ourblastbot wallet — for terminal launches and
+ * for launches called in from X alike.
  */
 export type GasPayer = "launcher" | "bot-reserve";
 
-export function gasPayerFor(source: "terminal" | "x"): GasPayer {
-  return source === "x" ? "bot-reserve" : "launcher";
+export function gasPayerFor(_source: "terminal" | "x"): GasPayer {
+  return "bot-reserve";
 }
 
-export function describeGasPolicy(source: "terminal" | "x"): string {
-  return gasPayerFor(source) === "bot-reserve"
-    ? "Gas is covered by the @ourblastbot SUI reserve."
-    : "Sui network gas is paid from your own wallet when you sign.";
+export function describeGasPolicy(_source: "terminal" | "x"): string {
+  return "Gas is covered by the @ourblastbot wallet.";
 }
 
 export const GAS_NOTE_TERMINAL = describeGasPolicy("terminal");
