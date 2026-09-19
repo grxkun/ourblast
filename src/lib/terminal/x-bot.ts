@@ -1,5 +1,5 @@
-import { LAUNCHPAD } from "./launchpad";
-import type { TerminalToolResult } from "./types";
+import { LAUNCHPAD, resolveLaunchpad, tokenPageUrl } from "./launchpad";
+import type { DeploymentResult, TerminalToolResult } from "./types";
 
 /** The X account that receives launch calls, e.g. "@ourblastbot launch $DOG Sui Dog". */
 export const X_BOT_HANDLE = "@ourblastbot";
@@ -32,8 +32,41 @@ const terminalLink = (params?: Record<string, string>) => {
 /** X hard-limits a post to 280 characters. */
 const fit = (text: string) => (text.length <= 280 ? text : `${text.slice(0, 277).trimEnd()}…`);
 
-/** Never claims an on-chain launch happened — launchpad deployment is not wired up yet. */
+const compact = (value: number) => {
+  if (value >= 1_000_000_000) return `${+(value / 1_000_000_000).toFixed(2)}B`;
+  if (value >= 1_000_000) return `${+(value / 1_000_000).toFixed(2)}M`;
+  if (value >= 1_000) return `${+(value / 1_000).toFixed(2)}K`;
+  return String(value);
+};
+
+/**
+ * Reply for a launch that is confirmed on-chain: deployed token info plus the
+ * pad's public token page. Only ever used with a real deployment record.
+ */
+export function composeDeployedReply(
+  deployment: DeploymentResult,
+  extras: { totalSupply?: number; liquidity?: number; pairToken?: string } = {},
+): string {
+  const pad = resolveLaunchpad(deployment.launchpad);
+  const page = deployment.tradeUrl ?? tokenPageUrl(pad, deployment.tokenAddress);
+  const supply = extras.totalSupply ? ` Supply ${compact(extras.totalSupply)}.` : "";
+  // X allows only one cashtag per post, so the pairing token stays plain text.
+  const lp = extras.liquidity ? ` LP ${extras.liquidity} ${extras.pairToken ?? "SUI"}.` : "";
+  const curve = deployment.launchStatus === "MIGRATED" ? " Curve migrated." : " Bonding curve is LIVE.";
+  const head = `DEPLOYED on ${pad.label}: $${deployment.symbol} ${deployment.name} 🚀${supply}${lp}${curve} 0 launch fee.`;
+  const tail = ` Token page: ${page}`;
+  return fit(head.length + tail.length <= 280 ? head + tail : `DEPLOYED on ${pad.label}: $${deployment.symbol} ${deployment.name} 🚀${curve}${tail}`);
+}
+
+/** Never claims an on-chain launch happened unless a deployment record proves it. */
 export function composeXReply(result: TerminalToolResult): string {
+  const deployment = result.data?.["deployment"] as DeploymentResult | undefined;
+  if (deployment?.tokenAddress && deployment.symbol) {
+    return composeDeployedReply(deployment, {
+      ...(result.launch ? { totalSupply: result.launch.totalSupply, liquidity: result.launch.liquidity, pairToken: result.launch.pairToken } : {}),
+    });
+  }
+
   const launch = result.launch;
   if (launch) {
     const link = terminalLink({
@@ -55,8 +88,13 @@ export function composeXReply(result: TerminalToolResult): string {
     const note = rawNotes[0] ? ` ${rawNotes[0]}` : "";
     const head = `Okayyyy blasting a new token on ${pad}${pair}: $${launch.symbol} ${launch.name} 🚀${lp} 0 launch fee, gas on me.`;
     const tail = ` Sign it with your Sui wallet here, buy link drops right after: ${link}`;
-    // The link must survive; the explanatory note is the first thing dropped.
-    return fit(head.length + note.length + tail.length <= 280 ? head + note + tail : head + tail);
+    const padSite = resolveLaunchpad(launch.launchpad).site.replace(/^https?:\/\//, "");
+    const page = ` Token page lands on ${padSite} the moment it's signed.`;
+    // The link must survive; the note goes first, then the token-page line.
+    for (const candidate of [head + note + page + tail, head + page + tail, head + note + tail, head + tail]) {
+      if (candidate.length <= 280) return candidate;
+    }
+    return fit(head + tail);
   }
 
   switch (result.status) {

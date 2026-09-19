@@ -78,6 +78,14 @@ export function padByLabel(label: string): LaunchpadConfig {
  * Normalises a requested LP pairing against what the pad can do.
  * Pads without custom pairing always fall back to SUI.
  */
+/**
+ * Public token page on the pad, e.g. https://suipump.org/token/0x440c…4945
+ * `ref` is the coin object id / coin type the pad indexes the token under.
+ */
+export function tokenPageUrl(pad: LaunchpadConfig, ref: string): string {
+  return `${pad.site.replace(/\/$/, "")}/token/${ref}`;
+}
+
 export function resolvePairToken(pad: LaunchpadConfig, requested?: string | null): string {
   const fallback = pad.pairTokens[0] ?? "SUI";
   if (!requested) return fallback;
