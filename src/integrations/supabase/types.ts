@@ -1368,9 +1368,12 @@ export type Database = {
       }
       profiles: {
         Row: {
+          auth_provider: string
           avatar_seed: string
+          avatar_url: string | null
           best_score: number
           created_at: string
+          display_name: string | null
           games_played: number
           id: string
           is_banned: boolean
@@ -1378,14 +1381,18 @@ export type Database = {
           muted_until: string | null
           nickname: string | null
           points: number
+          social_id: string | null
           streak: number
           updated_at: string
-          wallet_address: string
+          wallet_address: string | null
         }
         Insert: {
+          auth_provider?: string
           avatar_seed?: string
+          avatar_url?: string | null
           best_score?: number
           created_at?: string
+          display_name?: string | null
           games_played?: number
           id: string
           is_banned?: boolean
@@ -1393,14 +1400,18 @@ export type Database = {
           muted_until?: string | null
           nickname?: string | null
           points?: number
+          social_id?: string | null
           streak?: number
           updated_at?: string
-          wallet_address: string
+          wallet_address?: string | null
         }
         Update: {
+          auth_provider?: string
           avatar_seed?: string
+          avatar_url?: string | null
           best_score?: number
           created_at?: string
+          display_name?: string | null
           games_played?: number
           id?: string
           is_banned?: boolean
@@ -1408,9 +1419,10 @@ export type Database = {
           muted_until?: string | null
           nickname?: string | null
           points?: number
+          social_id?: string | null
           streak?: number
           updated_at?: string
-          wallet_address?: string
+          wallet_address?: string | null
         }
         Relationships: []
       }
@@ -1737,23 +1749,26 @@ export type Database = {
         Row: {
           code_verifier: string
           created_at: string
+          purpose: string
           redirect_uri: string
           state: string
-          user_id: string
+          user_id: string | null
         }
         Insert: {
           code_verifier: string
           created_at?: string
+          purpose?: string
           redirect_uri: string
           state: string
-          user_id: string
+          user_id?: string | null
         }
         Update: {
           code_verifier?: string
           created_at?: string
+          purpose?: string
           redirect_uri?: string
           state?: string
-          user_id?: string
+          user_id?: string | null
         }
         Relationships: []
       }
