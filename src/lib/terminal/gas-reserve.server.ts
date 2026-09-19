@@ -23,3 +23,23 @@ export function createReserveAccount(): { address: string; secretCiphertext: str
     secretCiphertext: encryptConnectionKey(keypair.getSecretKey()),
   };
 }
+
+/**
+ * Adopts the operator-supplied @ourblastbot wallet as the gas reserve. The key
+ * is read from the backend secret store inside this call, encrypted at rest and
+ * never returned to any caller — only the public address leaves the server.
+ */
+export function importReserveAccountFromSecret(): { address: string; secretCiphertext: string } {
+  const raw = process.env['OURBLASTBOT_SUI_SECRET_KEY'];
+  if (!raw) throw new Error("The @ourblastbot wallet key is not configured.");
+  let keypair: Ed25519Keypair;
+  try {
+    keypair = Ed25519Keypair.fromSecretKey(raw.trim());
+  } catch {
+    throw new Error("That @ourblastbot wallet key is not a valid Sui private key.");
+  }
+  return {
+    address: keypair.getPublicKey().toSuiAddress(),
+    secretCiphertext: encryptConnectionKey(keypair.getSecretKey()),
+  };
+}
