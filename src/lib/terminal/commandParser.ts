@@ -33,7 +33,12 @@ export function normalizeCommandText(rawInput: string): string {
   return text;
 }
 
-const LAUNCH_VERB = /^(?:launch|create|deploy|mint|make|start|spin\s+up|ape)\s+(?:a\s+)?(?:new\s+)?(?:(?:meme\s+)?(?:coin|token)\s+)?(?:called\s+|named\s+)?/i;
+const LAUNCH_VERB = /^(?:launch|create|deploy|mint|make|start|spin\s+up|ape)\s+(?:me\s+|us\s+)?(?:a\s+)?(?:new\s+)?(?:(?:meme\s+)?(?:coin|token)\s+)?(?:called\s+|named\s+)?/i;
+
+/** "... ticker TETY" / "symbol: tety" — how people write a symbol without a cashtag. */
+const TICKER = /\b(?:ticker|symbol|sym)\s*(?:is\s+|:\s*|=\s*)?\$?([a-z0-9]{2,10})\b/i;
+/** "... named Tety Yety" / "called Sui Dog" — an explicit token name inside a sentence. */
+const EXPLICIT_NAME = /\b(?:named|called)\s+([a-z0-9][a-z0-9 ]{1,39})/i;
 
 const numberFrom = (value: string): number | null => {
   const match = value.trim().toLowerCase().match(/^([0-9]+(?:\.[0-9]+)?)\s*(k|m|b)?$/);
