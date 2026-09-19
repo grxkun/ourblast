@@ -33,7 +33,12 @@ export function normalizeCommandText(rawInput: string): string {
   return text;
 }
 
-const LAUNCH_VERB = /^(?:launch|create|deploy|mint|make|start|spin\s+up|ape)\s+(?:a\s+)?(?:new\s+)?(?:(?:meme\s+)?(?:coin|token)\s+)?(?:called\s+|named\s+)?/i;
+const LAUNCH_VERB = /^(?:launch|create|deploy|mint|make|start|spin\s+up|ape)\s+(?:me\s+|us\s+)?(?:a\s+)?(?:new\s+)?(?:(?:meme\s+)?(?:coin|token)\s+)?(?:called\s+|named\s+)?/i;
+
+/** "... ticker TETY" / "symbol: tety" — how people write a symbol without a cashtag. */
+const TICKER = /\b(?:ticker|symbol|sym)\s*(?:is\s+|:\s*|=\s*)?\$?([a-z0-9]{2,10})\b/i;
+/** "... named Tety Yety" / "called Sui Dog" — an explicit token name inside a sentence. */
+const EXPLICIT_NAME = /\b(?:named|called)\s+([a-z0-9][a-z0-9 ]{1,39})/i;
 
 const numberFrom = (value: string): number | null => {
   const match = value.trim().toLowerCase().match(/^([0-9]+(?:\.[0-9]+)?)\s*(k|m|b)?$/);
@@ -107,16 +112,26 @@ export function parseTerminalCommand(rawInput: string): ParsedIntent {
 
   if (LAUNCH_VERB.test(body)) {
     const isCreate = /^create/i.test(body);
-    const rest = body.replace(LAUNCH_VERB, "").trim();
+    let rest = body.replace(LAUNCH_VERB, "").trim();
+
+    // Read an explicit ticker/name first, so sentence-shaped requests still parse.
+    const tickerMatch = rest.match(TICKER);
+    const tickerSymbol = cleanSymbol(tickerMatch?.[1]);
+    if (tickerMatch) rest = (rest.slice(0, tickerMatch.index) + rest.slice((tickerMatch.index ?? 0) + tickerMatch[0].length)).replace(/\s+/g, " ").replace(/[\s.,!?;:]+$/g, "").trim();
+
+    const explicitName = rest.match(EXPLICIT_NAME)?.[1]?.replace(/[\s.,!?;:-]+$/g, "").trim() ?? null;
+
     const symbolMatch = rest.match(/\$([a-z0-9]{1,10})/i);
     let name = rest.replace(/\$[a-z0-9]{1,10}/i, " ").replace(/\s+/g, " ").trim();
     name = name.replace(/^(?:called|named)\s+/i, "").replace(/[\s.,!?;:-]+$/g, "").trim();
-    const symbolFromName = name.replace(/[^a-z0-9]/gi, "").toUpperCase().slice(0, 10);
-    const symbol = cleanSymbol(symbolMatch?.[1]) || symbolFromName;
-    if (!name && symbol) name = symbol;
-    if (!symbol) {
-      return intent("unknown", raw, {});
-    }
+    if (explicitName) name = explicitName;
+    const words = name ? name.split(" ") : [];
+    // A leftover sentence ("me a coin for my cat") is not a token name — hand it to the interpreter.
+    const nameIsSentence = words.length > 4 || /\b(?:for|my|the|with|please|coin|token|about|and|something|anything)\b/i.test(name);
+    const symbolFromName = nameIsSentence ? "" : name.replace(/[^a-z0-9]/gi, "").toUpperCase().slice(0, 10);
+    const symbol = cleanSymbol(symbolMatch?.[1]) || tickerSymbol || symbolFromName;
+    if (!symbol) return intent("unknown", raw, {});
+    if (!name || (nameIsSentence && !explicitName)) name = symbol;
     return intent(isCreate ? "createToken" : "launchToken", raw, {
       name,
       symbol,
