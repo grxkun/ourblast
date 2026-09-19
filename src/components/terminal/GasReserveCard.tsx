@@ -5,7 +5,7 @@ import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { useBlast } from "@/components/blast/session";
-import { createGasReserve, getGasReserveStatus } from "@/lib/terminal/gas-reserve.functions";
+import { adoptBotGasReserve, createGasReserve, getGasReserveStatus } from "@/lib/terminal/gas-reserve.functions";
 import { GAS_RESERVE_INITIAL_SUI, GAS_RESERVE_TOPUP_SUI } from "@/lib/terminal/gas-reserve";
 import { formatSui } from "@/lib/sui-balance";
 import { X_BOT_HANDLE } from "@/lib/terminal/x-bot";
@@ -29,6 +29,16 @@ export function GasReserveCard() {
       void queryClient.invalidateQueries({ queryKey: ["gas-reserve"] });
     },
     onError: (error: Error) => toast.error(error.message || "Could not create the gas reserve."),
+  });
+
+  const adoptFn = useServerFn(adoptBotGasReserve);
+  const adopt = useMutation({
+    mutationFn: () => adoptFn({}),
+    onSuccess: () => {
+      toast.success("The @ourblastbot wallet is now the gas source.");
+      void queryClient.invalidateQueries({ queryKey: ["gas-reserve"] });
+    },
+    onError: (error: Error) => toast.error(error.message || "Could not set the @ourblastbot wallet."),
   });
 
   const data = status.data;
