@@ -53,3 +53,8 @@
 - [ ] Replace the Telegram-only contact with a real email + operator name if you want one
 - [x] Creator fee payout options: claim yourself (default), send to another Sui wallet, or park for an X account with a one-time OURBLAST claim link (/claim/<token>)
 - [ ] Release parked X-account fees on-chain once the launchpad exposes fee-recipient configuration
+
+## Social sign-in
+- [x] Continue with Google (managed Cloud auth) and Continue with X (same X app as the bot) on the terminal
+- [x] Profiles work without a wallet address; wallet can be connected later for signing
+- [ ] zkLogin wallet for social players (needs a Mysten Enoki API key)

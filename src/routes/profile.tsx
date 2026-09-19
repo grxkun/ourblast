@@ -8,7 +8,7 @@ import { SectionTitle } from "@/components/blast/AppShell";
 import { PlayerAvatar } from "@/components/blast/PlayerBadge";
 import { useBlast } from "@/components/blast/session";
 import { supabase } from "@/integrations/supabase/client";
-import { formatNumber, shortAddress, timeAgo } from "@/lib/blast";
+import { formatNumber, playerAvatarSeed, playerLabel, timeAgo } from "@/lib/blast";
 import { fetchSuiBalance, formatSui } from "@/lib/sui-balance";
 import { amIStaff } from "@/lib/admin.functions";
 
@@ -51,7 +51,7 @@ function ProfilePage() {
     queryKey: ["sui-balance", profile?.wallet_address],
     enabled: Boolean(profile?.wallet_address),
     refetchInterval: 30_000,
-    queryFn: () => fetchSuiBalance(profile!.wallet_address),
+    queryFn: () => fetchSuiBalance(profile!.wallet_address!),
   });
 
   const achievements = useQuery({
@@ -123,20 +123,22 @@ function ProfilePage() {
   return (
     <div className="space-y-10">
       <section className="panel flex flex-wrap items-center gap-4 p-5 sm:gap-5 sm:p-6">
-        <PlayerAvatar address={profile.wallet_address} size={64} className="glow-blast sm:size-[78px]" />
+        <PlayerAvatar address={playerAvatarSeed(profile)} size={64} className="glow-blast sm:size-[78px]" />
         <div className="min-w-0 flex-1 basis-40">
           <h1 className="font-display text-2xl sm:text-3xl">
-            {profile.nickname?.trim() || shortAddress(profile.wallet_address)}
+            {playerLabel(profile)}
           </h1>
           <p className="mt-0.5 font-body text-[0.7rem] break-all text-muted-foreground sm:text-xs">
-            {profile.wallet_address}
+            {profile.wallet_address ?? `Signed in with ${profile.auth_provider === "x" ? "X" : "Google"} · no wallet connected`}
           </p>
+          {profile.wallet_address ? (
           <p className="mt-2 inline-flex items-center gap-2 rounded-full border border-border px-3 py-1 font-body text-xs">
             <span className="text-muted-foreground">Wallet balance</span>
             <span className="font-display text-sm text-lime">
               {balance.isLoading ? "…" : `${formatSui(balance.data ?? 0)} SUI`}
             </span>
           </p>
+          ) : null}
         </div>
         <div className="flex flex-wrap gap-2">
           {staff.data?.staff ? (
@@ -179,7 +181,7 @@ function ProfilePage() {
           <input
             value={nickname}
             onChange={(e) => setNickname(e.target.value)}
-            placeholder={shortAddress(profile.wallet_address)}
+            placeholder={playerLabel(profile)}
             maxLength={24}
             className="min-w-0 flex-1 rounded-xl border border-input bg-background/60 px-4 py-3 font-body outline-none focus:border-ring"
           />

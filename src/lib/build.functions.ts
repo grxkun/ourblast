@@ -88,7 +88,7 @@ export const startGitHubConnect = createServerFn({ method: "POST" })
       .select("wallet_address")
       .eq("id", context.userId)
       .single();
-    if (error || !profile) throw new Error("Connect your Sui wallet before GitHub.");
+    if (error || !profile?.wallet_address) throw new Error("Connect your Sui wallet before GitHub.");
 
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     await supabaseAdmin.from("builders").upsert({

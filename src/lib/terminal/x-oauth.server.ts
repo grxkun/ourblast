@@ -144,9 +144,10 @@ async function admin() {
 
 export async function saveOAuthState(input: {
   state: string;
-  userId: string;
+  userId: string | null;
   codeVerifier: string;
   redirectUri: string;
+  purpose?: "connect" | "login";
 }) {
   const db = await admin();
   // Drop anything older than 15 minutes so the table stays tiny.
@@ -156,23 +157,37 @@ export async function saveOAuthState(input: {
     user_id: input.userId,
     code_verifier: input.codeVerifier,
     redirect_uri: input.redirectUri,
+    purpose: input.purpose ?? "connect",
   });
   if (error) throw new Error("Could not start the X connection.");
 }
 
-export async function consumeOAuthState(state: string, userId: string) {
+async function takeState(state: string) {
   const db = await admin();
   const { data, error } = await db
     .from("x_oauth_states")
-    .select("state, user_id, code_verifier, redirect_uri, created_at")
+    .select("state, user_id, code_verifier, redirect_uri, purpose, created_at")
     .eq("state", state)
     .maybeSingle();
-  if (error || !data) throw new Error("This X connection link expired. Please connect again.");
+  if (error || !data) throw new Error("This X link expired. Please try again.");
   await db.from("x_oauth_states").delete().eq("state", state);
-  if (data.user_id !== userId) throw new Error("This X connection belongs to another account.");
   if (Date.now() - new Date(data.created_at).getTime() > 15 * 60_000) {
-    throw new Error("This X connection link expired. Please connect again.");
+    throw new Error("This X link expired. Please try again.");
   }
+  return data;
+}
+
+export async function consumeOAuthState(state: string, userId: string) {
+  const data = await takeState(state);
+  if (data.purpose !== "connect") throw new Error("This X link is not a connection link.");
+  if (data.user_id !== userId) throw new Error("This X connection belongs to another account.");
+  return { codeVerifier: data.code_verifier, redirectUri: data.redirect_uri };
+}
+
+/** Sign-in handshake: no app session exists yet, so there is no user to match. */
+export async function consumeLoginState(state: string) {
+  const data = await takeState(state);
+  if (data.purpose !== "login") throw new Error("This X link is not a sign-in link.");
   return { codeVerifier: data.code_verifier, redirectUri: data.redirect_uri };
 }
 
