@@ -32,8 +32,41 @@ const terminalLink = (params?: Record<string, string>) => {
 /** X hard-limits a post to 280 characters. */
 const fit = (text: string) => (text.length <= 280 ? text : `${text.slice(0, 277).trimEnd()}…`);
 
-/** Never claims an on-chain launch happened — launchpad deployment is not wired up yet. */
+const compact = (value: number) => {
+  if (value >= 1_000_000_000) return `${+(value / 1_000_000_000).toFixed(2)}B`;
+  if (value >= 1_000_000) return `${+(value / 1_000_000).toFixed(2)}M`;
+  if (value >= 1_000) return `${+(value / 1_000).toFixed(2)}K`;
+  return String(value);
+};
+
+/**
+ * Reply for a launch that is confirmed on-chain: deployed token info plus the
+ * pad's public token page. Only ever used with a real deployment record.
+ */
+export function composeDeployedReply(
+  deployment: DeploymentResult,
+  extras: { totalSupply?: number; liquidity?: number; pairToken?: string } = {},
+): string {
+  const pad = resolveLaunchpad(deployment.launchpad);
+  const page = deployment.tradeUrl ?? tokenPageUrl(pad, deployment.tokenAddress);
+  const supply = extras.totalSupply ? ` Supply ${compact(extras.totalSupply)}.` : "";
+  // X allows only one cashtag per post, so the pairing token stays plain text.
+  const lp = extras.liquidity ? ` LP ${extras.liquidity} ${extras.pairToken ?? "SUI"}.` : "";
+  const curve = deployment.launchStatus === "MIGRATED" ? " Curve migrated." : " Bonding curve is LIVE.";
+  const head = `DEPLOYED on ${pad.label}: $${deployment.symbol} ${deployment.name} 🚀${supply}${lp}${curve} 0 launch fee.`;
+  const tail = ` Token page: ${page}`;
+  return fit(head.length + tail.length <= 280 ? head + tail : `DEPLOYED on ${pad.label}: $${deployment.symbol} ${deployment.name} 🚀${curve}${tail}`);
+}
+
+/** Never claims an on-chain launch happened unless a deployment record proves it. */
 export function composeXReply(result: TerminalToolResult): string {
+  const deployment = result.data?.["deployment"] as DeploymentResult | undefined;
+  if (deployment?.tokenAddress && deployment.symbol) {
+    return composeDeployedReply(deployment, {
+      ...(result.launch ? { totalSupply: result.launch.totalSupply, liquidity: result.launch.liquidity, pairToken: result.launch.pairToken } : {}),
+    });
+  }
+
   const launch = result.launch;
   if (launch) {
     const link = terminalLink({
