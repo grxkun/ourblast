@@ -31,7 +31,10 @@
 - [x] Mention pipeline: shared parser/tools, reply composer, dry-run inbox, secret-verified /api/public/x-mention
 - [x] Rename the bot handle to @ourblastbot (parser accepts both)
 - [x] Live reply posting (OAuth 1.0a) + mention poller; goes live automatically once the four X secrets are saved
-- [ ] Save the four @ourblastbot X credentials
+- [x] Save the four @ourblastbot X credentials
+- [x] Mentions checked every minute on a schedule; replies keep a single cashtag (X rule)
+- [x] AI understanding fallback for free-form requests (terminal + X), re-parsed through the same allowlist
+- [x] Gas reserve created: 0x4821caf89b14973ce38ae0abb98ee8e38e2280dfb58a61266ff07501ce6414e3 (needs 1 SUI)
 - [x] Launch platform config supports SuiPump and Maelstrom (selectable per launch)
 - [x] X OAuth 2.0 (PKCE) user connect: /oauth/x/return callback, encrypted token storage, Connect X button on the terminal
 - [x] Save X_CLIENT_ID and X_CLIENT_SECRET (callback https://ourblast.xyz/oauth/x/return)
