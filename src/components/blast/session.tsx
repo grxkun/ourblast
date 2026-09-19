@@ -5,6 +5,9 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { loginMessage } from "@/lib/blast";
 import { walletLogin } from "@/lib/auth.functions";
+import { ensureSocialProfile } from "@/lib/social-auth.functions";
+import { startXLogin } from "@/lib/terminal/x-login.functions";
+import { lovable } from "@/integrations/lovable/index";
 import { recoverPayment, verifyPayment } from "@/lib/payments.functions";
 import { payFeeToTreasury } from "@/lib/sui-pay";
 import type { PaymentPurpose } from "@/lib/ourblast.config";
@@ -197,6 +200,49 @@ export function BlastProvider({ children }: { children: React.ReactNode }) {
     [wallets, queryClient],
   );
 
+  /** Google sign-in: no wallet, no extension, works on any phone. */
+  const loginWithGoogle = useCallback(async () => {
+    setConnecting(true);
+    try {
+      const result = await lovable.auth.signInWithOAuth("google", {
+        redirect_uri: `${window.location.origin}/terminal`,
+      });
+      if (result.error) throw new Error("Google sign-in did not complete.");
+      if (result.redirected) return;
+      await queryClient.invalidateQueries();
+      toast.success("Signed in with Google 💥");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Could not sign in with Google.";
+      toast.error("Sign-in failed", { description: message });
+    } finally {
+      setConnecting(false);
+    }
+  }, [queryClient]);
+
+  /** X sign-in: same X app as the bot, full-page redirect (popups get blocked). */
+  const loginWithX = useCallback(async () => {
+    setConnecting(true);
+    try {
+      const { authorizationUrl } = await startXLogin();
+      window.location.href = authorizationUrl;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Could not start X sign-in.";
+      toast.error("Sign-in failed", { description: message });
+      setConnecting(false);
+    }
+  }, []);
+
+  // A social sign-in creates the auth user before the player profile exists.
+  const bootstrapped = useRef<string | null>(null);
+  useEffect(() => {
+    if (!userId || profileQuery.isLoading || profileQuery.data) return;
+    if (bootstrapped.current === userId) return;
+    bootstrapped.current = userId;
+    void ensureSocialProfile({ data: undefined })
+      .then(() => queryClient.invalidateQueries({ queryKey: ["profile", userId] }))
+      .catch(() => undefined);
+  }, [userId, profileQuery.isLoading, profileQuery.data, queryClient]);
+
   /**
    * Fees are paid straight from the user's wallet to the OURBLAST treasury.
    * The digest is then verified server-side; nothing unlocks before that.
@@ -275,6 +321,8 @@ export function BlastProvider({ children }: { children: React.ReactNode }) {
       connecting,
       ready,
       connect,
+      loginWithGoogle,
+      loginWithX,
       disconnect,
       pay,
       recoverEntry,
@@ -289,6 +337,8 @@ export function BlastProvider({ children }: { children: React.ReactNode }) {
       connecting,
       ready,
       connect,
+      loginWithGoogle,
+      loginWithX,
       disconnect,
       pay,
       recoverEntry,
