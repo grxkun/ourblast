@@ -1,4 +1,5 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
 import { Copy, History, ImagePlus, RotateCcw, Trash2, WandSparkles } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
@@ -38,6 +39,7 @@ export function Terminal({ tryCommand }: { tryCommand?: { command: string; nonce
   const [editingId, setEditingId] = useState<string | null>(null);
   const [launchOverrides, setLaunchOverrides] = useState<Record<string, LaunchConfiguration>>({});
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const interpret = useServerFn(interpretCommand);
 
   const cloudHistory = useQuery({
     queryKey: ["terminal-history", userId],
