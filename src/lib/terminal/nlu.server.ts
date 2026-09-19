@@ -26,9 +26,16 @@ tx DIGEST
 
 Rules:
 - Output the command only. No quotes, no explanation, no markdown.
+- The symbol always keeps its $ prefix, and a launch always keeps the token name after it.
 - Invent nothing: if the symbol or the intent is unclear, output NONE.
 - A token name written in words with no ticker becomes a symbol built from that name.
-- Never output anything outside the shapes above.`;
+- Never output anything outside the shapes above.
+
+Examples:
+"yo can u make me a coin for my cat named Tety Yety, ticker TETY, on suipump" -> launch $TETY Tety Yety on suipump
+"deploy sui doggo token, 50 sui lp against usdc, send fees to @alice" -> launch $DOGGO Sui Doggo paired with USDC with 50 liquidity fee to @alice
+"how much is blast worth rn" -> check $BLAST
+"wen moon ser" -> NONE`;
 
 export async function interpretFreeText(text: string): Promise<string | null> {
   const apiKey = process.env["LOVABLE_API_KEY"];
