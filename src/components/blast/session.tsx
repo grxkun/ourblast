@@ -11,7 +11,11 @@ import type { PaymentPurpose } from "@/lib/ourblast.config";
 
 export type Profile = {
   id: string;
-  wallet_address: string;
+  /** Null for players who signed in with Google or X and have no wallet yet. */
+  wallet_address: string | null;
+  auth_provider: "wallet" | "google" | "x";
+  display_name: string | null;
+  avatar_url: string | null;
   nickname: string | null;
   avatar_seed: string;
   points: number;
@@ -37,6 +41,10 @@ type BlastSession = {
   connecting: boolean;
   ready: boolean;
   connect: (walletName?: string) => Promise<void>;
+  /** Sign in with Google (no wallet needed). */
+  loginWithGoogle: () => Promise<void>;
+  /** Sign in with an X account (no wallet needed). */
+  loginWithX: () => Promise<void>;
   disconnect: () => Promise<void>;
   refresh: () => void;
   /** Pays the SUI fee for an activity and returns a server-verified payment id. */
