@@ -127,7 +127,7 @@ export function parseTerminalCommand(rawInput: string): ParsedIntent {
     if (explicitName) name = explicitName;
     const words = name ? name.split(" ") : [];
     // A leftover sentence ("me a coin for my cat") is not a token name — hand it to the interpreter.
-    const nameIsSentence = words.length > 4 || /\b(?:for|my|the|with|please|coin|token|about|and)\b/i.test(name);
+    const nameIsSentence = words.length > 4 || /\b(?:for|my|the|with|please|coin|token|about|and|something|anything)\b/i.test(name);
     const symbolFromName = nameIsSentence ? "" : name.replace(/[^a-z0-9]/gi, "").toUpperCase().slice(0, 10);
     const symbol = cleanSymbol(symbolMatch?.[1]) || tickerSymbol || symbolFromName;
     if (!symbol) return intent("unknown", raw, {});
