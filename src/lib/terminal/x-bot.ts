@@ -88,8 +88,13 @@ export function composeXReply(result: TerminalToolResult): string {
     const note = rawNotes[0] ? ` ${rawNotes[0]}` : "";
     const head = `Okayyyy blasting a new token on ${pad}${pair}: $${launch.symbol} ${launch.name} 🚀${lp} 0 launch fee, gas on me.`;
     const tail = ` Sign it with your Sui wallet here, buy link drops right after: ${link}`;
-    // The link must survive; the explanatory note is the first thing dropped.
-    return fit(head.length + note.length + tail.length <= 280 ? head + note + tail : head + tail);
+    const padSite = resolveLaunchpad(launch.launchpad).site.replace(/^https?:\/\//, "");
+    const page = ` Token page lands on ${padSite} the moment it's signed.`;
+    // The link must survive; the note goes first, then the token-page line.
+    for (const candidate of [head + note + page + tail, head + page + tail, head + note + tail, head + tail]) {
+      if (candidate.length <= 280) return candidate;
+    }
+    return fit(head + tail);
   }
 
   switch (result.status) {
