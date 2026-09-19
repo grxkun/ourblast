@@ -1,4 +1,5 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
 import { Copy, History, ImagePlus, RotateCcw, Trash2, WandSparkles } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
@@ -13,6 +14,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { supabase } from "@/integrations/supabase/client";
 import type { Json } from "@/integrations/supabase/types";
 import { runTerminalAgent } from "@/lib/terminal/agent";
+import { interpretCommand } from "@/lib/terminal/nlu.functions";
 import type { LaunchConfiguration, TerminalEntry, TerminalIntentName, TerminalStatus } from "@/lib/terminal/types";
 
 import { CommandSuggestions } from "./CommandSuggestions";
@@ -37,6 +39,7 @@ export function Terminal({ tryCommand }: { tryCommand?: { command: string; nonce
   const [editingId, setEditingId] = useState<string | null>(null);
   const [launchOverrides, setLaunchOverrides] = useState<Record<string, LaunchConfiguration>>({});
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const interpret = useServerFn(interpretCommand);
 
   const cloudHistory = useQuery({
     queryKey: ["terminal-history", userId],
@@ -75,7 +78,16 @@ export function Terminal({ tryCommand }: { tryCommand?: { command: string; nonce
     if (!clean || processing) return;
     setProcessing(true);
     try {
-      const response = await runTerminalAgent(clean, { walletConnected: Boolean(userId), walletAddress: profile?.wallet_address ?? null, source: "terminal" });
+      const context = { walletConnected: Boolean(userId), walletAddress: profile?.wallet_address ?? null, source: "terminal" as const };
+      let response = await runTerminalAgent(clean, context);
+      // Anything the rules cannot read gets rewritten into a canonical command and re-parsed.
+      if (response.intent.name === "unknown") {
+        const { command: rewritten } = await interpret({ data: { text: clean } });
+        if (rewritten) {
+          const retry = await runTerminalAgent(rewritten, context);
+          if (retry.intent.name !== "unknown") response = { ...retry, command: clean };
+        }
+      }
       if (response.result.launch && image) response.result.launch = { ...response.result.launch, image: image.url, ...(image.filename ? { imageName: image.filename } : {}) };
       const entry: TerminalEntry = { id: makeId(), command: response.command, intent: response.intent.name, result: response.result, createdAt: new Date().toISOString() };
       if (entry.result.launch) setLaunchOverrides((current) => ({ ...current, [entry.id]: entry.result.launch as LaunchConfiguration }));
@@ -83,7 +95,7 @@ export function Terminal({ tryCommand }: { tryCommand?: { command: string; nonce
     } catch (error) {
       toast.error("Terminal history was not saved", { description: error instanceof Error ? error.message : "Try again." });
     } finally { setProcessing(false); }
-  }, [processing, profile?.wallet_address, saveEntry, userId]);
+  }, [interpret, processing, profile?.wallet_address, saveEntry, userId]);
 
   const handleSubmit = async (message: PromptInputMessage) => {
     const image = message.files.find((file) => file.mediaType?.startsWith("image/"));

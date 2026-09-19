@@ -48,8 +48,9 @@ export function composeXReply(result: TerminalToolResult): string {
       ...(launch.feePayout.mode === "x" && launch.feePayout.xUsername ? { feex: launch.feePayout.xUsername } : {}),
     });
     const pad = launch.launchpad || LAUNCHPAD.label;
-    const pair = launch.pairToken && launch.pairToken !== "SUI" ? ` paired with $${launch.pairToken}` : "";
-    const lp = ` LP ${launch.liquidity} $${launch.pairToken}.`;
+    // X rejects a post carrying more than one cashtag, so only the launched token keeps its $.
+    const pair = launch.pairToken && launch.pairToken !== "SUI" ? ` paired with ${launch.pairToken}` : "";
+    const lp = ` LP ${launch.liquidity} ${launch.pairToken}.`;
     const rawNotes = Array.isArray(result.data?.["notes"]) ? (result.data["notes"] as string[]) : [];
     const note = rawNotes[0] ? ` ${rawNotes[0]}` : "";
     const head = `Okayyyy blasting a new token on ${pad}${pair}: $${launch.symbol} ${launch.name} 🚀${lp} 0 launch fee, gas on me.`;
@@ -64,7 +65,7 @@ export function composeXReply(result: TerminalToolResult): string {
     case "NOT_IMPLEMENTED":
       return fit(`${result.message} Follow along here: ${terminalLink()}`);
     case "FAILED":
-      return fit(`Hmm, I couldn't read that one. Try: "${X_BOT_HANDLE} launch $DOG Sui Dog paired with $USDC"`);
+      return fit(`Hmm, I couldn't read that one. Try: "${X_BOT_HANDLE} launch $DOG Sui Dog paired with USDC"`);
     default:
       return fit(`${result.message} ${terminalLink()}`);
   }

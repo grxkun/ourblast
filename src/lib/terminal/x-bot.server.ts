@@ -13,13 +13,26 @@ export async function handleXMention(payload: XMentionPayload, source: "webhook"
   const username = payload.username.replace(/^@/, "").slice(0, 40);
   const text = payload.text.trim().slice(0, 1000);
 
-  const { intent, result } = await runTerminalAgent(text, {
+  const context = {
     // X mentions carry no wallet authorisation: signing always happens in the terminal.
     walletConnected: false,
     walletAddress: null,
-    source: "x",
+    source: "x" as const,
     xUsername: username,
-  });
+  };
+
+  let { intent, result } = await runTerminalAgent(text, context);
+
+  // Tweets are messy. When the rules cannot read one, let the model rewrite it into a
+  // canonical command and run that through the very same parser and tool registry.
+  if (intent.name === "unknown") {
+    const { interpretFreeText } = await import("./nlu.server");
+    const rewritten = await interpretFreeText(text);
+    if (rewritten) {
+      const retry = await runTerminalAgent(rewritten, context);
+      if (retry.intent.name !== "unknown") ({ intent, result } = retry);
+    }
+  }
 
   const reply = composeXReply(result).slice(0, 600);
   const credentials = source === "simulation" ? null : readXCredentials();

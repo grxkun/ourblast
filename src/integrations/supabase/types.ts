@@ -1780,6 +1780,8 @@ export type Database = {
         Returns: boolean
       }
       is_staff: { Args: { _user_id: string }; Returns: boolean }
+      run_x_poll: { Args: never; Returns: undefined }
+      set_x_poll_secret: { Args: { p_secret: string }; Returns: undefined }
     }
     Enums: {
       app_role: "admin" | "moderator" | "player"
