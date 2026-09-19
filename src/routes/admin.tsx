@@ -158,10 +158,10 @@ function AdminPage() {
         <div className="panel divide-y divide-border">
           {data.players.map((p) => (
             <div key={p.id} className="flex flex-wrap items-center gap-3 p-4">
-              <PlayerAvatar address={p.wallet_address} size={36} />
+              <PlayerAvatar address={p.wallet_address ?? p.id} size={36} />
               <div className="min-w-0 flex-1">
                 <p className="font-body font-semibold">
-                  {p.nickname?.trim() || shortAddress(p.wallet_address)}
+                  {p.nickname?.trim() || (p.wallet_address ? shortAddress(p.wallet_address) : "Social player")}
                   {p.is_banned ? <span className="ml-2 text-xs text-destructive">BANNED</span> : null}
                 </p>
                 <p className="font-body text-xs text-muted-foreground">

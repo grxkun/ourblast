@@ -125,6 +125,7 @@ export const verifyPayment = createServerFn({ method: "POST" })
       .maybeSingle();
     if (!profile) throw new Error("Profile not found.");
     if (profile.is_banned) throw new Error("This wallet is banned from OURBLAST.");
+    if (!profile.wallet_address) throw new Error("Connect a Sui wallet before paying.");
 
     // A freshly executed transaction can take a few seconds to be readable, so
     // keep asking before giving up.
