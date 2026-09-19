@@ -101,3 +101,21 @@ export function msToClock(ms: number) {
   const s = total % 60;
   return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
 }
+
+/** Display label for a player, whether they signed in with a wallet or a social account. */
+export function playerLabel(profile: {
+  nickname?: string | null;
+  display_name?: string | null;
+  wallet_address?: string | null;
+}) {
+  return (
+    profile.nickname?.trim() ||
+    profile.display_name?.trim() ||
+    (profile.wallet_address ? shortAddress(profile.wallet_address) : "Player")
+  );
+}
+
+/** Stable seed for the generated avatar when there is no wallet address. */
+export function playerAvatarSeed(profile: { wallet_address?: string | null; avatar_seed?: string | null; id?: string }) {
+  return profile.wallet_address ?? profile.avatar_seed ?? profile.id ?? "0x0";
+}
