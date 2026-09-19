@@ -55,7 +55,7 @@ export function GasReserveCard() {
       </header>
 
       <p className="mt-2 text-sm text-muted-foreground">
-        Launch calls from {X_BOT_HANDLE} on X are signed with gas from this reserve. Its key is stored encrypted on
+        All launch gas — terminal and {X_BOT_HANDLE} calls on X — is paid from this reserve. Its key is stored encrypted on
         the backend and never reaches the browser, so the balance can only be spent sponsoring launches.
       </p>
 
