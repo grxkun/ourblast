@@ -75,7 +75,16 @@ export function Terminal({ tryCommand }: { tryCommand?: { command: string; nonce
     if (!clean || processing) return;
     setProcessing(true);
     try {
-      const response = await runTerminalAgent(clean, { walletConnected: Boolean(userId), walletAddress: profile?.wallet_address ?? null, source: "terminal" });
+      const context = { walletConnected: Boolean(userId), walletAddress: profile?.wallet_address ?? null, source: "terminal" as const };
+      let response = await runTerminalAgent(clean, context);
+      // Anything the rules cannot read gets rewritten into a canonical command and re-parsed.
+      if (response.intent.name === "unknown") {
+        const { command: rewritten } = await interpret({ data: { text: clean } });
+        if (rewritten) {
+          const retry = await runTerminalAgent(rewritten, context);
+          if (retry.intent.name !== "unknown") response = { ...retry, command: clean };
+        }
+      }
       if (response.result.launch && image) response.result.launch = { ...response.result.launch, image: image.url, ...(image.filename ? { imageName: image.filename } : {}) };
       const entry: TerminalEntry = { id: makeId(), command: response.command, intent: response.intent.name, result: response.result, createdAt: new Date().toISOString() };
       if (entry.result.launch) setLaunchOverrides((current) => ({ ...current, [entry.id]: entry.result.launch as LaunchConfiguration }));
