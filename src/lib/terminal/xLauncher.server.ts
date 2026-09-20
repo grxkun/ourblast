@@ -199,6 +199,8 @@ export async function executeLaunchRequest(requestId: string): Promise<LaunchOut
       symbol: request.symbol,
       name: request.name,
       description: "",
+      // The picture from the tweet becomes the coin's image metadata.
+      iconUrl: request.icon_url ?? null,
       payees,
       shareBps,
     });
