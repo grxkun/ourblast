@@ -26,3 +26,14 @@ export const getXBotStatus = createServerFn({ method: "GET" })
     const { xBotIsLive } = await import("./x-bot.server");
     return { live: xBotIsLive() };
   });
+
+/** Admin only: check @ourblastbot mentions right now instead of waiting for the schedule. */
+export const pollXMentionsNow = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { data: roles } = await context.supabase.from("user_roles").select("role").eq("user_id", context.userId);
+    const isAdmin = ((roles ?? []) as { role: string }[]).some((row) => row.role === "admin");
+    if (!isAdmin) throw new Error("Admins only.");
+    const { runXMentionPoll } = await import("./x-poll.server");
+    return runXMentionPoll();
+  });

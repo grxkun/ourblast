@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { Send } from "lucide-react";
+import { RefreshCw, Send } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 
@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
-import { getXBotStatus, simulateXMention } from "@/lib/terminal/x-bot.functions";
+import { getXBotStatus, pollXMentionsNow, simulateXMention } from "@/lib/terminal/x-bot.functions";
 import { X_BOT_HANDLE } from "@/lib/terminal/x-bot";
 
 export function XMentionInbox() {
@@ -16,6 +16,7 @@ export function XMentionInbox() {
   const queryClient = useQueryClient();
   const simulate = useServerFn(simulateXMention);
   const statusFn = useServerFn(getXBotStatus);
+  const pollNow = useServerFn(pollXMentionsNow);
 
   const status = useQuery({ queryKey: ["x-bot-status"], queryFn: () => statusFn({}), staleTime: 60_000 });
   const live = Boolean(status.data?.live);
@@ -42,6 +43,18 @@ export function XMentionInbox() {
     onError: (error: Error) => toast.error(error.message),
   });
 
+  const poll = useMutation({
+    mutationFn: async () => pollNow({}),
+    onSuccess: (result) => {
+      void queryClient.invalidateQueries({ queryKey: ["x-mentions"] });
+      void queryClient.invalidateQueries({ queryKey: ["x-launch-requests"] });
+      if (result.error) toast.error(`X read failed: ${result.error}`);
+      else if (result.reason) toast.info(result.reason);
+      else toast.success(`Checked X: ${result.handled} new mention${result.handled === 1 ? "" : "s"}`);
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
+
   return (
     <section className="rounded-lg border border-border bg-card p-4">
       <header className="mb-3 flex flex-wrap items-center gap-2">
@@ -63,6 +76,9 @@ export function XMentionInbox() {
         <Input value={draft} onChange={(event) => setDraft(event.target.value)} maxLength={500} placeholder={`${X_BOT_HANDLE} launch $DOG Sui Dog`} />
         <Button type="submit" disabled={run.isPending}>
           <Send className="size-4" /> Test mention
+        </Button>
+        <Button type="button" variant="outline" disabled={poll.isPending} onClick={() => poll.mutate()}>
+          <RefreshCw className={`size-4 ${poll.isPending ? "animate-spin" : ""}`} /> Check X now
         </Button>
       </form>
       <ul className="space-y-2">
