@@ -19,6 +19,7 @@ import { Route as CommunityCityRouteImport } from './routes/community-city'
 import { Route as EcosystemRouteImport } from './routes/ecosystem'
 import { Route as HowToPlayRouteImport } from './routes/how-to-play'
 import { Route as HubRouteImport } from './routes/hub'
+import { Route as LaunchesRouteImport } from './routes/launches'
 import { Route as LeaderboardRouteImport } from './routes/leaderboard'
 import { Route as MemeRouteImport } from './routes/meme'
 import { Route as PrivacyRouteImport } from './routes/privacy'
@@ -83,6 +84,11 @@ const HowToPlayRoute = HowToPlayRouteImport.update({
 const HubRoute = HubRouteImport.update({
   id: '/hub',
   path: '/hub',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LaunchesRoute = LaunchesRouteImport.update({
+  id: '/launches',
+  path: '/launches',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LeaderboardRoute = LeaderboardRouteImport.update({
@@ -172,6 +178,7 @@ export interface FileRoutesByFullPath {
   '/ecosystem': typeof EcosystemRoute
   '/how-to-play': typeof HowToPlayRoute
   '/hub': typeof HubRoute
+  '/launches': typeof LaunchesRoute
   '/leaderboard': typeof LeaderboardRoute
   '/meme': typeof MemeRoute
   '/privacy': typeof PrivacyRoute
@@ -199,6 +206,7 @@ export interface FileRoutesByTo {
   '/ecosystem': typeof EcosystemRoute
   '/how-to-play': typeof HowToPlayRoute
   '/hub': typeof HubRoute
+  '/launches': typeof LaunchesRoute
   '/leaderboard': typeof LeaderboardRoute
   '/meme': typeof MemeRoute
   '/privacy': typeof PrivacyRoute
@@ -227,6 +235,7 @@ export interface FileRoutesById {
   '/ecosystem': typeof EcosystemRoute
   '/how-to-play': typeof HowToPlayRoute
   '/hub': typeof HubRoute
+  '/launches': typeof LaunchesRoute
   '/leaderboard': typeof LeaderboardRoute
   '/meme': typeof MemeRoute
   '/privacy': typeof PrivacyRoute
@@ -256,6 +265,7 @@ export interface FileRouteTypes {
     | '/ecosystem'
     | '/how-to-play'
     | '/hub'
+    | '/launches'
     | '/leaderboard'
     | '/meme'
     | '/privacy'
@@ -283,6 +293,7 @@ export interface FileRouteTypes {
     | '/ecosystem'
     | '/how-to-play'
     | '/hub'
+    | '/launches'
     | '/leaderboard'
     | '/meme'
     | '/privacy'
@@ -310,6 +321,7 @@ export interface FileRouteTypes {
     | '/ecosystem'
     | '/how-to-play'
     | '/hub'
+    | '/launches'
     | '/leaderboard'
     | '/meme'
     | '/privacy'
@@ -338,6 +350,7 @@ export interface RootRouteChildren {
   EcosystemRoute: typeof EcosystemRoute
   HowToPlayRoute: typeof HowToPlayRoute
   HubRoute: typeof HubRoute
+  LaunchesRoute: typeof LaunchesRoute
   LeaderboardRoute: typeof LeaderboardRoute
   MemeRoute: typeof MemeRoute
   PrivacyRoute: typeof PrivacyRoute
@@ -425,6 +438,13 @@ declare module '@tanstack/react-router' {
       path: '/hub'
       fullPath: '/hub'
       preLoaderRoute: typeof HubRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/launches': {
+      id: '/launches'
+      path: '/launches'
+      fullPath: '/launches'
+      preLoaderRoute: typeof LaunchesRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/leaderboard': {
@@ -546,6 +566,7 @@ const rootRouteChildren: RootRouteChildren = {
   EcosystemRoute: EcosystemRoute,
   HowToPlayRoute: HowToPlayRoute,
   HubRoute: HubRoute,
+  LaunchesRoute: LaunchesRoute,
   LeaderboardRoute: LeaderboardRoute,
   MemeRoute: MemeRoute,
   PrivacyRoute: PrivacyRoute,
