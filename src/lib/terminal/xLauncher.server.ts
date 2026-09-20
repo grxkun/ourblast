@@ -189,12 +189,16 @@ export async function executeLaunchRequest(requestId: string): Promise<LaunchOut
     // Real Suipump create call, signed by the OurBlastBot wallet. Stays inert
     // (NOT_IMPLEMENTED) until Suipump issues a launch ticket to that wallet.
     const { launchOnSuipump } = await import("./suipump-launch.server");
+    const payees = suipumpPayees();
+    // Equal shares, with any rounding remainder going to the first payee.
+    const share = Math.floor(10_000 / payees.length);
+    const shareBps = payees.map((_, index) => (index === 0 ? 10_000 - share * (payees.length - 1) : share));
     const outcome = await launchOnSuipump({
       symbol: request.symbol,
       name: request.name,
       description: "",
-      payees: suipumpPayees(),
-      shareBps: [10_000],
+      payees,
+      shareBps,
     });
     if (outcome.status === "CONFIRMED" && outcome.tokenAddress) {
       deployment = { tokenAddress: outcome.tokenAddress, transactionDigest: outcome.transactionDigest ?? "" };
