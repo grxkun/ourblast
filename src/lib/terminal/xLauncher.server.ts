@@ -193,13 +193,14 @@ export async function executeLaunchRequest(requestId: string): Promise<LaunchOut
     if (result.status === "CONFIRMED" && adapterDeployment?.tokenAddress) deployment = adapterDeployment;
   }
 
-  if (result.status !== "CONFIRMED" || !deployment?.tokenAddress) {
+  if (!deployment?.tokenAddress) {
     // Nothing on chain happened: park the request, say so plainly, keep it launchable later.
+    const notice = failure ?? INTEGRATION_PENDING;
     await client
       .from("x_launch_requests")
-      .update({ status: "UNAVAILABLE", notice: INTEGRATION_PENDING, updated_at: new Date().toISOString() })
+      .update({ status: "UNAVAILABLE", notice, updated_at: new Date().toISOString() })
       .eq("id", request.id);
-    return { status: "UNAVAILABLE", notice: INTEGRATION_PENDING, tokenUrl: null, poolUrl: null };
+    return { status: "UNAVAILABLE", notice, tokenUrl: null, poolUrl: null };
   }
 
   const tokenUrl = tokenPageUrl(pad, deployment.tokenAddress);
