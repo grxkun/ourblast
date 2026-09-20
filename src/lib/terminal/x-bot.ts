@@ -9,6 +9,8 @@ export interface XMentionPayload {
   postId: string;
   username: string;
   text: string;
+  /** Picture attached to the tweet; becomes the token image. */
+  imageUrl?: string | null;
 }
 
 export interface XMentionOutcome {

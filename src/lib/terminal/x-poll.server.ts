@@ -43,7 +43,12 @@ export async function runXMentionPoll(): Promise<{
     if (seen) continue;
 
     await handleXMention(
-      { postId: mention.id, username: mention.username ?? "", text: mention.text },
+      {
+        postId: mention.id,
+        username: mention.username ?? "",
+        text: mention.text,
+        imageUrl: mention.imageUrl ?? null,
+      },
       "poll",
     );
     handled += 1;
