@@ -5,6 +5,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 
 import { SectionTitle } from "@/components/blast/AppShell";
+import { LauncherSettingsCard } from "@/components/terminal/LauncherSettingsCard";
 import { PlayerAvatar } from "@/components/blast/PlayerBadge";
 import { useBlast } from "@/components/blast/session";
 import { formatNumber, shortAddress, timeAgo } from "@/lib/blast";
@@ -35,13 +36,14 @@ export const Route = createFileRoute("/admin")({
   component: AdminPage,
 });
 
-type Tab = "players" | "scores" | "chat" | "memes" | "challenge" | "log";
+type Tab = "players" | "scores" | "chat" | "memes" | "launcher" | "challenge" | "log";
 
 const TABS: { key: Tab; label: string }[] = [
   { key: "players", label: "Players" },
   { key: "scores", label: "Scores" },
   { key: "chat", label: "Chat" },
   { key: "memes", label: "Memes" },
+  { key: "launcher", label: "X launcher" },
   { key: "challenge", label: "Challenge" },
   { key: "log", label: "Audit log" },
 ];
@@ -285,6 +287,10 @@ function AdminPage() {
               </div>
             </div>
           ))}
+        </div>
+      ) : tab === "launcher" ? (
+        <div className="max-w-2xl">
+          <LauncherSettingsCard />
         </div>
       ) : tab === "challenge" ? (
         <div className="panel max-w-xl space-y-3 p-5 sm:p-6">

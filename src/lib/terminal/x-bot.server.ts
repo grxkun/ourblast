@@ -21,6 +21,57 @@ export async function handleXMention(payload: XMentionPayload, source: "webhook"
     xUsername: username,
   };
 
+  // Simple X launcher first: "Deploy $TETY Tety Yety Caty on Suipump" becomes one
+  // launch request (one X post = one request) that a human confirms in the terminal.
+  const { readDeployRequest, createLaunchRequest, composeReceivedReply } = await import("./xLauncher.server");
+  const deploy = await readDeployRequest(text);
+  if (deploy) {
+    const row = await createLaunchRequest(payload.postId, username, deploy);
+    const reply = composeReceivedReply(deploy);
+    // Test / simulated posts never go to X.
+    const credentials = source === "simulation" || payload.postId.startsWith("sim-") ? null : readXCredentials();
+    let replyPostId: string | null = null;
+    let postError: string | null = null;
+    if (credentials) {
+      try {
+        replyPostId = await postReply(credentials, payload.postId, reply);
+      } catch (error) {
+        postError = error instanceof Error ? error.message.slice(0, 500) : "Reply could not be posted.";
+      }
+    }
+
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    await supabaseAdmin.from("x_mentions").upsert(
+      {
+        x_post_id: payload.postId,
+        x_username: username,
+        text,
+        intent: "launchToken",
+        status: "READY",
+        reply_text: reply,
+        posted: Boolean(replyPostId),
+        reply_post_id: replyPostId,
+        post_error: postError,
+        posted_at: replyPostId ? new Date().toISOString() : null,
+        source,
+        result: { requestId: row.id, symbol: row.symbol, launchpad: row.launchpad } as unknown as Record<string, never>,
+      },
+      { onConflict: "x_post_id", ignoreDuplicates: true },
+    );
+
+    return {
+      postId: payload.postId,
+      username,
+      text,
+      intent: "launchToken",
+      status: "READY",
+      reply,
+      posted: Boolean(replyPostId),
+      replyPostId,
+      postError,
+    };
+  }
+
   let { intent, result } = await runTerminalAgent(text, context);
 
   // Tweets are messy. When the rules cannot read one, let the model rewrite it into a

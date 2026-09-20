@@ -1185,6 +1185,33 @@ export type Database = {
         }
         Relationships: []
       }
+      launcher_settings: {
+        Row: {
+          auto_launch_enabled: boolean
+          default_launchpad: string
+          dev_buy_enabled: boolean
+          id: boolean
+          ourblast_fee_percent: number
+          updated_at: string
+        }
+        Insert: {
+          auto_launch_enabled?: boolean
+          default_launchpad?: string
+          dev_buy_enabled?: boolean
+          id?: boolean
+          ourblast_fee_percent?: number
+          updated_at?: string
+        }
+        Update: {
+          auto_launch_enabled?: boolean
+          default_launchpad?: string
+          dev_buy_enabled?: boolean
+          id?: boolean
+          ourblast_fee_percent?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       meme_battles: {
         Row: {
           created_at: string
@@ -1691,6 +1718,69 @@ export type Database = {
           id?: boolean
           last_mention_id?: string | null
           updated_at?: string
+        }
+        Relationships: []
+      }
+      x_launch_requests: {
+        Row: {
+          created_at: string
+          deployed_reply_post_id: string | null
+          dev_buy: boolean
+          id: string
+          launchpad: string
+          name: string
+          notice: string | null
+          ourblast_fee_percent: number
+          pool_url: string | null
+          reply_post_id: string | null
+          status: string
+          symbol: string
+          token_address: string | null
+          token_url: string | null
+          tx_digest: string | null
+          updated_at: string
+          x_post_id: string
+          x_username: string
+        }
+        Insert: {
+          created_at?: string
+          deployed_reply_post_id?: string | null
+          dev_buy?: boolean
+          id?: string
+          launchpad?: string
+          name: string
+          notice?: string | null
+          ourblast_fee_percent?: number
+          pool_url?: string | null
+          reply_post_id?: string | null
+          status?: string
+          symbol: string
+          token_address?: string | null
+          token_url?: string | null
+          tx_digest?: string | null
+          updated_at?: string
+          x_post_id: string
+          x_username: string
+        }
+        Update: {
+          created_at?: string
+          deployed_reply_post_id?: string | null
+          dev_buy?: boolean
+          id?: string
+          launchpad?: string
+          name?: string
+          notice?: string | null
+          ourblast_fee_percent?: number
+          pool_url?: string | null
+          reply_post_id?: string | null
+          status?: string
+          symbol?: string
+          token_address?: string | null
+          token_url?: string | null
+          tx_digest?: string | null
+          updated_at?: string
+          x_post_id?: string
+          x_username?: string
         }
         Relationships: []
       }

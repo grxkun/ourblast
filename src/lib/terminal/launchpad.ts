@@ -11,6 +11,8 @@ export interface LaunchpadConfig {
   factoryPackage: string | null;
   factoryObject: string | null;
   version: string | null;
+  /** True only when a verified launch API / contract integration exists. Never fake this. */
+  integrated: boolean;
   /** Pads like Maelstrom ("strom") can pair the bonding-curve LP against a chosen token. */
   supportsCustomPair: boolean;
   /** Tokens the pad can pair the LP against. First entry is the default. */
@@ -24,12 +26,13 @@ export interface LaunchpadConfig {
 export const LAUNCHPADS: LaunchpadConfig[] = [
   {
     id: "suipump",
-    label: "SuiPump",
+    label: "Suipump",
     site: "https://suipump.org",
     network: "sui",
     factoryPackage: null,
     factoryObject: null,
     version: null,
+    integrated: false,
     supportsCustomPair: false,
     pairTokens: ["SUI"],
     liquidity: { min: 1, max: 5_000, default: 10 },
@@ -43,10 +46,53 @@ export const LAUNCHPADS: LaunchpadConfig[] = [
     factoryPackage: null,
     factoryObject: null,
     version: null,
+    integrated: false,
     supportsCustomPair: true,
     pairTokens: ["SUI", "USDC", "BLAST", "DEEP", "WAL"],
     liquidity: { min: 1, max: 25_000, default: 25 },
     supply: { min: 1_000_000, max: 100_000_000_000, default: 1_000_000_000 },
+  },
+  {
+    id: "ript",
+    label: "RIPT",
+    site: "https://ript.fun",
+    network: "sui",
+    factoryPackage: null,
+    factoryObject: null,
+    version: null,
+    integrated: false,
+    supportsCustomPair: false,
+    pairTokens: ["SUI"],
+    liquidity: { min: 1, max: 5_000, default: 10 },
+    supply: { min: 1_000_000, max: 10_000_000_000, default: 1_000_000_000 },
+  },
+  {
+    id: "blastfun",
+    label: "Blast.fun",
+    site: "https://blast.fun",
+    network: "sui",
+    factoryPackage: null,
+    factoryObject: null,
+    version: null,
+    integrated: false,
+    supportsCustomPair: false,
+    pairTokens: ["SUI"],
+    liquidity: { min: 1, max: 5_000, default: 10 },
+    supply: { min: 1_000_000, max: 10_000_000_000, default: 1_000_000_000 },
+  },
+  {
+    id: "vicefun",
+    label: "ViceFun",
+    site: "https://vice.fun",
+    network: "sui",
+    factoryPackage: null,
+    factoryObject: null,
+    version: null,
+    integrated: false,
+    supportsCustomPair: false,
+    pairTokens: ["SUI"],
+    liquidity: { min: 1, max: 5_000, default: 10 },
+    supply: { min: 1_000_000, max: 10_000_000_000, default: 1_000_000_000 },
   },
 ];
 
@@ -59,6 +105,15 @@ const PAD_ALIASES: Record<string, string> = {
   mael: "maelstrom",
   pump: "suipump",
   "suipump.org": "suipump",
+  "sui pump": "suipump",
+  ript: "ript",
+  "ript.fun": "ript",
+  blast: "blastfun",
+  "blast.fun": "blastfun",
+  blastfun: "blastfun",
+  vice: "vicefun",
+  "vice.fun": "vicefun",
+  vicefun: "vicefun",
 };
 
 export function resolveLaunchpad(value?: string | null): LaunchpadConfig {
@@ -84,6 +139,11 @@ export function padByLabel(label: string): LaunchpadConfig {
  */
 export function tokenPageUrl(pad: LaunchpadConfig, ref: string): string {
   return `${pad.site.replace(/\/$/, "")}/token/${ref}`;
+}
+
+/** Public pool / chart page on the pad for a launched token. */
+export function poolPageUrl(pad: LaunchpadConfig, ref: string): string {
+  return `${pad.site.replace(/\/$/, "")}/pool/${ref}`;
 }
 
 export function resolvePairToken(pad: LaunchpadConfig, requested?: string | null): string {
