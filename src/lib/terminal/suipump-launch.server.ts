@@ -149,7 +149,7 @@ export async function readDeployerStatus(): Promise<SuipumpDeployerStatus> {
   const capTypes = new Set(caps.map((cap) => genericOf(cap.type)).filter(Boolean) as string[]);
   const launchableTypes = tickets
     .map((ticket) => genericOf(ticket.type))
-    .filter((type): type is string => Boolean(type) && capTypes.has(type));
+    .filter((type): type is string => type !== null && capTypes.has(type));
 
   if (address && tickets.length === 0) missing.push("Suipump has not issued a launch ticket to this wallet yet.");
   if (address && tickets.length > 0 && launchableTypes.length === 0)
