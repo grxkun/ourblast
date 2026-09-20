@@ -21,70 +21,86 @@ const tables: Record<string, Row[]> = {
   x_launch_requests: [],
 };
 
-function makeQuery(table: string) {
-  const filters: Array<[string, unknown]> = [];
-  let pending: { kind: "select" } | { kind: "insert"; values: Row } | { kind: "update"; values: Row } = {
-    kind: "select",
-  };
+interface Result {
+  data: unknown;
+  error: null;
+}
 
-  const matches = (row: Row) => filters.every(([column, value]) => row[column] === value);
+/** Tiny in-memory stand-in for the PostgREST builder used by the launcher. */
+class FakeQuery implements PromiseLike<Result> {
+  private readonly filters: Array<[string, unknown]> = [];
+  private writeValues: Row | null = null;
+  private writeKind: "insert" | "update" | null = null;
 
-  const query: Record<string, unknown> = {
-    select() {
-      return query;
-    },
-    eq(column: string, value: unknown) {
-      filters.push([column, value]);
-      return query;
-    },
-    insert(values: Row) {
-      pending = { kind: "insert", values };
-      return query;
-    },
-    upsert(values: Row) {
-      pending = { kind: "insert", values };
-      return query;
-    },
-    update(values: Row) {
-      pending = { kind: "update", values };
-      return query;
-    },
-    maybeSingle() {
-      return Promise.resolve({ data: tables[table]?.find(matches) ?? null, error: null });
-    },
-    single() {
-      return query.maybeSingle!.call(query) as Promise<unknown>;
-    },
-    then(resolve: (value: { data: unknown; error: null }) => unknown) {
-      if (pending.kind === "insert") {
-        const existing = tables[table]!.find((row) => row["x_post_id"] === pending.values["x_post_id"]);
-        if (existing && table === "x_launch_requests") {
-          return Promise.resolve({ data: existing, error: null }).then(resolve);
-        }
-        const row = { id: `row-${tables[table]!.length + 1}`, ...pending.values };
-        if (table === "launcher_settings") tables[table] = [pending.values];
-        else tables[table]!.push(row);
-        return Promise.resolve({ data: row, error: null }).then(resolve);
-      }
-      if (pending.kind === "update") {
-        for (const row of tables[table]!) if (matches(row)) Object.assign(row, pending.values);
-      }
-      return Promise.resolve({ data: tables[table]?.filter(matches) ?? [], error: null }).then(resolve);
-    },
-  };
+  constructor(private readonly table: string) {}
 
-  // insert/upsert/update chains end in .select().single() — make those await the write.
-  const writeAware = new Proxy(query, {
-    get(target, prop) {
-      if (prop === "single" || prop === "maybeSingle") {
-        if (pending.kind !== "select") {
-          return () => (target["then"] as (r: (v: unknown) => unknown) => Promise<unknown>)((v) => v);
-        }
+  private get rows(): Row[] {
+    tables[this.table] ??= [];
+    return tables[this.table]!;
+  }
+
+  private matches = (row: Row) => this.filters.every(([column, value]) => row[column] === value);
+
+  select(): this {
+    return this;
+  }
+
+  eq(column: string, value: unknown): this {
+    this.filters.push([column, value]);
+    return this;
+  }
+
+  insert(values: Row): this {
+    this.writeKind = "insert";
+    this.writeValues = values;
+    return this;
+  }
+
+  upsert(values: Row): this {
+    return this.insert(values);
+  }
+
+  update(values: Row): this {
+    this.writeKind = "update";
+    this.writeValues = values;
+    return this;
+  }
+
+  private run(): Result {
+    const values = this.writeValues;
+    if (this.writeKind === "insert" && values) {
+      if (this.table === "launcher_settings") {
+        tables[this.table] = [values];
+        return { data: values, error: null };
       }
-      return target[prop as string];
-    },
-  });
-  return writeAware;
+      const existing = this.rows.find((row) => row["x_post_id"] === values["x_post_id"]);
+      if (existing) return { data: existing, error: null };
+      const row: Row = { id: `row-${this.rows.length + 1}`, ...values };
+      this.rows.push(row);
+      return { data: row, error: null };
+    }
+    if (this.writeKind === "update" && values) {
+      for (const row of this.rows) if (this.matches(row)) Object.assign(row, values);
+      return { data: this.rows.filter(this.matches), error: null };
+    }
+    return { data: this.rows.filter(this.matches), error: null };
+  }
+
+  maybeSingle(): Promise<Result> {
+    if (this.writeKind) return Promise.resolve(this.run());
+    return Promise.resolve({ data: this.rows.find(this.matches) ?? null, error: null });
+  }
+
+  single(): Promise<Result> {
+    return this.maybeSingle();
+  }
+
+  then<TResult1 = Result, TResult2 = never>(
+    onfulfilled?: ((value: Result) => TResult1 | PromiseLike<TResult1>) | null,
+    onrejected?: ((reason: unknown) => TResult2 | PromiseLike<TResult2>) | null,
+  ): PromiseLike<TResult1 | TResult2> {
+    return Promise.resolve(this.run()).then(onfulfilled, onrejected);
+  }
 }
 
 vi.mock("@/integrations/supabase/client.server", () => ({
