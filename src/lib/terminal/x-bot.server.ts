@@ -49,17 +49,11 @@ export async function handleXMention(payload: XMentionPayload, source: "webhook"
       }
     }
     const reply = composeReceivedReply(deploy);
-    // Test / simulated posts never go to X.
-    const credentials = source === "simulation" || payload.postId.startsWith("sim-") ? null : readXCredentials();
-    let replyPostId: string | null = null;
-    let postError: string | null = null;
-    if (credentials) {
-      try {
-        replyPostId = await postReply(credentials, payload.postId, reply);
-      } catch (error) {
-        postError = error instanceof Error ? error.message.slice(0, 500) : "Reply could not be posted.";
-      }
-    }
+    // No "received" reply on X: the only reply the bot posts for a launch call is the
+    // deployed one, sent after the chain confirms (see xLauncher.server.ts). The
+    // received text is still recorded on the mention for the status page.
+    const replyPostId: string | null = null;
+    const postError: string | null = null;
 
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     await supabaseAdmin.from("x_mentions").upsert(
