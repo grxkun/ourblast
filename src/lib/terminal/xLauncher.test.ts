@@ -104,7 +104,7 @@ class FakeQuery implements PromiseLike<Result> {
 }
 
 vi.mock("@/integrations/supabase/client.server", () => ({
-  supabaseAdmin: { from: (table: string) => makeQuery(table) },
+  supabaseAdmin: { from: (table: string) => new FakeQuery(table) },
 }));
 
 const launchToken = vi.fn();
