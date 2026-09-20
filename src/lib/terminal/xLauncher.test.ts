@@ -199,6 +199,8 @@ describe("X mention → Suipump launch screen → verified result", () => {
   });
 });
 
+const { parseDeployTweet } = await import("./xLauncher");
+
 describe("chatty tweets", () => {
   it("reads a launch call buried in conversation with a misspelled name marker", () => {
     const parsed = parseDeployTweet(
