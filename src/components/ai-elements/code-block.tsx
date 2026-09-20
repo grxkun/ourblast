@@ -161,6 +161,7 @@ const getHighlighter = (
   const highlighterPromise = createHighlighter({
     langs: [language],
     themes: ["github-light", "github-dark"],
+    engine: createJavaScriptRegexEngine(),
   });
 
   highlighterCache.set(language, highlighterPromise);
