@@ -291,6 +291,7 @@ function AdminPage() {
       ) : tab === "launcher" ? (
         <div className="max-w-2xl">
           <LauncherSettingsCard />
+          <SuipumpReadinessCard />
         </div>
       ) : tab === "challenge" ? (
         <div className="panel max-w-xl space-y-3 p-5 sm:p-6">
