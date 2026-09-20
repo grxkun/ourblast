@@ -111,6 +111,9 @@ const launchToken = vi.fn();
 vi.mock("./launchpadAdapter", () => ({ launchpadAdapter: { launchToken: (...args: unknown[]) => launchToken(...args) } }));
 vi.mock("./x-api.server", () => ({ readXCredentials: () => null, postReply: vi.fn() }));
 
+const launchOnSuipump = vi.fn();
+vi.mock("./suipump-launch.server", () => ({ launchOnSuipump: (...args: unknown[]) => launchOnSuipump(...args) }));
+
 const {
   readDeployRequest,
   createLaunchRequest,
@@ -123,6 +126,7 @@ describe("X mention → Suipump launch screen → verified result", () => {
   beforeEach(() => {
     tables["x_launch_requests"] = [];
     launchToken.mockReset();
+    launchOnSuipump.mockReset();
   });
 
   it("reads a deploy request out of an @ourblastbot mention", async () => {
@@ -167,7 +171,7 @@ describe("X mention → Suipump launch screen → verified result", () => {
   it("parks the launch when the launchpad is not connected yet", async () => {
     const request = (await readDeployRequest("Deploy $TETY Tety Yety Caty on Suipump"))!;
     const row = await createLaunchRequest("sim-1802", "WicWicz", request);
-    launchToken.mockResolvedValue({ tool: "launchToken", status: "NOT_IMPLEMENTED", message: "no factory" });
+    launchOnSuipump.mockResolvedValue({ status: "NOT_IMPLEMENTED", message: "no ticket", tokenAddress: null, transactionDigest: null });
 
     const outcome = await executeLaunchRequest(row.id);
     expect(outcome.status).toBe("UNAVAILABLE");
@@ -179,11 +183,11 @@ describe("X mention → Suipump launch screen → verified result", () => {
   it("reports deployed only after an on-chain confirmation, with token and pool links", async () => {
     const request = (await readDeployRequest("Deploy $TETY Tety Yety Caty on Suipump"))!;
     const row = await createLaunchRequest("sim-1803", "WicWicz", request);
-    launchToken.mockResolvedValue({
-      tool: "launchToken",
+    launchOnSuipump.mockResolvedValue({
       status: "CONFIRMED",
       message: "live",
-      data: { deployment: { tokenAddress: "0xabc123", transactionDigest: "DIGEST" } },
+      tokenAddress: "0xabc123",
+      transactionDigest: "DIGEST",
     });
 
     const outcome = await executeLaunchRequest(row.id);
