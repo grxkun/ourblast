@@ -134,7 +134,7 @@ function genericOf(type: string): string | null {
 async function suiBalanceMist(address: string): Promise<number> {
   try {
     const data = await gql<{ address: { balance: { totalBalance: string } | null } | null }>(
-      `query($a:SuiAddress!){address(address:$a){balance(type:"0x2::sui::SUI"){totalBalance}}}`,
+      `query($a:SuiAddress!){address(address:$a){balance(coinType:"0x2::sui::SUI"){totalBalance}}}`,
       { a: address },
     );
     return Number(data.address?.balance?.totalBalance ?? 0);
