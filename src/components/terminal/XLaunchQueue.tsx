@@ -108,10 +108,10 @@ export function XLaunchQueue() {
                   )}
 
                   <div className="mt-4">
-                    {!userId ? (
-                      <Button size="sm" onClick={() => void connect()}>Sign in to launch</Button>
-                    ) : parked ? (
+                    {parked ? (
                       <Button size="sm" variant="outline" disabled>Launchpad integration coming soon</Button>
+                    ) : !userId ? (
+                      <Button size="sm" onClick={() => void connect()}>Sign in to launch</Button>
                     ) : (
                       <Button size="sm" disabled={run.isPending} onClick={() => run.mutate(row.id)}>
                         <Rocket className="size-4" /> Launch
