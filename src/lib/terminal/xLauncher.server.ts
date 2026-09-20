@@ -166,10 +166,32 @@ export async function executeLaunchRequest(requestId: string): Promise<LaunchOut
   }
 
   const pad = resolveLaunchpad(request.launchpad);
-  const result = await launchpadAdapter.launchToken(launchConfigFor(request));
-  const deployment = result.data?.["deployment"] as
-    | { tokenAddress: string; transactionDigest: string }
-    | undefined;
+  let deployment: { tokenAddress: string; transactionDigest: string } | undefined;
+  let failure: string | null = null;
+
+  if (pad.id === "suipump") {
+    // Real Suipump create call, signed by the OurBlastBot wallet. Stays inert
+    // (NOT_IMPLEMENTED) until Suipump issues a launch ticket to that wallet.
+    const { launchOnSuipump } = await import("./suipump-launch.server");
+    const outcome = await launchOnSuipump({
+      symbol: request.symbol,
+      name: request.name,
+      description: "",
+      payees: suipumpPayees(),
+      shareBps: [10_000],
+    });
+    if (outcome.status === "CONFIRMED" && outcome.tokenAddress) {
+      deployment = { tokenAddress: outcome.tokenAddress, transactionDigest: outcome.transactionDigest ?? "" };
+    } else if (outcome.status === "FAILED") {
+      failure = outcome.message;
+    }
+  } else {
+    const result = await launchpadAdapter.launchToken(launchConfigFor(request));
+    const adapterDeployment = result.data?.["deployment"] as
+      | { tokenAddress: string; transactionDigest: string }
+      | undefined;
+    if (result.status === "CONFIRMED" && adapterDeployment?.tokenAddress) deployment = adapterDeployment;
+  }
 
   if (result.status !== "CONFIRMED" || !deployment?.tokenAddress) {
     // Nothing on chain happened: park the request, say so plainly, keep it launchable later.
