@@ -1726,6 +1726,7 @@ export type Database = {
           created_at: string
           deployed_reply_post_id: string | null
           dev_buy: boolean
+          icon_url: string | null
           id: string
           launchpad: string
           name: string
@@ -1746,6 +1747,7 @@ export type Database = {
           created_at?: string
           deployed_reply_post_id?: string | null
           dev_buy?: boolean
+          icon_url?: string | null
           id?: string
           launchpad?: string
           name: string
@@ -1766,6 +1768,7 @@ export type Database = {
           created_at?: string
           deployed_reply_post_id?: string | null
           dev_buy?: boolean
+          icon_url?: string | null
           id?: string
           launchpad?: string
           name?: string
