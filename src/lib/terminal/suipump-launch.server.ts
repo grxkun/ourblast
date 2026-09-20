@@ -430,6 +430,8 @@ export interface SuipumpLaunchInput {
   name: string;
   description: string;
   iconUrl?: string | null;
+  /** X profile link of the caller who asked for the launch; stored in the coin info. */
+  callerXLink?: string | null;
   /** Fee recipients and their share in basis points; must add up to 10000. */
   payees: string[];
   shareBps: number[];
@@ -503,7 +505,13 @@ export async function launchOnSuipump(input: SuipumpLaunchInput): Promise<Suipum
 
   const symbol = input.symbol.slice(0, 10).toUpperCase();
   const name = input.name.slice(0, 64) || symbol;
-  const description = input.description.slice(0, 200);
+  // The template has no dedicated social field, so the caller's X link rides in
+  // the coin description, where every explorer and suipump.org show it.
+  const baseDescription = input.description.trim();
+  const withCaller = input.callerXLink?.trim()
+    ? `${baseDescription ? `${baseDescription} ` : ""}Called by ${input.callerXLink.trim()} via @Ourblastbot`
+    : baseDescription;
+  const description = withCaller.slice(0, 200);
 
   // 1. Publish the coin package from Suipump's public template.
   let coinModule: Uint8Array;
