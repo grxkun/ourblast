@@ -107,8 +107,32 @@ export function XLaunchQueue() {
                     </dl>
                   )}
 
-                  <div className="mt-4">
-                    {parked ? (
+                  {row.notice && parked && pad.id === "suipump" ? (
+                    <p className="mt-2 text-sm text-muted-foreground">{row.notice}</p>
+                  ) : null}
+
+                  <div className="mt-4 flex flex-wrap gap-2">
+                    {parked && pad.id === "suipump" ? (
+                      <>
+                        <Button asChild size="sm">
+                          <a href={`${pad.site}/?symbol=${row.symbol}`} target="_blank" rel="noreferrer">
+                            Create ${row.symbol} on {pad.label}
+                          </a>
+                        </Button>
+                        {userId ? (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            disabled={check.isPending}
+                            onClick={() => check.mutate(row.id)}
+                          >
+                            I launched it — check
+                          </Button>
+                        ) : (
+                          <Button size="sm" variant="outline" onClick={() => void connect()}>Sign in to confirm</Button>
+                        )}
+                      </>
+                    ) : parked ? (
                       <Button size="sm" variant="outline" disabled>Launchpad integration coming soon</Button>
                     ) : !userId ? (
                       <Button size="sm" onClick={() => void connect()}>Sign in to launch</Button>
