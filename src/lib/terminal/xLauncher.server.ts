@@ -1,3 +1,4 @@
+import { DEFAULT_TREASURY_ADDRESS } from "@/lib/ourblast.config";
 import { poolPageUrl, resolveLaunchpad, tokenPageUrl } from "./launchpad";
 import { launchpadAdapter } from "./launchpadAdapter";
 import {
