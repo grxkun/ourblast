@@ -106,7 +106,35 @@ interface OwnedObject {
   type: string;
 }
 
-async function listOwned(address: string, typeFilter: string): Promise<OwnedObject[]> {
+/**
+ * Owned-object reads through Sui JSON-RPC mirrors. The official GraphQL
+ * service's owned-object index can lag badly (it reported zero objects for a
+ * wallet that demonstrably holds coins), so these mirrors are the source of
+ * truth for anything we intend to sign over.
+ */
+const RPC_MIRRORS = ["https://sui-rpc.publicnode.com", "https://rpc-mainnet.suiscan.xyz"];
+
+async function rpc<T>(method: string, params: unknown[]): Promise<T> {
+  let lastError: Error | null = null;
+  for (const url of RPC_MIRRORS) {
+    try {
+      const res = await fetch(url, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ jsonrpc: "2.0", id: 1, method, params }),
+      });
+      const json = (await res.json()) as { result?: T; error?: { message: string } };
+      if (json.error) throw new Error(json.error.message);
+      if (json.result === undefined) throw new Error("Sui read failed.");
+      return json.result;
+    } catch (error) {
+      lastError = error as Error;
+    }
+  }
+  throw lastError ?? new Error("Sui read failed.");
+}
+
+async function listOwnedViaGraphql(address: string, typeFilter: string): Promise<OwnedObject[]> {
   const data = await gql<{
     address: {
       objects: {
@@ -123,6 +151,32 @@ async function listOwned(address: string, typeFilter: string): Promise<OwnedObje
     digest: node.digest,
     type: node.contents?.type.repr ?? "",
   }));
+}
+
+async function listOwned(address: string, typeFilter: string): Promise<OwnedObject[]> {
+  try {
+    const nodes = await rpc<{
+      data: { data: { objectId: string; version: string; digest: string; type?: string } | null }[];
+    }>("suix_getOwnedObjects", [
+      address,
+      { filter: { StructType: typeFilter }, options: { showType: true } },
+      null,
+      50,
+    ]);
+    const owned = (nodes.data ?? [])
+      .map((entry) => entry.data)
+      .filter((entry): entry is { objectId: string; version: string; digest: string; type?: string } => !!entry)
+      .map((entry) => ({
+        objectId: entry.objectId,
+        version: String(entry.version),
+        digest: entry.digest,
+        type: entry.type ?? "",
+      }));
+    if (owned.length > 0) return owned;
+  } catch {
+    // Mirrors unreachable: fall back to the GraphQL index below.
+  }
+  return listOwnedViaGraphql(address, typeFilter).catch(() => []);
 }
 
 function genericOf(type: string): string | null {
@@ -265,18 +319,56 @@ async function signAndExecute(
       created: [],
     };
   }
-  return {
-    digest: effects.digest,
-    ok: true,
-    error: null,
-    created: (effects.objectChanges?.nodes ?? [])
-      .filter((node) => node.idCreated)
-      .map((node) => ({ address: node.address, type: node.outputState?.asMoveObject?.contents?.type.repr ?? "" })),
-  };
+  const fromGraphql = (effects.objectChanges?.nodes ?? [])
+    .filter((node) => node.idCreated)
+    .map((node) => ({ address: node.address, type: normalizeType(node.outputState?.asMoveObject?.contents?.type.repr ?? "") }));
+  const created = fromGraphql.some((row) => row.type) ? fromGraphql : await createdViaRpc(effects.digest);
+  return { digest: effects.digest, ok: true, error: null, created };
 }
 
-/** Owned SUI coins, largest first, for explicit gas payment. */
+/** Collapses padded addresses ("0x000…02::coin::Coin") to their short form. */
+function normalizeType(type: string): string {
+  return type.replace(/0x0+([0-9a-f])/g, "0x$1");
+}
+
+/** Created objects read back from the transaction itself, for indexes GraphQL misses. */
+async function createdViaRpc(digest: string): Promise<{ address: string; type: string }[]> {
+  try {
+    const block = await rpc<{ objectChanges?: { type: string; objectId?: string; objectType?: string }[] }>(
+      "sui_getTransactionBlock",
+      [digest, { showObjectChanges: true }],
+    );
+    return (block.objectChanges ?? [])
+      .filter((change) => change.type === "created" && change.objectId && change.objectType)
+      .map((change) => ({ address: change.objectId!, type: normalizeType(change.objectType!) }));
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * Owned SUI coins, largest first, for explicit gas payment. Read through the
+ * dedicated coin index (suix_getCoins), which stays accurate even when the
+ * generic owned-object indexes lag behind.
+ */
 async function gasCoins(address: string): Promise<OwnedObject[]> {
+  try {
+    const result = await rpc<{
+      data: { coinObjectId: string; version: string; digest: string; balance: string }[];
+    }>("suix_getCoins", [address, "0x2::sui::SUI", null, 50]);
+    const coins = (result.data ?? [])
+      .slice()
+      .sort((a, b) => Number(BigInt(b.balance) - BigInt(a.balance)))
+      .map((coin) => ({
+        objectId: coin.coinObjectId,
+        version: String(coin.version),
+        digest: coin.digest,
+        type: "0x2::coin::Coin<0x2::sui::SUI>",
+      }));
+    if (coins.length > 0) return coins;
+  } catch {
+    // Fall through to the generic owned-object lookup.
+  }
   return listOwned(address, "0x2::coin::Coin<0x2::sui::SUI>");
 }
 
@@ -346,12 +438,39 @@ export interface SuipumpLaunchInput {
 /** Waits for a freshly created owned object to be readable, then returns it. */
 async function awaitOwned(address: string, typeFilter: string, objectId: string): Promise<OwnedObject | null> {
   for (let attempt = 0; attempt < 12; attempt += 1) {
+    const direct = await readObjectRef(objectId, address);
+    if (direct) return direct;
     const owned = await listOwned(address, typeFilter).catch(() => []);
     const match = owned.find((row) => row.objectId === objectId);
     if (match) return match;
     await new Promise((resolve) => setTimeout(resolve, 2_500));
   }
   return null;
+}
+
+/** Reads one object by id and confirms the wallet still owns it. */
+async function readObjectRef(objectId: string, owner: string): Promise<OwnedObject | null> {
+  try {
+    const result = await rpc<{
+      data?: {
+        objectId: string;
+        version: string;
+        digest: string;
+        type?: string;
+        owner?: { AddressOwner?: string };
+      };
+    }>("sui_getObject", [objectId, { showType: true, showOwner: true }]);
+    const data = result.data;
+    if (!data || data.owner?.AddressOwner !== owner) return null;
+    return {
+      objectId: data.objectId,
+      version: String(data.version),
+      digest: data.digest,
+      type: normalizeType(data.type ?? ""),
+    };
+  } catch {
+    return null;
+  }
 }
 
 /**
