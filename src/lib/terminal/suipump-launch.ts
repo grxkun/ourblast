@@ -32,6 +32,13 @@ export const SUIPUMP_TICKET_TYPE = "LaunchTicket";
 /** Public coin template and launch-ticket issuer used by suipump.org itself. */
 export const SUIPUMP_TEMPLATE_URL_DEFAULT = "https://suipump.org/template.mv";
 export const SUIPUMP_ISSUER_URL_DEFAULT = "https://suipump-mainet-issuer.onrender.com";
+/**
+ * Build key the suipump.org client ships publicly to every browser; it identifies
+ * the calling build, not a wallet. Override with SUIPUMP_ISSUER_KEY if Suipump
+ * gives OurBlast its own.
+ */
+export const SUIPUMP_ISSUER_KEY_DEFAULT =
+  "5ec7e4dd0e9bac9a017f4e46ecb305e28ad9dfe18a5d19347570d48e1ec930a5";
 
 /** Launch fee the create call expects, in SUI. OurBlast charges nothing on top. */
 export const SUIPUMP_LAUNCH_FEE_SUI_DEFAULT = 2;
