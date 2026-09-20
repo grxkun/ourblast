@@ -30,6 +30,8 @@ export interface LaunchRequestRow {
   token_url: string | null;
   pool_url: string | null;
   notice: string | null;
+  /** Picture from the tweet, used as the coin's image metadata. */
+  icon_url: string | null;
   created_at: string;
 }
 
