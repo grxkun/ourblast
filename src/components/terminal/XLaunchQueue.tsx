@@ -32,6 +32,7 @@ export function XLaunchQueue() {
   const { userId, connect } = useBlast();
   const queryClient = useQueryClient();
   const launch = useServerFn(launchXRequest);
+  const verify = useServerFn(checkSuipumpLaunch);
 
   const requests = useQuery({
     queryKey: ["x-launch-requests"],
