@@ -329,8 +329,29 @@ async function signAndExecute(
   };
 }
 
-/** Owned SUI coins, largest first, for explicit gas payment. */
+/**
+ * Owned SUI coins, largest first, for explicit gas payment. Read through the
+ * dedicated coin index (suix_getCoins), which stays accurate even when the
+ * generic owned-object indexes lag behind.
+ */
 async function gasCoins(address: string): Promise<OwnedObject[]> {
+  try {
+    const result = await rpc<{
+      data: { coinObjectId: string; version: string; digest: string; balance: string }[];
+    }>("suix_getCoins", [address, "0x2::sui::SUI", null, 50]);
+    const coins = (result.data ?? [])
+      .slice()
+      .sort((a, b) => Number(BigInt(b.balance) - BigInt(a.balance)))
+      .map((coin) => ({
+        objectId: coin.coinObjectId,
+        version: String(coin.version),
+        digest: coin.digest,
+        type: "0x2::coin::Coin<0x2::sui::SUI>",
+      }));
+    if (coins.length > 0) return coins;
+  } catch {
+    // Fall through to the generic owned-object lookup.
+  }
   return listOwned(address, "0x2::coin::Coin<0x2::sui::SUI>");
 }
 
