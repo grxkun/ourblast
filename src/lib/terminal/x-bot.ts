@@ -97,13 +97,17 @@ export function composeXReply(result: TerminalToolResult): string {
     return fit(head + tail);
   }
 
+  if (result.tool === "unknown") {
+    return fit(`Hey! I didn't quite catch that. Try "${X_BOT_HANDLE} launch $DOG Sui Dog" or "${X_BOT_HANDLE} check $BLAST" — I'll take it from there: ${terminalLink()}`);
+  }
+
   switch (result.status) {
     case "NOT_CONNECTED":
       return fit(`Gotcha — connect your Sui wallet first and I'll take it from there: ${terminalLink()}`);
     case "NOT_IMPLEMENTED":
       return fit(`${result.message} Follow along here: ${terminalLink()}`);
     case "FAILED":
-      return fit(`Hmm, I couldn't read that one. Try: "${X_BOT_HANDLE} launch $DOG Sui Dog paired with USDC"`);
+      return fit(`Hmm, that didn't go through. Try "${X_BOT_HANDLE} launch $DOG Sui Dog paired with USDC" — I'll handle the rest: ${terminalLink()}`);
     default:
       return fit(`${result.message} ${terminalLink()}`);
   }
