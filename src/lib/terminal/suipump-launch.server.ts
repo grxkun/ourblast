@@ -432,6 +432,8 @@ export interface SuipumpLaunchInput {
   iconUrl?: string | null;
   /** X profile link of the caller who asked for the launch; stored in the coin info. */
   callerXLink?: string | null;
+  /** The caller's original tweet text; quoted in the coin info. */
+  callerTweetText?: string | null;
   /** Fee recipients and their share in basis points; must add up to 10000. */
   payees: string[];
   shareBps: number[];

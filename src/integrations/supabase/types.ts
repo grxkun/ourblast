@@ -1738,6 +1738,7 @@ export type Database = {
           symbol: string
           token_address: string | null
           token_url: string | null
+          tweet_text: string | null
           tx_digest: string | null
           updated_at: string
           x_post_id: string
@@ -1759,6 +1760,7 @@ export type Database = {
           symbol: string
           token_address?: string | null
           token_url?: string | null
+          tweet_text?: string | null
           tx_digest?: string | null
           updated_at?: string
           x_post_id: string
@@ -1780,6 +1782,7 @@ export type Database = {
           symbol?: string
           token_address?: string | null
           token_url?: string | null
+          tweet_text?: string | null
           tx_digest?: string | null
           updated_at?: string
           x_post_id?: string
