@@ -35,7 +35,7 @@ export async function handleXMention(payload: XMentionPayload, source: "webhook"
       const credentials = readXCredentials();
       if (credentials) iconUrl = await fetchTweetImage(credentials, payload.postId);
     }
-    const row = await createLaunchRequest(payload.postId, username, deploy, iconUrl);
+    const row = await createLaunchRequest(payload.postId, username, deploy, iconUrl, text);
 
     // Automatic launching: when the operator has switched it on, fire the launch
     // straight away. The outcome only ever reports DEPLOYED after the chain
