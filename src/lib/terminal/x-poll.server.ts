@@ -7,12 +7,12 @@ export async function runXMentionPoll(): Promise<{
   live: boolean;
   handled: number;
   confirmed: number;
-  reason?: string;
-  error?: string;
+  reason: string | null;
+  error: string | null;
 }> {
   const { readXCredentials, getBotAccount, listMentions } = await import("./x-api.server");
   const credentials = readXCredentials();
-  if (!credentials) return { live: false, handled: 0, confirmed: 0, reason: "X credentials not saved yet" };
+  if (!credentials) return { live: false, handled: 0, confirmed: 0, reason: "X credentials not saved yet", error: null };
 
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
   const { data: state } = await supabaseAdmin
@@ -29,7 +29,7 @@ export async function runXMentionPoll(): Promise<{
   } catch (error) {
     const message = error instanceof Error ? error.message : "X read failed";
     console.error(`X mention poll failed: ${message}`);
-    return { live: true, handled: 0, confirmed: 0, error: message.slice(0, 500) };
+    return { live: true, handled: 0, confirmed: 0, reason: null, error: message.slice(0, 500) };
   }
   const { handleXMention } = await import("./x-bot.server");
 
@@ -75,5 +75,5 @@ export async function runXMentionPoll(): Promise<{
     }
   }
 
-  return { live: true, handled, confirmed };
+  return { live: true, handled, confirmed, reason: null, error: null };
 }

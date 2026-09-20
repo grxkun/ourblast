@@ -35,12 +35,12 @@ export interface DeployRequest {
 const PAD_ANYWHERE =
   /\bon\s+(suipump(?:\.org)?|sui\s*pump|pump|maelstrom|strom|mael|ript(?:\.fun)?|blast(?:\.fun)?|blastfun|vice(?:\.fun)?|vicefun)\b/i;
 
-/** "Deploy a $TETY", "launch me a new meme coin $TETY", "create token called $TETY". */
+/** "Deploy a $TETY", "deploy a ticker $TETY", "launch me a new meme coin $TETY", "create token called $TETY". */
 const DEPLOY_CALL =
-  /\b(?:deploy|launch|create|mint|make)\s+(?:me\s+|us\s+)?(?:a\s+|an\s+|the\s+)?(?:new\s+)?(?:(?:meme\s+)?(?:coin|token)\s+)?(?:called\s+|named\s+)?\$([a-z0-9]{2,10})\b([\s\S]*)/i;
+  /\b(?:deploy|launch|create|mint|make)\s+(?:me\s+|us\s+)?(?:a\s+|an\s+|the\s+)?(?:new\s+)?(?:(?:meme\s+)?(?:coin|token|ticker)\s+)?(?:called\s+|named\s+)?\$([a-z0-9]{2,10})\b([\s\S]*)/i;
 
-/** "nsme: Tety Yety" / "name Tety Yety" / "called Tety Yety" — chatty ways to give the name. */
-const NAME_MARKER = /^[\s,:;.\-–—]*(?:n[ase]?me|named|called|title)\s*[:=]?\s*/i;
+/** "nsme: Tety Yety" / "name Tety Yety" / "name token: Tety" / "called Tety Yety" — chatty ways to give the name. */
+const NAME_MARKER = /^[\s,:;.\-–—]*(?:n[ase]?me|named|called|title)(?:\s+(?:token|coin|ticker))?\s*[:=]?\s*/i;
 
 /**
  * Reads a launch call out of a tweet, wherever it sits in the text:

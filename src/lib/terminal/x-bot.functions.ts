@@ -27,13 +27,13 @@ export const getXBotStatus = createServerFn({ method: "GET" })
     return { live: xBotIsLive() };
   });
 
-/** Admin only: check @ourblastbot mentions right now instead of waiting for the schedule. */
+/**
+ * Anyone can ask the bot to check @ourblastbot mentions right now instead of waiting
+ * for the schedule. The poll is idempotent (one X post = one handled mention) and
+ * returns only counts, so it is safe to keep open.
+ */
 export const pollXMentionsNow = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
-  .handler(async ({ context }) => {
-    const { data: roles } = await context.supabase.from("user_roles").select("role").eq("user_id", context.userId);
-    const isAdmin = ((roles ?? []) as { role: string }[]).some((row) => row.role === "admin");
-    if (!isAdmin) throw new Error("Admins only.");
+  .handler(async () => {
     const { runXMentionPoll } = await import("./x-poll.server");
     return runXMentionPoll();
   });
