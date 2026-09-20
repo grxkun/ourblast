@@ -106,6 +106,7 @@ export async function createLaunchRequest(
   postId: string,
   username: string,
   request: DeployRequest,
+  iconUrl?: string | null,
 ): Promise<LaunchRequestRow> {
   const client = await db();
   const settings = await readLauncherSettings();
@@ -128,6 +129,7 @@ export async function createLaunchRequest(
       launchpad: pad.id,
       dev_buy: settings.devBuyEnabled,
       ourblast_fee_percent: settings.ourblastFeePercent,
+      icon_url: iconUrl?.slice(0, 500) ?? null,
       status: "PENDING",
       notice: pad.integrated ? null : INTEGRATION_PENDING,
     })

@@ -92,3 +92,12 @@ export function parseDeployTweet(rawText: string, defaultPad = LAUNCHPAD.id): De
 export function padFor(settings: LauncherSettings, requested?: string | null): LaunchpadConfig {
   return resolveLaunchpad(requested ?? settings.defaultLaunchpad);
 }
+
+/**
+ * A direct picture link written in the tweet text. Shortened t.co links are
+ * skipped: they resolve to the tweet page, not to an image file.
+ */
+export function imageUrlInText(text: string): string | null {
+  const match = text.match(/https?:\/\/[^\s"'<>]+\.(?:png|jpe?g|gif|webp)(?:\?[^\s"'<>]*)?/i);
+  return match?.[0] ?? null;
+}
