@@ -58,3 +58,12 @@
 - [x] Continue with Google (managed Cloud auth) and Continue with X (same X app as the bot) on the terminal
 - [x] Profiles work without a wallet address; wallet can be connected later for signing
 - [ ] zkLogin wallet for social players (needs a Mysten Enoki API key)
+
+## OurBlast X Launcher (simple)
+- [x] Tweet "Deploy $TICKER NAME on LAUNCHPAD" → one launch request per X post (duplicate-proof)
+- [x] Launchpads: Suipump (default), Maelstrom, RIPT, Blast.fun, ViceFun via one adapter
+- [x] Simple launch card on /terminal: ticker, name, launchpad, dev buy OFF, OurBlast fee 10%, one LAUNCH button
+- [x] Launch runs on the backend-held OurBlast wallet; never claims deployed before confirmation
+- [x] X replies: "launch request received" on mention, token + pool links only after confirmation
+- [x] Admin → X launcher: default launchpad, OurBlast fee %, developer buy, automatic launch
+- [ ] Verified launch integration for a launchpad (all pads currently report "coming soon")
