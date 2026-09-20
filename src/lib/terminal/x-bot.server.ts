@@ -28,7 +28,8 @@ export async function handleXMention(payload: XMentionPayload, source: "webhook"
   if (deploy) {
     const row = await createLaunchRequest(payload.postId, username, deploy);
     const reply = composeReceivedReply(deploy);
-    const credentials = source === "simulation" ? null : readXCredentials();
+    // Test / simulated posts never go to X.
+    const credentials = source === "simulation" || payload.postId.startsWith("sim-") ? null : readXCredentials();
     let replyPostId: string | null = null;
     let postError: string | null = null;
     if (credentials) {
