@@ -11,6 +11,8 @@ export interface LaunchpadConfig {
   factoryPackage: string | null;
   factoryObject: string | null;
   version: string | null;
+  /** True only when a verified launch API / contract integration exists. Never fake this. */
+  integrated: boolean;
   /** Pads like Maelstrom ("strom") can pair the bonding-curve LP against a chosen token. */
   supportsCustomPair: boolean;
   /** Tokens the pad can pair the LP against. First entry is the default. */
