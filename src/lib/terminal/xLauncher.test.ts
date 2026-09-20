@@ -198,3 +198,16 @@ describe("X mention → Suipump launch screen → verified result", () => {
     expect(reply).toContain(outcome.poolUrl!);
   });
 });
+
+describe("chatty tweets", () => {
+  it("reads a launch call buried in conversation with a misspelled name marker", () => {
+    const parsed = parseDeployTweet(
+      "@Ourblastbot Hi clever pervert.. @Ourblastbot... Deploy a $Yety   nsme: Tety Yety Caty on Suipump",
+    );
+    expect(parsed).toEqual({ symbol: "YETY", name: "Tety Yety Caty", launchpad: "suipump" });
+  });
+
+  it("still ignores chatter without a cashtag", () => {
+    expect(parseDeployTweet("@Ourblastbot wen moon ser")).toBeNull();
+  });
+});
