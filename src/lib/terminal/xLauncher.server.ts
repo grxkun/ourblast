@@ -152,7 +152,7 @@ function launchConfigFor(row: LaunchRequestRow): LaunchConfiguration {
     name: row.name,
     symbol: row.symbol,
     description: "",
-    image: null,
+    image: row.icon_url,
     network: "sui",
     launchpad: pad.label,
     pairToken: pad.pairTokens[0] ?? "SUI",
