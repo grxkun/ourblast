@@ -6,13 +6,14 @@
  * constant-pool blob and the decimals in another. The website patches those two
  * constants with @mysten/move-bytecode-template (wasm) and publishes the result.
  *
- * Workers cannot compile wasm at runtime, so this does the same edit directly on
- * the Move binary: splice the constant-pool table and fix the table offsets that
- * follow it. Output is byte-identical to the wasm patcher, which matters because
- * the SuiPump launch-ticket issuer re-derives the expected bytes itself.
+ * Workers cannot compile wasm at runtime, so this performs the same edit directly
+ * on the Move binary: re-serialise the constant-pool table and fix the table
+ * offsets that follow it. Output is byte-identical to the wasm patcher, which
+ * matters because SuiPump's launch-ticket issuer re-derives the expected bytes.
  */
 
 const CONSTANT_POOL_KIND = 0x6;
+const HEADER_PREFIX_BYTES = 8; // magic (4) + version/flavour (4)
 
 function encodeUleb(value: number): number[] {
   const out: number[] = [];
@@ -50,11 +51,11 @@ function encodeMetadataBlob(meta: CoinTemplateMetadata): number[] {
   return [...encodeUleb(inner.length), ...inner];
 }
 
-interface Reader {
+interface Cursor {
   offset: number;
 }
 
-function readUleb(bytes: Uint8Array, cursor: Reader): number {
+function readUleb(bytes: Uint8Array, cursor: Cursor): number {
   let result = 0;
   let shift = 0;
   for (;;) {
@@ -65,33 +66,31 @@ function readUleb(bytes: Uint8Array, cursor: Reader): number {
   }
 }
 
+/** Table header entry: kind, byte offset into the body, byte length. */
 interface TableEntry {
   kind: number;
   offset: number;
-  count: number;
+  length: number;
 }
 
 interface ParsedModule {
-  /** Everything before the table header (magic + version + flavour). */
   prefix: Uint8Array;
   tables: TableEntry[];
-  /** Region the table offsets are relative to. */
   body: Uint8Array;
 }
 
 function parseModule(bytes: Uint8Array): ParsedModule {
-  // magic (4 bytes) + version (4 bytes LE) [+ flavour byte folded into version]
-  const cursor: Reader = { offset: 4 + 4 };
+  const cursor: Cursor = { offset: HEADER_PREFIX_BYTES };
   const tableCount = readUleb(bytes, cursor);
   const tables: TableEntry[] = [];
   for (let index = 0; index < tableCount; index += 1) {
     const kind = bytes[cursor.offset++]!;
     const offset = readUleb(bytes, cursor);
-    const count = readUleb(bytes, cursor);
-    tables.push({ kind, offset, count });
+    const length = readUleb(bytes, cursor);
+    tables.push({ kind, offset, length });
   }
   return {
-    prefix: bytes.slice(0, 4 + 4),
+    prefix: bytes.slice(0, HEADER_PREFIX_BYTES),
     tables,
     body: bytes.slice(cursor.offset),
   };
@@ -100,7 +99,7 @@ function parseModule(bytes: Uint8Array): ParsedModule {
 function serializeModule(parsed: ParsedModule): Uint8Array {
   const header: number[] = [...encodeUleb(parsed.tables.length)];
   for (const table of parsed.tables) {
-    header.push(table.kind, ...encodeUleb(table.offset), ...encodeUleb(table.count));
+    header.push(table.kind, ...encodeUleb(table.offset), ...encodeUleb(table.length));
   }
   const out = new Uint8Array(parsed.prefix.length + header.length + parsed.body.length);
   out.set(parsed.prefix, 0);
@@ -109,41 +108,32 @@ function serializeModule(parsed: ParsedModule): Uint8Array {
   return out;
 }
 
-/** One constant-pool entry: signature token(s), then a length-delimited data blob. */
+/** One constant-pool entry: a signature token, then a length-delimited blob. */
 interface ConstantEntry {
   signature: Uint8Array;
   data: Uint8Array;
 }
 
+/** Enough of the signature-token grammar to skip constant types (incl. vectors). */
+function skipSignatureToken(body: Uint8Array, cursor: Cursor): void {
+  const token = body[cursor.offset++]!;
+  if (token === 0x7) skipSignatureToken(body, cursor); // VECTOR wraps one token
+}
+
 function readConstantPool(body: Uint8Array, table: TableEntry): ConstantEntry[] {
-  const cursor: Reader = { offset: table.offset };
+  const end = table.offset + table.length;
+  const cursor: Cursor = { offset: table.offset };
   const entries: ConstantEntry[] = [];
-  for (let index = 0; index < table.count; index += 1) {
+  while (cursor.offset < end) {
     const signatureStart = cursor.offset;
-    readSignatureToken(body, cursor);
+    skipSignatureToken(body, cursor);
     const signature = body.slice(signatureStart, cursor.offset);
     const length = readUleb(body, cursor);
     const data = body.slice(cursor.offset, cursor.offset + length);
     cursor.offset += length;
     entries.push({ signature, data });
   }
-  if (cursor.offset !== table.offset + tableLength(body, table)) {
-    // Non-fatal: the splice below only relies on the entries it parsed.
-  }
   return entries;
-}
-
-function tableLength(body: Uint8Array, table: TableEntry): number {
-  // The constant pool is re-serialised wholesale, so its recorded length is the
-  // distance to the next table start (computed by the caller instead).
-  return body.length - table.offset;
-}
-
-/** Enough of the signature-token grammar to skip constant types (incl. vectors). */
-function readSignatureToken(body: Uint8Array, cursor: Reader): void {
-  const token = body[cursor.offset++]!;
-  // 0x7 = VECTOR: one nested token follows.
-  if (token === 0x7) readSignatureToken(body, cursor);
 }
 
 function writeConstantPool(entries: ConstantEntry[]): Uint8Array {
@@ -160,31 +150,30 @@ function writeConstantPool(entries: ConstantEntry[]): Uint8Array {
  */
 export function patchCoinTemplate(template: Uint8Array, meta: CoinTemplateMetadata): Uint8Array {
   const parsed = parseModule(template);
-  const poolIndex = parsed.tables.findIndex((table) => table.kind === CONSTANT_POOL_KIND);
-  if (poolIndex < 0) throw new Error("The coin template has no constant pool.");
-  const pool = parsed.tables[poolIndex]!;
+  const pool = parsed.tables.find((table) => table.kind === CONSTANT_POOL_KIND);
+  if (!pool) throw new Error("The coin template has no constant pool.");
 
-  // Table regions are laid out in offset order; the pool ends where the next one starts.
-  const sortedOffsets = parsed.tables.map((table) => table.offset).sort((a, b) => a - b);
-  const nextOffset = sortedOffsets.find((offset) => offset > pool.offset) ?? parsed.body.length;
-  const poolBytes = parsed.body.slice(pool.offset, nextOffset);
-  const entries = readConstantPool(parsed.body, { ...pool, offset: pool.offset });
+  const entries = readConstantPool(parsed.body, pool);
   if (entries.length < 2) throw new Error("The coin template constant pool is not the expected shape.");
-
-  entries[0] = { signature: entries[0]!.signature, data: Uint8Array.from([Math.max(0, Math.min(18, meta.decimals))]) };
+  entries[0] = {
+    signature: entries[0]!.signature,
+    data: Uint8Array.from([Math.max(0, Math.min(18, Math.round(meta.decimals)))]),
+  };
   entries[1] = { signature: entries[1]!.signature, data: Uint8Array.from(encodeMetadataBlob(meta)) };
 
   const replacement = writeConstantPool(entries);
-  const delta = replacement.length - poolBytes.length;
+  const delta = replacement.length - pool.length;
+  const poolEnd = pool.offset + pool.length;
 
   const body = new Uint8Array(parsed.body.length + delta);
   body.set(parsed.body.slice(0, pool.offset), 0);
   body.set(replacement, pool.offset);
-  body.set(parsed.body.slice(nextOffset), pool.offset + replacement.length);
+  body.set(parsed.body.slice(poolEnd), pool.offset + replacement.length);
 
-  const tables = parsed.tables.map((table) =>
-    table.offset > pool.offset ? { ...table, offset: table.offset + delta } : table,
-  );
+  const tables = parsed.tables.map((table) => {
+    if (table.kind === CONSTANT_POOL_KIND) return { ...table, length: replacement.length };
+    return table.offset > pool.offset ? { ...table, offset: table.offset + delta } : table;
+  });
 
   return serializeModule({ prefix: parsed.prefix, tables, body });
 }
