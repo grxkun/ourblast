@@ -57,6 +57,16 @@ export function XLaunchQueue() {
     onError: () => toast.error("That launch could not be started. Try again in a moment."),
   });
 
+  const check = useMutation({
+    mutationFn: async (requestId: string) => verify({ data: { requestId } }),
+    onSuccess: (result) => {
+      void queryClient.invalidateQueries({ queryKey: ["x-launch-requests"] });
+      if (result.status === "DEPLOYED") toast.success("Found it — token confirmed");
+      else toast.info(result.notice ?? "No token found yet. Try again in a moment.");
+    },
+    onError: () => toast.error("That check could not run. Try again in a moment."),
+  });
+
   const rows = requests.data ?? [];
   if (!rows.length) return null;
 
