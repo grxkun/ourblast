@@ -21,6 +21,7 @@ import { Route as HowToPlayRouteImport } from './routes/how-to-play'
 import { Route as HubRouteImport } from './routes/hub'
 import { Route as LaunchesRouteImport } from './routes/launches'
 import { Route as LeaderboardRouteImport } from './routes/leaderboard'
+import { Route as McpRouteImport } from './routes/mcp'
 import { Route as MemeRouteImport } from './routes/meme'
 import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as ProfileRouteImport } from './routes/profile'
@@ -28,6 +29,7 @@ import { Route as RoastRouteImport } from './routes/roast'
 import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
 import { Route as TerminalRouteImport } from './routes/terminal'
 import { Route as TermsRouteImport } from './routes/terms'
+import { Route as Char91DotwellKnownChar93OauthProtectedResourceRouteImport } from './routes/[.well-known]/oauth-protected-resource'
 import { Route as BuilderUsernameRouteImport } from './routes/builder/$username'
 import { Route as ClaimTokenRouteImport } from './routes/claim.$token'
 import { Route as EcosystemProjectSlugRouteImport } from './routes/ecosystem-project.$slug'
@@ -96,6 +98,11 @@ const LeaderboardRoute = LeaderboardRouteImport.update({
   path: '/leaderboard',
   getParentRoute: () => rootRouteImport,
 } as any)
+const McpRoute = McpRouteImport.update({
+  id: '/mcp',
+  path: '/mcp',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const MemeRoute = MemeRouteImport.update({
   id: '/meme',
   path: '/meme',
@@ -131,6 +138,12 @@ const TermsRoute = TermsRouteImport.update({
   path: '/terms',
   getParentRoute: () => rootRouteImport,
 } as any)
+const Char91DotwellKnownChar93OauthProtectedResourceRoute =
+  Char91DotwellKnownChar93OauthProtectedResourceRouteImport.update({
+    id: '/.well-known/oauth-protected-resource',
+    path: '/.well-known/oauth-protected-resource',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const BuilderUsernameRoute = BuilderUsernameRouteImport.update({
   id: '/builder/$username',
   path: '/builder/$username',
@@ -180,6 +193,7 @@ export interface FileRoutesByFullPath {
   '/hub': typeof HubRoute
   '/launches': typeof LaunchesRoute
   '/leaderboard': typeof LeaderboardRoute
+  '/mcp': typeof McpRoute
   '/meme': typeof MemeRoute
   '/privacy': typeof PrivacyRoute
   '/profile': typeof ProfileRoute
@@ -187,6 +201,7 @@ export interface FileRoutesByFullPath {
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/terminal': typeof TerminalRoute
   '/terms': typeof TermsRoute
+  '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   '/builder/$username': typeof BuilderUsernameRoute
   '/claim/$token': typeof ClaimTokenRoute
   '/ecosystem-project/$slug': typeof EcosystemProjectSlugRoute
@@ -208,6 +223,7 @@ export interface FileRoutesByTo {
   '/hub': typeof HubRoute
   '/launches': typeof LaunchesRoute
   '/leaderboard': typeof LeaderboardRoute
+  '/mcp': typeof McpRoute
   '/meme': typeof MemeRoute
   '/privacy': typeof PrivacyRoute
   '/profile': typeof ProfileRoute
@@ -215,6 +231,7 @@ export interface FileRoutesByTo {
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/terminal': typeof TerminalRoute
   '/terms': typeof TermsRoute
+  '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   '/builder/$username': typeof BuilderUsernameRoute
   '/claim/$token': typeof ClaimTokenRoute
   '/ecosystem-project/$slug': typeof EcosystemProjectSlugRoute
@@ -237,6 +254,7 @@ export interface FileRoutesById {
   '/hub': typeof HubRoute
   '/launches': typeof LaunchesRoute
   '/leaderboard': typeof LeaderboardRoute
+  '/mcp': typeof McpRoute
   '/meme': typeof MemeRoute
   '/privacy': typeof PrivacyRoute
   '/profile': typeof ProfileRoute
@@ -244,6 +262,7 @@ export interface FileRoutesById {
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/terminal': typeof TerminalRoute
   '/terms': typeof TermsRoute
+  '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   '/builder/$username': typeof BuilderUsernameRoute
   '/claim/$token': typeof ClaimTokenRoute
   '/ecosystem-project/$slug': typeof EcosystemProjectSlugRoute
@@ -267,6 +286,7 @@ export interface FileRouteTypes {
     | '/hub'
     | '/launches'
     | '/leaderboard'
+    | '/mcp'
     | '/meme'
     | '/privacy'
     | '/profile'
@@ -274,6 +294,7 @@ export interface FileRouteTypes {
     | '/sitemap.xml'
     | '/terminal'
     | '/terms'
+    | '/.well-known/oauth-protected-resource'
     | '/builder/$username'
     | '/claim/$token'
     | '/ecosystem-project/$slug'
@@ -295,6 +316,7 @@ export interface FileRouteTypes {
     | '/hub'
     | '/launches'
     | '/leaderboard'
+    | '/mcp'
     | '/meme'
     | '/privacy'
     | '/profile'
@@ -302,6 +324,7 @@ export interface FileRouteTypes {
     | '/sitemap.xml'
     | '/terminal'
     | '/terms'
+    | '/.well-known/oauth-protected-resource'
     | '/builder/$username'
     | '/claim/$token'
     | '/ecosystem-project/$slug'
@@ -323,6 +346,7 @@ export interface FileRouteTypes {
     | '/hub'
     | '/launches'
     | '/leaderboard'
+    | '/mcp'
     | '/meme'
     | '/privacy'
     | '/profile'
@@ -330,6 +354,7 @@ export interface FileRouteTypes {
     | '/sitemap.xml'
     | '/terminal'
     | '/terms'
+    | '/.well-known/oauth-protected-resource'
     | '/builder/$username'
     | '/claim/$token'
     | '/ecosystem-project/$slug'
@@ -352,6 +377,7 @@ export interface RootRouteChildren {
   HubRoute: typeof HubRoute
   LaunchesRoute: typeof LaunchesRoute
   LeaderboardRoute: typeof LeaderboardRoute
+  McpRoute: typeof McpRoute
   MemeRoute: typeof MemeRoute
   PrivacyRoute: typeof PrivacyRoute
   ProfileRoute: typeof ProfileRoute
@@ -359,6 +385,7 @@ export interface RootRouteChildren {
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
   TerminalRoute: typeof TerminalRoute
   TermsRoute: typeof TermsRoute
+  Char91DotwellKnownChar93OauthProtectedResourceRoute: typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   BuilderUsernameRoute: typeof BuilderUsernameRoute
   ClaimTokenRoute: typeof ClaimTokenRoute
   EcosystemProjectSlugRoute: typeof EcosystemProjectSlugRoute
@@ -454,6 +481,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LeaderboardRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/mcp': {
+      id: '/mcp'
+      path: '/mcp'
+      fullPath: '/mcp'
+      preLoaderRoute: typeof McpRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/meme': {
       id: '/meme'
       path: '/meme'
@@ -501,6 +535,13 @@ declare module '@tanstack/react-router' {
       path: '/terms'
       fullPath: '/terms'
       preLoaderRoute: typeof TermsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/.well-known/oauth-protected-resource': {
+      id: '/.well-known/oauth-protected-resource'
+      path: '/.well-known/oauth-protected-resource'
+      fullPath: '/.well-known/oauth-protected-resource'
+      preLoaderRoute: typeof Char91DotwellKnownChar93OauthProtectedResourceRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/builder/$username': {
@@ -568,6 +609,7 @@ const rootRouteChildren: RootRouteChildren = {
   HubRoute: HubRoute,
   LaunchesRoute: LaunchesRoute,
   LeaderboardRoute: LeaderboardRoute,
+  McpRoute: McpRoute,
   MemeRoute: MemeRoute,
   PrivacyRoute: PrivacyRoute,
   ProfileRoute: ProfileRoute,
@@ -575,6 +617,8 @@ const rootRouteChildren: RootRouteChildren = {
   SitemapDotxmlRoute: SitemapDotxmlRoute,
   TerminalRoute: TerminalRoute,
   TermsRoute: TermsRoute,
+  Char91DotwellKnownChar93OauthProtectedResourceRoute:
+    Char91DotwellKnownChar93OauthProtectedResourceRoute,
   BuilderUsernameRoute: BuilderUsernameRoute,
   ClaimTokenRoute: ClaimTokenRoute,
   EcosystemProjectSlugRoute: EcosystemProjectSlugRoute,
