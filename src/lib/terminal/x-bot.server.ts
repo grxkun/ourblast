@@ -24,7 +24,8 @@ export async function handleXMention(payload: XMentionPayload, source: "webhook"
 
   // Simple X launcher first: "Deploy $TETY Tety Yety Caty on Suipump" becomes one
   // launch request (one X post = one request) that a human confirms in the terminal.
-  const { readDeployRequest, createLaunchRequest, composeReceivedReply } = await import("./xLauncher.server");
+  const { readDeployRequest, createLaunchRequest, composeReceivedReply, readLauncherSettings, executeLaunchRequest } =
+    await import("./xLauncher.server");
   const deploy = await readDeployRequest(text);
   if (deploy) {
     // The picture on the tweet is the token image. Attached photo first; a plain
@@ -35,6 +36,18 @@ export async function handleXMention(payload: XMentionPayload, source: "webhook"
       if (credentials) iconUrl = await fetchTweetImage(credentials, payload.postId);
     }
     const row = await createLaunchRequest(payload.postId, username, deploy, iconUrl);
+
+    // Automatic launching: when the operator has switched it on, fire the launch
+    // straight away. The outcome only ever reports DEPLOYED after the chain
+    // confirms; failures are recorded on the request, never faked.
+    const settings = await readLauncherSettings();
+    if (settings.autoLaunchEnabled && row.status !== "DEPLOYED") {
+      try {
+        await executeLaunchRequest(row.id);
+      } catch (error) {
+        console.error(`Auto launch failed for ${row.id}: ${error instanceof Error ? error.message : "unknown"}`);
+      }
+    }
     const reply = composeReceivedReply(deploy);
     // Test / simulated posts never go to X.
     const credentials = source === "simulation" || payload.postId.startsWith("sim-") ? null : readXCredentials();
