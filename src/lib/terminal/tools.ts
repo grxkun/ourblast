@@ -85,6 +85,19 @@ export const terminalTools: Record<Exclude<TerminalIntentName, "unknown">, Termi
 };
 
 export async function executeTerminalIntent(intent: ParsedIntent, context: TerminalAgentContext): Promise<TerminalToolResult> {
-  if (intent.name === "unknown") return { tool: "unknown", status: "FAILED", message: "I couldn't map that request to a supported action. Try a suggested command." };
+  if (intent.name === "unknown") {
+    const said = intent.raw.trim().slice(0, 60) || "that";
+    return {
+      tool: "unknown",
+      status: "READY",
+      message:
+        `Hey! I didn't quite catch "${said}" — but I'm here and ready. I can launch a token, check a price, show your wallet, or pull up your launches. Try something like:\n\n` +
+        "🚀 launch $DOG Sui Dog\n" +
+        "🔍 check $BLAST\n" +
+        "👛 wallet\n" +
+        "📊 my launches\n\n" +
+        "Or just tell me what you want to do in your own words — I'll figure it out.",
+    };
+  }
   return terminalTools[intent.name](intent, context);
 }
