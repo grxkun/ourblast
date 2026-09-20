@@ -141,6 +141,11 @@ export function tokenPageUrl(pad: LaunchpadConfig, ref: string): string {
   return `${pad.site.replace(/\/$/, "")}/token/${ref}`;
 }
 
+/** Public pool / chart page on the pad for a launched token. */
+export function poolPageUrl(pad: LaunchpadConfig, ref: string): string {
+  return `${pad.site.replace(/\/$/, "")}/pool/${ref}`;
+}
+
 export function resolvePairToken(pad: LaunchpadConfig, requested?: string | null): string {
   const fallback = pad.pairTokens[0] ?? "SUI";
   if (!requested) return fallback;
