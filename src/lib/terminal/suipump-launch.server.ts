@@ -6,6 +6,7 @@ import { MIST_PER_SUI } from "@/lib/ourblast.config";
 import { fetchCoinTemplate, patchCoinTemplate } from "./coin-template.server";
 import {
   SUIPUMP_CREATE_FUNCTION,
+  SUIPUMP_ISSUER_KEY_DEFAULT,
   SUIPUMP_ISSUER_URL_DEFAULT,
   SUIPUMP_LAUNCH_FEE_SUI_DEFAULT,
   SUIPUMP_MODULE,
