@@ -432,6 +432,8 @@ export interface SuipumpLaunchInput {
   iconUrl?: string | null;
   /** X profile link of the caller who asked for the launch; stored in the coin info. */
   callerXLink?: string | null;
+  /** The caller's original tweet text; quoted in the coin info. */
+  callerTweetText?: string | null;
   /** Fee recipients and their share in basis points; must add up to 10000. */
   payees: string[];
   shareBps: number[];
@@ -511,7 +513,10 @@ export async function launchOnSuipump(input: SuipumpLaunchInput): Promise<Suipum
   const withCaller = input.callerXLink?.trim()
     ? `${baseDescription ? `${baseDescription} ` : ""}Called by ${input.callerXLink.trim()} via @Ourblastbot`
     : baseDescription;
-  const description = withCaller.slice(0, 200);
+  // Quote the caller's own tweet in the coin info so explorers show the original call.
+  const tweet = input.callerTweetText?.replace(/\s+/g, " ").trim();
+  const withTweet = tweet ? `${withCaller ? `${withCaller} ` : ""}"${tweet}"` : withCaller;
+  const description = withTweet.slice(0, 200);
 
   // 1. Publish the coin package from Suipump's public template.
   let coinModule: Uint8Array;

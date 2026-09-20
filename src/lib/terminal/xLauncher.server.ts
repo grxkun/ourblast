@@ -32,6 +32,8 @@ export interface LaunchRequestRow {
   notice: string | null;
   /** Picture from the tweet, used as the coin's image metadata. */
   icon_url: string | null;
+  /** The caller's original tweet text, quoted in the coin's description. */
+  tweet_text: string | null;
   created_at: string;
 }
 
@@ -109,6 +111,7 @@ export async function createLaunchRequest(
   username: string,
   request: DeployRequest,
   iconUrl?: string | null,
+  tweetText?: string | null,
 ): Promise<LaunchRequestRow> {
   const client = await db();
   const settings = await readLauncherSettings();
@@ -132,6 +135,7 @@ export async function createLaunchRequest(
       dev_buy: settings.devBuyEnabled,
       ourblast_fee_percent: settings.ourblastFeePercent,
       icon_url: iconUrl?.slice(0, 500) ?? null,
+      tweet_text: tweetText?.slice(0, 1000) ?? null,
       status: "PENDING",
       notice: pad.integrated ? null : INTEGRATION_PENDING,
     })
@@ -205,6 +209,8 @@ export async function executeLaunchRequest(requestId: string): Promise<LaunchOut
       iconUrl: request.icon_url ?? null,
       // The caller's X link goes into the coin's public info.
       callerXLink: request.x_username ? `https://x.com/${request.x_username}` : null,
+      // The caller's original tweet is quoted in the coin's public info.
+      callerTweetText: request.tweet_text ?? null,
       payees,
       shareBps,
     });
