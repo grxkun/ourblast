@@ -60,7 +60,7 @@ export function readSuipumpConfig(): SuipumpLaunchConfig {
     registryId: process.env['SUIPUMP_LAUNCH_REGISTRY_ID']?.trim() || SUIPUMP_REGISTRY_DEFAULT,
     templateUrl: process.env['SUIPUMP_TEMPLATE_URL']?.trim() || SUIPUMP_TEMPLATE_URL_DEFAULT,
     issuerUrl: (process.env['SUIPUMP_ISSUER_URL']?.trim() || SUIPUMP_ISSUER_URL_DEFAULT).replace(/\/+$/, ""),
-    issuerKey: process.env['SUIPUMP_ISSUER_KEY']?.trim() || "",
+    issuerKey: process.env['SUIPUMP_ISSUER_KEY']?.trim() || SUIPUMP_ISSUER_KEY_DEFAULT,
     launchFeeMist: Math.max(
       0,
       Math.round(numberEnv("SUIPUMP_LAUNCH_FEE_SUI", SUIPUMP_LAUNCH_FEE_SUI_DEFAULT) * MIST_PER_SUI),

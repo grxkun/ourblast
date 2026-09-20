@@ -17,7 +17,6 @@
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",
     "@lovable.dev/cloud-auth-js": "^1.1.2",
-    "@mysten/move-bytecode-template": "^0.4.1",
     "@mysten/sui": "^2.29.0",
     "@mysten/wallet-standard": "^0.21.22",
     "@radix-ui/react-accordion": "^1.2.12",
