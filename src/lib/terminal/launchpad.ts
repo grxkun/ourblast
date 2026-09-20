@@ -105,6 +105,15 @@ const PAD_ALIASES: Record<string, string> = {
   mael: "maelstrom",
   pump: "suipump",
   "suipump.org": "suipump",
+  "sui pump": "suipump",
+  ript: "ript",
+  "ript.fun": "ript",
+  blast: "blastfun",
+  "blast.fun": "blastfun",
+  blastfun: "blastfun",
+  vice: "vicefun",
+  "vice.fun": "vicefun",
+  vicefun: "vicefun",
 };
 
 export function resolveLaunchpad(value?: string | null): LaunchpadConfig {
