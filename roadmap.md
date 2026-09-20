@@ -66,6 +66,12 @@
 - [x] Launch runs on the backend-held OurBlast wallet; never claims deployed before confirmation
 - [x] X replies: "launch request received" on mention, token + pool links only after confirmation
 - [x] Admin → X launcher: default launchpad, OurBlast fee %, developer buy, automatic launch
+- [x] Suipump adapter built against the live mainnet package (`bonding_curve::create_with_launch_fee`),
+      signed by the OurBlastBot wallet, simulated before submit, configurable via
+      SUIPUMP_PACKAGE_ID / SUIPUMP_LAUNCH_REGISTRY_ID / SUIPUMP_LAUNCH_FEE_SUI /
+      SUIPUMP_CREATE_OPTION_A|B / SUIPUMP_FEE_PAYEES / SUIPUMP_LAUNCH_ENABLED
+- [ ] Blocked: Suipump must issue a `LaunchTicket` to the OurBlastBot deployer address
+      (tickets are minted only by their `LaunchIssuerCap`) — admin → X launcher shows readiness
 - [ ] Verified launch integration for a launchpad (all pads currently report "coming soon")
 
 ## Suipump integration (read-only API)
