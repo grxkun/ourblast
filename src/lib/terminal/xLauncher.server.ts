@@ -1,3 +1,4 @@
+import { DEFAULT_TREASURY_ADDRESS } from "@/lib/ourblast.config";
 import { poolPageUrl, resolveLaunchpad, tokenPageUrl } from "./launchpad";
 import { launchpadAdapter } from "./launchpadAdapter";
 import {
@@ -33,6 +34,21 @@ export interface LaunchRequestRow {
 }
 
 const INTEGRATION_PENDING = "Launchpad integration coming soon.";
+
+/**
+ * Where the launchpad sends the creator/developer fee. It lands in the OurBlast
+ * treasury, which is what the existing claim links pay out from: the creator
+ * keeps their share, OurBlast keeps its configured percentage. Overridable with
+ * SUIPUMP_FEE_PAYEES (comma-separated addresses, equal shares).
+ */
+function suipumpPayees(): string[] {
+  const configured = (process.env['SUIPUMP_FEE_PAYEES'] ?? "")
+    .split(",")
+    .map((value) => value.trim())
+    .filter((value) => /^0x[0-9a-fA-F]{64}$/.test(value));
+  if (configured.length > 0) return configured;
+  return [process.env['OURBLAST_TREASURY_ADDRESS']?.trim() || DEFAULT_TREASURY_ADDRESS];
+}
 
 async function db() {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
@@ -166,18 +182,45 @@ export async function executeLaunchRequest(requestId: string): Promise<LaunchOut
   }
 
   const pad = resolveLaunchpad(request.launchpad);
-  const result = await launchpadAdapter.launchToken(launchConfigFor(request));
-  const deployment = result.data?.["deployment"] as
-    | { tokenAddress: string; transactionDigest: string }
-    | undefined;
+  let deployment: { tokenAddress: string; transactionDigest: string } | undefined;
+  let failure: string | null = null;
 
-  if (result.status !== "CONFIRMED" || !deployment?.tokenAddress) {
+  if (pad.id === "suipump") {
+    // Real Suipump create call, signed by the OurBlastBot wallet. Stays inert
+    // (NOT_IMPLEMENTED) until Suipump issues a launch ticket to that wallet.
+    const { launchOnSuipump } = await import("./suipump-launch.server");
+    const payees = suipumpPayees();
+    // Equal shares, with any rounding remainder going to the first payee.
+    const share = Math.floor(10_000 / payees.length);
+    const shareBps = payees.map((_, index) => (index === 0 ? 10_000 - share * (payees.length - 1) : share));
+    const outcome = await launchOnSuipump({
+      symbol: request.symbol,
+      name: request.name,
+      description: "",
+      payees,
+      shareBps,
+    });
+    if (outcome.status === "CONFIRMED" && outcome.tokenAddress) {
+      deployment = { tokenAddress: outcome.tokenAddress, transactionDigest: outcome.transactionDigest ?? "" };
+    } else if (outcome.status === "FAILED") {
+      failure = outcome.message;
+    }
+  } else {
+    const result = await launchpadAdapter.launchToken(launchConfigFor(request));
+    const adapterDeployment = result.data?.["deployment"] as
+      | { tokenAddress: string; transactionDigest: string }
+      | undefined;
+    if (result.status === "CONFIRMED" && adapterDeployment?.tokenAddress) deployment = adapterDeployment;
+  }
+
+  if (!deployment?.tokenAddress) {
     // Nothing on chain happened: park the request, say so plainly, keep it launchable later.
+    const notice = failure ?? INTEGRATION_PENDING;
     await client
       .from("x_launch_requests")
-      .update({ status: "UNAVAILABLE", notice: INTEGRATION_PENDING, updated_at: new Date().toISOString() })
+      .update({ status: "UNAVAILABLE", notice, updated_at: new Date().toISOString() })
       .eq("id", request.id);
-    return { status: "UNAVAILABLE", notice: INTEGRATION_PENDING, tokenUrl: null, poolUrl: null };
+    return { status: "UNAVAILABLE", notice, tokenUrl: null, poolUrl: null };
   }
 
   const tokenUrl = tokenPageUrl(pad, deployment.tokenAddress);
