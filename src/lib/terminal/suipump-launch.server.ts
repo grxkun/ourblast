@@ -513,7 +513,10 @@ export async function launchOnSuipump(input: SuipumpLaunchInput): Promise<Suipum
   const withCaller = input.callerXLink?.trim()
     ? `${baseDescription ? `${baseDescription} ` : ""}Called by ${input.callerXLink.trim()} via @Ourblastbot`
     : baseDescription;
-  const description = withCaller.slice(0, 200);
+  // Quote the caller's own tweet in the coin info so explorers show the original call.
+  const tweet = input.callerTweetText?.replace(/\s+/g, " ").trim();
+  const withTweet = tweet ? `${withCaller ? `${withCaller} ` : ""}"${tweet}"` : withCaller;
+  const description = withTweet.slice(0, 200);
 
   // 1. Publish the coin package from Suipump's public template.
   let coinModule: Uint8Array;
