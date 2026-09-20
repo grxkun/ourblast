@@ -218,3 +218,11 @@ describe("chatty tweets", () => {
     expect(parseDeployTweet("@Ourblastbot wen moon ser")).toBeNull();
   });
 });
+
+it("parses 'deploy a ticker $X name token: Y'", () => {
+  expect(parseDeployTweet("Deploy a ticker $Yety3 name token: Tety")).toEqual({
+    symbol: "YETY3",
+    name: "Tety",
+    launchpad: "suipump",
+  });
+});
