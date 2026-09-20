@@ -19,11 +19,11 @@ export function SuipumpReadinessCard() {
       {status.data ? (
         <div className="mt-3 space-y-2 text-sm">
           <p className={status.data.ready ? "font-semibold text-foreground" : "text-muted-foreground"}>
-            {status.data.ready ? "Ready — launches will run automatically." : "Waiting on launch access."}
+            {status.data.ready ? "Ready — launches will run automatically." : "Not ready yet."}
           </p>
           <dl className="grid gap-1 sm:grid-cols-2">
             <div>
-              <dt className="text-xs uppercase text-muted-foreground">Deployer wallet</dt>
+              <dt className="text-xs uppercase text-muted-foreground">Launch wallet</dt>
               <dd className="break-all font-mono text-xs">{status.data.deployerAddress ?? "not configured"}</dd>
             </div>
             <div>
@@ -31,12 +31,12 @@ export function SuipumpReadinessCard() {
               <dd>{status.data.balanceSui.toLocaleString(undefined, { maximumFractionDigits: 3 })} SUI</dd>
             </div>
             <div>
-              <dt className="text-xs uppercase text-muted-foreground">Launch tickets held</dt>
-              <dd>{status.data.tickets}</dd>
+              <dt className="text-xs uppercase text-muted-foreground">Needed per launch</dt>
+              <dd>{status.data.requiredSui.toLocaleString(undefined, { maximumFractionDigits: 2 })} SUI</dd>
             </div>
             <div>
-              <dt className="text-xs uppercase text-muted-foreground">Token treasuries held</dt>
-              <dd>{status.data.treasuryCaps}</dd>
+              <dt className="text-xs uppercase text-muted-foreground">Launch pass service</dt>
+              <dd>{status.data.issuerConfigured ? "connected" : "key not set"}</dd>
             </div>
           </dl>
           {status.data.missing.length > 0 ? (

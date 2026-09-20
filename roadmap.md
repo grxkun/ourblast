@@ -66,16 +66,20 @@
 - [x] Launch runs on the backend-held OurBlast wallet; never claims deployed before confirmation
 - [x] X replies: "launch request received" on mention, token + pool links only after confirmation
 - [x] Admin → X launcher: default launchpad, OurBlast fee %, developer buy, automatic launch
-- [x] Suipump adapter built against the live mainnet package (`bonding_curve::create_with_launch_fee`),
-      signed by the OurBlastBot wallet, simulated before submit, configurable via
-      SUIPUMP_PACKAGE_ID / SUIPUMP_LAUNCH_REGISTRY_ID / SUIPUMP_LAUNCH_FEE_SUI /
+- [x] Suipump treated as permissionless. Reverse-engineered public flow (their own site + real
+      mainnet launch transactions): publish the public coin template (https://suipump.org/template.mv)
+      → public launch-pass issuer mints a `LaunchTicket` to the publisher → `bonding_curve::create_with_launch_fee`
+- [x] Worker-safe pure-TS coin-template patcher (`coin-template.server.ts`), byte-identical to
+      suipump.org's wasm patcher, so the issuer's bytecode verification passes
+- [x] Full launch pipeline signed by the OurBlastBot wallet, each step simulated before submit;
+      configurable via SUIPUMP_PACKAGE_ID / SUIPUMP_LAUNCH_REGISTRY_ID / SUIPUMP_TEMPLATE_URL /
+      SUIPUMP_ISSUER_URL / SUIPUMP_ISSUER_KEY / SUIPUMP_LAUNCH_FEE_SUI / SUIPUMP_COIN_DECIMALS /
       SUIPUMP_CREATE_OPTION_A|B / SUIPUMP_FEE_PAYEES / SUIPUMP_LAUNCH_ENABLED
-- [ ] Blocked: Suipump must issue a `LaunchTicket` to the OurBlastBot deployer address
-      (tickets are minted only by their `LaunchIssuerCap`) — admin → X launcher shows readiness
-- [ ] Verified launch integration for a launchpad (all pads currently report "coming soon")
+- [ ] Blocked on funding only: the OurBlastBot wallet holds 0 SUI and needs ~2.9 SUI per launch
+      (2 SUI Suipump launch fee + publish/create gas) — admin → X launcher shows readiness
+- [ ] First real end-to-end launch once funded (nothing is ever reported as deployed unless Sui confirms)
 
-## Suipump integration (read-only API)
+## Suipump integration (reads)
 - [x] Live Suipump data reads (token list, curve stats, on-chain supply) via https://suipump-main-web.onrender.com
 - [x] Launch-by-hand flow: "Create $TICKER on Suipump" + verified confirmation before any "deployed" claim
 - [x] Poller auto-confirms new Suipump curves for open X launch requests and replies with the real token link
-- [ ] Automatic token creation — blocked: Suipump publishes no launch endpoint or contract entry

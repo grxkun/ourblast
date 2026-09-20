@@ -9,7 +9,7 @@ export async function fetchSuiBalance(address: string): Promise<number> {
     method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify({
-      query: `query($a:SuiAddress!){address(address:$a){balance(type:"0x2::sui::SUI"){totalBalance}}}`,
+      query: `query($a:SuiAddress!){address(address:$a){balance(coinType:"0x2::sui::SUI"){totalBalance}}}`,
       variables: { a: address },
     }),
   });

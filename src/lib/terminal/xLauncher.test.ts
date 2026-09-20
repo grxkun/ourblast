@@ -153,7 +153,8 @@ describe("X mention → Suipump launch screen → verified result", () => {
     expect(row.dev_buy).toBe(false);
     expect(row.ourblast_fee_percent).toBe(10);
     expect(row.status).toBe("PENDING");
-    expect(row.notice).toBe("Launchpad integration coming soon.");
+    // Suipump is a wired launchpad now, so no "coming soon" notice is attached.
+    expect(row.notice).toBeNull();
 
     // Duplicate protection: the same post never launches twice.
     const again = await createLaunchRequest("1801", "@WicWicz", request);
