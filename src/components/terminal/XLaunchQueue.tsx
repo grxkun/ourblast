@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { useBlast } from "@/components/blast/session";
 import { supabase } from "@/integrations/supabase/client";
 import { resolveLaunchpad } from "@/lib/terminal/launchpad";
+import { checkSuipumpLaunch } from "@/lib/terminal/suipump.functions";
 import { launchXRequest } from "@/lib/terminal/xLauncher.functions";
 
 type Row = {
@@ -32,6 +33,7 @@ export function XLaunchQueue() {
   const { userId, connect } = useBlast();
   const queryClient = useQueryClient();
   const launch = useServerFn(launchXRequest);
+  const verify = useServerFn(checkSuipumpLaunch);
 
   const requests = useQuery({
     queryKey: ["x-launch-requests"],
@@ -55,6 +57,16 @@ export function XLaunchQueue() {
       else toast.info(result.notice ?? "Launchpad integration coming soon.");
     },
     onError: () => toast.error("That launch could not be started. Try again in a moment."),
+  });
+
+  const check = useMutation({
+    mutationFn: async (requestId: string) => verify({ data: { requestId } }),
+    onSuccess: (result) => {
+      void queryClient.invalidateQueries({ queryKey: ["x-launch-requests"] });
+      if (result.status === "DEPLOYED") toast.success("Found it — token confirmed");
+      else toast.info(result.notice ?? "No token found yet. Try again in a moment.");
+    },
+    onError: () => toast.error("That check could not run. Try again in a moment."),
   });
 
   const rows = requests.data ?? [];
@@ -97,7 +109,7 @@ export function XLaunchQueue() {
                   <p className="mt-2 font-display text-3xl">${row.symbol}</p>
                   <p className="text-sm">{row.name}</p>
 
-                  {parked ? (
+                  {parked && pad.id !== "suipump" ? (
                     <p className="mt-3 text-sm text-muted-foreground">{pad.label} launch is not ready yet.</p>
                   ) : (
                     <dl className="mt-3 space-y-1 text-sm">
@@ -107,8 +119,32 @@ export function XLaunchQueue() {
                     </dl>
                   )}
 
-                  <div className="mt-4">
-                    {parked ? (
+                  {row.notice && parked && pad.id === "suipump" ? (
+                    <p className="mt-2 text-sm text-muted-foreground">{row.notice}</p>
+                  ) : null}
+
+                  <div className="mt-4 flex flex-wrap gap-2">
+                    {parked && pad.id === "suipump" ? (
+                      <>
+                        <Button asChild size="sm">
+                          <a href={`${pad.site}/?symbol=${row.symbol}`} target="_blank" rel="noreferrer">
+                            Create ${row.symbol} on {pad.label}
+                          </a>
+                        </Button>
+                        {userId ? (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            disabled={check.isPending}
+                            onClick={() => check.mutate(row.id)}
+                          >
+                            I launched it — check
+                          </Button>
+                        ) : (
+                          <Button size="sm" variant="outline" onClick={() => void connect()}>Sign in to confirm</Button>
+                        )}
+                      </>
+                    ) : parked ? (
                       <Button size="sm" variant="outline" disabled>Launchpad integration coming soon</Button>
                     ) : !userId ? (
                       <Button size="sm" onClick={() => void connect()}>Sign in to launch</Button>

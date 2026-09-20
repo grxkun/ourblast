@@ -199,6 +199,55 @@ export async function executeLaunchRequest(requestId: string): Promise<LaunchOut
   return { status: "DEPLOYED", notice: null, tokenUrl, poolUrl };
 }
 
+/**
+ * Launch-by-hand confirmation for Suipump: the person creates the token on
+ * suipump.org, we read the public Suipump feed and only mark the request
+ * deployed when a matching curve really exists on chain.
+ */
+export async function confirmSuipumpLaunch(requestId: string): Promise<LaunchOutcome> {
+  const client = await db();
+  const { data: row } = await client.from("x_launch_requests").select("*").eq("id", requestId).maybeSingle();
+  if (!row) throw new Error("That launch request no longer exists.");
+  const request = row as LaunchRequestRow;
+  if (request.status === "DEPLOYED") {
+    return { status: "DEPLOYED", notice: null, tokenUrl: request.token_url, poolUrl: request.pool_url };
+  }
+
+  const pad = resolveLaunchpad(request.launchpad);
+  if (pad.id !== "suipump") {
+    return { status: request.status, notice: INTEGRATION_PENDING, tokenUrl: null, poolUrl: null };
+  }
+
+  const { findSuipumpLaunch } = await import("./suipump.server");
+  // Allow a little clock slack either side of when the tweet landed.
+  const since = new Date(request.created_at).getTime() - 15 * 60_000;
+  const found = await findSuipumpLaunch(request.symbol, since);
+  if (!found) {
+    const notice = `No $${request.symbol} token found on Suipump yet. Create it, then check again.`;
+    await client
+      .from("x_launch_requests")
+      .update({ notice, updated_at: new Date().toISOString() })
+      .eq("id", request.id);
+    return { status: request.status, notice, tokenUrl: null, poolUrl: null };
+  }
+
+  const poolUrl = found.poolState === "live" ? found.tokenPage : null;
+  await client
+    .from("x_launch_requests")
+    .update({
+      status: "DEPLOYED",
+      token_address: found.curveId,
+      token_url: found.tokenPage,
+      pool_url: poolUrl,
+      notice: null,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", request.id);
+
+  await postDeployedReply(request, found.tokenPage, poolUrl ?? found.tokenPage);
+  return { status: "DEPLOYED", notice: null, tokenUrl: found.tokenPage, poolUrl };
+}
+
 /** Reply sent the moment a mention is understood — explicitly not a deployment. */
 export function composeReceivedReply(request: DeployRequest): string {
   return `⚠️ $${request.symbol} launch request received.\n\nOpen OurBlast Terminal to launch it.\nhttps://ourblast.xyz/terminal`;
