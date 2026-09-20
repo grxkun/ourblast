@@ -319,14 +319,31 @@ async function signAndExecute(
       created: [],
     };
   }
-  return {
-    digest: effects.digest,
-    ok: true,
-    error: null,
-    created: (effects.objectChanges?.nodes ?? [])
-      .filter((node) => node.idCreated)
-      .map((node) => ({ address: node.address, type: node.outputState?.asMoveObject?.contents?.type.repr ?? "" })),
-  };
+  const fromGraphql = (effects.objectChanges?.nodes ?? [])
+    .filter((node) => node.idCreated)
+    .map((node) => ({ address: node.address, type: normalizeType(node.outputState?.asMoveObject?.contents?.type.repr ?? "") }));
+  const created = fromGraphql.some((row) => row.type) ? fromGraphql : await createdViaRpc(effects.digest);
+  return { digest: effects.digest, ok: true, error: null, created };
+}
+
+/** Collapses padded addresses ("0x000…02::coin::Coin") to their short form. */
+function normalizeType(type: string): string {
+  return type.replace(/0x0+([0-9a-f])/g, "0x$1");
+}
+
+/** Created objects read back from the transaction itself, for indexes GraphQL misses. */
+async function createdViaRpc(digest: string): Promise<{ address: string; type: string }[]> {
+  try {
+    const block = await rpc<{ objectChanges?: { type: string; objectId?: string; objectType?: string }[] }>(
+      "sui_getTransactionBlock",
+      [digest, { showObjectChanges: true }],
+    );
+    return (block.objectChanges ?? [])
+      .filter((change) => change.type === "created" && change.objectId && change.objectType)
+      .map((change) => ({ address: change.objectId!, type: normalizeType(change.objectType!) }));
+  } catch {
+    return [];
+  }
 }
 
 /**
