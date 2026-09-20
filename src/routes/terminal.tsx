@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { useQuery, useServerFn } from "@tanstack/react-start";
 import { ShieldCheck } from "lucide-react";
 import { useState } from "react";
 
@@ -10,6 +11,8 @@ import { XConnectButton } from "@/components/terminal/XConnectButton";
 import { SocialSignIn } from "@/components/terminal/SocialSignIn";
 import { XLaunchQueue } from "@/components/terminal/XLaunchQueue";
 import { WalletButton } from "@/components/blast/WalletButton";
+import { resolveLaunchpad } from "@/lib/terminal/launchpad";
+import { getLauncherSettings } from "@/lib/terminal/xLauncher.functions";
 
 export const Route = createFileRoute("/terminal")({
   head: () => ({
