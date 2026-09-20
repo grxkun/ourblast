@@ -6,6 +6,7 @@ import { toast } from "sonner";
 
 import { SectionTitle } from "@/components/blast/AppShell";
 import { LauncherSettingsCard } from "@/components/terminal/LauncherSettingsCard";
+import { SuipumpReadinessCard } from "@/components/terminal/SuipumpReadinessCard";
 import { PlayerAvatar } from "@/components/blast/PlayerBadge";
 import { useBlast } from "@/components/blast/session";
 import { formatNumber, shortAddress, timeAgo } from "@/lib/blast";
