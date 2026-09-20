@@ -67,3 +67,9 @@
 - [x] X replies: "launch request received" on mention, token + pool links only after confirmation
 - [x] Admin → X launcher: default launchpad, OurBlast fee %, developer buy, automatic launch
 - [ ] Verified launch integration for a launchpad (all pads currently report "coming soon")
+
+## Suipump integration (read-only API)
+- [x] Live Suipump data reads (token list, curve stats, on-chain supply) via https://suipump-main-web.onrender.com
+- [x] Launch-by-hand flow: "Create $TICKER on Suipump" + verified confirmation before any "deployed" claim
+- [x] Poller auto-confirms new Suipump curves for open X launch requests and replies with the real token link
+- [ ] Automatic token creation — blocked: Suipump publishes no launch endpoint or contract entry
