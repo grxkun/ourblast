@@ -286,6 +286,10 @@ function AdminPage() {
             </div>
           ))}
         </div>
+      ) : tab === "launcher" ? (
+        <div className="max-w-2xl">
+          <LauncherSettingsCard />
+        </div>
       ) : tab === "challenge" ? (
         <div className="panel max-w-xl space-y-3 p-5 sm:p-6">
           <SectionTitle kicker="Today" title="Set the challenge" />
