@@ -8,6 +8,7 @@ import { XMentionInbox } from "@/components/terminal/XMentionInbox";
 import { GasReserveCard } from "@/components/terminal/GasReserveCard";
 import { XConnectButton } from "@/components/terminal/XConnectButton";
 import { SocialSignIn } from "@/components/terminal/SocialSignIn";
+import { XLaunchQueue } from "@/components/terminal/XLaunchQueue";
 import { WalletButton } from "@/components/blast/WalletButton";
 
 export const Route = createFileRoute("/terminal")({
@@ -44,6 +45,7 @@ function TerminalPage() {
         </div>
       </div>
       <div className="mb-4 space-y-4">
+        <XLaunchQueue />
         <SocialSignIn />
         <TerminalTutorial onTry={(command) => setTryCommand({ command, nonce: Date.now() })} />
       </div>
