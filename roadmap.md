@@ -83,3 +83,6 @@
 - [x] Live Suipump data reads (token list, curve stats, on-chain supply) via https://suipump-main-web.onrender.com
 - [x] Launch-by-hand flow: "Create $TICKER on Suipump" + verified confirmation before any "deployed" claim
 - [x] Poller auto-confirms new Suipump curves for open X launch requests and replies with the real token link
+
+## Launch status page
+- [x] Public /launches page: detected tweets, parsed token, tx digest, final result

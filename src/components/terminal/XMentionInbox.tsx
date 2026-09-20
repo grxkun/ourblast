@@ -59,6 +59,9 @@ export function XMentionInbox() {
     <section className="rounded-lg border border-border bg-card p-4">
       <header className="mb-3 flex flex-wrap items-center gap-2">
         <h2 className="text-sm font-semibold tracking-wide uppercase">{X_BOT_HANDLE} launch calls</h2>
+        <Link to="/launches" className="text-xs underline underline-offset-2 text-muted-foreground hover:text-foreground">
+          Public launch status →
+        </Link>
         {live ? <Badge>Live · replies posted to X</Badge> : <Badge variant="outline">Dry run · replies not posted</Badge>}
       </header>
       <p className="mb-3 text-xs text-muted-foreground">
