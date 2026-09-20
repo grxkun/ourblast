@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { useBlast } from "@/components/blast/session";
 import { supabase } from "@/integrations/supabase/client";
 import { resolveLaunchpad } from "@/lib/terminal/launchpad";
+import { checkSuipumpLaunch } from "@/lib/terminal/suipump.functions";
 import { launchXRequest } from "@/lib/terminal/xLauncher.functions";
 
 type Row = {
