@@ -1,4 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { useQuery } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
 import { ShieldCheck } from "lucide-react";
 import { useState } from "react";
 
@@ -10,6 +12,8 @@ import { XConnectButton } from "@/components/terminal/XConnectButton";
 import { SocialSignIn } from "@/components/terminal/SocialSignIn";
 import { XLaunchQueue } from "@/components/terminal/XLaunchQueue";
 import { WalletButton } from "@/components/blast/WalletButton";
+import { resolveLaunchpad } from "@/lib/terminal/launchpad";
+import { getLauncherSettings } from "@/lib/terminal/xLauncher.functions";
 
 export const Route = createFileRoute("/terminal")({
   head: () => ({
@@ -30,6 +34,15 @@ export const Route = createFileRoute("/terminal")({
 
 function TerminalPage() {
   const [tryCommand, setTryCommand] = useState<{ command: string; nonce: number } | undefined>();
+  const fetchSettings = useServerFn(getLauncherSettings);
+  const settings = useQuery({
+    queryKey: ["launcher-settings"],
+    queryFn: () => fetchSettings({}),
+    staleTime: 60_000,
+  });
+  // "Ready" = the default launchpad has a verified on-chain integration.
+  const defaultPad = resolveLaunchpad(settings.data?.defaultLaunchpad ?? "suipump");
+  const ready = Boolean(defaultPad.integrated);
 
   return (
     <div className="terminal-page">
@@ -47,15 +60,27 @@ function TerminalPage() {
       <div className="mb-4 space-y-4">
         <XLaunchQueue />
         <SocialSignIn />
-        <TerminalTutorial onTry={(command) => setTryCommand({ command, nonce: Date.now() })} />
+        {ready ? (
+          <TerminalTutorial onTry={(command) => setTryCommand({ command, nonce: Date.now() })} />
+        ) : null}
       </div>
-      <Terminal tryCommand={tryCommand} />
-      <div className="mt-6">
-        <GasReserveCard />
-      </div>
-      <div className="mt-6">
-        <XMentionInbox />
-      </div>
+      {ready ? (
+        <Terminal tryCommand={tryCommand} />
+      ) : (
+        <p className="rounded-lg border border-border bg-card p-6 text-center text-sm text-muted-foreground">
+          The conversational terminal opens once a launchpad integration goes live. Until then, X launch calls appear above.
+        </p>
+      )}
+      {ready ? (
+        <div className="mt-6">
+          <GasReserveCard />
+        </div>
+      ) : null}
+      {ready ? (
+        <div className="mt-6">
+          <XMentionInbox />
+        </div>
+      ) : null}
     </div>
   );
 }
