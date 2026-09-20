@@ -111,31 +111,56 @@ export interface XMentionItem {
   text: string;
   author_id?: string;
   username?: string;
+  /** First picture attached to the tweet, used as the token image. */
+  imageUrl?: string | null;
 }
 
 /** Mentions of the bot, newest last, restricted to anything after `sinceId`. */
 export async function listMentions(credentials: XCredentials, botUserId: string, sinceId?: string | null) {
   const query: Record<string, string> = {
     max_results: "25",
-    "tweet.fields": "author_id,created_at",
-    expansions: "author_id",
+    "tweet.fields": "author_id,created_at,attachments",
+    expansions: "author_id,attachments.media_keys",
     "user.fields": "username",
+    "media.fields": "url,preview_image_url,type",
   };
   if (sinceId) query["since_id"] = sinceId;
 
   const result = await request<{
-    data?: Array<{ id: string; text: string; author_id?: string }>;
-    includes?: { users?: Array<{ id: string; username: string }> };
+    data?: Array<{ id: string; text: string; author_id?: string; attachments?: { media_keys?: string[] } }>;
+    includes?: {
+      users?: Array<{ id: string; username: string }>;
+      media?: Array<{ media_key: string; url?: string; preview_image_url?: string; type?: string }>;
+    };
   }>(credentials, "GET", `/2/users/${botUserId}/mentions`, { query });
 
   const users = new Map((result.includes?.users ?? []).map((user) => [user.id, user.username]));
+  const media = new Map(
+    (result.includes?.media ?? []).map((item) => [item.media_key, item.url ?? item.preview_image_url ?? null]),
+  );
   return (result.data ?? [])
-    .map((tweet): XMentionItem => ({
-      id: tweet.id,
-      text: tweet.text,
-      ...(tweet.author_id ? { author_id: tweet.author_id, username: users.get(tweet.author_id) ?? "" } : {}),
-    }))
+    .map((tweet): XMentionItem => {
+      const key = tweet.attachments?.media_keys?.find((mediaKey) => media.get(mediaKey));
+      return {
+        id: tweet.id,
+        text: tweet.text,
+        imageUrl: key ? media.get(key) ?? null : null,
+        ...(tweet.author_id ? { author_id: tweet.author_id, username: users.get(tweet.author_id) ?? "" } : {}),
+      };
+    })
     .reverse();
+}
+
+/** The first picture attached to one tweet, read on demand. */
+export async function fetchTweetImage(credentials: XCredentials, postId: string): Promise<string | null> {
+  const result = await request<{
+    data?: { attachments?: { media_keys?: string[] } };
+    includes?: { media?: Array<{ media_key: string; url?: string; preview_image_url?: string }> };
+  }>(credentials, "GET", `/2/tweets/${postId}`, {
+    query: { "tweet.fields": "attachments", expansions: "attachments.media_keys", "media.fields": "url,preview_image_url,type" },
+  }).catch(() => null);
+  const item = (result?.includes?.media ?? [])[0];
+  return item?.url ?? item?.preview_image_url ?? null;
 }
 
 /** Post a reply to a tweet. Returns the new post id. */
