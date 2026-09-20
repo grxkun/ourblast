@@ -438,12 +438,39 @@ export interface SuipumpLaunchInput {
 /** Waits for a freshly created owned object to be readable, then returns it. */
 async function awaitOwned(address: string, typeFilter: string, objectId: string): Promise<OwnedObject | null> {
   for (let attempt = 0; attempt < 12; attempt += 1) {
+    const direct = await readObjectRef(objectId, address);
+    if (direct) return direct;
     const owned = await listOwned(address, typeFilter).catch(() => []);
     const match = owned.find((row) => row.objectId === objectId);
     if (match) return match;
     await new Promise((resolve) => setTimeout(resolve, 2_500));
   }
   return null;
+}
+
+/** Reads one object by id and confirms the wallet still owns it. */
+async function readObjectRef(objectId: string, owner: string): Promise<OwnedObject | null> {
+  try {
+    const result = await rpc<{
+      data?: {
+        objectId: string;
+        version: string;
+        digest: string;
+        type?: string;
+        owner?: { AddressOwner?: string };
+      };
+    }>("sui_getObject", [objectId, { showType: true, showOwner: true }]);
+    const data = result.data;
+    if (!data || data.owner?.AddressOwner !== owner) return null;
+    return {
+      objectId: data.objectId,
+      version: String(data.version),
+      digest: data.digest,
+      type: normalizeType(data.type ?? ""),
+    };
+  } catch {
+    return null;
+  }
 }
 
 /**
