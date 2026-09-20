@@ -117,7 +117,7 @@ interface ConstantEntry {
 /** Enough of the signature-token grammar to skip constant types (incl. vectors). */
 function skipSignatureToken(body: Uint8Array, cursor: Cursor): void {
   const token = body[cursor.offset++]!;
-  if (token === 0x7) skipSignatureToken(body, cursor); // VECTOR wraps one token
+  if (token === 0x0a) skipSignatureToken(body, cursor); // VECTOR wraps one token
 }
 
 function readConstantPool(body: Uint8Array, table: TableEntry): ConstantEntry[] {
