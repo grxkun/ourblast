@@ -34,6 +34,21 @@ export interface LaunchRequestRow {
 
 const INTEGRATION_PENDING = "Launchpad integration coming soon.";
 
+/**
+ * Where the launchpad sends the creator/developer fee. It lands in the OurBlast
+ * treasury, which is what the existing claim links pay out from: the creator
+ * keeps their share, OurBlast keeps its configured percentage. Overridable with
+ * SUIPUMP_FEE_PAYEES (comma-separated addresses, equal shares).
+ */
+function suipumpPayees(): string[] {
+  const configured = (process.env['SUIPUMP_FEE_PAYEES'] ?? "")
+    .split(",")
+    .map((value) => value.trim())
+    .filter((value) => /^0x[0-9a-fA-F]{64}$/.test(value));
+  if (configured.length > 0) return configured;
+  return [process.env['OURBLAST_TREASURY_ADDRESS']?.trim() || DEFAULT_TREASURY_ADDRESS];
+}
+
 async function db() {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
   return supabaseAdmin;
