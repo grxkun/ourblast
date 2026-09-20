@@ -106,7 +106,35 @@ interface OwnedObject {
   type: string;
 }
 
-async function listOwned(address: string, typeFilter: string): Promise<OwnedObject[]> {
+/**
+ * Owned-object reads through Sui JSON-RPC mirrors. The official GraphQL
+ * service's owned-object index can lag badly (it reported zero objects for a
+ * wallet that demonstrably holds coins), so these mirrors are the source of
+ * truth for anything we intend to sign over.
+ */
+const RPC_MIRRORS = ["https://sui-rpc.publicnode.com", "https://rpc-mainnet.suiscan.xyz"];
+
+async function rpc<T>(method: string, params: unknown[]): Promise<T> {
+  let lastError: Error | null = null;
+  for (const url of RPC_MIRRORS) {
+    try {
+      const res = await fetch(url, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ jsonrpc: "2.0", id: 1, method, params }),
+      });
+      const json = (await res.json()) as { result?: T; error?: { message: string } };
+      if (json.error) throw new Error(json.error.message);
+      if (json.result === undefined) throw new Error("Sui read failed.");
+      return json.result;
+    } catch (error) {
+      lastError = error as Error;
+    }
+  }
+  throw lastError ?? new Error("Sui read failed.");
+}
+
+async function listOwnedViaGraphql(address: string, typeFilter: string): Promise<OwnedObject[]> {
   const data = await gql<{
     address: {
       objects: {
@@ -123,6 +151,32 @@ async function listOwned(address: string, typeFilter: string): Promise<OwnedObje
     digest: node.digest,
     type: node.contents?.type.repr ?? "",
   }));
+}
+
+async function listOwned(address: string, typeFilter: string): Promise<OwnedObject[]> {
+  try {
+    const nodes = await rpc<{
+      data: { data: { objectId: string; version: string; digest: string; type?: string } | null }[];
+    }>("suix_getOwnedObjects", [
+      address,
+      { filter: { StructType: typeFilter }, options: { showType: true } },
+      null,
+      50,
+    ]);
+    const owned = (nodes.data ?? [])
+      .map((entry) => entry.data)
+      .filter((entry): entry is { objectId: string; version: string; digest: string; type?: string } => !!entry)
+      .map((entry) => ({
+        objectId: entry.objectId,
+        version: String(entry.version),
+        digest: entry.digest,
+        type: entry.type ?? "",
+      }));
+    if (owned.length > 0) return owned;
+  } catch {
+    // Mirrors unreachable: fall back to the GraphQL index below.
+  }
+  return listOwnedViaGraphql(address, typeFilter).catch(() => []);
 }
 
 function genericOf(type: string): string | null {
