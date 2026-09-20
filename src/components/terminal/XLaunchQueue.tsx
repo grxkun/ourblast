@@ -109,7 +109,7 @@ export function XLaunchQueue() {
                   <p className="mt-2 font-display text-3xl">${row.symbol}</p>
                   <p className="text-sm">{row.name}</p>
 
-                  {parked ? (
+                  {parked && pad.id !== "suipump" ? (
                     <p className="mt-3 text-sm text-muted-foreground">{pad.label} launch is not ready yet.</p>
                   ) : (
                     <dl className="mt-3 space-y-1 text-sm">
