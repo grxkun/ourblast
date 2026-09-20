@@ -21,6 +21,7 @@ const NAV = [
   { to: "/roast", label: "Roast", icon: "🔥" },
   { to: "/chat", label: "Chat", icon: "💬" },
   { to: "/terminal", label: "Terminal", icon: "⌨️" },
+  { to: "/launches", label: "Launches", icon: "🚀" },
   { to: "/profile", label: "You", icon: "👾" },
 ] as const;
 

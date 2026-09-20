@@ -226,3 +226,9 @@ it("parses 'deploy a ticker $X name token: Y'", () => {
     launchpad: "suipump",
   });
 });
+
+it("parses field-style tweets with cashtag on another line", () => {
+  expect(
+    parseDeployTweet("@Ourblastbot deploy a token on suipump\n\nName: THINKING CAT\nticker : $HMMM\nimage: https://t.co/abc"),
+  ).toEqual({ symbol: "HMMM", name: "THINKING CAT", launchpad: "suipump" });
+});

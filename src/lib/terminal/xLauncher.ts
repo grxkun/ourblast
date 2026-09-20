@@ -42,6 +42,13 @@ const DEPLOY_CALL =
 /** "nsme: Tety Yety" / "name Tety Yety" / "name token: Tety" / "called Tety Yety" — chatty ways to give the name. */
 const NAME_MARKER = /^[\s,:;.\-–—]*(?:n[ase]?me|named|called|title)(?:\s+(?:token|coin|ticker))?\s*[:=]?\s*/i;
 
+/** A deploy verb anywhere in the tweet (field-style calls put the cashtag on another line). */
+const DEPLOY_VERB = /\b(?:deploy|launch|create|mint|make)\b/i;
+
+/** "Name: THINKING CAT" / "name = Sui Dog" — value runs until the next field label. */
+const FIELD_NAME =
+  /\b(?:n[ase]?me|title)\s*[:=]\s*([^$]+?)(?=\s+\b(?:ticker|symbol|sym|image|img|picture|pic|supply|desc|description)\b|\s*$)/i;
+
 /**
  * Reads a launch call out of a tweet, wherever it sits in the text:
  * "Deploy $TETY Tety Yety Caty on Suipump", "@bot hey... Deploy a $TETY nsme:
@@ -59,16 +66,26 @@ export function parseDeployTweet(rawText: string, defaultPad = LAUNCHPAD.id): De
   }
 
   const match = text.match(DEPLOY_CALL);
-  if (!match?.[1]) return null;
+  if (match?.[1]) {
+    const symbol = match[1].toUpperCase();
+    const pad = resolveLaunchpad(requestedPad ?? defaultPad);
+    const rawName = (match[2] ?? "")
+      .replace(NAME_MARKER, "")
+      .replace(/\s+/g, " ")
+      .replace(/[\s.,!?;:-]+$/g, "")
+      .trim();
+    const name = rawName.length >= 2 ? rawName.slice(0, 64) : symbol;
+    return { symbol, name, launchpad: pad.id };
+  }
 
-  const symbol = match[1].toUpperCase();
+  // Field-style tweets: "deploy a token on suipump / Name: THINKING CAT / ticker: $HMMM".
+  if (!DEPLOY_VERB.test(text)) return null;
+  const cashtag = text.match(/\$([a-z0-9]{2,10})\b/i);
+  if (!cashtag?.[1]) return null;
+  const symbol = cashtag[1].toUpperCase();
   const pad = resolveLaunchpad(requestedPad ?? defaultPad);
-  const rawName = (match[2] ?? "")
-    .replace(NAME_MARKER, "")
-    .replace(/\s+/g, " ")
-    .replace(/[\s.,!?;:-]+$/g, "")
-    .trim();
-  const name = rawName.length >= 2 ? rawName.slice(0, 64) : symbol;
+  const nameMatch = text.match(FIELD_NAME);
+  const name = nameMatch?.[1]?.trim() && nameMatch[1].trim().length >= 2 ? nameMatch[1].trim().slice(0, 64) : symbol;
   return { symbol, name, launchpad: pad.id };
 }
 
