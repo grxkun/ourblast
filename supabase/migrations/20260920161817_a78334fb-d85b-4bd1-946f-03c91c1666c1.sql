@@ -1,0 +1,1 @@
+alter table public.x_launch_requests add column if not exists icon_url text;

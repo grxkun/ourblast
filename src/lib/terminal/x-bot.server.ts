@@ -1,6 +1,7 @@
 import { runTerminalAgent } from "./agent";
 import { composeXReply, type XMentionOutcome, type XMentionPayload } from "./x-bot";
-import { postReply, readXCredentials } from "./x-api.server";
+import { fetchTweetImage, postReply, readXCredentials } from "./x-api.server";
+import { imageUrlInText } from "./xLauncher";
 
 /** Live posting only when all four @ourblastbot credentials are saved. */
 export const xBotIsLive = () => readXCredentials() !== null;
@@ -26,7 +27,14 @@ export async function handleXMention(payload: XMentionPayload, source: "webhook"
   const { readDeployRequest, createLaunchRequest, composeReceivedReply } = await import("./xLauncher.server");
   const deploy = await readDeployRequest(text);
   if (deploy) {
-    const row = await createLaunchRequest(payload.postId, username, deploy);
+    // The picture on the tweet is the token image. Attached photo first; a plain
+    // image link in the text is the fallback (t.co links point at the tweet, not a file).
+    let iconUrl = payload.imageUrl ?? imageUrlInText(text);
+    if (!iconUrl && source === "poll") {
+      const credentials = readXCredentials();
+      if (credentials) iconUrl = await fetchTweetImage(credentials, payload.postId);
+    }
+    const row = await createLaunchRequest(payload.postId, username, deploy, iconUrl);
     const reply = composeReceivedReply(deploy);
     // Test / simulated posts never go to X.
     const credentials = source === "simulation" || payload.postId.startsWith("sim-") ? null : readXCredentials();

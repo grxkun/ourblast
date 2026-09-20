@@ -30,6 +30,8 @@ export interface LaunchRequestRow {
   token_url: string | null;
   pool_url: string | null;
   notice: string | null;
+  /** Picture from the tweet, used as the coin's image metadata. */
+  icon_url: string | null;
   created_at: string;
 }
 
@@ -106,6 +108,7 @@ export async function createLaunchRequest(
   postId: string,
   username: string,
   request: DeployRequest,
+  iconUrl?: string | null,
 ): Promise<LaunchRequestRow> {
   const client = await db();
   const settings = await readLauncherSettings();
@@ -128,6 +131,7 @@ export async function createLaunchRequest(
       launchpad: pad.id,
       dev_buy: settings.devBuyEnabled,
       ourblast_fee_percent: settings.ourblastFeePercent,
+      icon_url: iconUrl?.slice(0, 500) ?? null,
       status: "PENDING",
       notice: pad.integrated ? null : INTEGRATION_PENDING,
     })
@@ -148,7 +152,7 @@ function launchConfigFor(row: LaunchRequestRow): LaunchConfiguration {
     name: row.name,
     symbol: row.symbol,
     description: "",
-    image: null,
+    image: row.icon_url,
     network: "sui",
     launchpad: pad.label,
     pairToken: pad.pairTokens[0] ?? "SUI",
@@ -197,6 +201,8 @@ export async function executeLaunchRequest(requestId: string): Promise<LaunchOut
       symbol: request.symbol,
       name: request.name,
       description: "",
+      // The picture from the tweet becomes the coin's image metadata.
+      iconUrl: request.icon_url ?? null,
       payees,
       shareBps,
     });
