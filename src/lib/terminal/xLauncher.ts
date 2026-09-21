@@ -17,6 +17,9 @@ export interface LauncherSettings {
   autoLaunchEnabled: boolean;
 }
 
+import { extractPerps, type PerpsPositionRequest } from "./perpsParse";
+export type { PerpsPositionRequest } from "./perpsParse";
+
 export const DEFAULT_LAUNCHER_SETTINGS: LauncherSettings = {
   defaultLaunchpad: "suipump",
   ourblastFeePercent: 10,
