@@ -346,6 +346,29 @@ export async function executeLaunchRequest(requestId: string): Promise<LaunchOut
     } else if (outcome.status === "FAILED") {
       failure = outcome.message;
     }
+  } else if (pad.id === "perpsplexity") {
+    // Market-backed launch: token + composite pool + leveraged position, one
+    // atomic on-chain flow, signed by the OurBlastBot wallet.
+    if (!request.underlying) {
+      failure = "Add the underlying market to the call, e.g. Underlying: NVDA.";
+    } else {
+      const { launchOnPerpsplexity } = await import("./perpsplexity-launch.server");
+      const outcome = await launchOnPerpsplexity({
+        symbol: request.symbol,
+        name: request.name,
+        description: request.tweet_text ?? "",
+        iconUrl: request.icon_url ?? "",
+        underlying: request.underlying,
+        long: request.perps_long ?? true,
+        leverageBps: request.leverage_bps ?? 10_000,
+        startingCapUsd: request.starting_cap_usd ? Number(request.starting_cap_usd) : null,
+      });
+      if (outcome.status === "CONFIRMED" && outcome.coinType) {
+        deployment = { tokenAddress: outcome.coinType, transactionDigest: outcome.digest ?? "" };
+      } else {
+        failure = outcome.error ?? "The Perpsplexity launch did not confirm on chain.";
+      }
+    }
   } else {
     const result = await launchpadAdapter.launchToken(launchConfigFor(request));
     const adapterDeployment = result.data?.["deployment"] as
