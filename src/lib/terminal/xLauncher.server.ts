@@ -1,4 +1,5 @@
-import { DEFAULT_TREASURY_ADDRESS } from "@/lib/ourblast.config";
+import { DEFAULT_TREASURY_ADDRESS, FOUNDER_ADDRESS } from "@/lib/ourblast.config";
+import { CREATOR_FEE_SPLIT } from "./fees";
 import { poolPageUrl, resolveLaunchpad, tokenPageUrl } from "./launchpad";
 import { launchpadAdapter } from "./launchpadAdapter";
 import {
@@ -40,18 +41,116 @@ export interface LaunchRequestRow {
 const INTEGRATION_PENDING = "Launchpad integration coming soon.";
 
 /**
- * Where the launchpad sends the creator/developer fee. It lands in the OurBlast
- * treasury, which is what the existing claim links pay out from: the creator
- * keeps their share, OurBlast keeps its configured percentage. Overridable with
- * SUIPUMP_FEE_PAYEES (comma-separated addresses, equal shares).
+ * On-chain creator-fee routing. The published split — 20% OURBLAST treasury,
+ * 10% developer, 70% launcher — is written straight into the bonding curve, so
+ * the launchpad pays every share automatically, with no manual claiming.
+ *
+ * When we know the launcher's wallet (their X account is linked to an OURBLAST
+ * profile) their 70% goes to that wallet on chain. Otherwise the treasury holds
+ * it and a claim link is created for their X handle. SUIPUMP_FEE_PAYEES still
+ * overrides everything with equal shares.
  */
-function suipumpPayees(): string[] {
-  const configured = (process.env['SUIPUMP_FEE_PAYEES'] ?? "")
+function toBps(share: number): number {
+  return Math.round(share * 10_000);
+}
+
+function treasuryPayee(): string {
+  return (process.env['OURBLAST_TREASURY_ADDRESS']?.trim() || DEFAULT_TREASURY_ADDRESS).toLowerCase();
+}
+
+function overridePayees(): string[] {
+  return (process.env['SUIPUMP_FEE_PAYEES'] ?? "")
     .split(",")
     .map((value) => value.trim())
     .filter((value) => /^0x[0-9a-fA-F]{64}$/.test(value));
-  if (configured.length > 0) return configured;
-  return [process.env['OURBLAST_TREASURY_ADDRESS']?.trim() || DEFAULT_TREASURY_ADDRESS];
+}
+
+/** The launcher's own Sui wallet, when their X handle is linked to a profile. */
+async function launcherWallet(xUsername: string): Promise<string | null> {
+  if (!xUsername) return null;
+  const client = await db();
+  const { data: account } = await client
+    .from("x_accounts")
+    .select("user_id")
+    .ilike("username", xUsername)
+    .maybeSingle();
+  if (!account?.user_id) return null;
+  const { data: profile } = await client
+    .from("profiles")
+    .select("wallet_address")
+    .eq("id", account.user_id)
+    .maybeSingle();
+  const wallet = (profile?.wallet_address ?? "").trim().toLowerCase();
+  return /^0x[0-9a-f]{64}$/.test(wallet) ? wallet : null;
+}
+
+interface FeeRouting {
+  payees: string[];
+  shareBps: number[];
+  /** True when the launcher's 70% is paid straight to their own wallet. */
+  launcherPaidOnChain: boolean;
+}
+
+async function feeRouting(xUsername: string): Promise<FeeRouting> {
+  const configured = overridePayees();
+  if (configured.length > 0) {
+    const even = Math.floor(10_000 / configured.length);
+    return {
+      payees: configured,
+      shareBps: configured.map((_, index) => (index === 0 ? 10_000 - even * (configured.length - 1) : even)),
+      launcherPaidOnChain: false,
+    };
+  }
+
+  const treasury = treasuryPayee();
+  const developer = FOUNDER_ADDRESS.toLowerCase();
+  const launcher = await launcherWallet(xUsername);
+  if (launcher && launcher !== treasury && launcher !== developer) {
+    return {
+      payees: [treasury, developer, launcher],
+      shareBps: [
+        toBps(CREATOR_FEE_SPLIT.treasury),
+        toBps(CREATOR_FEE_SPLIT.developer),
+        toBps(CREATOR_FEE_SPLIT.launcher),
+      ],
+      launcherPaidOnChain: true,
+    };
+  }
+
+  // No known launcher wallet: the treasury holds their share until they claim it.
+  return {
+    payees: [treasury, developer],
+    shareBps: [toBps(CREATOR_FEE_SPLIT.treasury + CREATOR_FEE_SPLIT.launcher), toBps(CREATOR_FEE_SPLIT.developer)],
+    launcherPaidOnChain: false,
+  };
+}
+
+/** Auto-creates the one-time claim link for a launcher whose wallet we don't know. */
+async function ensureFeeClaimLink(symbol: string, xUsername: string): Promise<string | null> {
+  if (!xUsername) return null;
+  const client = await db();
+  const { data: existing } = await client
+    .from("fee_claim_links")
+    .select("token")
+    .eq("launch_symbol", symbol.toUpperCase())
+    .eq("x_username", xUsername)
+    .eq("status", "pending")
+    .maybeSingle();
+  if (existing?.token) return existing.token;
+
+  const bytes = crypto.getRandomValues(new Uint8Array(24));
+  const token = Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0")).join("");
+  const { error } = await client.from("fee_claim_links").insert({
+    token,
+    launch_symbol: symbol.toUpperCase(),
+    x_username: xUsername,
+    amount_sui: 0,
+  });
+  if (error) {
+    console.error(`Fee claim link failed for ${symbol}: ${error.message}`);
+    return null;
+  }
+  return token;
 }
 
 async function db() {
@@ -189,18 +288,38 @@ export async function executeLaunchRequest(requestId: string): Promise<LaunchOut
     return { status: "DEPLOYED", notice: null, tokenUrl: request.token_url, poolUrl: request.pool_url };
   }
 
+  // One mention = one deployment. Claiming the row atomically means a second
+  // poll, retry or manual press can never launch the same request twice.
+  const { data: claimed } = await client
+    .from("x_launch_requests")
+    .update({ status: "LAUNCHING", updated_at: new Date().toISOString() })
+    .eq("id", request.id)
+    .in("status", ["PENDING", "UNAVAILABLE", "FAILED"])
+    .select("id")
+    .maybeSingle();
+  if (!claimed) {
+    const { data: current } = await client
+      .from("x_launch_requests")
+      .select("status, notice, token_url, pool_url")
+      .eq("id", request.id)
+      .maybeSingle();
+    return {
+      status: ((current?.status as LaunchRequestStatus | undefined) ?? "LAUNCHING"),
+      notice: current?.notice ?? "This launch is already running.",
+      tokenUrl: current?.token_url ?? null,
+      poolUrl: current?.pool_url ?? null,
+    };
+  }
+
   const pad = resolveLaunchpad(request.launchpad);
   let deployment: { tokenAddress: string; transactionDigest: string } | undefined;
   let failure: string | null = null;
+  const routing = await feeRouting(request.x_username);
 
   if (pad.id === "suipump") {
     // Real Suipump create call, signed by the OurBlastBot wallet. Stays inert
     // (NOT_IMPLEMENTED) until Suipump issues a launch ticket to that wallet.
     const { launchOnSuipump } = await import("./suipump-launch.server");
-    const payees = suipumpPayees();
-    // Equal shares, with any rounding remainder going to the first payee.
-    const share = Math.floor(10_000 / payees.length);
-    const shareBps = payees.map((_, index) => (index === 0 ? 10_000 - share * (payees.length - 1) : share));
     const outcome = await launchOnSuipump({
       symbol: request.symbol,
       name: request.name,
@@ -211,8 +330,8 @@ export async function executeLaunchRequest(requestId: string): Promise<LaunchOut
       callerXLink: request.x_username ? `https://x.com/${request.x_username}` : null,
       // The caller's original tweet is quoted in the coin's public info.
       callerTweetText: request.tweet_text ?? null,
-      payees,
-      shareBps,
+      payees: routing.payees,
+      shareBps: routing.shareBps,
     });
     if (outcome.status === "CONFIRMED" && outcome.tokenAddress) {
       deployment = { tokenAddress: outcome.tokenAddress, transactionDigest: outcome.transactionDigest ?? "" };
@@ -252,7 +371,11 @@ export async function executeLaunchRequest(requestId: string): Promise<LaunchOut
     })
     .eq("id", request.id);
 
-  await postDeployedReply(request, tokenUrl, poolUrl);
+  // Launcher share: paid on chain when we know their wallet, otherwise a claim
+  // link is created for them automatically — nobody has to ask for it.
+  const claimToken = routing.launcherPaidOnChain ? null : await ensureFeeClaimLink(request.symbol, request.x_username);
+
+  await postDeployedReply(request, tokenUrl, poolUrl, claimToken);
   return { status: "DEPLOYED", notice: null, tokenUrl, poolUrl };
 }
 
@@ -311,16 +434,32 @@ export function composeReceivedReply(request: DeployRequest): string {
 }
 
 /** Reply sent only after the chain has confirmed the launch. */
-export function composeDeployedLaunchReply(symbol: string, tokenUrl: string, poolUrl: string): string {
-  return `🚀 $${symbol} deployed!\n\nToken:\n${tokenUrl}\n\nPool:\n${poolUrl}`;
+export function composeDeployedLaunchReply(
+  symbol: string,
+  tokenUrl: string,
+  poolUrl: string,
+  claimToken?: string | null,
+): string {
+  const base = `🚀 $${symbol} deployed!\n\nToken:\n${tokenUrl}\n\nPool:\n${poolUrl}`;
+  if (!claimToken) return base;
+  return `${base}\n\nYour creator fee share:\nhttps://ourblast.xyz/claim/${claimToken}`;
 }
 
-async function postDeployedReply(request: LaunchRequestRow, tokenUrl: string, poolUrl: string): Promise<void> {
+async function postDeployedReply(
+  request: LaunchRequestRow,
+  tokenUrl: string,
+  poolUrl: string,
+  claimToken?: string | null,
+): Promise<void> {
   const { postReply, readXCredentials } = await import("./x-api.server");
   const credentials = readXCredentials();
   if (!credentials || request.x_post_id.startsWith("sim-")) return;
   try {
-    const replyId = await postReply(credentials, request.x_post_id, composeDeployedLaunchReply(request.symbol, tokenUrl, poolUrl));
+    const replyId = await postReply(
+      credentials,
+      request.x_post_id,
+      composeDeployedLaunchReply(request.symbol, tokenUrl, poolUrl, claimToken),
+    );
     const client = await db();
     await client.from("x_launch_requests").update({ deployed_reply_post_id: replyId }).eq("id", request.id);
   } catch (error) {
