@@ -33,6 +33,7 @@ import { Route as Char91DotwellKnownChar93OauthProtectedResourceRouteImport } fr
 import { Route as BuilderUsernameRouteImport } from './routes/builder/$username'
 import { Route as ClaimTokenRouteImport } from './routes/claim.$token'
 import { Route as EcosystemProjectSlugRouteImport } from './routes/ecosystem-project.$slug'
+import { Route as ApiPublicPerpsTestRouteImport } from './routes/api/public/perps-test'
 import { Route as ApiPublicXMentionRouteImport } from './routes/api/public/x-mention'
 import { Route as ApiPublicXPollRouteImport } from './routes/api/public/x-poll'
 import { Route as OauthGithubReturnRouteImport } from './routes/oauth/github/return'
@@ -159,6 +160,11 @@ const EcosystemProjectSlugRoute = EcosystemProjectSlugRouteImport.update({
   path: '/ecosystem-project/$slug',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicPerpsTestRoute = ApiPublicPerpsTestRouteImport.update({
+  id: '/api/public/perps-test',
+  path: '/api/public/perps-test',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicXMentionRoute = ApiPublicXMentionRouteImport.update({
   id: '/api/public/x-mention',
   path: '/api/public/x-mention',
@@ -205,6 +211,7 @@ export interface FileRoutesByFullPath {
   '/builder/$username': typeof BuilderUsernameRoute
   '/claim/$token': typeof ClaimTokenRoute
   '/ecosystem-project/$slug': typeof EcosystemProjectSlugRoute
+  '/api/public/perps-test': typeof ApiPublicPerpsTestRoute
   '/api/public/x-mention': typeof ApiPublicXMentionRoute
   '/api/public/x-poll': typeof ApiPublicXPollRoute
   '/oauth/github/return': typeof OauthGithubReturnRoute
@@ -235,6 +242,7 @@ export interface FileRoutesByTo {
   '/builder/$username': typeof BuilderUsernameRoute
   '/claim/$token': typeof ClaimTokenRoute
   '/ecosystem-project/$slug': typeof EcosystemProjectSlugRoute
+  '/api/public/perps-test': typeof ApiPublicPerpsTestRoute
   '/api/public/x-mention': typeof ApiPublicXMentionRoute
   '/api/public/x-poll': typeof ApiPublicXPollRoute
   '/oauth/github/return': typeof OauthGithubReturnRoute
@@ -266,6 +274,7 @@ export interface FileRoutesById {
   '/builder/$username': typeof BuilderUsernameRoute
   '/claim/$token': typeof ClaimTokenRoute
   '/ecosystem-project/$slug': typeof EcosystemProjectSlugRoute
+  '/api/public/perps-test': typeof ApiPublicPerpsTestRoute
   '/api/public/x-mention': typeof ApiPublicXMentionRoute
   '/api/public/x-poll': typeof ApiPublicXPollRoute
   '/oauth/github/return': typeof OauthGithubReturnRoute
@@ -298,6 +307,7 @@ export interface FileRouteTypes {
     | '/builder/$username'
     | '/claim/$token'
     | '/ecosystem-project/$slug'
+    | '/api/public/perps-test'
     | '/api/public/x-mention'
     | '/api/public/x-poll'
     | '/oauth/github/return'
@@ -328,6 +338,7 @@ export interface FileRouteTypes {
     | '/builder/$username'
     | '/claim/$token'
     | '/ecosystem-project/$slug'
+    | '/api/public/perps-test'
     | '/api/public/x-mention'
     | '/api/public/x-poll'
     | '/oauth/github/return'
@@ -358,6 +369,7 @@ export interface FileRouteTypes {
     | '/builder/$username'
     | '/claim/$token'
     | '/ecosystem-project/$slug'
+    | '/api/public/perps-test'
     | '/api/public/x-mention'
     | '/api/public/x-poll'
     | '/oauth/github/return'
@@ -389,6 +401,7 @@ export interface RootRouteChildren {
   BuilderUsernameRoute: typeof BuilderUsernameRoute
   ClaimTokenRoute: typeof ClaimTokenRoute
   EcosystemProjectSlugRoute: typeof EcosystemProjectSlugRoute
+  ApiPublicPerpsTestRoute: typeof ApiPublicPerpsTestRoute
   ApiPublicXMentionRoute: typeof ApiPublicXMentionRoute
   ApiPublicXPollRoute: typeof ApiPublicXPollRoute
   OauthGithubReturnRoute: typeof OauthGithubReturnRoute
@@ -565,6 +578,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof EcosystemProjectSlugRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/perps-test': {
+      id: '/api/public/perps-test'
+      path: '/api/public/perps-test'
+      fullPath: '/api/public/perps-test'
+      preLoaderRoute: typeof ApiPublicPerpsTestRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/x-mention': {
       id: '/api/public/x-mention'
       path: '/api/public/x-mention'
@@ -622,6 +642,7 @@ const rootRouteChildren: RootRouteChildren = {
   BuilderUsernameRoute: BuilderUsernameRoute,
   ClaimTokenRoute: ClaimTokenRoute,
   EcosystemProjectSlugRoute: EcosystemProjectSlugRoute,
+  ApiPublicPerpsTestRoute: ApiPublicPerpsTestRoute,
   ApiPublicXMentionRoute: ApiPublicXMentionRoute,
   ApiPublicXPollRoute: ApiPublicXPollRoute,
   OauthGithubReturnRoute: OauthGithubReturnRoute,
