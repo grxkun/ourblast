@@ -10,8 +10,9 @@
  *  2. ask Suipump's public launch-ticket issuer to mint a `LaunchTicket` to the
  *     wallet that holds the new `TreasuryCap` — the issuer verifies the published
  *     bytecode against the template and mints for anyone who publishes correctly;
- *  3. call `bonding_curve::create_with_launch_fee` with the ticket, treasury cap
- *     and launch fee, which creates and shares the bonding curve.
+ *  3. call `bonding_curve::create_and_return` with the treasury cap, registry,
+ *     ticket and launch fee, then `bonding_curve::share_curve` — the two-step
+ *     create their 2026-09-21 package upgrade introduced.
  *
  * Trading (`buy` / `sell`) is permissionless. Nothing here ever fakes a deployment:
  * a launch is only reported when Sui confirms the curve object.
