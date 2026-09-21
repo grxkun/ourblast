@@ -371,7 +371,11 @@ export async function executeLaunchRequest(requestId: string): Promise<LaunchOut
     })
     .eq("id", request.id);
 
-  await postDeployedReply(request, tokenUrl, poolUrl);
+  // Launcher share: paid on chain when we know their wallet, otherwise a claim
+  // link is created for them automatically — nobody has to ask for it.
+  const claimToken = routing.launcherPaidOnChain ? null : await ensureFeeClaimLink(request.symbol, request.x_username);
+
+  await postDeployedReply(request, tokenUrl, poolUrl, claimToken);
   return { status: "DEPLOYED", notice: null, tokenUrl, poolUrl };
 }
 
