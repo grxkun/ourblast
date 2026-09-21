@@ -1,4 +1,4 @@
-import { BLAST_BURN_RESERVE_ADDRESS, BOT_WALLET_ADDRESS, FOUNDER_ADDRESS } from "@/lib/ourblast.config";
+import { BOT_WALLET_ADDRESS, FOUNDER_ADDRESS } from "@/lib/ourblast.config";
 
 /**
  * Launch fee policy for every token launched through the OURBLAST terminal or an
