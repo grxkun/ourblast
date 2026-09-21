@@ -107,10 +107,16 @@ export function parseDeployTweet(rawText: string, defaultPad = LAUNCHPAD.id): De
   // put another cashtag earlier in the tweet.
   const labelled = text.match(/\b(?:ticker|symbol|sym)\s*[:=]?\s*\$?([a-z0-9]{2,10})\b/i);
   const cashtag = labelled ?? text.match(/\$([a-z0-9]{2,10})\b/i);
-  if (!cashtag?.[1]) return null;
-  const symbol = cashtag[1].toUpperCase();
   const nameMatch = text.match(FIELD_NAME);
   const nameRaw = nameMatch?.[1]?.trim().replace(/[\s,;:.\-–—]+$/g, "") ?? "";
+  if (!cashtag?.[1]) {
+    // No ticker anywhere: derive one from an explicit "Name: …" so field-style
+    // tweets without a cashtag still launch ("Name: Monerochan" → $MONEROCHAN).
+    const derived = nameRaw.replace(/[^a-z0-9]/gi, "").toUpperCase().slice(0, 10);
+    if (derived.length < 2) return null;
+    return { symbol: derived, name: nameRaw.slice(0, 64), launchpad: pad.id, perps };
+  }
+  const symbol = cashtag[1].toUpperCase();
   const name = nameRaw.length >= 2 ? nameRaw.slice(0, 64) : symbol;
   return { symbol, name, launchpad: pad.id, perps };
 }
