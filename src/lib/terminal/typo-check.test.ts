@@ -24,3 +24,15 @@ describe("typo-tolerant pad matching", () => {
     expect(parseDeployTweet("Deploy $DOG Sui Dog @Ourblastbot")?.launchpad).toBe("suipump");
   });
 });
+
+describe("field-style tweet without a cashtag", () => {
+  it("derives the ticker from Name: and keeps the perps position", () => {
+    const req = parseDeployTweet("@Ourblastbot deploy a token on Perpsplexity . Name: Monerochan, Underlying is XMR, position LONG, leverage 5X https://t.co/Y0lqv8r5RS");
+    expect(req?.launchpad).toBe("perpsplexity");
+    expect(req?.symbol).toBe("MONEROCHAN");
+    expect(req?.name).toBe("Monerochan");
+    expect(req?.perps?.underlying).toBe("XMR");
+    expect(req?.perps?.long).toBe(true);
+    expect(req?.perps?.leverageBps).toBe(50_000);
+  });
+});

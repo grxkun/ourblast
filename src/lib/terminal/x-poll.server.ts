@@ -35,6 +35,9 @@ export async function runXMentionPoll(): Promise<{
 
   let handled = 0;
   for (const mention of mentions) {
+    // Skip the bot's own tweets — a reply quoting a launch example must never
+    // be re-ingested as a new launch call.
+    if ((mention.username ?? "").replace(/^@/, "").toLowerCase() === "ourblastbot") continue;
     const { data: seen } = await supabaseAdmin
       .from("x_mentions")
       .select("id")

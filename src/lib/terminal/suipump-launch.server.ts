@@ -607,9 +607,27 @@ export async function launchOnSuipump(input: SuipumpLaunchInput): Promise<Suipum
     gasCoins(sender),
   ]);
 
+  // Pay the launch fee from a real Coin<SUI> object, never from tx.gas: when
+  // gas is funded by the address balance (no coin objects), splitting from the
+  // gas coin reserves the whole balance and the transaction is rejected.
+  const feeCoin = config.launchFeeMist > 0 ? createCoins[0] : null;
+  if (config.launchFeeMist > 0 && !feeCoin) {
+    return {
+      status: "FAILED",
+      message:
+        "The bot wallet's SUI is all in its address balance, so there is no SUI coin to pay the launch fee from. Send a few SUI to it with a normal transfer, then launch again.",
+      tokenAddress: null,
+      transactionDigest: null,
+      coinType,
+    };
+  }
   const tx = new Transaction();
-  withGas(tx, sender, createCoins, gasPrice, CREATE_GAS_BUDGET_MIST);
-  const [launchFee] = tx.splitCoins(tx.gas, [config.launchFeeMist]);
+  withGas(tx, sender, feeCoin ? createCoins.slice(1) : createCoins, gasPrice, CREATE_GAS_BUDGET_MIST);
+  const [launchFee] = feeCoin
+    ? tx.splitCoins(tx.objectRef({ objectId: feeCoin.objectId, version: feeCoin.version, digest: feeCoin.digest }), [
+        config.launchFeeMist,
+      ])
+    : tx.splitCoins(tx.gas, [0n]);
   tx.moveCall({
     target: `${config.packageId}::${SUIPUMP_MODULE}::${SUIPUMP_CREATE_FUNCTION}`,
     typeArguments: [coinType],
