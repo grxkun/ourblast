@@ -22,7 +22,7 @@ export const CREATOR_FEE_SPLIT = {
 
 export const CREATOR_FEE_ROUTES = [
   { label: "@ourblastbot (ops & gas)", share: CREATOR_FEE_SPLIT.bot, address: BOT_WALLET_ADDRESS },
-  { label: "BLAST buy & burn", share: CREATOR_FEE_SPLIT.buyBurn, address: BLAST_BURN_RESERVE_ADDRESS },
+  { label: "BLAST buy & burn (from @ourblastbot)", share: CREATOR_FEE_SPLIT.buyBurn, address: BOT_WALLET_ADDRESS },
   { label: "Developer", share: CREATOR_FEE_SPLIT.developer, address: FOUNDER_ADDRESS },
   { label: "Launcher (you)", share: CREATOR_FEE_SPLIT.launcher, address: null },
 ] as const;

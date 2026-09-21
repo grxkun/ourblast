@@ -102,28 +102,24 @@ async function feeRouting(xUsername: string): Promise<FeeRouting> {
     };
   }
 
+  // The bot wallet receives both OURBLAST shares (20% total): 10% funds ops
+  // and gas, 10% is swapped to BLAST and burned from the same wallet.
   const bot = (process.env['OURBLAST_BOT_WALLET_ADDRESS']?.trim() || BOT_WALLET_ADDRESS).toLowerCase();
-  const buyBurn = (process.env['OURBLAST_BURN_RESERVE_ADDRESS']?.trim() || BLAST_BURN_RESERVE_ADDRESS).toLowerCase();
   const developer = FOUNDER_ADDRESS.toLowerCase();
   const launcher = await launcherWallet(xUsername);
-  const ourblastShareBps = toBps(CREATOR_FEE_SPLIT.bot + CREATOR_FEE_SPLIT.buyBurn);
-  if (launcher && launcher !== bot && launcher !== buyBurn && launcher !== developer) {
+  const botShareBps = toBps(CREATOR_FEE_SPLIT.bot + CREATOR_FEE_SPLIT.buyBurn);
+  if (launcher && launcher !== bot && launcher !== developer) {
     return {
-      payees: [bot, buyBurn, developer, launcher],
-      shareBps: [
-        toBps(CREATOR_FEE_SPLIT.bot),
-        toBps(CREATOR_FEE_SPLIT.buyBurn),
-        toBps(CREATOR_FEE_SPLIT.developer),
-        toBps(CREATOR_FEE_SPLIT.launcher),
-      ],
+      payees: [bot, developer, launcher],
+      shareBps: [botShareBps, toBps(CREATOR_FEE_SPLIT.developer), toBps(CREATOR_FEE_SPLIT.launcher)],
       launcherPaidOnChain: true,
     };
   }
 
   // No known launcher wallet: the bot wallet holds their share until they claim it.
   return {
-    payees: [bot, buyBurn, developer],
-    shareBps: [toBps(CREATOR_FEE_SPLIT.bot) + toBps(CREATOR_FEE_SPLIT.launcher), toBps(CREATOR_FEE_SPLIT.buyBurn), toBps(CREATOR_FEE_SPLIT.developer)],
+    payees: [bot, developer],
+    shareBps: [botShareBps + toBps(CREATOR_FEE_SPLIT.launcher), toBps(CREATOR_FEE_SPLIT.developer)],
     launcherPaidOnChain: false,
   };
 }
