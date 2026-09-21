@@ -149,17 +149,22 @@ export function parseDeployTweet(rawText: string, defaultPad = LAUNCHPAD.id): De
     text = (text.slice(0, padMatch.index) + " " + text.slice((padMatch.index ?? 0) + padMatch[0].length)).trim();
   }
 
+  const pad = resolveLaunchpad(requestedPad ?? defaultPad);
+  const isPerpsPad = pad.id === "perpsplexity";
+  const perpsExtraction = extractPerps(text, isPerpsPad);
+  text = perpsExtraction.text;
+  const perps = perpsExtraction.perps ?? undefined;
+
   const match = text.match(DEPLOY_CALL);
   if (match?.[1]) {
     const symbol = match[1].toUpperCase();
-    const pad = resolveLaunchpad(requestedPad ?? defaultPad);
     const rawName = (match[2] ?? "")
       .replace(NAME_MARKER, "")
       .replace(/\s+/g, " ")
       .replace(/[\s.,!?;:-]+$/g, "")
       .trim();
     const name = rawName.length >= 2 ? rawName.slice(0, 64) : symbol;
-    return { symbol, name, launchpad: pad.id };
+    return { symbol, name, launchpad: pad.id, perps };
   }
 
   // Field-style tweets: "deploy a token on suipump / Name: THINKING CAT / ticker: $HMMM".
@@ -170,10 +175,9 @@ export function parseDeployTweet(rawText: string, defaultPad = LAUNCHPAD.id): De
   const cashtag = labelled ?? text.match(/\$([a-z0-9]{2,10})\b/i);
   if (!cashtag?.[1]) return null;
   const symbol = cashtag[1].toUpperCase();
-  const pad = resolveLaunchpad(requestedPad ?? defaultPad);
   const nameMatch = text.match(FIELD_NAME);
   const name = nameMatch?.[1]?.trim() && nameMatch[1].trim().length >= 2 ? nameMatch[1].trim().slice(0, 64) : symbol;
-  return { symbol, name, launchpad: pad.id };
+  return { symbol, name, launchpad: pad.id, perps };
 }
 
 export function padFor(settings: LauncherSettings, requested?: string | null): LaunchpadConfig {
