@@ -156,27 +156,88 @@ function LaunchCard({ row }: { row: PublicLaunchRow }) {
   );
 }
 
+const FILTERS = ["All", "Deployed", "In progress", "Failed", "Not a launch"] as const;
+type Filter = (typeof FILTERS)[number];
+
+function matchesFilter(row: PublicLaunchRow, filter: Filter): boolean {
+  if (filter === "All") return true;
+  if (filter === "Not a launch") return row.symbol == null;
+  if (row.symbol == null) return false;
+  if (filter === "Deployed") return row.status === "DEPLOYED";
+  if (filter === "Failed") return row.status === "FAILED" || row.status === "UNAVAILABLE";
+  return row.status !== "DEPLOYED" && row.status !== "FAILED" && row.status !== "UNAVAILABLE";
+}
+
+function Stat({ label, value }: { label: string; value: number }) {
+  return (
+    <div className="rounded-md border-2 border-border bg-card p-3 shadow-[4px_4px_0_0_hsl(var(--border))]">
+      <div className="font-display text-2xl leading-none">{value}</div>
+      <div className="mt-1 font-mono text-[11px] uppercase text-muted-foreground">{label}</div>
+    </div>
+  );
+}
+
 function LaunchesPage() {
   const { data: rows } = useSuspenseQuery(launchesQuery);
+  const [filter, setFilter] = useState<Filter>("All");
+
+  const stats = useMemo(() => {
+    const launches = rows.filter((r) => r.symbol != null);
+    return {
+      tweets: rows.length,
+      launches: launches.length,
+      deployed: launches.filter((r) => r.status === "DEPLOYED").length,
+      replied: rows.filter((r) => r.replyPostId || r.deployedReplyPostId).length,
+    };
+  }, [rows]);
+
+  const visible = useMemo(() => rows.filter((row) => matchesFilter(row, filter)), [rows, filter]);
+
   return (
     <div className="mx-auto max-w-3xl">
-      <SectionTitle kicker="Public feed" title="Launch Status" />
+      <SectionTitle kicker="Public feed" title="Launch Activity" />
       <p className="font-body text-sm text-muted-foreground">
-        Every tweet <span className="font-mono">@ourblastbot</span> detected, what it parsed, and the confirmed
-        on-chain result. A launch is only shown as deployed after Sui confirms it. Refreshes automatically. Call a
-        launch by tweeting, then watch it land here — or open the{" "}
+        Every tweet <span className="font-mono">@ourblastbot</span> detected, the ticker it parsed, the on-chain
+        result and whether the bot replied. A launch is only shown as deployed after Sui confirms it. Refreshes
+        automatically. Call a launch by tweeting, then watch it land here — or open the{" "}
         <Link to="/terminal" className="underline underline-offset-2 hover:text-foreground">
           Terminal
         </Link>
         .
       </p>
+
+      <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <Stat label="Tweets seen" value={stats.tweets} />
+        <Stat label="Launch calls" value={stats.launches} />
+        <Stat label="Deployed" value={stats.deployed} />
+        <Stat label="Bot replies" value={stats.replied} />
+      </div>
+
+      <div className="mt-5 flex flex-wrap gap-2">
+        {FILTERS.map((f) => (
+          <button
+            key={f}
+            type="button"
+            onClick={() => setFilter(f)}
+            className={`rounded-sm border-2 px-3 py-1 font-mono text-xs uppercase transition-colors ${
+              filter === f
+                ? "border-primary bg-primary/15 text-primary"
+                : "border-border text-muted-foreground hover:bg-muted"
+            }`}
+          >
+            {f}
+          </button>
+        ))}
+      </div>
+
       <div className="mt-6 space-y-4">
-        {rows.length === 0 ? (
+        {visible.length === 0 ? (
           <div className="flex items-center gap-2 rounded-md border-2 border-dashed border-border p-6 font-body text-sm text-muted-foreground">
-            <Radio className="h-4 w-4" /> No launch calls detected yet.
+            <Radio className="h-4 w-4" />{" "}
+            {rows.length === 0 ? "No launch calls detected yet." : "Nothing matches this filter yet."}
           </div>
         ) : (
-          rows.map((row) => <LaunchCard key={row.id} row={row} />)
+          visible.map((row) => <LaunchCard key={row.id} row={row} />)
         )}
       </div>
     </div>
