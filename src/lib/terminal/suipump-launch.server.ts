@@ -35,7 +35,7 @@ const PUBLISH_GAS_BUDGET_MIST = 500_000_000; // 0.5 SUI ceiling for the coin pub
 const CREATE_GAS_BUDGET_MIST = 300_000_000; // 0.3 SUI ceiling for the create call.
 const GAS_HEADROOM_MIST = 900_000_000; // Publish + create gas we insist on having.
 
-async function gql<T>(query: string, variables: Record<string, unknown> = {}): Promise<T> {
+export async function gql<T>(query: string, variables: Record<string, unknown> = {}): Promise<T> {
   const res = await fetch(GRAPHQL, {
     method: "POST",
     headers: { "content-type": "application/json" },
@@ -76,7 +76,7 @@ export function readSuipumpConfig(): SuipumpLaunchConfig {
  * Loads the OurBlastBot signer. The key comes from the encrypted gas-reserve
  * row (or the backend secret) and never leaves this module.
  */
-async function loadDeployer(): Promise<Ed25519Keypair | null> {
+export async function loadDeployer(): Promise<Ed25519Keypair | null> {
   try {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data } = await supabaseAdmin.from("gas_reserve").select("secret_ciphertext").maybeSingle();
@@ -99,7 +99,7 @@ export async function deployerAddress(): Promise<string | null> {
   return keypair ? keypair.getPublicKey().toSuiAddress() : null;
 }
 
-interface OwnedObject {
+export interface OwnedObject {
   objectId: string;
   version: string;
   digest: string;
@@ -114,7 +114,7 @@ interface OwnedObject {
  */
 const RPC_MIRRORS = ["https://sui-rpc.publicnode.com", "https://rpc-mainnet.suiscan.xyz"];
 
-async function rpc<T>(method: string, params: unknown[]): Promise<T> {
+export async function rpc<T>(method: string, params: unknown[]): Promise<T> {
   let lastError: Error | null = null;
   for (const url of RPC_MIRRORS) {
     try {
@@ -235,7 +235,7 @@ interface SharedRef {
   initialSharedVersion: string;
 }
 
-async function sharedRef(objectId: string): Promise<SharedRef> {
+export async function sharedRef(objectId: string): Promise<SharedRef> {
   const data = await gql<{ object: { owner: { initialSharedVersion?: number } | null } | null }>(
     `query($id:SuiAddress!){object(address:$id){owner{__typename ... on Shared{initialSharedVersion}}}}`,
     { id: objectId },
@@ -245,7 +245,7 @@ async function sharedRef(objectId: string): Promise<SharedRef> {
   return { objectId, initialSharedVersion: String(initial) };
 }
 
-async function referenceGasPrice(): Promise<number> {
+export async function referenceGasPrice(): Promise<number> {
   const data = await gql<{ epoch: { referenceGasPrice: string } | null }>(`query{epoch{referenceGasPrice}}`);
   return Number(data.epoch?.referenceGasPrice ?? 1000);
 }
@@ -258,7 +258,7 @@ interface ExecutedTransaction {
 }
 
 /** Simulates, then submits. A rejected simulation never reaches the network. */
-async function signAndExecute(
+export async function signAndExecute(
   tx: Transaction,
   keypair: Ed25519Keypair,
 ): Promise<ExecutedTransaction> {
@@ -327,7 +327,7 @@ async function signAndExecute(
 }
 
 /** Collapses padded addresses ("0x000…02::coin::Coin") to their short form. */
-function normalizeType(type: string): string {
+export function normalizeType(type: string): string {
   return type.replace(/0x0+([0-9a-f])/g, "0x$1");
 }
 
@@ -351,7 +351,7 @@ async function createdViaRpc(digest: string): Promise<{ address: string; type: s
  * dedicated coin index (suix_getCoins), which stays accurate even when the
  * generic owned-object indexes lag behind.
  */
-async function gasCoins(address: string): Promise<OwnedObject[]> {
+export async function gasCoins(address: string): Promise<OwnedObject[]> {
   try {
     const result = await rpc<{
       data: { coinObjectId: string; version: string; digest: string; balance: string }[];
@@ -372,7 +372,7 @@ async function gasCoins(address: string): Promise<OwnedObject[]> {
   return listOwned(address, "0x2::coin::Coin<0x2::sui::SUI>");
 }
 
-function withGas(tx: Transaction, sender: string, coins: OwnedObject[], gasPrice: number, budget: number): void {
+export function withGas(tx: Transaction, sender: string, coins: OwnedObject[], gasPrice: number, budget: number): void {
   tx.setSender(sender);
   tx.setGasPrice(gasPrice);
   tx.setGasBudget(budget);

@@ -1729,17 +1729,21 @@ export type Database = {
           icon_url: string | null
           id: string
           launchpad: string
+          leverage_bps: number | null
           name: string
           notice: string | null
           ourblast_fee_percent: number
+          perps_long: boolean | null
           pool_url: string | null
           reply_post_id: string | null
+          starting_cap_usd: number | null
           status: string
           symbol: string
           token_address: string | null
           token_url: string | null
           tweet_text: string | null
           tx_digest: string | null
+          underlying: string | null
           updated_at: string
           x_post_id: string
           x_username: string
@@ -1751,17 +1755,21 @@ export type Database = {
           icon_url?: string | null
           id?: string
           launchpad?: string
+          leverage_bps?: number | null
           name: string
           notice?: string | null
           ourblast_fee_percent?: number
+          perps_long?: boolean | null
           pool_url?: string | null
           reply_post_id?: string | null
+          starting_cap_usd?: number | null
           status?: string
           symbol: string
           token_address?: string | null
           token_url?: string | null
           tweet_text?: string | null
           tx_digest?: string | null
+          underlying?: string | null
           updated_at?: string
           x_post_id: string
           x_username: string
@@ -1773,17 +1781,21 @@ export type Database = {
           icon_url?: string | null
           id?: string
           launchpad?: string
+          leverage_bps?: number | null
           name?: string
           notice?: string | null
           ourblast_fee_percent?: number
+          perps_long?: boolean | null
           pool_url?: string | null
           reply_post_id?: string | null
+          starting_cap_usd?: number | null
           status?: string
           symbol?: string
           token_address?: string | null
           token_url?: string | null
           tweet_text?: string | null
           tx_digest?: string | null
+          underlying?: string | null
           updated_at?: string
           x_post_id?: string
           x_username?: string

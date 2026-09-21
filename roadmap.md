@@ -86,3 +86,10 @@
 
 ## Launch status page
 - [x] Public /launches page: detected tweets, parsed token, tx digest, final result
+
+## Perpsplexity (market-backed memecoins)
+- [ ] PerpsplexityAdapter: publish template (identifier patch) → prepare_composite_registered → engine::activate + composite_pool::activate, exact official mainnet flow
+- [ ] X command: Launch … Underlying: X Position: LONG/SHORT Leverage: Nx on @perpsplexity; terminal card ⚡ line
+- [ ] x_launch_requests: underlying/perps_long/leverage_bps/starting_cap_usd columns (migration applied)
+- [ ] Live test blocked: launch fee 75 SUI + ≥1 USDC seed vs bot wallet ~28.79 SUI — needs funding
+- Note: X bot behavior for Suipump unchanged; perps replies keep single-$cashtag rule
