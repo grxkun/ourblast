@@ -19,6 +19,7 @@ export interface PublicLaunchRow {
   poolUrl: string | null;
   txDigest: string | null;
   replyPostId: string | null;
+  deployedReplyPostId: string | null;
   createdAt: string;
 }
 
@@ -45,7 +46,7 @@ export const listPublicLaunches = createServerFn({ method: "GET" }).handler(asyn
     supabasePublic
       .from("x_launch_requests")
       .select(
-        "id, x_post_id, x_username, symbol, name, launchpad, dev_buy, ourblast_fee_percent, status, notice, token_url, pool_url, tx_digest, reply_post_id, created_at",
+        "id, x_post_id, x_username, symbol, name, launchpad, dev_buy, ourblast_fee_percent, status, notice, token_url, pool_url, tx_digest, reply_post_id, deployed_reply_post_id, created_at",
       )
       .order("created_at", { ascending: false })
       .limit(50),
@@ -75,6 +76,7 @@ export const listPublicLaunches = createServerFn({ method: "GET" }).handler(asyn
     poolUrl: r.pool_url,
     txDigest: r.tx_digest,
     replyPostId: r.reply_post_id,
+    deployedReplyPostId: r.deployed_reply_post_id,
     createdAt: r.created_at,
   }));
 
@@ -98,6 +100,7 @@ export const listPublicLaunches = createServerFn({ method: "GET" }).handler(asyn
       poolUrl: null,
       txDigest: null,
       replyPostId: m.reply_post_id,
+      deployedReplyPostId: null,
       createdAt: m.created_at,
     });
   }
