@@ -1,3 +1,4 @@
+import { extractPerps } from "./perpsParse";
 import type { ParsedIntent, TerminalIntentName } from "./types";
 
 const cleanSymbol = (value?: string) => (value ?? "").replace(/^\$/, "").toUpperCase();
@@ -103,10 +104,17 @@ export function parseTerminalCommand(rawInput: string): ParsedIntent {
     body = (body.slice(0, supplyMatch.index) + body.slice((supplyMatch.index ?? 0) + supplyMatch[0].length)).trim();
   }
 
-  // Optional "... on maelstrom" / "... on strom" / "... on suipump" pad selection.
-  const padMatch = body.match(/\s*\bon\s+(maelstrom|strom|mael|suipump|pump)(?:\.(?:org|sui\.io))?\b/i);
+  // Optional "... on maelstrom" / "... on strom" / "... on suipump" / "... on perpsplexity" pad selection.
+  const padMatch = body.match(/\s*\bon\s+@?(maelstrom|strom|mael|suipump|pump|perpsplexity(?:\.app)?|perps|ppx)\b/i);
   const launchpad = padMatch?.[1]?.toLowerCase() ?? null;
   if (padMatch) body = (body.slice(0, padMatch.index) + body.slice((padMatch.index ?? 0) + padMatch[0].length)).trim();
+
+  // Perpsplexity position fields: "Underlying: NVDA Position: LONG Leverage: 5x Initial MC ~$4K"
+  // or the bare "NVDA LONG 5x" form when the pad is Perpsplexity.
+  const isPerpsPad = launchpad != null && /^(perpsplexity|perps|ppx)/.test(launchpad);
+  const perpsExtraction = extractPerps(body, isPerpsPad);
+  body = perpsExtraction.text;
+  const perps = perpsExtraction.perps ?? (isPerpsPad ? { underlying: null, long: true, leverageBps: 10_000, startingCapUsd: null } : null);
 
   body = body.replace(/\s+/g, " ").replace(/[\s.,!?;:]+$/g, "").trim();
 
@@ -143,6 +151,7 @@ export function parseTerminalCommand(rawInput: string): ParsedIntent {
       feeMode,
       feeWallet,
       feeX,
+      perps,
     });
   }
 
