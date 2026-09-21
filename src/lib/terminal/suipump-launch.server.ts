@@ -99,7 +99,7 @@ export async function deployerAddress(): Promise<string | null> {
   return keypair ? keypair.getPublicKey().toSuiAddress() : null;
 }
 
-interface OwnedObject {
+export interface OwnedObject {
   objectId: string;
   version: string;
   digest: string;
