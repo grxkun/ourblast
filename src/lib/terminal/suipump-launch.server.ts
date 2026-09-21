@@ -767,7 +767,7 @@ export async function launchOnSuipump(input: SuipumpLaunchInput): Promise<Suipum
     }
   }
 
-  const [curveArg, creatorCap] = tx.moveCall({
+  const createResult = tx.moveCall({
     target: `${config.packageId}::${SUIPUMP_MODULE}::${SUIPUMP_CREATE_FUNCTION}`,
     typeArguments: [coinType],
     arguments: [
