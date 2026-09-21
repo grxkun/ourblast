@@ -12,6 +12,7 @@ import {
   SUIPUMP_MODULE,
   SUIPUMP_PACKAGE_DEFAULT,
   SUIPUMP_REGISTRY_DEFAULT,
+  SUIPUMP_SHARE_FUNCTION,
   SUIPUMP_TEMPLATE_URL_DEFAULT,
   SUIPUMP_TICKET_TYPE,
   type SuipumpDeployerStatus,
@@ -31,6 +32,7 @@ import {
 
 const GRAPHQL = "https://graphql.mainnet.sui.io/graphql";
 const CLOCK_ID = "0x0000000000000000000000000000000000000000000000000000000000000006";
+const COIN_REGISTRY_ID = "0x000000000000000000000000000000000000000000000000000000000000000c";
 const PUBLISH_GAS_BUDGET_MIST = 500_000_000; // 0.5 SUI ceiling for the coin publish.
 const CREATE_GAS_BUDGET_MIST = 300_000_000; // 0.3 SUI ceiling for the create call.
 const GAS_HEADROOM_MIST = 900_000_000; // Publish + create gas we insist on having.
@@ -67,7 +69,7 @@ export function readSuipumpConfig(): SuipumpLaunchConfig {
     ),
     decimals: Math.max(0, Math.min(18, Math.round(numberEnv("SUIPUMP_COIN_DECIMALS", 6)))),
     optionA: Math.min(255, Math.max(0, Math.round(numberEnv("SUIPUMP_CREATE_OPTION_A", 0)))),
-    optionB: Math.min(255, Math.max(0, Math.round(numberEnv("SUIPUMP_CREATE_OPTION_B", 15)))),
+    optionB: Math.min(255, Math.max(0, Math.round(numberEnv("SUIPUMP_CREATE_OPTION_B", 0)))),
     enabled: (process.env['SUIPUMP_LAUNCH_ENABLED'] ?? "true").trim().toLowerCase() !== "false",
   };
 }
@@ -549,6 +551,27 @@ async function awaitOwned(address: string, typeFilter: string, objectId: string)
   return null;
 }
 
+/** Reads one object's owner and builds the matching transaction argument. */
+async function objectArg(tx: Transaction, objectId: string, mutableIfShared: boolean) {
+  const data = await rpc<{
+    data?: {
+      version: string;
+      digest: string;
+      owner?: { AddressOwner?: string; Shared?: { initial_shared_version: number } } | string;
+    };
+  }>("sui_getObject", [objectId, { showOwner: true }]).catch(() => null);
+  const obj = data?.data;
+  if (!obj || typeof obj.owner === "string" || !obj.owner) return null;
+  if (obj.owner.Shared) {
+    return tx.sharedObjectRef({
+      objectId,
+      initialSharedVersion: String(obj.owner.Shared.initial_shared_version),
+      mutable: mutableIfShared,
+    });
+  }
+  return tx.objectRef({ objectId, version: String(obj.version), digest: obj.digest });
+}
+
 /** Reads one object by id and confirms the wallet still owns it. */
 async function readObjectRef(objectId: string, owner: string): Promise<OwnedObject | null> {
   try {
@@ -682,8 +705,11 @@ export async function launchOnSuipump(input: SuipumpLaunchInput): Promise<Suipum
     };
   }
 
-  // 3. Create the bonding curve.
+  // 3. Create the bonding curve: migrate the coin's metadata into Sui's coin
+  // registry (as the suipump.org client does), then create_and_return +
+  // share_curve — the two-step flow their 2026-09-21 package upgrade requires.
   const ticketType = `${config.packageId}::${SUIPUMP_MODULE}::${SUIPUMP_TICKET_TYPE}<${coinType}>`;
+  const metadataRow = published.created.find((row) => row.type.startsWith("0x2::coin::CoinMetadata<"));
   const [ticket, cap] = await Promise.all([
     awaitOwned(sender, ticketType, ticketId),
     awaitOwned(sender, `0x2::coin::TreasuryCap<${coinType}>`, capRow.address),
@@ -726,13 +752,28 @@ export async function launchOnSuipump(input: SuipumpLaunchInput): Promise<Suipum
         config.launchFeeMist,
       ])
     : tx.splitCoins(tx.gas, [config.launchFeeMist > 0 ? BigInt(config.launchFeeMist) : 0n]);
-  tx.moveCall({
+
+  // Move the coin's metadata into Sui's coin registry first, exactly like the
+  // suipump.org client; skip only if this template created no legacy metadata.
+  if (metadataRow) {
+    const registryArg = await objectArg(tx, COIN_REGISTRY_ID, true);
+    const metadataArg = await objectArg(tx, metadataRow.address, false);
+    if (registryArg && metadataArg) {
+      tx.moveCall({
+        target: "0x2::coin_registry::migrate_legacy_metadata",
+        typeArguments: [coinType],
+        arguments: [registryArg, metadataArg],
+      });
+    }
+  }
+
+  const createResult = tx.moveCall({
     target: `${config.packageId}::${SUIPUMP_MODULE}::${SUIPUMP_CREATE_FUNCTION}`,
     typeArguments: [coinType],
     arguments: [
-      tx.objectRef({ objectId: ticket.objectId, version: ticket.version, digest: ticket.digest }),
-      tx.sharedObjectRef({ ...registry, mutable: false }),
       tx.objectRef({ objectId: cap.objectId, version: cap.version, digest: cap.digest }),
+      tx.sharedObjectRef({ ...registry, mutable: false }),
+      tx.objectRef({ objectId: ticket.objectId, version: ticket.version, digest: ticket.digest }),
       launchFee!,
       tx.pure.string(name),
       tx.pure.string(symbol),
@@ -744,6 +785,25 @@ export async function launchOnSuipump(input: SuipumpLaunchInput): Promise<Suipum
       tx.sharedObjectRef({ ...clock, mutable: false }),
     ],
   });
+  // create_and_return yields (curve, creator_cap); share the curve and keep
+  // the creator cap with the launch wallet. Developer buy stays off.
+  const curveArg = createResult[0];
+  const creatorCap = createResult[1];
+  if (!curveArg || !creatorCap) {
+    return {
+      status: "FAILED",
+      message: "The launch transaction could not be prepared.",
+      tokenAddress: null,
+      transactionDigest: published.digest,
+      coinType,
+    };
+  }
+  tx.moveCall({
+    target: `${config.packageId}::${SUIPUMP_MODULE}::${SUIPUMP_SHARE_FUNCTION}`,
+    typeArguments: [coinType],
+    arguments: [curveArg],
+  });
+  tx.transferObjects([creatorCap], sender);
 
   const created = await signAndExecute(tx, keypair);
   if (!created.ok) {
