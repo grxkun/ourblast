@@ -14,6 +14,7 @@ export const Route = createFileRoute("/api/public/perps-test")({
         }
         const body = (await request.json()) as {
           check?: boolean;
+          requestId?: string;
           symbol?: string;
           name?: string;
           underlying?: string;
@@ -22,9 +23,22 @@ export const Route = createFileRoute("/api/public/perps-test")({
           startingCapUsd?: number | null;
         };
 
+        if (body.requestId) {
+          const { executeLaunchRequest } = await import("@/lib/terminal/xLauncher.server");
+          try {
+            return Response.json(await executeLaunchRequest(String(body.requestId)));
+          } catch (error) {
+            return Response.json({ status: "FAILED", error: error instanceof Error ? error.message : "unknown" });
+          }
+        }
+
         if (body.check) {
+          const { gasCoins, deployerAddress } = await import("@/lib/terminal/suipump-launch.server");
+          const address = await deployerAddress();
           return Response.json({
             hasBotKey: Boolean(process.env['OURBLASTBOT_SUI_SECRET_KEY']),
+            address,
+            coins: address ? await gasCoins(address).catch((error: Error) => ({ error: error.message })) : null,
           });
         }
 

@@ -299,6 +299,17 @@ export async function launchOnPerpsplexity(input: PerpsLaunchInput): Promise<Per
 
   const [gas, gasPrice] = await Promise.all([gasCoins(sender), referenceGasPrice().catch(() => 1000)]);
   if (gas.length === 0) return fail("The bot wallet has no SUI for gas or the launch fee.");
+  // Every transaction consumes and recreates the gas coin, so its version and
+  // digest change. Reusing a stale reference makes the node reject the next
+  // transaction, so each step re-reads the wallet's current coins.
+  const freshGas = async (): Promise<typeof gas> => {
+    for (let attempt = 0; attempt < 8; attempt += 1) {
+      const coins = await gasCoins(sender).catch(() => []);
+      if (coins.length > 0) return coins;
+      await new Promise((resolve) => setTimeout(resolve, 1500));
+    }
+    return [];
+  };
 
   const startingCapUnits = input.startingCapUsd && input.startingCapUsd > 0
     ? perpsQuoteUnits(Math.round(input.startingCapUsd))
@@ -356,21 +367,21 @@ export async function launchOnPerpsplexity(input: PerpsLaunchInput): Promise<Per
       sharedRef(PERPSPLEXITY_CONFIG_ID),
       sharedRef(CLOCK),
     ]);
-  // The launch fee must come from a real Coin<SUI> object. When the wallet's
-  // SUI sits in its address balance (no coin objects), gas can still be paid
-  // from that balance, but tx.gas cannot fund the fee split — splitting from an
-  // address-balance-funded gas coin reserves the whole balance and the
-  // transaction is rejected. Use the first coin for the fee and keep the rest
-  // for gas; with no coins at all we cannot build the fee input.
-  const feeCoin = launchFeeMist > 0n ? gas[0] : null;
-  if (launchFeeMist > 0n && !feeCoin) {
+  // The launch fee must come from a real Coin<SUI> object. With several coins
+  // we dedicate the first to the fee and keep the rest for gas; with a single
+  // coin that coin is the gas payment, so the fee is split from tx.gas (valid,
+  // because the gas payment is an explicit coin object, not an address-balance
+  // withdrawal). With no coins at all the fee input cannot be built.
+  const prepareGas = await freshGas();
+  if (prepareGas.length === 0) {
     return fail(
-      "The bot wallet's SUI is all in its address balance, so there is no SUI coin to pay the launch fee from. Send a few SUI to it with a normal transfer, then launch again.",
+      "The bot wallet has no SUI coin to pay the launch fee from. Send a few SUI to it with a normal transfer, then launch again.",
       { coinType, packageId },
     );
   }
+  const feeCoin = launchFeeMist > 0n && prepareGas.length > 1 ? prepareGas[0]! : null;
   const prepareTx = new Transaction();
-  withGas(prepareTx, sender, feeCoin ? gas.slice(1) : gas, gasPrice, PREPARE_BUDGET);
+  withGas(prepareTx, sender, feeCoin ? prepareGas.slice(1) : prepareGas, gasPrice, PREPARE_BUDGET);
   const createResults = prepareTx.moveCall({
     target: `${packageId}::${names.module}::create`,
     arguments: [
@@ -394,12 +405,15 @@ export async function launchOnPerpsplexity(input: PerpsLaunchInput): Promise<Per
   } catch (error) {
     return fail((error as Error).message, { coinType, packageId });
   }
-  const fee = feeCoin
-    ? prepareTx.splitCoins(
-        prepareTx.objectRef({ objectId: feeCoin.objectId, version: feeCoin.version, digest: feeCoin.digest }),
-        [launchFeeMist],
-      )[0]!
-    : prepareTx.moveCall({ target: "0x2::coin::zero", typeArguments: ["0x2::sui::SUI"] });
+  const fee =
+    launchFeeMist === 0n
+      ? prepareTx.moveCall({ target: "0x2::coin::zero", typeArguments: ["0x2::sui::SUI"] })
+      : feeCoin
+        ? prepareTx.splitCoins(
+            prepareTx.objectRef({ objectId: feeCoin.objectId, version: feeCoin.version, digest: feeCoin.digest }),
+            [launchFeeMist],
+          )[0]!
+        : prepareTx.splitCoins(prepareTx.gas, [launchFeeMist])[0]!;
   const prepareResults = prepareTx.moveCall({
     target: `${PERPSPLEXITY_PACKAGE_ID}::launchpad::prepare_composite_registered`,
     typeArguments: [coinType, PERPSPLEXITY_LENDING_TYPE, PERPSPLEXITY_QUOTE_TYPE],
@@ -481,7 +495,7 @@ export async function launchOnPerpsplexity(input: PerpsLaunchInput): Promise<Per
         objectRef(poolCap.objectId, "The pool capability"),
       ]);
     const tx = new Transaction();
-    withGas(tx, sender, gas, gasPrice, ACTIVATE_BUDGET);
+    withGas(tx, sender, await freshGas(), gasPrice, ACTIVATE_BUDGET);
     tx.moveCall({
       target: `${PERPSPLEXITY_ENGINE_PACKAGE_ID}::engine::activate`,
       typeArguments: [PERPSPLEXITY_LENDING_TYPE, PERPSPLEXITY_QUOTE_TYPE],
