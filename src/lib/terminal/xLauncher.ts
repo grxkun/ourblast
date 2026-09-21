@@ -1,5 +1,5 @@
 import { normalizeCommandText } from "./commandParser";
-import { LAUNCHPAD, resolveLaunchpad, type LaunchpadConfig } from "./launchpad";
+import { LAUNCHPAD, matchLaunchpad, resolveLaunchpad, type LaunchpadConfig } from "./launchpad";
 
 /**
  * The simple X launcher: one tweet ("Deploy $TETY Tety Yety Caty on Suipump")
@@ -36,9 +36,12 @@ export interface DeployRequest {
   perps?: PerpsPositionRequest | undefined;
 }
 
-/** Only the launchpads we actually support may be named in a deploy command. */
-const PAD_ANYWHERE =
-  /\bon\s+@?(suipump(?:\.org)?|sui\s*pump|pump|maelstrom|strom|mael|ript(?:\.fun)?|blast(?:\.fun)?|blastfun|vice(?:\.fun)?|vicefun|perpsplexity(?:\.app)?|perps|ppx)\b/i;
+/**
+ * Any word after "on" is a launchpad candidate — fuzzy matching in
+ * matchLaunchpad tolerates typos ("on Peropelxity" → Perpsplexity) and
+ * rejects non-pad words ("on Monday" → no pad).
+ */
+const PAD_ANYWHERE = /\bon\s+@?([a-z][a-z0-9.]{2,20})\b/i;
 
 /** "Deploy a $TETY", "deploy a ticker $TETY", "launch me a new meme coin $TETY", "create token called $TETY". */
 const DEPLOY_CALL =
@@ -71,8 +74,13 @@ export function parseDeployTweet(rawText: string, defaultPad = LAUNCHPAD.id): De
   const padMatch = textPadMatch ?? rawPadMatch;
   let requestedPad: string | null = null;
   if (padMatch?.[1]) {
-    requestedPad = padMatch[1].replace(/\s+/g, "").replace(/^@/, "");
-    if (textPadMatch) text = (text.slice(0, textPadMatch.index) + " " + text.slice((textPadMatch.index ?? 0) + textPadMatch[0].length)).trim();
+    const candidate = padMatch[1].replace(/\s+/g, "").replace(/^@/, "");
+    // Only accept words that actually name a supported pad (typos included);
+    // anything else ("on Monday") is chatter and leaves the default pad.
+    if (matchLaunchpad(candidate)) {
+      requestedPad = candidate;
+      if (textPadMatch) text = (text.slice(0, textPadMatch.index) + " " + text.slice((textPadMatch.index ?? 0) + textPadMatch[0].length)).trim();
+    }
   }
 
   const pad = resolveLaunchpad(requestedPad ?? defaultPad);
