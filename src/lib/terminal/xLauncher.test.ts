@@ -285,3 +285,14 @@ describe("perpsplexity launch calls", () => {
     expect(parsed?.perps?.leverageBps).toBe(20_000);
   });
 });
+
+describe("messy ticker labels", () => {
+  it("reads the ticker when the value carries a stray prefix", () => {
+    const parsed = parseDeployTweet(
+      "@Ourblastbot deploy token, name : Purple Dark 4443, Ticker : u/PURPLE on Suipump https://t.co/zo6ko1E7z2",
+    );
+    expect(parsed?.symbol).toBe("PURPLE");
+    expect(parsed?.name).toBe("Purple Dark 4443");
+    expect(parsed?.launchpad).toBe("suipump");
+  });
+});
