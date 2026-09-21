@@ -1,4 +1,5 @@
 import { normalizeCommandText } from "./commandParser";
+import { normalizeSymbol } from "./ticker";
 import { LAUNCHPAD, matchLaunchpad, resolveLaunchpad, type LaunchpadConfig } from "./launchpad";
 
 /**
@@ -118,7 +119,8 @@ export function parseDeployTweet(rawText: string, defaultPad = LAUNCHPAD.id): De
     if (derived.length < 2) return null;
     return { symbol: derived, name: nameRaw.slice(0, 64), launchpad: pad.id, perps };
   }
-  const symbol = cashtag[1].toUpperCase();
+  const symbol = normalizeSymbol(cashtag[1]);
+  if (!symbol) return null;
   const name = nameRaw.length >= 2 ? nameRaw.slice(0, 64) : symbol;
   return { symbol, name, launchpad: pad.id, perps };
 }
