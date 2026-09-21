@@ -1,4 +1,5 @@
 import { normalizeCommandText } from "./commandParser";
+import { normalizeSymbol } from "./ticker";
 import { LAUNCHPAD, matchLaunchpad, resolveLaunchpad, type LaunchpadConfig } from "./launchpad";
 
 /**
@@ -105,7 +106,9 @@ export function parseDeployTweet(rawText: string, defaultPad = LAUNCHPAD.id): De
   if (!DEPLOY_VERB.test(text)) return null;
   // Prefer the cashtag next to a "ticker"/"symbol" label — greetings like "Gm $SUI"
   // put another cashtag earlier in the tweet.
-  const labelled = text.match(/\b(?:ticker|symbol|sym)\s*[:=]?\s*\$?([a-z0-9]{2,10})\b/i);
+  // The value may carry stray prefixes people type ("Ticker : u/PURPLE"):
+  // normalizeSymbol keeps the meaningful part.
+  const labelled = text.match(/\b(?:ticker|symbol|sym)\s*(?:is\s+)?[:=]?\s*\$?((?:[a-z0-9]+[/\\_.-]){0,2}[a-z0-9]{2,10})\b/i);
   const cashtag = labelled ?? text.match(/\$([a-z0-9]{2,10})\b/i);
   const nameMatch = text.match(FIELD_NAME);
   const nameRaw = nameMatch?.[1]?.trim().replace(/[\s,;:.\-–—]+$/g, "") ?? "";
@@ -116,7 +119,8 @@ export function parseDeployTweet(rawText: string, defaultPad = LAUNCHPAD.id): De
     if (derived.length < 2) return null;
     return { symbol: derived, name: nameRaw.slice(0, 64), launchpad: pad.id, perps };
   }
-  const symbol = cashtag[1].toUpperCase();
+  const symbol = normalizeSymbol(cashtag[1]);
+  if (!symbol) return null;
   const name = nameRaw.length >= 2 ? nameRaw.slice(0, 64) : symbol;
   return { symbol, name, launchpad: pad.id, perps };
 }
