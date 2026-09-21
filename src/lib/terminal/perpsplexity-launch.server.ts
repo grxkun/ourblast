@@ -107,7 +107,8 @@ const SETTINGS = {
 };
 const ENGINE_BUFFER_BPS = 1000;
 const REINVEST_BPS = 5000;
-const SUPPLY = 1_000_000_000n * 1_000_000_000n;
+// 1B tokens at 6 decimals — the value the official launch passes (1e15).
+const SUPPLY = 1_000_000_000n * 1_000_000n;
 const SEED_UNITS = 1_000_000n; // 1 USDC, the official form's minimum/default seed.
 
 function deriveNames(rawSymbol: string): { module: string; struct: string } {
@@ -419,12 +420,12 @@ export async function launchOnPerpsplexity(input: PerpsLaunchInput): Promise<Per
     typeArguments: [coinType, PERPSPLEXITY_LENDING_TYPE, PERPSPLEXITY_QUOTE_TYPE],
     arguments: [
       prepareTx.sharedObjectRef({ ...launchpadRef, mutable: true }),
-      prepareTx.sharedObjectRef({ ...configRef, mutable: true }),
+      prepareTx.sharedObjectRef({ ...configRef, mutable: false }),
       treasuryCap,
       metadata,
       prepareTx.sharedObjectRef({ ...registryRef, mutable: true }),
-      prepareTx.sharedObjectRef({ ...marketRef, mutable: true }),
-      prepareTx.sharedObjectRef({ ...lendingRef, mutable: true }),
+      prepareTx.sharedObjectRef({ ...marketRef, mutable: false }),
+      prepareTx.sharedObjectRef({ ...lendingRef, mutable: false }),
       prepareTx.sharedObjectRef({ ...baseOracleRef, mutable: false }),
       prepareTx.sharedObjectRef({ ...collateralOracleRef, mutable: false }),
       seed,
@@ -511,7 +512,7 @@ export async function launchOnPerpsplexity(input: PerpsLaunchInput): Promise<Per
       typeArguments: [coinType, PERPSPLEXITY_LENDING_TYPE, PERPSPLEXITY_QUOTE_TYPE],
       arguments: [
         tx.sharedObjectRef({ ...poolR, mutable: true }),
-        tx.sharedObjectRef({ ...configRef, mutable: true }),
+        tx.sharedObjectRef({ ...configRef, mutable: false }),
         tx.objectRef(freshCap),
         tx.sharedObjectRef({ ...engineR, mutable: true }),
         tx.sharedObjectRef({ ...vaultR, mutable: true }),
@@ -520,9 +521,9 @@ export async function launchOnPerpsplexity(input: PerpsLaunchInput): Promise<Per
         tx.sharedObjectRef({ ...sleeveR, mutable: true }),
         tx.sharedObjectRef({ ...lendingRef, mutable: true }),
         tx.sharedObjectRef({ ...poolSleeveR, mutable: true }),
-        tx.sharedObjectRef({ ...reserveR, mutable: true }),
+        tx.sharedObjectRef({ ...reserveR, mutable: false }),
         tx.sharedObjectRef({ ...reserveAccountR, mutable: true }),
-        tx.sharedObjectRef({ ...registryRef, mutable: true }),
+        tx.sharedObjectRef({ ...registryRef, mutable: false }),
         tx.sharedObjectRef({ ...baseOracleRef, mutable: false }),
         tx.sharedObjectRef({ ...collateralOracleRef, mutable: false }),
         tx.pure.u64(minimum),
