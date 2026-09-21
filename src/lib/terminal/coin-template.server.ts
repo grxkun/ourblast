@@ -15,7 +15,7 @@
 const CONSTANT_POOL_KIND = 0x6;
 const HEADER_PREFIX_BYTES = 8; // magic (4) + version/flavour (4)
 
-function encodeUleb(value: number): number[] {
+export function encodeUleb(value: number): number[] {
   const out: number[] = [];
   let rest = value;
   do {
@@ -27,7 +27,7 @@ function encodeUleb(value: number): number[] {
   return out;
 }
 
-function encodeString(value: string): number[] {
+export function encodeString(value: string): number[] {
   const bytes = [...new TextEncoder().encode(value)];
   return [...encodeUleb(bytes.length), ...bytes];
 }
@@ -51,11 +51,11 @@ function encodeMetadataBlob(meta: CoinTemplateMetadata): number[] {
   return [...encodeUleb(inner.length), ...inner];
 }
 
-interface Cursor {
+export interface Cursor {
   offset: number;
 }
 
-function readUleb(bytes: Uint8Array, cursor: Cursor): number {
+export function readUleb(bytes: Uint8Array, cursor: Cursor): number {
   let result = 0;
   let shift = 0;
   for (;;) {
@@ -73,13 +73,13 @@ interface TableEntry {
   length: number;
 }
 
-interface ParsedModule {
+export interface ParsedModule {
   prefix: Uint8Array;
   tables: TableEntry[];
   body: Uint8Array;
 }
 
-function parseModule(bytes: Uint8Array): ParsedModule {
+export function parseModule(bytes: Uint8Array): ParsedModule {
   const cursor: Cursor = { offset: HEADER_PREFIX_BYTES };
   const tableCount = readUleb(bytes, cursor);
   const tables: TableEntry[] = [];
@@ -96,7 +96,7 @@ function parseModule(bytes: Uint8Array): ParsedModule {
   };
 }
 
-function serializeModule(parsed: ParsedModule): Uint8Array {
+export function serializeModule(parsed: ParsedModule): Uint8Array {
   const header: number[] = [...encodeUleb(parsed.tables.length)];
   for (const table of parsed.tables) {
     header.push(table.kind, ...encodeUleb(table.offset), ...encodeUleb(table.length));
