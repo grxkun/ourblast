@@ -178,7 +178,10 @@ export async function fetchTweetDetails(credentials: XCredentials, postId: strin
       "user.fields": "username",
       "media.fields": "url,preview_image_url,type",
     },
-  }).catch(() => null);
+  }).catch((error) => {
+    console.error(`fetchTweetDetails ${postId} failed: ${error instanceof Error ? error.message : "unknown"}`);
+    return null;
+  });
   const tweet = result?.data;
   if (!tweet) return null;
   const username = (result?.includes?.users ?? []).find((u) => u.id === tweet.author_id)?.username ?? "";
