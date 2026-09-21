@@ -38,7 +38,7 @@ export interface DeployRequest {
   /** Launchpad id, already resolved against the supported list. */
   launchpad: string;
   /** Present for market-backed launches on Perpsplexity. */
-  perps?: PerpsPositionRequest;
+  perps?: PerpsPositionRequest | undefined;
 }
 
 /** Only the launchpads we actually support may be named in a deploy command. */
