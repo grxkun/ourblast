@@ -19,6 +19,7 @@ export interface PublicLaunchRow {
   poolUrl: string | null;
   txDigest: string | null;
   replyPostId: string | null;
+  deployedReplyPostId: string | null;
   createdAt: string;
 }
 
