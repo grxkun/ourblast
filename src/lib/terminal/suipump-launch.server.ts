@@ -35,7 +35,7 @@ const PUBLISH_GAS_BUDGET_MIST = 500_000_000; // 0.5 SUI ceiling for the coin pub
 const CREATE_GAS_BUDGET_MIST = 300_000_000; // 0.3 SUI ceiling for the create call.
 const GAS_HEADROOM_MIST = 900_000_000; // Publish + create gas we insist on having.
 
-async function gql<T>(query: string, variables: Record<string, unknown> = {}): Promise<T> {
+export async function gql<T>(query: string, variables: Record<string, unknown> = {}): Promise<T> {
   const res = await fetch(GRAPHQL, {
     method: "POST",
     headers: { "content-type": "application/json" },
@@ -76,7 +76,7 @@ export function readSuipumpConfig(): SuipumpLaunchConfig {
  * Loads the OurBlastBot signer. The key comes from the encrypted gas-reserve
  * row (or the backend secret) and never leaves this module.
  */
-async function loadDeployer(): Promise<Ed25519Keypair | null> {
+export async function loadDeployer(): Promise<Ed25519Keypair | null> {
   try {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data } = await supabaseAdmin.from("gas_reserve").select("secret_ciphertext").maybeSingle();
@@ -114,7 +114,7 @@ interface OwnedObject {
  */
 const RPC_MIRRORS = ["https://sui-rpc.publicnode.com", "https://rpc-mainnet.suiscan.xyz"];
 
-async function rpc<T>(method: string, params: unknown[]): Promise<T> {
+export async function rpc<T>(method: string, params: unknown[]): Promise<T> {
   let lastError: Error | null = null;
   for (const url of RPC_MIRRORS) {
     try {
