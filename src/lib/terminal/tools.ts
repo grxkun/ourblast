@@ -10,7 +10,7 @@ export type TerminalTool = (intent: ParsedIntent, context: TerminalAgentContext)
 const walletRequired = (tool: TerminalIntentName, context: TerminalAgentContext): TerminalToolResult | null =>
   context.walletConnected ? null : { tool, status: "NOT_CONNECTED", message: "Connect your Sui wallet first." };
 
-const numberInput = (value: string | number | null | undefined): number | null =>
+const numberInput = (value: unknown): number | null =>
   typeof value === "number" && Number.isFinite(value) ? value : null;
 
 export function launchFromIntent(intent: ParsedIntent): { launch: LaunchConfiguration; notes: string[] } | null {
