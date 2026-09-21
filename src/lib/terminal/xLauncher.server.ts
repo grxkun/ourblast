@@ -1,4 +1,5 @@
-import { DEFAULT_TREASURY_ADDRESS } from "@/lib/ourblast.config";
+import { DEFAULT_TREASURY_ADDRESS, FOUNDER_ADDRESS } from "@/lib/ourblast.config";
+import { CREATOR_FEE_SPLIT } from "./fees";
 import { poolPageUrl, resolveLaunchpad, tokenPageUrl } from "./launchpad";
 import { launchpadAdapter } from "./launchpadAdapter";
 import {
