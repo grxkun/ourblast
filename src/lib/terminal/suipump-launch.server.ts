@@ -12,6 +12,7 @@ import {
   SUIPUMP_MODULE,
   SUIPUMP_PACKAGE_DEFAULT,
   SUIPUMP_REGISTRY_DEFAULT,
+  SUIPUMP_SHARE_FUNCTION,
   SUIPUMP_TEMPLATE_URL_DEFAULT,
   SUIPUMP_TICKET_TYPE,
   type SuipumpDeployerStatus,
@@ -67,7 +68,7 @@ export function readSuipumpConfig(): SuipumpLaunchConfig {
     ),
     decimals: Math.max(0, Math.min(18, Math.round(numberEnv("SUIPUMP_COIN_DECIMALS", 6)))),
     optionA: Math.min(255, Math.max(0, Math.round(numberEnv("SUIPUMP_CREATE_OPTION_A", 0)))),
-    optionB: Math.min(255, Math.max(0, Math.round(numberEnv("SUIPUMP_CREATE_OPTION_B", 15)))),
+    optionB: Math.min(255, Math.max(0, Math.round(numberEnv("SUIPUMP_CREATE_OPTION_B", 0)))),
     enabled: (process.env['SUIPUMP_LAUNCH_ENABLED'] ?? "true").trim().toLowerCase() !== "false",
   };
 }
