@@ -356,8 +356,21 @@ export async function launchOnPerpsplexity(input: PerpsLaunchInput): Promise<Per
       sharedRef(PERPSPLEXITY_CONFIG_ID),
       sharedRef(CLOCK),
     ]);
+  // The launch fee must come from a real Coin<SUI> object. When the wallet's
+  // SUI sits in its address balance (no coin objects), gas can still be paid
+  // from that balance, but tx.gas cannot fund the fee split — splitting from an
+  // address-balance-funded gas coin reserves the whole balance and the
+  // transaction is rejected. Use the first coin for the fee and keep the rest
+  // for gas; with no coins at all we cannot build the fee input.
+  const feeCoin = launchFeeMist > 0n ? gas[0] : null;
+  if (launchFeeMist > 0n && !feeCoin) {
+    return fail(
+      "The bot wallet's SUI is all in its address balance, so there is no SUI coin to pay the launch fee from. Send a few SUI to it with a normal transfer, then launch again.",
+      { coinType, packageId },
+    );
+  }
   const prepareTx = new Transaction();
-  withGas(prepareTx, sender, gas, gasPrice, PREPARE_BUDGET);
+  withGas(prepareTx, sender, feeCoin ? gas.slice(1) : gas, gasPrice, PREPARE_BUDGET);
   const createResults = prepareTx.moveCall({
     target: `${packageId}::${names.module}::create`,
     arguments: [
@@ -381,8 +394,11 @@ export async function launchOnPerpsplexity(input: PerpsLaunchInput): Promise<Per
   } catch (error) {
     return fail((error as Error).message, { coinType, packageId });
   }
-  const fee = launchFeeMist > 0n
-    ? prepareTx.splitCoins(prepareTx.gas, [launchFeeMist])[0]!
+  const fee = feeCoin
+    ? prepareTx.splitCoins(
+        prepareTx.objectRef({ objectId: feeCoin.objectId, version: feeCoin.version, digest: feeCoin.digest }),
+        [launchFeeMist],
+      )[0]!
     : prepareTx.moveCall({ target: "0x2::coin::zero", typeArguments: ["0x2::sui::SUI"] });
   const prepareResults = prepareTx.moveCall({
     target: `${PERPSPLEXITY_PACKAGE_ID}::launchpad::prepare_composite_registered`,
