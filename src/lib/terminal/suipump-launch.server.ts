@@ -305,6 +305,57 @@ export async function signAndExecute(
   // The digest is known before submission, so a timed-out or dropped response
   // never loses a transaction that the network actually accepted.
   const expectedDigest = await tx.getDigest().catch(() => null);
+
+  // Submission goes through the JSON-RPC mirrors first: the GraphQL submit
+  // endpoint times out on large transactions such as the pool creation.
+  for (const url of RPC_MIRRORS) {
+    const submitted = await fetch(url, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        jsonrpc: "2.0",
+        id: 1,
+        method: "sui_executeTransactionBlock",
+        params: [txBase64, [signature], { showEffects: true }, "WaitForEffectsCert"],
+      }),
+    })
+      .then((res) => res.text())
+      .then((text) => {
+        try {
+          return JSON.parse(text) as {
+            result?: { digest?: string; effects?: { status?: { status?: string; error?: string } } };
+            error?: { message: string };
+          };
+        } catch {
+          throw new Error(text.slice(0, 200));
+        }
+      })
+      .catch((error: Error) => {
+        console.error("submit via", url, "failed:", error.message);
+        return null;
+      });
+    if (submitted?.error) {
+      console.error("submit via", url, "rejected:", submitted.error.message);
+      continue;
+    }
+    const status = submitted?.result?.effects?.status?.status;
+    const digest = submitted?.result?.digest ?? expectedDigest;
+    if (status === "success" && digest) {
+      return { digest, ok: true, error: null, created: await createdViaRpc(digest) };
+    }
+    if (status) {
+      return {
+        digest: digest ?? null,
+        ok: false,
+        error: submitted?.result?.effects?.status?.error ?? "the transaction failed on chain",
+        created: [],
+      };
+    }
+  }
+  if (expectedDigest && (await waitForDigest(expectedDigest))) {
+    return { digest: expectedDigest, ok: true, error: null, created: await createdViaRpc(expectedDigest) };
+  }
+
   const executed = await gql<{
     executeTransaction: {
       effects: {
