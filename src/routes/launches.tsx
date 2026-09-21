@@ -51,6 +51,19 @@ function tweetUrl(row: PublicLaunchRow): string {
   return `https://x.com/${row.xUsername}/status/${row.xPostId}`;
 }
 
+function replyState(row: PublicLaunchRow): { label: string; className: string } {
+  if (row.deployedReplyPostId) {
+    return { label: "Replied: deployed", className: "bg-primary/15 text-primary border-primary/40" };
+  }
+  if (row.replyPostId) {
+    return { label: "Replied", className: "bg-secondary text-secondary-foreground border-border" };
+  }
+  if (row.status === "DEPLOYED") {
+    return { label: "Reply pending", className: "bg-accent/15 text-accent-foreground border-accent/40" };
+  }
+  return { label: "No reply", className: "bg-muted text-muted-foreground border-border" };
+}
+
 function LaunchCard({ row }: { row: PublicLaunchRow }) {
   const isLaunch = row.symbol != null;
   return (
