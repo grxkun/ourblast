@@ -11,6 +11,21 @@
 export const DEFAULT_TREASURY_ADDRESS =
   "0xd9ba2ba33cc6eb61302cec564126caae22fbbe10f564789c5e6e5eca0940372c";
 
+/**
+ * @ourblastbot wallet — pays all launch gas and receives 10% of every
+ * launch's creator fees on-chain (half of the old 20% treasury share).
+ */
+export const BOT_WALLET_ADDRESS =
+  "0x489e7b801fa43b8ba11038733e3909d3cdd6db3c21bd0e80dc9704f77c148f7d";
+
+/**
+ * Buy & burn reserve — receives the other 10% of launch creator fees
+ * on-chain. Accumulated SUI is swapped to BLAST and burned by the bot.
+ * Falls back to the community treasury until a dedicated reserve is set.
+ */
+export const BLAST_BURN_RESERVE_ADDRESS =
+  "0xd9ba2ba33cc6eb61302cec564126caae22fbbe10f564789c5e6e5eca0940372c";
+
 /** Founder share address — receives 10% of every game fee, on-chain. */
 export const FOUNDER_ADDRESS =
   "0xa0ec4ee84d06471499e3d512d9d8af9bab40e6aeb6dfa197f16366e70e2660c4";
