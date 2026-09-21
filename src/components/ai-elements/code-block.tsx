@@ -28,6 +28,9 @@ import type {
   ThemedToken,
 } from "shiki";
 import { createHighlighter } from "shiki";
+// The JavaScript regex engine keeps highlighting free of the oniguruma WASM
+// module, which cannot be resolved in the server runtime and crashed SSR.
+import { createJavaScriptRegexEngine } from "shiki/engine/javascript";
 
 // Shiki uses bitflags for font styles: 1=italic, 2=bold, 4=underline
 // oxlint-disable-next-line eslint(no-bitwise)
@@ -158,6 +161,7 @@ const getHighlighter = (
   const highlighterPromise = createHighlighter({
     langs: [language],
     themes: ["github-light", "github-dark"],
+    engine: createJavaScriptRegexEngine(),
   });
 
   highlighterCache.set(language, highlighterPromise);
