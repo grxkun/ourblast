@@ -32,6 +32,7 @@ import {
 
 const GRAPHQL = "https://graphql.mainnet.sui.io/graphql";
 const CLOCK_ID = "0x0000000000000000000000000000000000000000000000000000000000000006";
+const COIN_REGISTRY_ID = "0x000000000000000000000000000000000000000000000000000000000000000c";
 const PUBLISH_GAS_BUDGET_MIST = 500_000_000; // 0.5 SUI ceiling for the coin publish.
 const CREATE_GAS_BUDGET_MIST = 300_000_000; // 0.3 SUI ceiling for the create call.
 const GAS_HEADROOM_MIST = 900_000_000; // Publish + create gas we insist on having.
@@ -683,8 +684,11 @@ export async function launchOnSuipump(input: SuipumpLaunchInput): Promise<Suipum
     };
   }
 
-  // 3. Create the bonding curve.
+  // 3. Create the bonding curve: migrate the coin's metadata into Sui's coin
+  // registry (as the suipump.org client does), then create_and_return +
+  // share_curve — the two-step flow their 2026-09-21 package upgrade requires.
   const ticketType = `${config.packageId}::${SUIPUMP_MODULE}::${SUIPUMP_TICKET_TYPE}<${coinType}>`;
+  const metadataRow = published.created.find((row) => row.type.startsWith("0x2::coin::CoinMetadata<"));
   const [ticket, cap] = await Promise.all([
     awaitOwned(sender, ticketType, ticketId),
     awaitOwned(sender, `0x2::coin::TreasuryCap<${coinType}>`, capRow.address),
