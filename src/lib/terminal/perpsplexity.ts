@@ -30,6 +30,29 @@ export const PERPSPLEXITY_QUOTE_TYPE =
 
 export const PERPSPLEXITY_MEME_DECIMALS = 6n;
 export const PERPSPLEXITY_MEME_SUPPLY = 1_000_000_000n;
+export const PERPSPLEXITY_QUOTE_DECIMALS = 6;
+
+/** Parses a decimal USD amount into USDC base units (6 decimals). */
+export function perpsQuoteUnits(amount: string | number): bigint {
+  const text = String(amount).trim();
+  if (!/^\d+(\.\d+)?$/.test(text)) throw new Error("Invalid amount.");
+  const [whole = "0", fraction = ""] = text.split(".");
+  const padded = (fraction + "000000").slice(0, PERPSPLEXITY_QUOTE_DECIMALS);
+  return BigInt(whole) * 1_000_000n + BigInt(padded);
+}
+
+/**
+ * Official virtualQuote formula (router chunk export g): the starting market
+ * cap minus the seed, in quote units. Zero when the cap is at or below the
+ * seed; the seed must be at least 1 USDC to set a starting cap.
+ */
+export function perpsVirtualQuote(startingCapUnits: bigint, seedUnits: bigint): bigint {
+  if (startingCapUnits <= seedUnits) return 0n;
+  if (seedUnits < 1_000_000n) throw new Error("Seed at least 1 USDC to use a starting market cap.");
+  const difference = startingCapUnits - seedUnits;
+  if (difference > 1_000_000_000_000_000n) throw new Error("Starting market cap is too high.");
+  return difference;
+}
 
 export interface PerpsMarket {
   marketId: string;

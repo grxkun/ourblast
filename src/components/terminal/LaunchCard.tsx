@@ -11,6 +11,7 @@ import { X_BOT_HANDLE } from "@/lib/terminal/x-bot";
 import { LAUNCHPADS, resolveLaunchpad } from "@/lib/terminal/launchpad";
 import { normalizeLaunchConfig } from "@/lib/terminal/launchSettings";
 import { describeFeePayout, normalizeXUsername, shortFeePayout, type FeePayoutMode } from "@/lib/terminal/feePayout";
+import { describePerpsPosition } from "@/lib/terminal/perpsplexity";
 import type { LaunchConfiguration } from "@/lib/terminal/types";
 
 export function LaunchCard({ launch, editing, onEdit, onChange, onLaunch, onGenerate }: {
@@ -72,6 +73,22 @@ export function LaunchCard({ launch, editing, onEdit, onChange, onLaunch, onGene
         ) : (
           <div><h3 className="font-display text-3xl normal-case">{launch.name}</h3><p className="font-display text-xl text-primary">${launch.symbol}</p></div>
         )}
+        {launch.perps ? (
+          <div className="space-y-2 rounded border border-primary/40 bg-primary/5 p-3">
+            <p className="font-display text-lg">{describePerpsPosition({ underlying: launch.perps.underlying ?? "?", long: launch.perps.long, leverageBps: launch.perps.leverageBps, startingCapUsd: launch.perps.startingCapUsd })}</p>
+            <div className="grid gap-2 sm:grid-cols-4">
+              <label className="text-xs font-bold uppercase text-muted-foreground">Underlying<Input value={launch.perps.underlying ?? ""} maxLength={12} onChange={(event) => apply({ ...launch, perps: { ...launch.perps!, underlying: event.target.value.replace(/[^a-z0-9]/gi, "").toUpperCase() || null } })} className="mt-1" /></label>
+              <label className="text-xs font-bold uppercase text-muted-foreground">Direction
+                <select value={launch.perps.long ? "long" : "short"} onChange={(event) => apply({ ...launch, perps: { ...launch.perps!, long: event.target.value !== "short" } })} className="mt-1 flex h-10 w-full rounded-md border border-input bg-background px-3 text-sm">
+                  <option value="long">LONG</option>
+                  <option value="short">SHORT</option>
+                </select>
+              </label>
+              <label className="text-xs font-bold uppercase text-muted-foreground">Leverage (x)<Input inputMode="numeric" value={String(launch.perps.leverageBps / 10_000)} onChange={(event) => { const x = Math.max(1, Math.min(20, Number(event.target.value.replace(/[^0-9]/g, "")) || 1)); draft({ ...launch, perps: { ...launch.perps!, leverageBps: x * 10_000 } }); }} onBlur={settle} className="mt-1" /></label>
+              <label className="text-xs font-bold uppercase text-muted-foreground">Initial MC ($)<Input inputMode="decimal" value={launch.perps.startingCapUsd ? String(launch.perps.startingCapUsd) : ""} onChange={(event) => draft({ ...launch, perps: { ...launch.perps!, startingCapUsd: Number(event.target.value.replace(/[^0-9.]/g, "")) || null } })} onBlur={settle} className="mt-1" /></label>
+            </div>
+          </div>
+        ) : null}
         <div className="flex flex-wrap items-center gap-2">
           <span className="text-xs font-bold uppercase text-muted-foreground">Launch pad</span>
           {LAUNCHPADS.map((pad) => (

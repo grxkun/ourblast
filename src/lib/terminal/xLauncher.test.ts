@@ -217,7 +217,7 @@ describe("X mention → Suipump launch screen → verified result", () => {
     expect(tables["x_launch_requests"]![0]!["status"]).toBe("DEPLOYED");
 
     const reply = composeDeployedLaunchReply("TETY", outcome.tokenUrl!, outcome.poolUrl!);
-    expect(reply).toContain("$TETY deployed!");
+    expect(reply).toContain("$TETY LIVE");
     expect(reply).toContain(outcome.tokenUrl!);
     expect(reply).toContain(outcome.poolUrl!);
   });
@@ -250,4 +250,38 @@ it("parses field-style tweets with cashtag on another line", () => {
   expect(
     parseDeployTweet("@Ourblastbot deploy a token on suipump\n\nName: THINKING CAT\nticker : $HMMM\nimage: https://t.co/abc"),
   ).toEqual({ symbol: "HMMM", name: "THINKING CAT", launchpad: "suipump" });
+});
+
+describe("perpsplexity launch calls", () => {
+  it("reads ticker, name, underlying, position, leverage and MC from a field-style call", () => {
+    const parsed = parseDeployTweet(
+      "@Ourblastbot Launch Name: Tety Yety Caty, Ticker: $TETY, Underlying: NVDA, Position: LONG, Leverage: 5x Initial MC ~$4K on @perpsplexity",
+    );
+    expect(parsed?.symbol).toBe("TETY");
+    expect(parsed?.name).toBe("Tety Yety Caty");
+    expect(parsed?.launchpad).toBe("perpsplexity");
+    expect(parsed?.perps).toEqual({ underlying: "NVDA", long: true, leverageBps: 50_000, startingCapUsd: 4000 });
+  });
+
+  it("reads the bare terminal style (NVDA LONG 5x) when the pad is perpsplexity", () => {
+    const parsed = parseDeployTweet("@Ourblastbot deploy $TETY Tety Yety Caty NVDA LONG 5x on perpsplexity");
+    expect(parsed?.symbol).toBe("TETY");
+    expect(parsed?.launchpad).toBe("perpsplexity");
+    expect(parsed?.perps?.underlying).toBe("NVDA");
+    expect(parsed?.perps?.long).toBe(true);
+    expect(parsed?.perps?.leverageBps).toBe(50_000);
+  });
+
+  it("does not treat 'LONG 5x' words as perps fields on suipump calls", () => {
+    const parsed = parseDeployTweet("@Ourblastbot deploy $DOG Sui Dog on suipump");
+    expect(parsed?.launchpad).toBe("suipump");
+    expect(parsed?.perps ?? null).toBeNull();
+  });
+
+  it("keeps perps fields out of the token name", () => {
+    const parsed = parseDeployTweet("@Ourblastbot deploy $TETY Tety Yety Caty Underlying: NVDA Position: SHORT Leverage: 2x on perps");
+    expect(parsed?.name).toBe("Tety Yety Caty");
+    expect(parsed?.perps?.long).toBe(false);
+    expect(parsed?.perps?.leverageBps).toBe(20_000);
+  });
 });

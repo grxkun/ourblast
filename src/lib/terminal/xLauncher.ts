@@ -17,6 +17,9 @@ export interface LauncherSettings {
   autoLaunchEnabled: boolean;
 }
 
+import { extractPerps, type PerpsPositionRequest } from "./perpsParse";
+export type { PerpsPositionRequest } from "./perpsParse";
+
 export const DEFAULT_LAUNCHER_SETTINGS: LauncherSettings = {
   defaultLaunchpad: "suipump",
   ourblastFeePercent: 10,
@@ -29,11 +32,13 @@ export interface DeployRequest {
   name: string;
   /** Launchpad id, already resolved against the supported list. */
   launchpad: string;
+  /** Present for market-backed launches on Perpsplexity. */
+  perps?: PerpsPositionRequest | undefined;
 }
 
 /** Only the launchpads we actually support may be named in a deploy command. */
 const PAD_ANYWHERE =
-  /\bon\s+(suipump(?:\.org)?|sui\s*pump|pump|maelstrom|strom|mael|ript(?:\.fun)?|blast(?:\.fun)?|blastfun|vice(?:\.fun)?|vicefun)\b/i;
+  /\bon\s+@?(suipump(?:\.org)?|sui\s*pump|pump|maelstrom|strom|mael|ript(?:\.fun)?|blast(?:\.fun)?|blastfun|vice(?:\.fun)?|vicefun|perpsplexity(?:\.app)?|perps|ppx)\b/i;
 
 /** "Deploy a $TETY", "deploy a ticker $TETY", "launch me a new meme coin $TETY", "create token called $TETY". */
 const DEPLOY_CALL =
@@ -47,7 +52,9 @@ const DEPLOY_VERB = /\b(?:deploy|launch|create|mint|make)\b/i;
 
 /** "Name: THINKING CAT" / "name = Sui Dog" — value runs until the next field label. */
 const FIELD_NAME =
-  /\b(?:n[ase]?me|title)\s*[:=]\s*([^$]+?)(?=\s+\b(?:ticker|symbol|sym|image|img|picture|pic|supply|desc|description)\b|\s*$)/i;
+  /\b(?:n[ase]?me|title)\s*[:=]\s*([^$]+?)(?=\s+\b(?:ticker|symbol|sym|image|img|picture|pic|supply|desc|description|underlying|market|asset|position|direction|side|leverage|lev|mc)\b|\s*$)/i;
+
+/** "Underlying: NVDA" / "market = TSLA" — shared with the terminal parser. */
 
 /**
  * Reads a launch call out of a tweet, wherever it sits in the text:
@@ -55,27 +62,35 @@ const FIELD_NAME =
  * Tety Yety Caty on Suipump". Anything without a cashtag returns null.
  */
 export function parseDeployTweet(rawText: string, defaultPad = LAUNCHPAD.id): DeployRequest | null {
+  // Read the launchpad wherever it appears — on the raw text first, because
+  // mention stripping would eat "@perpsplexity" before we could see it.
+  const rawPadMatch = rawText.match(PAD_ANYWHERE);
   let text = normalizeCommandText(rawText);
 
-  // Read the launchpad wherever it appears, then remove it so it never lands in the name.
-  const padMatch = text.match(PAD_ANYWHERE);
+  const textPadMatch = text.match(PAD_ANYWHERE);
+  const padMatch = textPadMatch ?? rawPadMatch;
   let requestedPad: string | null = null;
   if (padMatch?.[1]) {
-    requestedPad = padMatch[1].replace(/\s+/g, "");
-    text = (text.slice(0, padMatch.index) + " " + text.slice((padMatch.index ?? 0) + padMatch[0].length)).trim();
+    requestedPad = padMatch[1].replace(/\s+/g, "").replace(/^@/, "");
+    if (textPadMatch) text = (text.slice(0, textPadMatch.index) + " " + text.slice((textPadMatch.index ?? 0) + textPadMatch[0].length)).trim();
   }
+
+  const pad = resolveLaunchpad(requestedPad ?? defaultPad);
+  const isPerpsPad = pad.id === "perpsplexity";
+  const perpsExtraction = extractPerps(text, isPerpsPad);
+  text = perpsExtraction.text;
+  const perps = perpsExtraction.perps ?? undefined;
 
   const match = text.match(DEPLOY_CALL);
   if (match?.[1]) {
     const symbol = match[1].toUpperCase();
-    const pad = resolveLaunchpad(requestedPad ?? defaultPad);
     const rawName = (match[2] ?? "")
       .replace(NAME_MARKER, "")
       .replace(/\s+/g, " ")
       .replace(/[\s.,!?;:-]+$/g, "")
       .trim();
     const name = rawName.length >= 2 ? rawName.slice(0, 64) : symbol;
-    return { symbol, name, launchpad: pad.id };
+    return { symbol, name, launchpad: pad.id, perps };
   }
 
   // Field-style tweets: "deploy a token on suipump / Name: THINKING CAT / ticker: $HMMM".
@@ -86,10 +101,10 @@ export function parseDeployTweet(rawText: string, defaultPad = LAUNCHPAD.id): De
   const cashtag = labelled ?? text.match(/\$([a-z0-9]{2,10})\b/i);
   if (!cashtag?.[1]) return null;
   const symbol = cashtag[1].toUpperCase();
-  const pad = resolveLaunchpad(requestedPad ?? defaultPad);
   const nameMatch = text.match(FIELD_NAME);
-  const name = nameMatch?.[1]?.trim() && nameMatch[1].trim().length >= 2 ? nameMatch[1].trim().slice(0, 64) : symbol;
-  return { symbol, name, launchpad: pad.id };
+  const nameRaw = nameMatch?.[1]?.trim().replace(/[\s,;:.\-–—]+$/g, "") ?? "";
+  const name = nameRaw.length >= 2 ? nameRaw.slice(0, 64) : symbol;
+  return { symbol, name, launchpad: pad.id, perps };
 }
 
 export function padFor(settings: LauncherSettings, requested?: string | null): LaunchpadConfig {

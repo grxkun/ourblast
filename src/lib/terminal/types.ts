@@ -44,11 +44,13 @@ export interface LaunchConfiguration {
   totalSupply: number;
   /** Where the creator's share of the launchpad creator fee is paid. */
   feePayout: FeePayout;
+  /** Perpsplexity market-backed position, when this is a perps launch. */
+  perps?: import("./perpsParse").PerpsPositionRequest | null;
 }
 
 export interface ParsedIntent {
   name: TerminalIntentName;
-  input: Record<string, string | number | null>;
+  input: Record<string, string | number | import("./perpsParse").PerpsPositionRequest | null>;
   confidence: number;
   raw: string;
 }

@@ -23,6 +23,10 @@ type Row = {
   token_url: string | null;
   pool_url: string | null;
   notice: string | null;
+  underlying: string | null;
+  perps_long: boolean | null;
+  leverage_bps: number | null;
+  starting_cap_usd: number | null;
 };
 
 /**
@@ -41,7 +45,7 @@ export function XLaunchQueue() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("x_launch_requests")
-        .select("id, x_username, symbol, name, launchpad, dev_buy, ourblast_fee_percent, status, token_url, pool_url, notice")
+        .select("id, x_username, symbol, name, launchpad, dev_buy, ourblast_fee_percent, status, token_url, pool_url, notice, underlying, perps_long, leverage_bps, starting_cap_usd")
         .order("created_at", { ascending: false })
         .limit(10);
       if (error) throw error;
@@ -108,6 +112,9 @@ export function XLaunchQueue() {
                   </header>
                   <p className="mt-2 font-display text-3xl">${row.symbol}</p>
                   <p className="text-sm">{row.name}</p>
+                  {row.underlying ? (
+                    <p className="mt-1 font-display text-sm text-primary">⚡ {row.underlying.replace(/USD$/, "")} {row.perps_long === false ? "SHORT" : "LONG"} {(row.leverage_bps ?? 10_000) / 10_000}x{row.starting_cap_usd ? ` · MC ~$${row.starting_cap_usd >= 1000 ? `${row.starting_cap_usd / 1000}K` : row.starting_cap_usd}` : ""}</p>
+                  ) : null}
 
                   {parked && pad.id !== "suipump" ? (
                     <p className="mt-3 text-sm text-muted-foreground">{pad.label} launch is not ready yet.</p>
