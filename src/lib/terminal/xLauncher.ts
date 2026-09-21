@@ -67,11 +67,12 @@ export function parseDeployTweet(rawText: string, defaultPad = LAUNCHPAD.id): De
   const rawPadMatch = rawText.match(PAD_ANYWHERE);
   let text = normalizeCommandText(rawText);
 
-  const padMatch = text.match(PAD_ANYWHERE) ?? rawPadMatch;
+  const textPadMatch = text.match(PAD_ANYWHERE);
+  const padMatch = textPadMatch ?? rawPadMatch;
   let requestedPad: string | null = null;
   if (padMatch?.[1]) {
-    requestedPad = padMatch[1].replace(/\s+/g, "");
-    text = (text.slice(0, padMatch.index) + " " + text.slice((padMatch.index ?? 0) + padMatch[0].length)).trim();
+    requestedPad = padMatch[1].replace(/\s+/g, "").replace(/^@/, "");
+    if (textPadMatch) text = (text.slice(0, textPadMatch.index) + " " + text.slice((textPadMatch.index ?? 0) + textPadMatch[0].length)).trim();
   }
 
   const pad = resolveLaunchpad(requestedPad ?? defaultPad);
