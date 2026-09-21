@@ -105,7 +105,9 @@ export function parseDeployTweet(rawText: string, defaultPad = LAUNCHPAD.id): De
   if (!DEPLOY_VERB.test(text)) return null;
   // Prefer the cashtag next to a "ticker"/"symbol" label — greetings like "Gm $SUI"
   // put another cashtag earlier in the tweet.
-  const labelled = text.match(/\b(?:ticker|symbol|sym)\s*[:=]?\s*\$?([a-z0-9]{2,10})\b/i);
+  // The value may carry stray prefixes people type ("Ticker : u/PURPLE"):
+  // normalizeSymbol keeps the meaningful part.
+  const labelled = text.match(/\b(?:ticker|symbol|sym)\s*(?:is\s+)?[:=]?\s*\$?((?:[a-z0-9]+[/\\_.-]){0,2}[a-z0-9]{2,10})\b/i);
   const cashtag = labelled ?? text.match(/\$([a-z0-9]{2,10})\b/i);
   const nameMatch = text.match(FIELD_NAME);
   const nameRaw = nameMatch?.[1]?.trim().replace(/[\s,;:.\-–—]+$/g, "") ?? "";
