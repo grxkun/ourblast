@@ -99,7 +99,8 @@ export function parseDeployTweet(rawText: string, defaultPad = LAUNCHPAD.id): De
   if (!cashtag?.[1]) return null;
   const symbol = cashtag[1].toUpperCase();
   const nameMatch = text.match(FIELD_NAME);
-  const name = nameMatch?.[1]?.trim() && nameMatch[1].trim().length >= 2 ? nameMatch[1].trim().slice(0, 64) : symbol;
+  const nameRaw = nameMatch?.[1]?.trim().replace(/[\s,;:.\-–—]+$/g, "") ?? "";
+  const name = nameRaw.length >= 2 ? nameRaw.slice(0, 64) : symbol;
   return { symbol, name, launchpad: pad.id, perps };
 }
 
