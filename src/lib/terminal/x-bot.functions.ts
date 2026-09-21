@@ -37,3 +37,20 @@ export const pollXMentionsNow = createServerFn({ method: "POST" })
     const { runXMentionPoll } = await import("./x-poll.server");
     return runXMentionPoll();
   });
+
+/** TEMPORARY debug: raw view of what X returns for mentions and one tweet. */
+export const debugXMentions = createServerFn({ method: "POST" })
+  .handler(async () => {
+    const { readXCredentials, getBotAccount, listMentions } = await import("./x-api.server");
+    const credentials = readXCredentials();
+    if (!credentials) return { ok: false, reason: "no creds" } as const;
+    const bot = await getBotAccount(credentials);
+    const all = await listMentions(credentials, bot.id, null);
+    const fresh = await listMentions(credentials, bot.id, "2101820449571451091");
+    return {
+      ok: true,
+      bot: bot.username,
+      allIds: all.map((m) => m.id),
+      freshIds: fresh.map((m) => ({ id: m.id, user: m.username, text: m.text.slice(0, 60) })),
+    } as const;
+  });
