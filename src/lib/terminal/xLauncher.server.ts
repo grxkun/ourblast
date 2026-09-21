@@ -35,6 +35,11 @@ export interface LaunchRequestRow {
   icon_url: string | null;
   /** The caller's original tweet text, quoted in the coin's description. */
   tweet_text: string | null;
+  /** Perpsplexity market-backed launch fields (null for plain launches). */
+  underlying: string | null;
+  perps_long: boolean | null;
+  leverage_bps: number | null;
+  starting_cap_usd: number | null;
   created_at: string;
 }
 
@@ -234,6 +239,10 @@ export async function createLaunchRequest(
       ourblast_fee_percent: settings.ourblastFeePercent,
       icon_url: iconUrl?.slice(0, 500) ?? null,
       tweet_text: tweetText?.slice(0, 1000) ?? null,
+      underlying: request.perps?.underlying ?? null,
+      perps_long: request.perps ? request.perps.long : null,
+      leverage_bps: request.perps?.leverageBps ?? null,
+      starting_cap_usd: request.perps?.startingCapUsd ?? null,
       status: "PENDING",
       notice: pad.integrated ? null : INTEGRATION_PENDING,
     })
