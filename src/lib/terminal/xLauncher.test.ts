@@ -217,7 +217,7 @@ describe("X mention → Suipump launch screen → verified result", () => {
     expect(tables["x_launch_requests"]![0]!["status"]).toBe("DEPLOYED");
 
     const reply = composeDeployedLaunchReply("TETY", outcome.tokenUrl!, outcome.poolUrl!);
-    expect(reply).toContain("$TETY deployed!");
+    expect(reply).toContain("$TETY LIVE");
     expect(reply).toContain(outcome.tokenUrl!);
     expect(reply).toContain(outcome.poolUrl!);
   });
