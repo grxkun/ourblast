@@ -551,6 +551,27 @@ async function awaitOwned(address: string, typeFilter: string, objectId: string)
   return null;
 }
 
+/** Reads one object's owner and builds the matching transaction argument. */
+async function objectArg(tx: Transaction, objectId: string, mutableIfShared: boolean) {
+  const data = await rpc<{
+    data?: {
+      version: string;
+      digest: string;
+      owner?: { AddressOwner?: string; Shared?: { initial_shared_version: number } } | string;
+    };
+  }>("sui_getObject", [objectId, { showOwner: true }]).catch(() => null);
+  const obj = data?.data;
+  if (!obj || typeof obj.owner === "string" || !obj.owner) return null;
+  if (obj.owner.Shared) {
+    return tx.sharedObjectRef({
+      objectId,
+      initialSharedVersion: String(obj.owner.Shared.initial_shared_version),
+      mutable: mutableIfShared,
+    });
+  }
+  return tx.objectRef({ objectId, version: String(obj.version), digest: obj.digest });
+}
+
 /** Reads one object by id and confirms the wallet still owns it. */
 async function readObjectRef(objectId: string, owner: string): Promise<OwnedObject | null> {
   try {
