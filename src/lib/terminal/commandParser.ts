@@ -2,7 +2,9 @@ import { matchLaunchpad } from "./launchpad";
 import { extractPerps } from "./perpsParse";
 import type { ParsedIntent, TerminalIntentName } from "./types";
 
-const cleanSymbol = (value?: string) => (value ?? "").replace(/^\$/, "").toUpperCase();
+import { normalizeSymbol } from "./ticker";
+
+const cleanSymbol = (value?: string) => normalizeSymbol(value);
 
 function intent(name: TerminalIntentName, raw: string, input: ParsedIntent["input"] = {}): ParsedIntent {
   return { name, raw, input, confidence: name === "unknown" ? 0 : 1 };
