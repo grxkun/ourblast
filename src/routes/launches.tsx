@@ -81,6 +81,9 @@ function LaunchCard({ row }: { row: PublicLaunchRow }) {
         <span className={`ml-auto rounded-sm border px-2 py-0.5 font-mono text-[11px] uppercase ${statusStyle(row.status)}`}>
           {row.status}
         </span>
+        <span className={`rounded-sm border px-2 py-0.5 font-mono text-[11px] uppercase ${reply.className}`}>
+          {reply.label}
+        </span>
       </div>
 
       {row.tweetText && (
