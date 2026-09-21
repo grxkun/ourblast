@@ -100,7 +100,8 @@ export function composeXReply(result: TerminalToolResult): string {
   }
 
   if (result.tool === "unknown") {
-    return fit(`Hey! I didn't quite catch that. Try "${X_BOT_HANDLE} launch $DOG Sui Dog" or "${X_BOT_HANDLE} check $BLAST" — I'll take it from there: ${terminalLink()}`);
+    // X rejects posts with more than one cashtag — keep at most one $SYMBOL.
+    return fit(`Hey! I didn't quite catch that. Try "${X_BOT_HANDLE} launch $DOG Sui Dog" or "check BLAST price" — I'll take it from there: ${terminalLink()}`);
   }
 
   switch (result.status) {
