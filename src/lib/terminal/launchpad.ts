@@ -137,13 +137,56 @@ const PAD_ALIASES: Record<string, string> = {
   ppx: "perpsplexity",
 };
 
-export function resolveLaunchpad(value?: string | null): LaunchpadConfig {
-  if (!value) return LAUNCHPAD;
-  const raw = value.trim().toLowerCase();
+/** Classic Levenshtein distance — small inputs only, fine for pad names. */
+function editDistance(a: string, b: string): number {
+  const dp: number[] = Array.from({ length: b.length + 1 }, (_, j) => j);
+  for (let i = 1; i <= a.length; i++) {
+    let prev = dp[0] as number;
+    dp[0] = i;
+    for (let j = 1; j <= b.length; j++) {
+      const cur = dp[j] as number;
+      dp[j] = Math.min(cur + 1, (dp[j - 1] as number) + 1, prev + (a[i - 1] === b[j - 1] ? 0 : 1));
+      prev = cur;
+    }
+  }
+  return dp[b.length] as number;
+}
+
+/** Consonant skeleton: vowel swaps ("Peropelxity") collapse to the same shape. */
+const skeleton = (value: string) => value.replace(/[aeiou.]/g, "");
+
+/**
+ * Matches a typed pad name to a supported launchpad, tolerating typos.
+ * Returns null when nothing is close enough — callers then use the default,
+ * and a misspelling of a real pad (e.g. "Peropelxity") still resolves to it
+ * instead of silently falling back.
+ */
+export function matchLaunchpad(value?: string | null): LaunchpadConfig | null {
+  if (!value) return null;
+  const raw = value.trim().toLowerCase().replace(/^@/, "");
+  if (!raw) return null;
   const needle = PAD_ALIASES[raw] ?? raw;
-  return (
-    LAUNCHPADS.find((pad) => pad.id === needle || pad.label.toLowerCase() === needle) ?? LAUNCHPAD
-  );
+  const exact = LAUNCHPADS.find((pad) => pad.id === needle || pad.label.toLowerCase() === needle);
+  if (exact) return exact;
+  if (raw.length < 5) return null;
+  let best: LaunchpadConfig | null = null;
+  let bestScore = Number.POSITIVE_INFINITY;
+  for (const pad of LAUNCHPADS) {
+    for (const candidate of [pad.id, pad.label.toLowerCase()]) {
+      if (candidate[0] !== raw[0] || Math.abs(candidate.length - raw.length) > 3) continue;
+      const score = Math.min(editDistance(raw, candidate), editDistance(skeleton(raw), skeleton(candidate)));
+      const limit = candidate.length >= 8 ? 3 : 2;
+      if (score <= limit && score < bestScore) {
+        best = pad;
+        bestScore = score;
+      }
+    }
+  }
+  return best;
+}
+
+export function resolveLaunchpad(value?: string | null): LaunchpadConfig {
+  return matchLaunchpad(value) ?? LAUNCHPAD;
 }
 
 export function padByLabel(label: string): LaunchpadConfig {
