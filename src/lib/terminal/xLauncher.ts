@@ -74,8 +74,13 @@ export function parseDeployTweet(rawText: string, defaultPad = LAUNCHPAD.id): De
   const padMatch = textPadMatch ?? rawPadMatch;
   let requestedPad: string | null = null;
   if (padMatch?.[1]) {
-    requestedPad = padMatch[1].replace(/\s+/g, "").replace(/^@/, "");
-    if (textPadMatch) text = (text.slice(0, textPadMatch.index) + " " + text.slice((textPadMatch.index ?? 0) + textPadMatch[0].length)).trim();
+    const candidate = padMatch[1].replace(/\s+/g, "").replace(/^@/, "");
+    // Only accept words that actually name a supported pad (typos included);
+    // anything else ("on Monday") is chatter and leaves the default pad.
+    if (matchLaunchpad(candidate)) {
+      requestedPad = candidate;
+      if (textPadMatch) text = (text.slice(0, textPadMatch.index) + " " + text.slice((textPadMatch.index ?? 0) + textPadMatch[0].length)).trim();
+    }
   }
 
   const pad = resolveLaunchpad(requestedPad ?? defaultPad);
