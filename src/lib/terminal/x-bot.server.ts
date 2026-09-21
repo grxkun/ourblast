@@ -1,5 +1,5 @@
 import { runTerminalAgent } from "./agent";
-import { composeXReply, type XMentionOutcome, type XMentionPayload } from "./x-bot";
+import { composeXReply, X_BOT_HANDLE, type XMentionOutcome, type XMentionPayload } from "./x-bot";
 import { fetchTweetImage, postReply, readXCredentials } from "./x-api.server";
 import { imageUrlInText } from "./xLauncher";
 
@@ -13,6 +13,22 @@ export const xBotIsLive = () => readXCredentials() !== null;
 export async function handleXMention(payload: XMentionPayload, source: "webhook" | "simulation" | "poll"): Promise<XMentionOutcome> {
   const username = payload.username.replace(/^@/, "").slice(0, 40);
   const text = payload.text.trim().slice(0, 1000);
+
+  // Never act on the bot's own tweets — its replies mention other launch
+  // calls ("try: launch $DOG …") and would otherwise be parsed as new ones.
+  if (username.toLowerCase() === X_BOT_HANDLE.replace(/^@/, "").toLowerCase()) {
+    return {
+      postId: payload.postId,
+      username,
+      text,
+      intent: "unknown",
+      status: "READY",
+      reply: "",
+      posted: false,
+      replyPostId: null,
+      postError: null,
+    };
+  }
 
   const context = {
     // X mentions carry no wallet authorisation: signing always happens in the terminal.
