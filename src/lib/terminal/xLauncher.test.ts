@@ -94,14 +94,19 @@ class FakeQuery implements PromiseLike<Result> {
       return { data: row, error: null };
     }
     if (this.writeKind === "update" && values) {
-      for (const row of this.rows) if (this.matches(row)) Object.assign(row, values);
-      return { data: this.rows.filter(this.matches), error: null };
+      const matched = this.rows.filter(this.matches);
+      for (const row of matched) Object.assign(row, values);
+      return { data: matched, error: null };
     }
     return { data: this.rows.filter(this.matches), error: null };
   }
 
   maybeSingle(): Promise<Result> {
-    if (this.writeKind) return Promise.resolve(this.run());
+    if (this.writeKind) {
+      const result = this.run();
+      const data = Array.isArray(result.data) ? (result.data[0] ?? null) : result.data;
+      return Promise.resolve({ data, error: null });
+    }
     return Promise.resolve({ data: this.rows.find(this.matches) ?? null, error: null });
   }
 
