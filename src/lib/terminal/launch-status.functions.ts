@@ -100,6 +100,7 @@ export const listPublicLaunches = createServerFn({ method: "GET" }).handler(asyn
       poolUrl: null,
       txDigest: null,
       replyPostId: m.reply_post_id,
+      deployedReplyPostId: null,
       createdAt: m.created_at,
     });
   }
