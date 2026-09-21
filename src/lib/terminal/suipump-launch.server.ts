@@ -731,13 +731,28 @@ export async function launchOnSuipump(input: SuipumpLaunchInput): Promise<Suipum
         config.launchFeeMist,
       ])
     : tx.splitCoins(tx.gas, [config.launchFeeMist > 0 ? BigInt(config.launchFeeMist) : 0n]);
-  tx.moveCall({
+
+  // Move the coin's metadata into Sui's coin registry first, exactly like the
+  // suipump.org client; skip only if this template created no legacy metadata.
+  if (metadataRow) {
+    const registryArg = await objectArg(tx, COIN_REGISTRY_ID, true);
+    const metadataArg = await objectArg(tx, metadataRow.address, false);
+    if (registryArg && metadataArg) {
+      tx.moveCall({
+        target: "0x2::coin_registry::migrate_legacy_metadata",
+        typeArguments: [coinType],
+        arguments: [registryArg, metadataArg],
+      });
+    }
+  }
+
+  const [curveArg, creatorCap] = tx.moveCall({
     target: `${config.packageId}::${SUIPUMP_MODULE}::${SUIPUMP_CREATE_FUNCTION}`,
     typeArguments: [coinType],
     arguments: [
-      tx.objectRef({ objectId: ticket.objectId, version: ticket.version, digest: ticket.digest }),
-      tx.sharedObjectRef({ ...registry, mutable: false }),
       tx.objectRef({ objectId: cap.objectId, version: cap.version, digest: cap.digest }),
+      tx.sharedObjectRef({ ...registry, mutable: false }),
+      tx.objectRef({ objectId: ticket.objectId, version: ticket.version, digest: ticket.digest }),
       launchFee!,
       tx.pure.string(name),
       tx.pure.string(symbol),
@@ -749,6 +764,13 @@ export async function launchOnSuipump(input: SuipumpLaunchInput): Promise<Suipum
       tx.sharedObjectRef({ ...clock, mutable: false }),
     ],
   });
+  tx.moveCall({
+    target: `${config.packageId}::${SUIPUMP_MODULE}::${SUIPUMP_SHARE_FUNCTION}`,
+    typeArguments: [coinType],
+    arguments: [curveArg],
+  });
+  // Keep the creator cap with the launch wallet; developer buy stays off.
+  tx.transferObjects([creatorCap], sender);
 
   const created = await signAndExecute(tx, keypair);
   if (!created.ok) {
