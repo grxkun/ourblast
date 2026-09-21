@@ -1,5 +1,5 @@
 import { normalizeCommandText } from "./commandParser";
-import { LAUNCHPAD, resolveLaunchpad, type LaunchpadConfig } from "./launchpad";
+import { LAUNCHPAD, matchLaunchpad, resolveLaunchpad, type LaunchpadConfig } from "./launchpad";
 
 /**
  * The simple X launcher: one tweet ("Deploy $TETY Tety Yety Caty on Suipump")
