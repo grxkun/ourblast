@@ -387,8 +387,14 @@ export async function executeLaunchRequest(requestId: string): Promise<LaunchOut
     return { status: "UNAVAILABLE", notice, tokenUrl: null, poolUrl: null };
   }
 
-  const tokenUrl = tokenPageUrl(pad, deployment.tokenAddress);
-  const poolUrl = poolPageUrl(pad, deployment.tokenAddress);
+  const isPerps = pad.id === "perpsplexity";
+  const tokenUrl = isPerps
+    ? `https://suiscan.xyz/mainnet/coin/${deployment.tokenAddress}`
+    : tokenPageUrl(pad, deployment.tokenAddress);
+  const poolUrl = isPerps ? pad.site : poolPageUrl(pad, deployment.tokenAddress);
+  const positionLine = isPerps && request.underlying
+    ? `${request.underlying.toUpperCase().replace(/USD$/, "")} ${request.perps_long === false ? "SHORT" : "LONG"} ${(request.leverage_bps ?? 10_000) / 10_000}x`
+    : null;
   await client
     .from("x_launch_requests")
     .update({
@@ -404,9 +410,13 @@ export async function executeLaunchRequest(requestId: string): Promise<LaunchOut
 
   // Launcher share: paid on chain when we know their wallet, otherwise a claim
   // link is created for them automatically — nobody has to ask for it.
-  const claimToken = routing.launcherPaidOnChain ? null : await ensureFeeClaimLink(request.symbol, request.x_username);
+  // Perpsplexity routes creator fees through its own pool (pay_creator), so
+  // there is no launch-time payee split to claim there.
+  const claimToken = isPerps || routing.launcherPaidOnChain
+    ? null
+    : await ensureFeeClaimLink(request.symbol, request.x_username);
 
-  await postDeployedReply(request, tokenUrl, poolUrl, claimToken);
+  await postDeployedReply(request, tokenUrl, poolUrl, claimToken, positionLine);
   return { status: "DEPLOYED", notice: null, tokenUrl, poolUrl };
 }
 
@@ -470,8 +480,11 @@ export function composeDeployedLaunchReply(
   tokenUrl: string,
   poolUrl: string,
   claimToken?: string | null,
+  positionLine?: string | null,
 ): string {
-  const base = `🚀 $${symbol} deployed!\n\nToken:\n${tokenUrl}\n\nPool:\n${poolUrl}`;
+  const position = positionLine ? `\n${positionLine}\n` : "";
+  // Exactly one $cashtag per reply — X rejects posts that carry more.
+  const base = `🚀 $${symbol} LIVE\n${position}\nToken:\n${tokenUrl}\n\nPool:\n${poolUrl}`;
   if (!claimToken) return base;
   return `${base}\n\nYour creator fee share:\nhttps://ourblast.xyz/claim/${claimToken}`;
 }
@@ -481,6 +494,7 @@ async function postDeployedReply(
   tokenUrl: string,
   poolUrl: string,
   claimToken?: string | null,
+  positionLine?: string | null,
 ): Promise<void> {
   const { postReply, readXCredentials } = await import("./x-api.server");
   const credentials = readXCredentials();
@@ -489,7 +503,7 @@ async function postDeployedReply(
     const replyId = await postReply(
       credentials,
       request.x_post_id,
-      composeDeployedLaunchReply(request.symbol, tokenUrl, poolUrl, claimToken),
+      composeDeployedLaunchReply(request.symbol, tokenUrl, poolUrl, claimToken, positionLine),
     );
     const client = await db();
     await client.from("x_launch_requests").update({ deployed_reply_post_id: replyId }).eq("id", request.id);
