@@ -17,16 +17,22 @@
  * a launch is only reported when Sui confirms the curve object.
  */
 
-/** Suipump V17 (current mainnet lineage). */
+/**
+ * Suipump V17 (current mainnet lineage). The lineage identity stays
+ * 0xb205fea41ccedac051bc66498e6ca68cb802c4a6ea06da12e524bed09c80d9b0; this is
+ * the latest write package after their 2026-09-21 upgrade (version 5), which
+ * replaced `create_with_launch_fee` with `create_and_return` + `share_curve`.
+ */
 export const SUIPUMP_PACKAGE_DEFAULT =
-  "0xb205fea41ccedac051bc66498e6ca68cb802c4a6ea06da12e524bed09c80d9b0";
+  "0x70a9b28a28c028e5ab9ed9fefec26f1fc43918bc094d60527b8968fb4f5ab0b5";
 
 /** Shared `LaunchIssuerRegistry` the V17 create call reads. */
 export const SUIPUMP_REGISTRY_DEFAULT =
   "0xb622741bfcfd6ef13b40c2d5c2adc8d796f68b3b1254fabaa571bffa3a91e875";
 
 export const SUIPUMP_MODULE = "bonding_curve";
-export const SUIPUMP_CREATE_FUNCTION = "create_with_launch_fee";
+export const SUIPUMP_CREATE_FUNCTION = "create_and_return";
+export const SUIPUMP_SHARE_FUNCTION = "share_curve";
 export const SUIPUMP_TICKET_TYPE = "LaunchTicket";
 
 /** Public coin template and launch-ticket issuer used by suipump.org itself. */
