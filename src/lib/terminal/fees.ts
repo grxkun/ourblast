@@ -10,8 +10,10 @@ import { BLAST_BURN_RESERVE_ADDRESS, BOT_WALLET_ADDRESS, FOUNDER_ADDRESS } from 
 export const LAUNCH_FEE_SUI = 0;
 
 export const CREATOR_FEE_SPLIT = {
-  /** OURBLAST community treasury. */
-  treasury: 0.2,
+  /** @ourblastbot wallet — operations and gas. */
+  bot: 0.1,
+  /** Buy & burn reserve — swapped to BLAST and burned. */
+  buyBurn: 0.1,
   /** Developer share. */
   developer: 0.1,
   /** Stays with whoever launched the token: fees, burns, buybacks, rewards. */
@@ -19,7 +21,8 @@ export const CREATOR_FEE_SPLIT = {
 } as const;
 
 export const CREATOR_FEE_ROUTES = [
-  { label: "OURBLAST treasury", share: CREATOR_FEE_SPLIT.treasury, address: DEFAULT_TREASURY_ADDRESS },
+  { label: "@ourblastbot (ops & gas)", share: CREATOR_FEE_SPLIT.bot, address: BOT_WALLET_ADDRESS },
+  { label: "BLAST buy & burn", share: CREATOR_FEE_SPLIT.buyBurn, address: BLAST_BURN_RESERVE_ADDRESS },
   { label: "Developer", share: CREATOR_FEE_SPLIT.developer, address: FOUNDER_ADDRESS },
   { label: "Launcher (you)", share: CREATOR_FEE_SPLIT.launcher, address: null },
 ] as const;
@@ -27,7 +30,7 @@ export const CREATOR_FEE_ROUTES = [
 export const LAUNCHER_SHARE_USES = "fees, burn, buyback, holder rewards — your call";
 
 /** One-line summary used in terminal replies and X replies. */
-export const FEE_SUMMARY = "0 launch fee. Creator fees from the pad split 20% OURBLAST treasury / 10% dev / 70% launcher.";
+export const FEE_SUMMARY = "0 launch fee. Creator fees from the pad split 10% @ourblastbot / 10% BLAST buy & burn / 10% dev / 70% launcher.";
 
 export function shareOf(amount: number, share: number): number {
   return Math.round(amount * share * 1_000_000) / 1_000_000;
