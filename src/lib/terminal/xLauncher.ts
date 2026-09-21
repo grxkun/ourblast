@@ -36,9 +36,12 @@ export interface DeployRequest {
   perps?: PerpsPositionRequest | undefined;
 }
 
-/** Only the launchpads we actually support may be named in a deploy command. */
-const PAD_ANYWHERE =
-  /\bon\s+@?(suipump(?:\.org)?|sui\s*pump|pump|maelstrom|strom|mael|ript(?:\.fun)?|blast(?:\.fun)?|blastfun|vice(?:\.fun)?|vicefun|perpsplexity(?:\.app)?|perps|ppx)\b/i;
+/**
+ * Any word after "on" is a launchpad candidate — fuzzy matching in
+ * matchLaunchpad tolerates typos ("on Peropelxity" → Perpsplexity) and
+ * rejects non-pad words ("on Monday" → no pad).
+ */
+const PAD_ANYWHERE = /\bon\s+@?([a-z][a-z0-9.]{2,20})\b/i;
 
 /** "Deploy a $TETY", "deploy a ticker $TETY", "launch me a new meme coin $TETY", "create token called $TETY". */
 const DEPLOY_CALL =
