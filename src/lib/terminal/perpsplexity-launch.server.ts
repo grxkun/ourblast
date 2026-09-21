@@ -16,7 +16,6 @@ import { Transaction, type TransactionArgument } from "@mysten/sui/transactions"
 
 import {
   encodeString,
-  encodeUleb,
   parseModule,
   readUleb,
   serializeModule,
