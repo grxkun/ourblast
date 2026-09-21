@@ -66,6 +66,7 @@ function replyState(row: PublicLaunchRow): { label: string; className: string } 
 
 function LaunchCard({ row }: { row: PublicLaunchRow }) {
   const isLaunch = row.symbol != null;
+  const reply = replyState(row);
   return (
     <article className="rounded-md border-2 border-border bg-card p-4 shadow-[4px_4px_0_0_hsl(var(--border))]">
       <div className="flex flex-wrap items-center gap-2">
