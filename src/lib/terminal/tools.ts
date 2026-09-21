@@ -42,6 +42,7 @@ export function launchFromIntent(intent: ParsedIntent): { launch: LaunchConfigur
       devBuy: settings.devBuy,
       totalSupply: settings.totalSupply,
       feePayout: payout.payout,
+      perps: (intent.input["perps"] as LaunchConfiguration["perps"]) ?? null,
     },
     notes: [...settings.notes, ...payout.notes],
   };
