@@ -40,6 +40,21 @@ export const LAUNCHPADS: LaunchpadConfig[] = [
     supply: { min: 1_000_000, max: 10_000_000_000, default: 1_000_000_000 },
   },
   {
+    id: "perpsplexity",
+    label: "Perpsplexity",
+    site: "https://perpsplexity.app",
+    network: "sui",
+    // Mainnet composite-pool deployment (perpsplexity.app official config).
+    factoryPackage: "0xa0338d2361534919001ae21265ec6c66f30f85797beb0e0644be51fc2ce93142",
+    factoryObject: "0x6131090639b7c4a5af741ae1163e480f0b2cf50e74823d7c2261b5a3a3d5a586",
+    version: "composite-mainnet-v13",
+    integrated: true,
+    supportsCustomPair: false,
+    pairTokens: ["USDC"],
+    liquidity: { min: 1, max: 5_000, default: 1 },
+    supply: { min: 1_000_000_000, max: 1_000_000_000, default: 1_000_000_000 },
+  },
+  {
     id: "maelstrom",
     label: "Maelstrom",
     site: "https://maelstrom.sui.io",
@@ -115,6 +130,11 @@ const PAD_ALIASES: Record<string, string> = {
   vice: "vicefun",
   "vice.fun": "vicefun",
   vicefun: "vicefun",
+  perpsplexity: "perpsplexity",
+  "perpsplexity.app": "perpsplexity",
+  "@perpsplexity": "perpsplexity",
+  perps: "perpsplexity",
+  ppx: "perpsplexity",
 };
 
 export function resolveLaunchpad(value?: string | null): LaunchpadConfig {
