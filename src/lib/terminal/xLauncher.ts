@@ -62,10 +62,12 @@ const FIELD_NAME =
  * Tety Yety Caty on Suipump". Anything without a cashtag returns null.
  */
 export function parseDeployTweet(rawText: string, defaultPad = LAUNCHPAD.id): DeployRequest | null {
+  // Read the launchpad wherever it appears — on the raw text first, because
+  // mention stripping would eat "@perpsplexity" before we could see it.
+  const rawPadMatch = rawText.match(PAD_ANYWHERE);
   let text = normalizeCommandText(rawText);
 
-  // Read the launchpad wherever it appears, then remove it so it never lands in the name.
-  const padMatch = text.match(PAD_ANYWHERE);
+  const padMatch = text.match(PAD_ANYWHERE) ?? rawPadMatch;
   let requestedPad: string | null = null;
   if (padMatch?.[1]) {
     requestedPad = padMatch[1].replace(/\s+/g, "");
