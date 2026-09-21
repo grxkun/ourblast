@@ -36,7 +36,7 @@ export const PERPSPLEXITY_QUOTE_DECIMALS = 6;
 export function perpsQuoteUnits(amount: string | number): bigint {
   const text = String(amount).trim();
   if (!/^\d+(\.\d+)?$/.test(text)) throw new Error("Invalid amount.");
-  const [whole, fraction = ""] = text.split(".");
+  const [whole = "0", fraction = ""] = text.split(".");
   const padded = (fraction + "000000").slice(0, PERPSPLEXITY_QUOTE_DECIMALS);
   return BigInt(whole) * 1_000_000n + BigInt(padded);
 }

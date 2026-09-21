@@ -246,7 +246,7 @@ async function fetchReceipt(digest: string): Promise<TxReceipt> {
     error: ok ? null : block.effects?.status?.error ?? "Transaction failed.",
     events: (block.events ?? [])
       .filter((event) => typeof event.type === "string")
-      .map((event) => ({ type: normalizeType(event.type as string), parsedJson: event.parsedJson })),
+      .map((event) => ({ type: normalizeType(event.type as string), parsedJson: event.parsedJson ?? {} })),
     created: (block.objectChanges ?? [])
       .filter((change) => change.type === "created" && change.objectId && change.objectType)
       .map((change) => ({ objectId: change.objectId as string, objectType: normalizeType(change.objectType as string) })),
