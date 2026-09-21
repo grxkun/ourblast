@@ -23,6 +23,10 @@ type Row = {
   token_url: string | null;
   pool_url: string | null;
   notice: string | null;
+  underlying: string | null;
+  perps_long: boolean | null;
+  leverage_bps: number | null;
+  starting_cap_usd: number | null;
 };
 
 /**
@@ -41,7 +45,7 @@ export function XLaunchQueue() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("x_launch_requests")
-        .select("id, x_username, symbol, name, launchpad, dev_buy, ourblast_fee_percent, status, token_url, pool_url, notice")
+        .select("id, x_username, symbol, name, launchpad, dev_buy, ourblast_fee_percent, status, token_url, pool_url, notice, underlying, perps_long, leverage_bps, starting_cap_usd")
         .order("created_at", { ascending: false })
         .limit(10);
       if (error) throw error;
