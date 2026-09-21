@@ -80,7 +80,10 @@ export function parseDeployTweet(rawText: string, defaultPad = LAUNCHPAD.id): De
 
   // Field-style tweets: "deploy a token on suipump / Name: THINKING CAT / ticker: $HMMM".
   if (!DEPLOY_VERB.test(text)) return null;
-  const cashtag = text.match(/\$([a-z0-9]{2,10})\b/i);
+  // Prefer the cashtag next to a "ticker"/"symbol" label — greetings like "Gm $SUI"
+  // put another cashtag earlier in the tweet.
+  const labelled = text.match(/\b(?:ticker|symbol|sym)\s*[:=]?\s*\$([a-z0-9]{2,10})\b/i);
+  const cashtag = labelled ?? text.match(/\$([a-z0-9]{2,10})\b/i);
   if (!cashtag?.[1]) return null;
   const symbol = cashtag[1].toUpperCase();
   const pad = resolveLaunchpad(requestedPad ?? defaultPad);
