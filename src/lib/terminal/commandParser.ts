@@ -105,14 +105,17 @@ export function parseTerminalCommand(rawInput: string): ParsedIntent {
     body = (body.slice(0, supplyMatch.index) + body.slice((supplyMatch.index ?? 0) + supplyMatch[0].length)).trim();
   }
 
-  // Optional "... on maelstrom" / "... on strom" / "... on suipump" / "... on perpsplexity" pad selection.
-  const padMatch = body.match(/\s*\bon\s+@?(maelstrom|strom|mael|suipump|pump|perpsplexity(?:\.app)?|perps|ppx)\b/i);
-  const launchpad = padMatch?.[1]?.toLowerCase() ?? null;
-  if (padMatch) body = (body.slice(0, padMatch.index) + body.slice((padMatch.index ?? 0) + padMatch[0].length)).trim();
+  // Optional "... on maelstrom" / "... on suipump" / "... on perpsplexity" pad selection.
+  // Any word after "on" is a candidate — matchLaunchpad tolerates typos
+  // ("on Peropelxity" → Perpsplexity) and rejects non-pad chatter.
+  const padMatch = body.match(/\s*\bon\s+@?([a-z][a-z0-9.]{2,20})\b/i);
+  const pad = padMatch?.[1] ? matchLaunchpad(padMatch[1]) : null;
+  const launchpad = pad?.id ?? null;
+  if (pad && padMatch) body = (body.slice(0, padMatch.index) + body.slice((padMatch.index ?? 0) + padMatch[0].length)).trim();
 
   // Perpsplexity position fields: "Underlying: NVDA Position: LONG Leverage: 5x Initial MC ~$4K"
   // or the bare "NVDA LONG 5x" form when the pad is Perpsplexity.
-  const isPerpsPad = launchpad != null && /^(perpsplexity|perps|ppx)/.test(launchpad);
+  const isPerpsPad = pad?.id === "perpsplexity";
   const perpsExtraction = extractPerps(body, isPerpsPad);
   body = perpsExtraction.text;
   const perps = perpsExtraction.perps ?? (isPerpsPad ? { underlying: null, long: true, leverageBps: 10_000, startingCapUsd: null } : null);
