@@ -434,16 +434,32 @@ export function composeReceivedReply(request: DeployRequest): string {
 }
 
 /** Reply sent only after the chain has confirmed the launch. */
-export function composeDeployedLaunchReply(symbol: string, tokenUrl: string, poolUrl: string): string {
-  return `🚀 $${symbol} deployed!\n\nToken:\n${tokenUrl}\n\nPool:\n${poolUrl}`;
+export function composeDeployedLaunchReply(
+  symbol: string,
+  tokenUrl: string,
+  poolUrl: string,
+  claimToken?: string | null,
+): string {
+  const base = `🚀 $${symbol} deployed!\n\nToken:\n${tokenUrl}\n\nPool:\n${poolUrl}`;
+  if (!claimToken) return base;
+  return `${base}\n\nYour creator fee share:\nhttps://ourblast.xyz/claim/${claimToken}`;
 }
 
-async function postDeployedReply(request: LaunchRequestRow, tokenUrl: string, poolUrl: string): Promise<void> {
+async function postDeployedReply(
+  request: LaunchRequestRow,
+  tokenUrl: string,
+  poolUrl: string,
+  claimToken?: string | null,
+): Promise<void> {
   const { postReply, readXCredentials } = await import("./x-api.server");
   const credentials = readXCredentials();
   if (!credentials || request.x_post_id.startsWith("sim-")) return;
   try {
-    const replyId = await postReply(credentials, request.x_post_id, composeDeployedLaunchReply(request.symbol, tokenUrl, poolUrl));
+    const replyId = await postReply(
+      credentials,
+      request.x_post_id,
+      composeDeployedLaunchReply(request.symbol, tokenUrl, poolUrl, claimToken),
+    );
     const client = await db();
     await client.from("x_launch_requests").update({ deployed_reply_post_id: replyId }).eq("id", request.id);
   } catch (error) {
