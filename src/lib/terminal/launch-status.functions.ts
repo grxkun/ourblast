@@ -46,7 +46,7 @@ export const listPublicLaunches = createServerFn({ method: "GET" }).handler(asyn
     supabasePublic
       .from("x_launch_requests")
       .select(
-        "id, x_post_id, x_username, symbol, name, launchpad, dev_buy, ourblast_fee_percent, status, notice, token_url, pool_url, tx_digest, reply_post_id, created_at",
+        "id, x_post_id, x_username, symbol, name, launchpad, dev_buy, ourblast_fee_percent, status, notice, token_url, pool_url, tx_digest, reply_post_id, deployed_reply_post_id, created_at",
       )
       .order("created_at", { ascending: false })
       .limit(50),
