@@ -163,6 +163,37 @@ export async function fetchTweetImage(credentials: XCredentials, postId: string)
   return item?.url ?? item?.preview_image_url ?? null;
 }
 
+/** Full tweet details (text, author username, first picture), read on demand. */
+export async function fetchTweetDetails(credentials: XCredentials, postId: string): Promise<XMentionItem | null> {
+  const result = await request<{
+    data?: { id: string; text: string; author_id?: string; attachments?: { media_keys?: string[] } };
+    includes?: {
+      users?: Array<{ id: string; username: string }>;
+      media?: Array<{ media_key: string; url?: string; preview_image_url?: string }>;
+    };
+  }>(credentials, "GET", `/2/tweets/${postId}`, {
+    query: {
+      "tweet.fields": "author_id,attachments",
+      expansions: "author_id,attachments.media_keys",
+      "user.fields": "username",
+      "media.fields": "url,preview_image_url,type",
+    },
+  }).catch(() => null);
+  const tweet = result?.data;
+  if (!tweet) return null;
+  const username = (result?.includes?.users ?? []).find((u) => u.id === tweet.author_id)?.username ?? "";
+  const key = tweet.attachments?.media_keys?.find((k) =>
+    (result?.includes?.media ?? []).some((m) => m.media_key === k),
+  );
+  const mediaItem = (result?.includes?.media ?? []).find((m) => m.media_key === key);
+  return {
+    id: tweet.id,
+    text: tweet.text,
+    username,
+    imageUrl: mediaItem?.url ?? mediaItem?.preview_image_url ?? null,
+  };
+}
+
 /** Post a reply to a tweet. Returns the new post id. */
 export async function postReply(credentials: XCredentials, inReplyToPostId: string, text: string): Promise<string> {
   const result = await request<{ data: { id: string } }>(credentials, "POST", "/2/tweets", {
