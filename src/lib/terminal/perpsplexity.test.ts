@@ -5,9 +5,9 @@ import { describePerpsPosition, perpsQuoteUnits, perpsVirtualQuote, resolvePerps
 
 describe("resolvePerpsMarket", () => {
   it("accepts plain, cashtag and full-suffixed market names", () => {
-    expect(resolvePerpsMarket("NVDA")?.id).toBe("NVDAUSD");
-    expect(resolvePerpsMarket("$nvda")?.id).toBe("NVDAUSD");
-    expect(resolvePerpsMarket("NVDAUSD")?.id).toBe("NVDAUSD");
+    expect(resolvePerpsMarket("NVDA")?.symbol).toBe("NVDAUSD");
+    expect(resolvePerpsMarket("$nvda")?.symbol).toBe("NVDAUSD");
+    expect(resolvePerpsMarket("NVDAUSD")?.symbol).toBe("NVDAUSD");
   });
 
   it("returns null for markets the protocol does not list", () => {
@@ -42,9 +42,7 @@ describe("describePerpsPosition", () => {
 });
 
 describe("patchTemplateIdentifiers", () => {
-  it("replaces both identifiers and round-trips", () => {
-    const patched = patchTemplateIdentifiers("", ["mycoin", "MYCOIN"]);
-    expect(typeof patched).toBe("string");
-    expect(patchTemplateIdentifiers.length).toBeGreaterThan(0);
+  it("rejects malformed module bytes instead of guessing", () => {
+    expect(() => patchTemplateIdentifiers("AAAA", { module: "mycoin", struct: "MYCOIN" })).toThrow();
   });
 });
