@@ -76,6 +76,7 @@ export const listPublicLaunches = createServerFn({ method: "GET" }).handler(asyn
     poolUrl: r.pool_url,
     txDigest: r.tx_digest,
     replyPostId: r.reply_post_id,
+    deployedReplyPostId: r.deployed_reply_post_id,
     createdAt: r.created_at,
   }));
 
