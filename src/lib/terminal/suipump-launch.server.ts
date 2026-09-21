@@ -785,12 +785,24 @@ export async function launchOnSuipump(input: SuipumpLaunchInput): Promise<Suipum
       tx.sharedObjectRef({ ...clock, mutable: false }),
     ],
   });
+  // create_and_return yields (curve, creator_cap); share the curve and keep
+  // the creator cap with the launch wallet. Developer buy stays off.
+  const curveArg = createResult[0];
+  const creatorCap = createResult[1];
+  if (!curveArg || !creatorCap) {
+    return {
+      status: "FAILED",
+      message: "The launch transaction could not be prepared.",
+      tokenAddress: null,
+      transactionDigest: published.digest,
+      coinType,
+    };
+  }
   tx.moveCall({
     target: `${config.packageId}::${SUIPUMP_MODULE}::${SUIPUMP_SHARE_FUNCTION}`,
     typeArguments: [coinType],
     arguments: [curveArg],
   });
-  // Keep the creator cap with the launch wallet; developer buy stays off.
   tx.transferObjects([creatorCap], sender);
 
   const created = await signAndExecute(tx, keypair);
