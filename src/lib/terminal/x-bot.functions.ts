@@ -38,19 +38,24 @@ export const pollXMentionsNow = createServerFn({ method: "POST" })
     return runXMentionPoll();
   });
 
-/** TEMPORARY debug: raw view of what X returns for mentions and one tweet. */
-export const debugXMentions = createServerFn({ method: "POST" })
-  .handler(async () => {
-    const { readXCredentials, getBotAccount, listMentions } = await import("./x-api.server");
+/**
+ * Ingest one tweet by ID when X's mentions timeline skipped it. The tweet is
+ * fetched server-side from X, so only real tweets can be processed; handling is
+ * idempotent (one X post = one handled mention). Requires a signed-in user,
+ * same as pressing Launch on a queued card.
+ */
+export const ingestXMentionById = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => z.object({ postId: z.string().regex(/^\d{5,25}$/) }).parse(input))
+  .handler(async ({ data }) => {
+    const { readXCredentials, fetchTweetDetails } = await import("./x-api.server");
     const credentials = readXCredentials();
-    if (!credentials) return { ok: false, reason: "no creds" } as const;
-    const bot = await getBotAccount(credentials);
-    const all = await listMentions(credentials, bot.id, null);
-    const fresh = await listMentions(credentials, bot.id, "2101820449571451091");
-    return {
-      ok: true,
-      bot: bot.username,
-      allIds: all.map((m) => m.id),
-      freshIds: fresh.map((m) => ({ id: m.id, user: m.username, text: m.text.slice(0, 60) })),
-    } as const;
+    if (!credentials) throw new Error("X credentials not saved yet");
+    const tweet = await fetchTweetDetails(credentials, data.postId);
+    if (!tweet) throw new Error("Tweet not found on X");
+    const { handleXMention } = await import("./x-bot.server");
+    return handleXMention(
+      { postId: tweet.id, username: tweet.username ?? "", text: tweet.text, imageUrl: tweet.imageUrl ?? null },
+      "poll",
+    );
   });
