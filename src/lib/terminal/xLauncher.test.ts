@@ -39,13 +39,27 @@ class FakeQuery implements PromiseLike<Result> {
     return tables[this.table]!;
   }
 
-  private matches = (row: Row) => this.filters.every(([column, value]) => row[column] === value);
+  private readonly inFilters: Array<[string, unknown[]]> = [];
+
+  private matches = (row: Row) =>
+    this.filters.every(([column, value]) => row[column] === value) &&
+    this.inFilters.every(([column, values]) => values.includes(row[column]));
 
   select(): this {
     return this;
   }
 
   eq(column: string, value: unknown): this {
+    this.filters.push([column, value]);
+    return this;
+  }
+
+  in(column: string, values: unknown[]): this {
+    this.inFilters.push([column, values]);
+    return this;
+  }
+
+  ilike(column: string, value: string): this {
     this.filters.push([column, value]);
     return this;
   }
