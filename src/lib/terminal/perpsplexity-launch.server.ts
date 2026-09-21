@@ -345,7 +345,7 @@ export async function launchOnPerpsplexity(input: PerpsLaunchInput): Promise<Per
   } catch (error) {
     return fail((error as Error).message, { coinType, packageId });
   }
-  const [registryRef, marketRef, lendingRef, baseOracleRef, collateralOracleRef, launchpadRef, configRef] =
+  const [registryRef, marketRef, lendingRef, baseOracleRef, collateralOracleRef, launchpadRef, configRef, clockRef] =
     await Promise.all([
       sharedRef(PERPSPLEXITY_REGISTRY_ID),
       sharedRef(market.marketId),
@@ -354,6 +354,7 @@ export async function launchOnPerpsplexity(input: PerpsLaunchInput): Promise<Per
       sharedRef(market.collateralOracleId),
       sharedRef(PERPSPLEXITY_LAUNCHPAD_ID),
       sharedRef(PERPSPLEXITY_CONFIG_ID),
+      sharedRef(CLOCK),
     ]);
   const prepareTx = new Transaction();
   withGas(prepareTx, sender, gas, gasPrice, PREPARE_BUDGET);
@@ -405,7 +406,7 @@ export async function launchOnPerpsplexity(input: PerpsLaunchInput): Promise<Per
       prepareTx.pure.u64(input.leverageBps),
       prepareTx.pure.u64(REINVEST_BPS),
       prepareTx.pure.u64(virtualQuote),
-      prepareTx.object(CLOCK),
+      prepareTx.sharedObjectRef({ ...clockRef, mutable: false }),
     ],
   }) as TransactionArgument[];
   prepareTx.transferObjects([prepareResults[0]!, prepareResults[1]!], sender);
@@ -496,7 +497,7 @@ export async function launchOnPerpsplexity(input: PerpsLaunchInput): Promise<Per
         tx.sharedObjectRef({ ...collateralOracleRef, mutable: false }),
         tx.pure.u64(minimum),
         tx.pure.u64(BigInt(deadlineMs)),
-        tx.object(CLOCK),
+        tx.sharedObjectRef({ ...clockRef, mutable: false }),
       ],
     }) as TransactionArgument[];
     tx.moveCall({
