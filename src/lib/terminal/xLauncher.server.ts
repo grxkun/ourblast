@@ -288,18 +288,38 @@ export async function executeLaunchRequest(requestId: string): Promise<LaunchOut
     return { status: "DEPLOYED", notice: null, tokenUrl: request.token_url, poolUrl: request.pool_url };
   }
 
+  // One mention = one deployment. Claiming the row atomically means a second
+  // poll, retry or manual press can never launch the same request twice.
+  const { data: claimed } = await client
+    .from("x_launch_requests")
+    .update({ status: "LAUNCHING", updated_at: new Date().toISOString() })
+    .eq("id", request.id)
+    .in("status", ["PENDING", "UNAVAILABLE", "FAILED"])
+    .select("id")
+    .maybeSingle();
+  if (!claimed) {
+    const { data: current } = await client
+      .from("x_launch_requests")
+      .select("status, notice, token_url, pool_url")
+      .eq("id", request.id)
+      .maybeSingle();
+    return {
+      status: ((current?.status as LaunchRequestStatus | undefined) ?? "LAUNCHING"),
+      notice: current?.notice ?? "This launch is already running.",
+      tokenUrl: current?.token_url ?? null,
+      poolUrl: current?.pool_url ?? null,
+    };
+  }
+
   const pad = resolveLaunchpad(request.launchpad);
   let deployment: { tokenAddress: string; transactionDigest: string } | undefined;
   let failure: string | null = null;
+  const routing = await feeRouting(request.x_username);
 
   if (pad.id === "suipump") {
     // Real Suipump create call, signed by the OurBlastBot wallet. Stays inert
     // (NOT_IMPLEMENTED) until Suipump issues a launch ticket to that wallet.
     const { launchOnSuipump } = await import("./suipump-launch.server");
-    const payees = suipumpPayees();
-    // Equal shares, with any rounding remainder going to the first payee.
-    const share = Math.floor(10_000 / payees.length);
-    const shareBps = payees.map((_, index) => (index === 0 ? 10_000 - share * (payees.length - 1) : share));
     const outcome = await launchOnSuipump({
       symbol: request.symbol,
       name: request.name,
@@ -310,8 +330,8 @@ export async function executeLaunchRequest(requestId: string): Promise<LaunchOut
       callerXLink: request.x_username ? `https://x.com/${request.x_username}` : null,
       // The caller's original tweet is quoted in the coin's public info.
       callerTweetText: request.tweet_text ?? null,
-      payees,
-      shareBps,
+      payees: routing.payees,
+      shareBps: routing.shareBps,
     });
     if (outcome.status === "CONFIRMED" && outcome.tokenAddress) {
       deployment = { tokenAddress: outcome.tokenAddress, transactionDigest: outcome.transactionDigest ?? "" };
