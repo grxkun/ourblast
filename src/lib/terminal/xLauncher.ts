@@ -24,7 +24,10 @@ export const DEFAULT_LAUNCHER_SETTINGS: LauncherSettings = {
   autoLaunchEnabled: false,
 };
 
-export interface PerpsPositionRequest {
+import { extractPerps, type PerpsPositionRequest } from "./perpsParse";
+export type { PerpsPositionRequest } from "./perpsParse";
+
+interface PerpsPositionRequestUnused {
   /** Underlying market label, e.g. "NVDA". Null when the caller named none. */
   underlying: string | null;
   long: boolean;
