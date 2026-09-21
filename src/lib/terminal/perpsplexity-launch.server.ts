@@ -132,18 +132,23 @@ export function patchTemplateIdentifiers(
   if (!table) throw new Error("Coin template has no identifiers table.");
   const body = parsed.body;
   const cursor = { offset: table.offset };
-  const count = Number(readUleb(body, cursor));
+  const end = table.offset + table.length;
+  // The identifiers table is a bare sequence of length-prefixed strings; the
+  // table's own length delimits it, there is no leading count.
   const identifiers: string[] = [];
-  for (let i = 0; i < count; i += 1) {
+  while (cursor.offset < end) {
     const length = Number(readUleb(body, cursor));
+    if (length <= 0 || cursor.offset + length > end) {
+      throw new Error("Coin template identifiers table is malformed.");
+    }
     identifiers.push(Buffer.from(body.slice(cursor.offset, cursor.offset + length)).toString("utf8"));
     cursor.offset += length;
   }
-  if (cursor.offset !== table.offset + table.length) {
+  if (cursor.offset !== end || !identifiers.includes("meme") || !identifiers.includes("MEME")) {
     throw new Error("Coin template identifiers table is malformed.");
   }
   const patched = identifiers.map((id) => (id === "meme" ? names.module : id === "MEME" ? names.struct : id));
-  const tableBytes = [...encodeUleb(count), ...patched.flatMap((id) => encodeString(id))];
+  const tableBytes = patched.flatMap((id) => encodeString(id));
   const delta = tableBytes.length - table.length;
   const newBody = new Uint8Array(body.length + delta);
   newBody.set(body.slice(0, table.offset), 0);
