@@ -257,6 +257,21 @@ interface ExecutedTransaction {
   created: { address: string; type: string }[];
 }
 
+/** Polls for a known digest, for submissions whose response never arrived. */
+async function waitForDigest(digest: string): Promise<boolean> {
+  for (let attempt = 0; attempt < 20; attempt += 1) {
+    const block = await rpc<{ effects?: { status?: { status?: string } } }>("sui_getTransactionBlock", [
+      digest,
+      { showEffects: true },
+    ]).catch(() => null);
+    const status = block?.effects?.status?.status;
+    if (status === "success") return true;
+    if (status) return false;
+    await new Promise((resolve) => setTimeout(resolve, 3000));
+  }
+  return false;
+}
+
 /** Simulates, then submits. A rejected simulation never reaches the network. */
 export async function signAndExecute(
   tx: Transaction,
@@ -287,6 +302,9 @@ export async function signAndExecute(
   }
 
   const { signature } = await keypair.signTransaction(bytes);
+  // The digest is known before submission, so a timed-out or dropped response
+  // never loses a transaction that the network actually accepted.
+  const expectedDigest = await tx.getDigest().catch(() => null);
   const executed = await gql<{
     executeTransaction: {
       effects: {
@@ -307,10 +325,38 @@ export async function signAndExecute(
     { tx: txBase64, sigs: [signature] },
   ).catch((error: Error) => {
     console.error("suipump execute failed", error.message);
+    console.error("failed tx data", JSON.stringify(tx.getData(), (_key, value) =>
+      typeof value === "bigint" ? value.toString() : value,
+    ));
     return null;
   });
 
   const effects = executed?.executeTransaction?.effects;
+  if (!effects && expectedDigest) {
+    // No usable answer from the submit call: it may have landed anyway, and if
+    // it did not, resubmit the same signed bytes through a JSON-RPC mirror.
+    if (await waitForDigest(expectedDigest)) {
+      return { digest: expectedDigest, ok: true, error: null, created: await createdViaRpc(expectedDigest) };
+    }
+    const viaRpc = await rpc<{ digest?: string; effects?: { status?: { status?: string; error?: string } } }>(
+      "sui_executeTransactionBlock",
+      [txBase64, [signature], { showEffects: true }, "WaitForEffectsCert"],
+    ).catch((error: Error) => {
+      console.error("mirror execute failed", error.message);
+      return null;
+    });
+    const rpcStatus = viaRpc?.effects?.status?.status;
+    if (rpcStatus === "success") {
+      const digest = viaRpc?.digest ?? expectedDigest;
+      return { digest, ok: true, error: null, created: await createdViaRpc(digest) };
+    }
+    if (rpcStatus) {
+      return { digest: viaRpc?.digest ?? null, ok: false, error: viaRpc?.effects?.status?.error ?? "the transaction failed on chain", created: [] };
+    }
+    if (await waitForDigest(expectedDigest)) {
+      return { digest: expectedDigest, ok: true, error: null, created: await createdViaRpc(expectedDigest) };
+    }
+  }
   if (!effects || effects.status !== "SUCCESS") {
     return {
       digest: effects?.digest ?? null,
