@@ -108,6 +108,9 @@ export function XLaunchQueue() {
                   </header>
                   <p className="mt-2 font-display text-3xl">${row.symbol}</p>
                   <p className="text-sm">{row.name}</p>
+                  {row.underlying ? (
+                    <p className="mt-1 font-display text-sm text-primary">⚡ {row.underlying.replace(/USD$/, "")} {row.perps_long === false ? "SHORT" : "LONG"} {(row.leverage_bps ?? 10_000) / 10_000}x{row.starting_cap_usd ? ` · MC ~$${row.starting_cap_usd >= 1000 ? `${row.starting_cap_usd / 1000}K` : row.starting_cap_usd}` : ""}</p>
+                  ) : null}
 
                   {parked && pad.id !== "suipump" ? (
                     <p className="mt-3 text-sm text-muted-foreground">{pad.label} launch is not ready yet.</p>
