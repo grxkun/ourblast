@@ -252,7 +252,7 @@ export async function referenceGasPrice(): Promise<number> {
   return Number(data.epoch?.referenceGasPrice ?? 1000);
 }
 
-interface ExecutedTransaction {
+export interface ExecutedTransaction {
   digest: string | null;
   ok: boolean;
   error: string | null;
