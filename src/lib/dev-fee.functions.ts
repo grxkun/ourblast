@@ -11,6 +11,7 @@ import {
 } from "@/lib/ourblast.config";
 import {
   gql,
+  rpc,
   gasCoins,
   loadDeployer,
   withGas,
@@ -149,4 +150,84 @@ export const claimDevFees = createServerFn({ method: "POST" })
       amountSui: data.amountSui,
       recipient,
     };
+  });
+
+export interface DevShareRow {
+  symbol: string;
+  launchpad: string;
+  tokenAddress: string | null;
+  digest: string;
+  /** Dev share of the pad's creator fee, in basis points, as written on chain. */
+  devBps: number | null;
+  recipients: string[];
+  note: string | null;
+}
+
+/**
+ * Reads, straight from chain, who each launched token actually pays its creator
+ * fee to. This is the honest answer to "what is my share" — the recipients are
+ * baked into the launch transaction and cannot be changed afterwards.
+ */
+export const getDevShareLedger = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    await assertAdmin(context);
+    const dev = FOUNDER_ADDRESS.toLowerCase();
+
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data } = await supabaseAdmin
+      .from("x_launch_requests")
+      .select("symbol, launchpad, token_address, tx_digest, created_at")
+      .eq("status", "DEPLOYED")
+      .not("tx_digest", "is", null)
+      .order("created_at", { ascending: false })
+      .limit(30);
+
+    const rows = (data ?? []) as {
+      symbol: string;
+      launchpad: string;
+      token_address: string | null;
+      tx_digest: string;
+    }[];
+
+    const out: DevShareRow[] = [];
+    for (const row of rows) {
+      let devBps: number | null = null;
+      let recipients: string[] = [];
+      let note: string | null = null;
+      try {
+        const tx = await rpc<{
+          transaction?: {
+            data?: { transaction?: { inputs?: { valueType?: string; value?: unknown }[] } };
+          };
+        }>("sui_getTransactionBlock", [row.tx_digest, { showInput: true }]);
+        const inputs = tx.transaction?.data?.transaction?.inputs ?? [];
+        const addrs = inputs.find((i) => i.valueType === "vector<address>")?.value as
+          | string[]
+          | undefined;
+        const bps = inputs.find((i) => i.valueType === "vector<u64>")?.value as
+          | string[]
+          | undefined;
+        if (addrs && bps) {
+          recipients = addrs.map((a) => a.toLowerCase());
+          const index = recipients.indexOf(dev);
+          devBps = index >= 0 ? Number(bps[index] ?? 0) : 0;
+          if (devBps === 0) note = "Launched before the dev share existed — pays the treasury wallet only.";
+        } else {
+          note = "This pad handles creator fees in its own pool.";
+        }
+      } catch {
+        note = "Could not read this launch transaction right now.";
+      }
+      out.push({
+        symbol: row.symbol,
+        launchpad: row.launchpad,
+        tokenAddress: row.token_address,
+        digest: row.tx_digest,
+        devBps,
+        recipients,
+        note,
+      });
+    }
+    return out;
   });
