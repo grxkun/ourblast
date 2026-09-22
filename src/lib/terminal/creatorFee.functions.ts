@@ -127,6 +127,9 @@ export const claimCreatorFeeDesignation = createServerFn({ method: "POST" })
       .maybeSingle();
     if (!row) return { ok: false, message: "No designation exists for that token." };
     if (row.status === "claimed") return { ok: false, message: "This designation was already claimed." };
+    if (row.status === "recalled") {
+      return { ok: false, message: "The deployer recalled this endorsement, so it can no longer be claimed." };
+    }
     if (row.recipient_wallet.toLowerCase() !== wallet) {
       return {
         ok: false,

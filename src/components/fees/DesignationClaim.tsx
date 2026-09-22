@@ -140,7 +140,14 @@ export function DesignationClaim({ tokenAddress }: { tokenAddress: string }) {
         </p>
       </div>
 
-      {row.status === "claimed" ? (
+      {row.status === "recalled" ? (
+        <div className="border-2 border-border p-4">
+          <p className="font-display text-xl uppercase">Endorsement recalled</p>
+          <p className="mt-2 text-sm text-muted-foreground">
+            The deployer took this designation back, so this wallet can no longer claim these creator fees.
+          </p>
+        </div>
+      ) : row.status === "claimed" ? (
         <div className="border-2 border-primary p-4">
           <p className="flex items-center gap-2 font-display text-xl uppercase">
             <BadgeCheck className="size-5 text-primary" /> Claimed
