@@ -82,8 +82,6 @@ const FIELD_NAME =
 export function parseDeployTweet(rawText: string, defaultPad = LAUNCHPAD.id): DeployRequest | null {
   // Read the launchpad wherever it appears — on the raw text first, because
   // mention stripping would eat "@perpsplexity" before we could see it.
-  // Read the pad from the raw text too, because mention stripping would eat
-  // "@perpsplexity" before we could see it.
   const rawPadMatch = findPadMatch(rawText);
   let text = normalizeCommandText(rawText);
 
