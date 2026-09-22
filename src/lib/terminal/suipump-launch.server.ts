@@ -37,11 +37,19 @@ const PUBLISH_GAS_BUDGET_MIST = 500_000_000; // 0.5 SUI ceiling for the coin pub
 const CREATE_GAS_BUDGET_MIST = 300_000_000; // 0.3 SUI ceiling for the create call.
 const GAS_HEADROOM_MIST = 900_000_000; // Publish + create gas we insist on having.
 
+/**
+ * Every network call gets a hard time limit. Without one, a single unresponsive
+ * Sui node leaves a launch hanging forever with the request stuck "launching".
+ */
+const NETWORK_TIMEOUT_MS = 30_000;
+const SUBMIT_TIMEOUT_MS = 45_000;
+
 export async function gql<T>(query: string, variables: Record<string, unknown> = {}): Promise<T> {
   const res = await fetch(GRAPHQL, {
     method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify({ query, variables }),
+    signal: AbortSignal.timeout(NETWORK_TIMEOUT_MS),
   });
   const json = (await res.json()) as { data?: T; errors?: { message: string }[] };
   if (json.errors?.length) throw new Error(json.errors[0]?.message ?? "Sui read failed.");
@@ -114,7 +122,13 @@ export interface OwnedObject {
  * wallet that demonstrably holds coins), so these mirrors are the source of
  * truth for anything we intend to sign over.
  */
-const RPC_MIRRORS = ["https://sui-rpc.publicnode.com", "https://rpc-mainnet.suiscan.xyz"];
+const RPC_MIRRORS = [
+  "https://sui-rpc.publicnode.com",
+  "https://rpc-mainnet.suiscan.xyz",
+  "https://sui-mainnet.nodeinfra.com",
+  "https://sui-mainnet-endpoint.blockvision.org",
+  "https://mainnet.sui.rpcpool.com",
+];
 
 export async function rpc<T>(method: string, params: unknown[]): Promise<T> {
   let lastError: Error | null = null;
@@ -124,6 +138,7 @@ export async function rpc<T>(method: string, params: unknown[]): Promise<T> {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ jsonrpc: "2.0", id: 1, method, params }),
+        signal: AbortSignal.timeout(NETWORK_TIMEOUT_MS),
       });
       const json = (await res.json()) as { result?: T; error?: { message: string } };
       if (json.error) throw new Error(json.error.message);
@@ -304,6 +319,10 @@ export async function signAndExecute(
   }
 
   const { signature } = await keypair.signTransaction(bytes);
+  if (process.env['OB_TX_DUMP']) {
+    const fs = await import("node:fs/promises");
+    await fs.writeFile(process.env['OB_TX_DUMP']!, JSON.stringify({ txBase64, signature })).catch(() => undefined);
+  }
   // The digest is known before submission, so a timed-out or dropped response
   // never loses a transaction that the network actually accepted.
   const expectedDigest = await tx.getDigest().catch(() => null);
@@ -320,6 +339,7 @@ export async function signAndExecute(
         method: "sui_executeTransactionBlock",
         params: [txBase64, [signature], { showEffects: true }, "WaitForEffectsCert"],
       }),
+      signal: AbortSignal.timeout(SUBMIT_TIMEOUT_MS),
     })
       .then((res) => res.text())
       .then((text) => {
@@ -337,7 +357,7 @@ export async function signAndExecute(
         return null;
       });
     if (submitted?.error) {
-      console.error("submit via", url, "rejected:", submitted.error.message);
+      console.error("submit via", url, "rejected:", JSON.stringify(submitted.error).slice(0, 600));
       continue;
     }
     const status = submitted?.result?.effects?.status?.status;
