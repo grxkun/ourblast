@@ -8,6 +8,10 @@ import {
   normalizeDesignation,
   recipientLockedNote,
 } from "./creatorFee";
+import {
+  performDesignationClaim,
+  type DesignationClaimStore,
+} from "./designationClaim";
 
 /** Unguessable token for a one-time claim link. */
 function claimToken(): string {
