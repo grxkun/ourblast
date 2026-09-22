@@ -16,14 +16,17 @@ export const CREATOR_FEE_SPLIT = {
   buyBurn: 0.1,
   /** Developer share. */
   developer: 0.1,
+  /** Community treasury. */
+  treasury: 0.1,
   /** Stays with whoever launched the token: fees, burns, buybacks, rewards. */
-  launcher: 0.7,
+  launcher: 0.6,
 } as const;
 
 export const CREATOR_FEE_ROUTES = [
   { label: "@ourblastbot (ops & gas)", share: CREATOR_FEE_SPLIT.bot, address: BOT_WALLET_ADDRESS },
   { label: "BLAST buy & burn (from @ourblastbot)", share: CREATOR_FEE_SPLIT.buyBurn, address: BOT_WALLET_ADDRESS },
   { label: "Developer", share: CREATOR_FEE_SPLIT.developer, address: FOUNDER_ADDRESS },
+  { label: "Community treasury", share: CREATOR_FEE_SPLIT.treasury, address: DEFAULT_TREASURY_ADDRESS },
   { label: "Launcher (you)", share: CREATOR_FEE_SPLIT.launcher, address: null },
 ] as const;
 
