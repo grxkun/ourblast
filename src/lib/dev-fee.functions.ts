@@ -11,6 +11,7 @@ import {
 } from "@/lib/ourblast.config";
 import {
   gql,
+  rpc,
   gasCoins,
   loadDeployer,
   withGas,
