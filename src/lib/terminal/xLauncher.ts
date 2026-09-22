@@ -59,8 +59,8 @@ const FEE_RECEIVER_PATTERNS: RegExp[] = [
 /** Leftovers of the same phrases, removed so they never leak into the token name. */
 const FEE_PHRASE_CLEANUP: RegExp[] = [
   /\bset\s+(?:@?[a-z0-9_]{1,20}\s+)?as\s+(?:the\s+|my\s+)?(?:creator\s+)?fee\s+(?:receiver|recipient|wallet|payout)\b/gi,
-  /\b(?:creator\s+)?fee\s+(?:receiver|recipient|wallet|payout)\s*(?:is\s+)?[:=]?\s*(?:@?[a-z0-9_]{1,20}|0x[a-f0-9]{6,66})?/gi,
-  /\b(?:creator\s+)?fees?\s+(?:go(?:es)?\s+)?to\s+(?:@?[a-z0-9_]{1,20}|0x[a-f0-9]{6,66})/gi,
+  /\b(?:creator\s+)?fee\s+(?:receiver|recipient|wallet|payout)\s*(?:is\s+)?[:=]?\s*(?:0x[a-f0-9]{6,66}|@?[a-z0-9_]{1,20})?/gi,
+  /\b(?:creator\s+)?fees?\s+(?:go(?:es)?\s+)?to\s+(?:0x[a-f0-9]{6,66}|@?[a-z0-9_]{1,20})/gi,
 ];
 
 /** Reads the fee receiver out of the raw tweet text (before mentions are stripped). */
