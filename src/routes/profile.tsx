@@ -197,6 +197,8 @@ function ProfilePage() {
         </div>
       </section>
 
+      <MyTokensCard />
+
       <section>
         <SectionTitle kicker="Achievements" title="Badge wall" />
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
