@@ -178,3 +178,93 @@ export const claimFeeLink = createServerFn({ method: "POST" })
   );
 
 export type { FeePayout };
+
+export type MyTokenRow = {
+  symbol: string;
+  name: string | null;
+  launchpad: string;
+  status: string;
+  tokenUrl: string | null;
+  txDigest: string | null;
+  createdAt: string;
+  shareBps: number;
+  /** "wallet" = fees already pay the launcher's wallet on chain; "claim" = parked behind a claim link. */
+  feeMode: "wallet" | "claim" | "perps";
+  claimToken: string | null;
+  claimStatus: string | null;
+  destinationWallet: string | null;
+};
+
+/**
+ * Tokens the signed-in user launched through their linked X account, plus how
+ * their 70% creator-fee share is routed for each: paid straight to their
+ * wallet on chain, parked behind a claim link, or handled by Perpsplexity's
+ * own pool. Read from the user's own session — no admin needed.
+ */
+export const getMyTokens = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { supabase, userId } = context;
+    const { data: xAccount } = await supabase
+      .from("x_accounts")
+      .select("username")
+      .eq("user_id", userId)
+      .maybeSingle();
+    const handle = xAccount?.username?.toLowerCase() ?? null;
+
+    const [launches, payouts, claims] = await Promise.all([
+      handle
+        ? supabase
+            .from("x_launch_requests")
+            .select("symbol, name, launchpad, status, token_url, tx_digest, created_at")
+            .ilike("x_username", handle)
+            .order("created_at", { ascending: false })
+            .limit(30)
+        : Promise.resolve({ data: [] as any[] }),
+      supabase
+        .from("launch_fee_payouts")
+        .select("launch_symbol, mode, destination_wallet")
+        .eq("user_id", userId),
+      handle
+        ? supabase
+            .from("fee_claim_links")
+            .select("token, launch_symbol, status, claimed_wallet")
+            .ilike("x_username", handle)
+        : Promise.resolve({ data: [] as any[] }),
+    ]);
+
+    const payoutBySymbol = new Map(
+      (payouts.data ?? []).map((p) => [p.launch_symbol.toUpperCase(), p]),
+    );
+    const claimBySymbol = new Map(
+      (claims.data ?? []).map((c) => [c.launch_symbol.toUpperCase(), c]),
+    );
+
+    const rows: MyTokenRow[] = (launches.data ?? []).map((l) => {
+      const symbol = String(l.symbol).toUpperCase();
+      const payout = payoutBySymbol.get(symbol);
+      const claim = claimBySymbol.get(symbol);
+      const perps = l.launchpad === "perpsplexity";
+      const feeMode: MyTokenRow["feeMode"] = perps
+        ? "perps"
+        : payout?.mode === "wallet" && payout.destination_wallet
+          ? "wallet"
+          : "claim";
+      return {
+        symbol,
+        name: l.name ?? null,
+        launchpad: l.launchpad,
+        status: l.status,
+        tokenUrl: l.token_url ?? null,
+        txDigest: l.tx_digest ?? null,
+        createdAt: l.created_at,
+        shareBps: perps ? 1000 : 7000,
+        feeMode,
+        claimToken: feeMode === "claim" && claim?.status === "pending" ? claim.token : null,
+        claimStatus: claim?.status ?? null,
+        destinationWallet:
+          payout?.destination_wallet ?? claim?.claimed_wallet ?? null,
+      };
+    });
+    return { handle, tokens: rows };
+  });
