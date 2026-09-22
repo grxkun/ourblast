@@ -107,7 +107,9 @@ export function DevFeeCard() {
           {/* Bot wallet */}
           <div className="rounded-lg border border-border bg-background/60 p-3">
             <div className="flex items-center justify-between">
-              <span className="font-display text-xs uppercase text-muted-foreground">Bot wallet (@ourblastbot)</span>
+              <span className="font-display text-xs uppercase text-muted-foreground">
+                Bot wallet — gas, ops &amp; burn reserve (not your share)
+              </span>
               <span className="font-display text-lg">
                 {formatSui(data.botBalanceSui)} SUI
               </span>
