@@ -90,68 +90,11 @@ export const getFeeClaim = createServerFn({ method: "POST" })
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: row, error } = await supabaseAdmin
       .from("fee_claim_links")
-      .select(
-        "token, launch_symbol, x_username, amount_sui, status, claimed_wallet, claimed_at, slush_url, slush_amount_sui, slush_issued_at",
-      )
+      .select("token, launch_symbol, x_username, amount_sui, status, claimed_wallet, claimed_at")
       .eq("token", data.token)
       .maybeSingle();
     if (error) throw new Error(error.message);
     return row ?? null;
-  });
-
-/**
- * Turns the parked share into a Slush claim link: the SUI leaves the bot wallet
- * into the link, and the recipient sweeps it into a wallet they already have —
- * no new wallet, no OURBLAST account, nothing to sign here. The link token in
- * the URL is the secret, so this stays open like the claim page itself.
- */
-export const issueSlushClaimLink = createServerFn({ method: "POST" })
-  .inputValidator((input: unknown) => z.object({ token: z.string().min(8).max(64) }).parse(input))
-  .handler(async ({ data }) => {
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { data: row, error } = await supabaseAdmin
-      .from("fee_claim_links")
-      .select("token, launch_symbol, amount_sui, status, slush_url, slush_issued_at")
-      .eq("token", data.token)
-      .maybeSingle();
-    if (error) throw new Error(error.message);
-    if (!row) return { ok: false, url: null, message: "This claim link does not exist." };
-    if (row.slush_url) return { ok: true, url: row.slush_url, message: "Your Slush claim link is ready." };
-    const amount = Number(row.amount_sui ?? 0);
-    if (amount <= 0) {
-      return {
-        ok: false,
-        url: null,
-        message: "No fees have landed in this share yet. Come back once the token has traded.",
-      };
-    }
-
-    // Claim the row first so two clicks can never fund two links.
-    const { data: claimed } = await supabaseAdmin
-      .from("fee_claim_links")
-      .update({ slush_issued_at: new Date().toISOString() })
-      .eq("token", data.token)
-      .is("slush_url", null)
-      .is("slush_issued_at", null)
-      .select("token")
-      .maybeSingle();
-    if (!claimed) return { ok: false, url: null, message: "A payout link for this share is already being created." };
-
-    const { createSlushClaimLink } = await import("./slush-link.server");
-    const result = await createSlushClaimLink(amount);
-    if (!result.ok || !result.url) {
-      await supabaseAdmin
-        .from("fee_claim_links")
-        .update({ slush_issued_at: null })
-        .eq("token", data.token);
-      return { ok: false, url: null, message: result.error ?? "The payout link could not be created." };
-    }
-
-    await supabaseAdmin
-      .from("fee_claim_links")
-      .update({ slush_url: result.url, slush_tx: result.digest, slush_amount_sui: result.amountSui })
-      .eq("token", data.token);
-    return { ok: true, url: result.url, message: `${result.amountSui} SUI locked into your Slush claim link.` };
   });
 
 /** Supabase-backed store for the shared claim-flow logic in claimFlow.ts. */

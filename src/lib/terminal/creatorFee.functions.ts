@@ -215,8 +215,7 @@ export const recallCreatorFeeDesignation = createServerFn({ method: "POST" })
         .update({ status: "revoked" })
         .eq("launch_symbol", symbol)
         .ilike("x_username", row.recipient_x_handle)
-        .eq("status", "pending")
-        .is("slush_url", null);
+        .eq("status", "pending");
     }
 
     // Fresh link for the deployer themselves.
