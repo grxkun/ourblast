@@ -1,12 +1,12 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { AtSign, Check, Gift, ShieldCheck, Wallet } from "lucide-react";
+import { AtSign, Check, Copy, ExternalLink, Gift, ShieldCheck, Wallet, Zap } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { useBlast } from "@/components/blast/session";
-import { claimFeeLink, getClaimViewer, getFeeClaim } from "@/lib/terminal/feePayout.functions";
+import { claimFeeLink, getClaimViewer, getFeeClaim, issueSlushClaimLink } from "@/lib/terminal/feePayout.functions";
 import { CREATOR_FEE_SPLIT } from "@/lib/terminal/fees";
 import { looksLikeTokenAddress } from "@/lib/terminal/creatorFee";
 import { DesignationClaim } from "@/components/fees/DesignationClaim";
@@ -107,7 +107,18 @@ function LinkClaimPage({ token }: { token: string }) {
     onError: (error: Error) => toast.error(error.message),
   });
 
+  const slushFn = useServerFn(issueSlushClaimLink);
+  const slush = useMutation({
+    mutationFn: () => slushFn({ data: { token } }),
+    onSuccess: (result) => {
+      toast[result.ok ? "success" : "error"](result.message);
+      void queryClient.invalidateQueries({ queryKey: ["fee-claim", token] });
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
+
   const row = claim.data;
+  const slushUrl = row?.slush_url ?? slush.data?.url ?? null;
   const linkedX = viewer.data?.xUsername ?? null;
   const xMatches = viewer.data?.xMatches ?? false;
   const walletReady = Boolean(viewer.data?.wallet ?? wallet);
@@ -153,6 +164,51 @@ function LinkClaimPage({ token }: { token: string }) {
               The launchpad pays creator fees out of trading volume, continuously. Claiming points your share at your
               own wallet — there is nothing to pay and nothing to sign.
             </p>
+          </div>
+
+          <div className="space-y-3 border-2 border-primary p-4">
+            <p className="flex items-center gap-2 font-display text-xl uppercase">
+              <Zap className="size-5 text-primary" /> Claim into a wallet you already have
+            </p>
+            <p className="text-sm text-muted-foreground">
+              Your share is sent as a Slush claim link. Open it in Slush — or any Sui wallet — and the SUI lands in your
+              existing wallet. No new wallet, no account here, nothing to sign on this page.
+            </p>
+            {slushUrl ? (
+              <div className="space-y-2">
+                <p className="break-all border border-border p-2 text-xs">{slushUrl}</p>
+                <div className="flex flex-wrap gap-2">
+                  <Button asChild>
+                    <a href={slushUrl} target="_blank" rel="noreferrer noopener">
+                      <ExternalLink /> Open in Slush
+                    </a>
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => {
+                      void navigator.clipboard.writeText(slushUrl).catch(() => undefined);
+                      toast.success("Claim link copied.");
+                    }}
+                  >
+                    <Copy /> Copy link
+                  </Button>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Anyone with this link can sweep the SUI — keep it to yourself until you have claimed it.
+                </p>
+              </div>
+            ) : (
+              <>
+                <Button type="button" onClick={() => slush.mutate()} disabled={slush.isPending}>
+                  <Zap /> {slush.isPending ? "Preparing link…" : "Send my share as a Slush link"}
+                </Button>
+                <p className="text-xs text-muted-foreground">
+                  Available now: {Number(row.amount_sui ?? 0)} SUI. Fees keep accruing from trading volume — link your
+                  wallet below and future launches pay it directly.
+                </p>
+              </>
+            )}
           </div>
 
           {row.status === "claimed" ? (
