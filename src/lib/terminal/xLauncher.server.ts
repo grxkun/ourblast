@@ -50,13 +50,14 @@ const INTEGRATION_PENDING = "Launchpad integration coming soon.";
 
 /**
  * On-chain creator-fee routing. The published split — 20% OURBLAST treasury,
- * 10% developer, 70% launcher — is written straight into the bonding curve, so
- * the launchpad pays every share automatically, with no manual claiming.
+ * 10% developer, 70% launcher — is written straight into the bonding curve.
  *
  * When we know the launcher's wallet (their X account is linked to an OURBLAST
- * profile) their 70% goes to that wallet on chain. Otherwise the treasury holds
- * it and a claim link is created for their X handle. SUIPUMP_FEE_PAYEES still
- * overrides everything with equal shares.
+ * profile) their 70% goes to that wallet on chain. A claim/verification link is
+ * still posted in the X reply so the recipient can prove and remember their
+ * payout route. When no wallet is known, the bot wallet holds their share until
+ * that same X handle claims it. SUIPUMP_FEE_PAYEES still overrides everything
+ * with equal shares.
  */
 function toBps(share: number): number {
   return Math.round(share * 10_000);
@@ -151,7 +152,7 @@ async function feeRouting(
   };
 }
 
-/** Auto-creates the one-time claim link for a launcher whose wallet we don't know. */
+/** Auto-creates the one-time claim/verification link for a launcher's fee share. */
 async function ensureFeeClaimLink(symbol: string, xUsername: string): Promise<string | null> {
   if (!xUsername) return null;
   const client = await db();
@@ -435,13 +436,13 @@ export async function executeLaunchRequest(requestId: string): Promise<LaunchOut
     })
     .eq("id", request.id);
 
-  // Launcher share: paid on chain when we know their wallet, otherwise a claim
-  // link is created for them automatically — nobody has to ask for it.
+  // Launcher share: for every Suipump launch reply, include a claim/verification
+  // link for the exact X handle that owns the 70% share. If their wallet was
+  // known at launch, this simply verifies/remembers the route; if not, it is how
+  // they claim the parked share. Nobody has to ask for the link separately.
   // Perpsplexity routes creator fees through its own pool (pay_creator), so
   // there is no launch-time payee split to claim there.
-  const claimToken = isPerps || routing.launcherPaidOnChain
-    ? null
-    : await ensureFeeClaimLink(request.symbol, feeReceiverHandle(request));
+  const claimToken = isPerps ? null : await ensureFeeClaimLink(request.symbol, feeReceiverHandle(request));
 
   await postDeployedReply(request, tokenUrl, poolUrl, claimToken, positionLine);
   return { status: "DEPLOYED", notice: null, tokenUrl, poolUrl };
@@ -492,7 +493,8 @@ export async function confirmSuipumpLaunch(requestId: string): Promise<LaunchOut
     })
     .eq("id", request.id);
 
-  await postDeployedReply(request, found.tokenPage, poolUrl ?? found.tokenPage);
+  const claimToken = await ensureFeeClaimLink(request.symbol, feeReceiverHandle(request));
+  await postDeployedReply(request, found.tokenPage, poolUrl ?? found.tokenPage, claimToken);
   return { status: "DEPLOYED", notice: null, tokenUrl: found.tokenPage, poolUrl };
 }
 
