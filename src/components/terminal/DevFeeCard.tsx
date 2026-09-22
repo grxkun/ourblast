@@ -50,6 +50,10 @@ export function DevFeeCard() {
       toast.error("Amount exceeds the bot wallet balance.");
       return;
     }
+    if (data && data.botBalanceSui - amountSui < 5) {
+      toast.error("Leave at least 5 SUI in the bot wallet so launches can still pay gas.");
+      return;
+    }
     if (!confirming) {
       setConfirming(true);
       return;
