@@ -129,7 +129,8 @@ export function MyTokensCard() {
                 )}
               </p>
             </li>
-          ))}
+            );
+          })}
         </ul>
       )}
     </section>
