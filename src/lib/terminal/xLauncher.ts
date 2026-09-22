@@ -42,7 +42,21 @@ export interface DeployRequest {
  * matchLaunchpad tolerates typos ("on Peropelxity" → Perpsplexity) and
  * rejects non-pad words ("on Monday" → no pad).
  */
-const PAD_ANYWHERE = /\bon\s+@?([a-z][a-z0-9.]{2,20})\b/i;
+const PAD_ANYWHERE = /\bon\s+@?([a-z][a-z0-9.]{2,20})\b/gi;
+
+/**
+ * Scans every "on <word>" phrase, not just the first, so chatter like
+ * "a bet on NVDA ... on Perpsplexity" still resolves the real pad.
+ */
+function findPadMatch(source: string): { candidate: string; index: number; length: number } | null {
+  for (const match of source.matchAll(PAD_ANYWHERE)) {
+    const candidate = (match[1] ?? "").replace(/\s+/g, "").replace(/^@/, "");
+    if (candidate && matchLaunchpad(candidate)) {
+      return { candidate, index: match.index ?? 0, length: match[0].length };
+    }
+  }
+  return null;
+}
 
 /** "Deploy a $TETY", "deploy a ticker $TETY", "launch me a new meme coin $TETY", "create token called $TETY". */
 const DEPLOY_CALL =
