@@ -78,13 +78,18 @@ export function DevFeeCard() {
       </header>
 
       <p className="mt-2 text-sm text-muted-foreground">
-        Your developer share (10% of game fees and 10% of launch creator fees) is already paid straight to your dev
-        wallet on chain — there is nothing of yours waiting here to be claimed.
+        Creator fees on every new token split 10% @ourblastbot · 10% BLAST buy &amp; burn · 10% dev (you) · 10% treasury
+        · 60% launcher. Your 10% (plus 10% of game fees) is paid straight to your dev wallet on chain — nothing of
+        yours is waiting here to be claimed.
       </p>
       <p className="mt-2 text-sm text-muted-foreground">
         The bot wallet balance below is <span className="font-bold">not your share</span>: it is the launch gas float,
-        the 10% @ourblastbot ops share and the 10% BLAST buy &amp; burn reserve. Moving it to your dev wallet takes
-        funds out of launches and the burn reserve.
+        the @ourblastbot ops share and the BLAST buy &amp; burn reserve. Moving it to your dev wallet takes funds out of
+        launches and the burn reserve.
+      </p>
+      <p className="mt-2 text-sm text-muted-foreground">
+        Fees only move once someone releases them per token — use the <span className="font-bold">Claim creator fees</span>{" "}
+        panel below.
       </p>
 
       {status.isLoading ? (

@@ -8,6 +8,7 @@ import { SectionTitle } from "@/components/blast/AppShell";
 import { LauncherSettingsCard } from "@/components/terminal/LauncherSettingsCard";
 import { SuipumpReadinessCard } from "@/components/terminal/SuipumpReadinessCard";
 import { DevFeeCard } from "@/components/terminal/DevFeeCard";
+import { CreatorClaimCard } from "@/components/terminal/CreatorClaimCard";
 import { PlayerAvatar } from "@/components/blast/PlayerBadge";
 import { useBlast } from "@/components/blast/session";
 import { formatNumber, shortAddress, timeAgo } from "@/lib/blast";
@@ -297,8 +298,9 @@ function AdminPage() {
           <SuipumpReadinessCard />
         </div>
       ) : tab === "fees" ? (
-        <div className="max-w-2xl">
+        <div className="max-w-2xl space-y-6">
           <DevFeeCard />
+          <CreatorClaimCard />
         </div>
       ) : tab === "challenge" ? (
         <div className="panel max-w-xl space-y-3 p-5 sm:p-6">
