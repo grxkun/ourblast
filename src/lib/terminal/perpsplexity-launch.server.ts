@@ -484,15 +484,11 @@ export async function launchOnPerpsplexity(input: PerpsLaunchInput): Promise<Per
   } catch (error) {
     return fail((error as Error).message, { coinType, packageId });
   }
-  const fee =
-    launchFeeMist === 0n
-      ? prepareTx.moveCall({ target: "0x2::coin::zero", typeArguments: ["0x2::sui::SUI"] })
-      : feeCoin
-        ? prepareTx.splitCoins(
-            prepareTx.objectRef({ objectId: feeCoin.objectId, version: feeCoin.version, digest: feeCoin.digest }),
-            [launchFeeMist],
-          )[0]!
-        : prepareTx.splitCoins(prepareTx.gas, [launchFeeMist])[0]!;
+  // Exact-amount coin: passed whole, so nothing beyond the 5 SUI capital is
+  // ever reserved. Leverage never multiplies this amount.
+  const fee = feeCoin
+    ? prepareTx.objectRef({ objectId: feeCoin.objectId, version: feeCoin.version, digest: feeCoin.digest })
+    : prepareTx.moveCall({ target: "0x2::coin::zero", typeArguments: ["0x2::sui::SUI"] });
   const prepareResults = prepareTx.moveCall({
     target: `${PERPSPLEXITY_PACKAGE_ID}::launchpad::prepare_composite_registered`,
     typeArguments: [coinType, PERPSPLEXITY_LENDING_TYPE, PERPSPLEXITY_QUOTE_TYPE],
