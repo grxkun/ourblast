@@ -22,6 +22,13 @@ export function DevFeeCard() {
     staleTime: 30_000,
   });
 
+  const ledgerFn = useServerFn(getDevShareLedger);
+  const ledger = useQuery({
+    queryKey: ["dev-share-ledger"],
+    queryFn: () => ledgerFn({}),
+    staleTime: 60_000,
+  });
+
   const claim = useMutation({
     mutationFn: (amountSui: number) => claimFn({ data: { amountSui } }),
     onSuccess: (result) => {
