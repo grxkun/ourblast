@@ -130,7 +130,9 @@ export function parseDeployTweet(rawText: string, defaultPad = LAUNCHPAD.id): De
   // Read the launchpad wherever it appears — on the raw text first, because
   // mention stripping would eat "@perpsplexity" before we could see it.
   const rawPadMatch = findPadMatch(rawText);
-  let text = normalizeCommandText(rawText);
+  // Same reason: "@adiniyi" must be read before mention stripping removes it.
+  const feeReceiver = extractFeeReceiver(rawText) ?? undefined;
+  let text = stripFeePhrases(normalizeCommandText(rawText));
 
   const textPadMatch = findPadMatch(text);
   const padMatch = textPadMatch ?? rawPadMatch;
