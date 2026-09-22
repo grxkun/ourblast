@@ -1,5 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
 import { Copy, HandCoins } from "lucide-react";
 import { toast } from "sonner";
 
@@ -11,6 +12,8 @@ import {
   shareText,
   shortWallet,
 } from "@/lib/terminal/creatorFee";
+import { getLiveCreatorFees } from "@/lib/terminal/liveFees.functions";
+import { findLiveFee, walletShareSui } from "@/lib/terminal/liveFees";
 import { timeAgo } from "@/lib/blast";
 
 export const Route = createFileRoute("/creator-fees")({
