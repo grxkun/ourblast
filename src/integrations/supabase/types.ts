@@ -1089,6 +1089,10 @@ export type Database = {
           created_by: string | null
           id: string
           launch_symbol: string
+          slush_amount_sui: number
+          slush_issued_at: string | null
+          slush_tx: string | null
+          slush_url: string | null
           status: string
           token: string
           updated_at: string
@@ -1102,6 +1106,10 @@ export type Database = {
           created_by?: string | null
           id?: string
           launch_symbol: string
+          slush_amount_sui?: number
+          slush_issued_at?: string | null
+          slush_tx?: string | null
+          slush_url?: string | null
           status?: string
           token: string
           updated_at?: string
@@ -1115,6 +1123,10 @@ export type Database = {
           created_by?: string | null
           id?: string
           launch_symbol?: string
+          slush_amount_sui?: number
+          slush_issued_at?: string | null
+          slush_tx?: string | null
+          slush_url?: string | null
           status?: string
           token?: string
           updated_at?: string
