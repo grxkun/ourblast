@@ -5,7 +5,7 @@ import { Copy, Wallet, ArrowDownToLine } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
-import { getDevFeeStatus, claimDevFees } from "@/lib/dev-fee.functions";
+import { getDevFeeStatus, claimDevFees, getDevShareLedger } from "@/lib/dev-fee.functions";
 import { formatSui } from "@/lib/sui-balance";
 import { shortAddress } from "@/lib/blast";
 
