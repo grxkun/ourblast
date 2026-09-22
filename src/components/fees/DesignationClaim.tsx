@@ -135,7 +135,9 @@ export function DesignationClaim({ tokenAddress }: { tokenAddress: string }) {
             </>
           ) : null}
           <dt className="text-muted-foreground">Trading volume</dt>
-          <dd className="font-bold">{Number(row.trading_volume ?? 0) > 0 ? formatSui(Number(row.trading_volume)) : "Not indexed yet"}</dd>
+          <dd className="font-bold">
+            {Number(row.trading_volume ?? 0) > 0 ? formatSui(Number(row.trading_volume)) : "—"}
+          </dd>
           <dt className="text-muted-foreground">Claimed so far</dt>
           <dd className="font-bold">{formatSui(Number(row.claimed_amount ?? 0))}</dd>
           <dt className="text-muted-foreground">Token address</dt>
