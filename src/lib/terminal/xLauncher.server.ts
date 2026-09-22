@@ -358,6 +358,8 @@ export async function executeLaunchRequest(requestId: string): Promise<LaunchOut
   const pad = resolveLaunchpad(request.launchpad);
   let deployment: { tokenAddress: string; transactionDigest: string } | undefined;
   let failure: string | null = null;
+  // Perpsplexity's own pool page, so the reply links the market, not a homepage.
+  let perpsPoolId: string | null = null;
   const routing = await feeRouting(request.x_username, {
     handle: request.fee_receiver_x_username,
     wallet: request.fee_receiver_wallet,
