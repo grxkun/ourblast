@@ -129,6 +129,7 @@ async function feeRouting(
   // and gas, 10% is swapped to BLAST and burned from the same wallet.
   const bot = (process.env['OURBLAST_BOT_WALLET_ADDRESS']?.trim() || BOT_WALLET_ADDRESS).toLowerCase();
   const developer = FOUNDER_ADDRESS.toLowerCase();
+  const treasury = treasuryPayee();
   // A tweet may hand the creator fees to someone else ("Set @adiniyi as fee
   // receiver"): that wallet takes the launcher's 70% instead.
   const named = (receiver?.wallet ?? "").trim().toLowerCase();
@@ -136,18 +137,28 @@ async function feeRouting(
     ? named
     : (receiver?.handle ? await launcherWallet(receiver.handle) : null) ?? (receiver?.handle ? null : await launcherWallet(xUsername));
   const botShareBps = toBps(CREATOR_FEE_SPLIT.bot + CREATOR_FEE_SPLIT.buyBurn);
-  if (launcher && launcher !== bot && launcher !== developer) {
+  const treasuryBps = toBps(CREATOR_FEE_SPLIT.treasury);
+  if (launcher && launcher !== bot && launcher !== developer && launcher !== treasury) {
     return {
-      payees: [bot, developer, launcher],
-      shareBps: [botShareBps, toBps(CREATOR_FEE_SPLIT.developer), toBps(CREATOR_FEE_SPLIT.launcher)],
+      payees: [bot, developer, treasury, launcher],
+      shareBps: [
+        botShareBps,
+        toBps(CREATOR_FEE_SPLIT.developer),
+        treasuryBps,
+        toBps(CREATOR_FEE_SPLIT.launcher),
+      ],
       launcherPaidOnChain: true,
     };
   }
 
   // No known launcher wallet: the bot wallet holds their share until they claim it.
   return {
-    payees: [bot, developer],
-    shareBps: [botShareBps + toBps(CREATOR_FEE_SPLIT.launcher), toBps(CREATOR_FEE_SPLIT.developer)],
+    payees: [bot, developer, treasury],
+    shareBps: [
+      botShareBps + toBps(CREATOR_FEE_SPLIT.launcher),
+      toBps(CREATOR_FEE_SPLIT.developer),
+      treasuryBps,
+    ],
     launcherPaidOnChain: false,
   };
 }
