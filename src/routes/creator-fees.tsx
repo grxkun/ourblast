@@ -54,18 +54,29 @@ function CreatorFeesPage() {
     staleTime: 30_000,
   });
 
-  const copyShare = async (row: {
-    token_symbol: string;
-    unclaimed_amount: number | string;
-    recipient_x_handle: string | null;
-    recipient_wallet: string;
-    token_address: string;
-  }) => {
+  const readLive = useServerFn(getLiveCreatorFees);
+  const live = useQuery({
+    queryKey: ["live-creator-fees"],
+    queryFn: () => readLive({}),
+    refetchInterval: 60_000,
+    staleTime: 30_000,
+  });
+
+  const copyShare = async (
+    row: {
+      token_symbol: string;
+      unclaimed_amount: number | string;
+      recipient_x_handle: string | null;
+      recipient_wallet: string;
+      token_address: string;
+    },
+    amount: number,
+  ) => {
     await navigator.clipboard
       .writeText(
         shareText({
           tokenSymbol: row.token_symbol,
-          unclaimedAmount: Number(row.unclaimed_amount ?? 0),
+          unclaimedAmount: amount,
           recipientXHandle: row.recipient_x_handle,
           recipientWallet: row.recipient_wallet,
           claimUrl: `${window.location.origin}/claim/${row.token_address}`,
@@ -75,7 +86,20 @@ function CreatorFeesPage() {
     toast.success("Share text copied.");
   };
 
-  const list = rows.data ?? [];
+  // Live on-chain balances beat the stored snapshot, and the dashboard is
+  // explicitly sorted by unclaimed amount rather than popularity.
+  const liveRows = live.data?.rows;
+  const list = (rows.data ?? [])
+    .map((row) => {
+      const onChain = findLiveFee(liveRows, { symbol: row.token_symbol, tokenAddress: row.token_address });
+      const recipientShare = walletShareSui(onChain, row.recipient_wallet);
+      return {
+        row,
+        onChain,
+        unclaimed: recipientShare > 0 ? recipientShare : (onChain?.pendingSui ?? Number(row.unclaimed_amount ?? 0)),
+      };
+    })
+    .sort((a, b) => b.unclaimed - a.unclaimed);
 
   return (
     <div className="mx-auto w-full max-w-4xl space-y-4 px-4 py-10">
