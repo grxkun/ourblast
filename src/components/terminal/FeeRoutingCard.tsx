@@ -4,6 +4,7 @@ import { Coins, Link2, Save } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 
+import { useBlast } from "@/components/blast/session";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -31,10 +32,12 @@ const MODES: { id: FeePayoutMode; label: string }[] = [
  */
 export function FeeRoutingCard() {
   const queryClient = useQueryClient();
+  const { userId, ready } = useBlast();
   const readPayouts = useServerFn(getLaunchFeePayouts);
   const payouts = useQuery({
-    queryKey: ["launch-fee-payouts"],
+    queryKey: ["launch-fee-payouts", userId],
     queryFn: () => readPayouts({}),
+    enabled: ready && Boolean(userId),
     staleTime: 30_000,
     retry: false,
   });
@@ -147,7 +150,7 @@ export function FeeRoutingCard() {
           <Save /> {save.isPending ? "Saving…" : "Redirect these fees"}
         </Button>
 
-        {payouts.isError ? (
+        {!userId || payouts.isError ? (
           <p className="text-xs text-muted-foreground">Sign in above to see and change where your fees go.</p>
         ) : null}
 
