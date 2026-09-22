@@ -1804,6 +1804,8 @@ export type Database = {
           created_at: string
           deployed_reply_post_id: string | null
           dev_buy: boolean
+          fee_receiver_wallet: string | null
+          fee_receiver_x_username: string | null
           icon_url: string | null
           id: string
           launchpad: string
@@ -1830,6 +1832,8 @@ export type Database = {
           created_at?: string
           deployed_reply_post_id?: string | null
           dev_buy?: boolean
+          fee_receiver_wallet?: string | null
+          fee_receiver_x_username?: string | null
           icon_url?: string | null
           id?: string
           launchpad?: string
@@ -1856,6 +1860,8 @@ export type Database = {
           created_at?: string
           deployed_reply_post_id?: string | null
           dev_buy?: boolean
+          fee_receiver_wallet?: string | null
+          fee_receiver_x_username?: string | null
           icon_url?: string | null
           id?: string
           launchpad?: string
