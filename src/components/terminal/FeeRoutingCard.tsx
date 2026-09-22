@@ -150,7 +150,7 @@ export function FeeRoutingCard() {
           <Save /> {save.isPending ? "Saving…" : "Redirect these fees"}
         </Button>
 
-        {payouts.isError ? (
+        {!userId || payouts.isError ? (
           <p className="text-xs text-muted-foreground">Sign in above to see and change where your fees go.</p>
         ) : null}
 
