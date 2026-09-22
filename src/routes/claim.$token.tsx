@@ -8,6 +8,8 @@ import { Button } from "@/components/ui/button";
 import { useBlast } from "@/components/blast/session";
 import { claimFeeLink, getClaimViewer, getFeeClaim } from "@/lib/terminal/feePayout.functions";
 import { CREATOR_FEE_SPLIT } from "@/lib/terminal/fees";
+import { looksLikeTokenAddress } from "@/lib/terminal/creatorFee";
+import { DesignationClaim } from "@/components/fees/DesignationClaim";
 
 export const Route = createFileRoute("/claim/$token")({
   head: () => ({
@@ -60,6 +62,22 @@ function Step({
 
 function ClaimPage() {
   const { token } = Route.useParams();
+
+  // /claim/<token-address> opens the public creator-fee designation claim page,
+  // /claim/<link-token> the one-time launcher claim link below.
+  if (looksLikeTokenAddress(token)) {
+    return (
+      <div className="mx-auto w-full max-w-xl space-y-4 px-4 py-10">
+        <h1 className="font-display text-4xl uppercase">Creator fee designation</h1>
+        <DesignationClaim tokenAddress={token} />
+      </div>
+    );
+  }
+
+  return <LinkClaimPage token={token} />;
+}
+
+function LinkClaimPage({ token }: { token: string }) {
   const { userId, profile, connect, connecting, loginWithX } = useBlast();
   const wallet = profile?.wallet_address ?? null;
   const queryClient = useQueryClient();

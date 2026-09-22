@@ -16,6 +16,7 @@ import { Route as BuildRouteImport } from './routes/build'
 import { Route as BuildersRouteImport } from './routes/builders'
 import { Route as ChatRouteImport } from './routes/chat'
 import { Route as CommunityCityRouteImport } from './routes/community-city'
+import { Route as CreatorFeesRouteImport } from './routes/creator-fees'
 import { Route as EcosystemRouteImport } from './routes/ecosystem'
 import { Route as HowToPlayRouteImport } from './routes/how-to-play'
 import { Route as HubRouteImport } from './routes/hub'
@@ -72,6 +73,11 @@ const ChatRoute = ChatRouteImport.update({
 const CommunityCityRoute = CommunityCityRouteImport.update({
   id: '/community-city',
   path: '/community-city',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CreatorFeesRoute = CreatorFeesRouteImport.update({
+  id: '/creator-fees',
+  path: '/creator-fees',
   getParentRoute: () => rootRouteImport,
 } as any)
 const EcosystemRoute = EcosystemRouteImport.update({
@@ -194,6 +200,7 @@ export interface FileRoutesByFullPath {
   '/builders': typeof BuildersRoute
   '/chat': typeof ChatRoute
   '/community-city': typeof CommunityCityRoute
+  '/creator-fees': typeof CreatorFeesRoute
   '/ecosystem': typeof EcosystemRoute
   '/how-to-play': typeof HowToPlayRoute
   '/hub': typeof HubRoute
@@ -225,6 +232,7 @@ export interface FileRoutesByTo {
   '/builders': typeof BuildersRoute
   '/chat': typeof ChatRoute
   '/community-city': typeof CommunityCityRoute
+  '/creator-fees': typeof CreatorFeesRoute
   '/ecosystem': typeof EcosystemRoute
   '/how-to-play': typeof HowToPlayRoute
   '/hub': typeof HubRoute
@@ -257,6 +265,7 @@ export interface FileRoutesById {
   '/builders': typeof BuildersRoute
   '/chat': typeof ChatRoute
   '/community-city': typeof CommunityCityRoute
+  '/creator-fees': typeof CreatorFeesRoute
   '/ecosystem': typeof EcosystemRoute
   '/how-to-play': typeof HowToPlayRoute
   '/hub': typeof HubRoute
@@ -290,6 +299,7 @@ export interface FileRouteTypes {
     | '/builders'
     | '/chat'
     | '/community-city'
+    | '/creator-fees'
     | '/ecosystem'
     | '/how-to-play'
     | '/hub'
@@ -321,6 +331,7 @@ export interface FileRouteTypes {
     | '/builders'
     | '/chat'
     | '/community-city'
+    | '/creator-fees'
     | '/ecosystem'
     | '/how-to-play'
     | '/hub'
@@ -352,6 +363,7 @@ export interface FileRouteTypes {
     | '/builders'
     | '/chat'
     | '/community-city'
+    | '/creator-fees'
     | '/ecosystem'
     | '/how-to-play'
     | '/hub'
@@ -384,6 +396,7 @@ export interface RootRouteChildren {
   BuildersRoute: typeof BuildersRoute
   ChatRoute: typeof ChatRoute
   CommunityCityRoute: typeof CommunityCityRoute
+  CreatorFeesRoute: typeof CreatorFeesRoute
   EcosystemRoute: typeof EcosystemRoute
   HowToPlayRoute: typeof HowToPlayRoute
   HubRoute: typeof HubRoute
@@ -457,6 +470,13 @@ declare module '@tanstack/react-router' {
       path: '/community-city'
       fullPath: '/community-city'
       preLoaderRoute: typeof CommunityCityRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/creator-fees': {
+      id: '/creator-fees'
+      path: '/creator-fees'
+      fullPath: '/creator-fees'
+      preLoaderRoute: typeof CreatorFeesRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/ecosystem': {
@@ -624,6 +644,7 @@ const rootRouteChildren: RootRouteChildren = {
   BuildersRoute: BuildersRoute,
   ChatRoute: ChatRoute,
   CommunityCityRoute: CommunityCityRoute,
+  CreatorFeesRoute: CreatorFeesRoute,
   EcosystemRoute: EcosystemRoute,
   HowToPlayRoute: HowToPlayRoute,
   HubRoute: HubRoute,

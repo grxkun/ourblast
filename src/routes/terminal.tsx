@@ -9,6 +9,7 @@ import { TerminalTutorial } from "@/components/terminal/TerminalTutorial";
 import { XMentionInbox } from "@/components/terminal/XMentionInbox";
 import { GasReserveCard } from "@/components/terminal/GasReserveCard";
 import { FeeRoutingCard } from "@/components/terminal/FeeRoutingCard";
+import { CreatorFeeDesignationCard } from "@/components/terminal/CreatorFeeDesignationCard";
 import { XConnectButton } from "@/components/terminal/XConnectButton";
 import { SocialSignIn } from "@/components/terminal/SocialSignIn";
 import { XLaunchQueue } from "@/components/terminal/XLaunchQueue";
@@ -75,6 +76,7 @@ function TerminalPage() {
       {ready ? (
         <div className="mt-6 space-y-6">
           <FeeRoutingCard />
+          <CreatorFeeDesignationCard />
           <GasReserveCard />
         </div>
       ) : null}
