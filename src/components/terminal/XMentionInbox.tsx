@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
 import { getXBotStatus, pollXMentionsNow, simulateXMention } from "@/lib/terminal/x-bot.functions";
-import { X_BOT_HANDLE } from "@/lib/terminal/x-bot";
+import { enforceSingleCashtag, X_BOT_HANDLE } from "@/lib/terminal/x-bot";
 
 export function XMentionInbox() {
   const [draft, setDraft] = useState(`${X_BOT_HANDLE} launch $DOG Sui Dog`);
