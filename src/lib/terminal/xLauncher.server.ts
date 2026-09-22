@@ -432,9 +432,9 @@ export async function executeLaunchRequest(requestId: string): Promise<LaunchOut
       ? `${pad.site}/pool/${perpsPoolId}`
       : pad.site
     : poolPageUrl(pad, deployment.tokenAddress);
-  const positionLine = isPerps && request.underlying
-    ? `${request.underlying.toUpperCase().replace(/USD$/, "")} ${request.perps_long === false ? "SHORT" : "LONG"} ${(request.leverage_bps ?? 10_000) / 10_000}x`
-    : null;
+  // A curve launch has no leveraged position yet — the pool raises first, so the
+  // reply must not claim one.
+  const positionLine = isPerps ? "Bonding curve" : null;
   await client
     .from("x_launch_requests")
     .update({
