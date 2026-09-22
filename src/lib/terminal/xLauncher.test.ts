@@ -296,3 +296,18 @@ describe("messy ticker labels", () => {
     expect(parsed?.launchpad).toBe("suipump");
   });
 });
+
+describe("launchpad after chatter", () => {
+  it("finds the pad past an unrelated \"on <word>\" phrase", () => {
+    const parsed = parseDeployTweet(
+      "@Ourblastbot deploy $MOON Moon Cat, a bet on NVDA, Position: LONG, Leverage: 5x on Perpsplexity",
+    );
+    expect(parsed?.symbol).toBe("MOON");
+    expect(parsed?.launchpad).toBe("perpsplexity");
+  });
+
+  it("still ignores chatter when no pad is named", () => {
+    const parsed = parseDeployTweet("@Ourblastbot deploy $DOG Sui Dog on Monday");
+    expect(parsed?.launchpad).toBe("suipump");
+  });
+});
