@@ -296,6 +296,10 @@ function AdminPage() {
           <LauncherSettingsCard />
           <SuipumpReadinessCard />
         </div>
+      ) : tab === "fees" ? (
+        <div className="max-w-2xl">
+          <DevFeeCard />
+        </div>
       ) : tab === "challenge" ? (
         <div className="panel max-w-xl space-y-3 p-5 sm:p-6">
           <SectionTitle kicker="Today" title="Set the challenge" />
