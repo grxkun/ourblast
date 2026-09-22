@@ -508,12 +508,16 @@ export function composeDeployedLaunchReply(
   poolUrl: string,
   claimToken?: string | null,
   positionLine?: string | null,
+  /** Set when the caller handed the creator fees to someone else. */
+  designatedHandle?: string | null,
 ): string {
   const position = positionLine ? `\n${positionLine}\n` : "";
   // Exactly one $cashtag per reply — X rejects posts that carry more.
   const base = `🚀 $${symbol} LIVE\n${position}\nToken:\n${tokenUrl}\n\nPool:\n${poolUrl}`;
-  if (!claimToken) return base;
-  return `${base}\n\nYour creator fee share:\nhttps://ourblast.xyz/claim/${claimToken}`;
+  const designation = designatedHandle ? `\n\nCreator fees designated to @${designatedHandle}.` : "";
+  if (!claimToken) return `${base}${designation}`;
+  const who = designatedHandle ? `Creator fee share for @${designatedHandle}` : "Your creator fee share";
+  return `${base}${designation}\n\n${who}:\nhttps://ourblast.xyz/claim/${claimToken}`;
 }
 
 async function postDeployedReply(
@@ -530,7 +534,14 @@ async function postDeployedReply(
     const replyId = await postReply(
       credentials,
       request.x_post_id,
-      composeDeployedLaunchReply(request.symbol, tokenUrl, poolUrl, claimToken, positionLine),
+      composeDeployedLaunchReply(
+        request.symbol,
+        tokenUrl,
+        poolUrl,
+        claimToken,
+        positionLine,
+        request.fee_receiver_x_username ?? (request.fee_receiver_wallet ? null : null),
+      ),
     );
     const client = await db();
     await client.from("x_launch_requests").update({ deployed_reply_post_id: replyId }).eq("id", request.id);
