@@ -9,6 +9,7 @@ import { TerminalTutorial } from "@/components/terminal/TerminalTutorial";
 import { XMentionInbox } from "@/components/terminal/XMentionInbox";
 import { GasReserveCard } from "@/components/terminal/GasReserveCard";
 import { FeeRoutingCard } from "@/components/terminal/FeeRoutingCard";
+import { CreatorClaimCard } from "@/components/terminal/CreatorClaimCard";
 import { CreatorFeeDesignationCard } from "@/components/terminal/CreatorFeeDesignationCard";
 import { XConnectButton } from "@/components/terminal/XConnectButton";
 import { SocialSignIn } from "@/components/terminal/SocialSignIn";
