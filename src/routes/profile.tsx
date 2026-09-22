@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
 import { SectionTitle } from "@/components/blast/AppShell";
+import { MyTokensCard } from "@/components/blast/MyTokensCard";
 import { PlayerAvatar } from "@/components/blast/PlayerBadge";
 import { useBlast } from "@/components/blast/session";
 import { supabase } from "@/integrations/supabase/client";
@@ -195,6 +196,8 @@ function ProfilePage() {
           </button>
         </div>
       </section>
+
+      <MyTokensCard />
 
       <section>
         <SectionTitle kicker="Achievements" title="Badge wall" />
