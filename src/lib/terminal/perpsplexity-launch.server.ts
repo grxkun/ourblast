@@ -435,21 +435,32 @@ export async function launchOnPerpsplexity(input: PerpsLaunchInput): Promise<Per
       sharedRef(PERPSPLEXITY_CONFIG_ID),
       sharedRef(CLOCK),
     ]);
-  // The launch fee must come from a real Coin<SUI> object. With several coins
-  // we dedicate the first to the fee and keep the rest for gas; with a single
-  // coin that coin is the gas payment, so the fee is split from tx.gas (valid,
-  // because the gas payment is an explicit coin object, not an address-balance
-  // withdrawal). With no coins at all the fee input cannot be built.
-  const prepareGas = await freshGas();
+  // The launch capital is exactly the fee Perpsplexity's config publishes
+  // (5 SUI on mainnet, matching the reference create transaction: -5.000000000
+  // SUI capital + gas + 1 USDC). It is paid from a coin holding precisely that
+  // amount, kept out of the gas payment — splitting it from tx.gas reserved the
+  // gas coin's whole balance, which is why prepare asked for 33.3 SUI.
+  let feeCoin: SuiCoin | null = null;
+  let prepareGas: { objectId: string; version: string; digest: string; type: string }[] = [];
+  try {
+    if (launchFeeMist > 0n) {
+      const picked = await exactFeeCoin(sender, keypair, gasPrice, launchFeeMist);
+      feeCoin = picked.fee;
+      prepareGas = picked.gas.map((coin) => ({ ...coin, type: "0x2::coin::Coin<0x2::sui::SUI>" }));
+    } else {
+      prepareGas = await freshGas();
+    }
+  } catch (error) {
+    return fail((error as Error).message, { coinType, packageId });
+  }
   if (prepareGas.length === 0) {
     return fail(
-      "The bot wallet has no SUI coin to pay the launch fee from. Send a few SUI to it with a normal transfer, then launch again.",
+      "The bot wallet has no SUI coin left to pay gas. Send a few SUI to it with a normal transfer, then launch again.",
       { coinType, packageId },
     );
   }
-  const feeCoin = launchFeeMist > 0n && prepareGas.length > 1 ? prepareGas[0]! : null;
   const prepareTx = new Transaction();
-  withGas(prepareTx, sender, feeCoin ? prepareGas.slice(1) : prepareGas, gasPrice, PREPARE_BUDGET);
+  withGas(prepareTx, sender, prepareGas, gasPrice, PREPARE_BUDGET);
   const createResults = prepareTx.moveCall({
     target: `${packageId}::${names.module}::create`,
     arguments: [
