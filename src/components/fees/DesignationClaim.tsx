@@ -112,7 +112,17 @@ export function DesignationClaim({ tokenAddress }: { tokenAddress: string }) {
             {statusLabel({ status: row.status as "designated", unclaimedAmount: unclaimed })}
           </dd>
           <dt className="text-muted-foreground">Unclaimed creator fees</dt>
-          <dd className="font-bold">{formatSui(unclaimed)}</dd>
+          <dd className="font-bold">
+            {onChain || unclaimed > 0 ? formatSui(unclaimed) : live.isLoading ? "reading from chain…" : "0 SUI"}
+          </dd>
+          {onChain ? (
+            <>
+              <dt className="text-muted-foreground">Fees waiting in the token</dt>
+              <dd className="font-bold">{formatSui(onChain.pendingSui)}</dd>
+              <dt className="text-muted-foreground">Read from chain</dt>
+              <dd className="font-bold">{timeAgo(live.data?.readAt ?? new Date().toISOString())}</dd>
+            </>
+          ) : null}
           <dt className="text-muted-foreground">Fee recipient wallet</dt>
           <dd className="break-all font-bold">{row.recipient_wallet}</dd>
           {row.recipient_x_handle || row.recipient_name ? (
