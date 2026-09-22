@@ -157,6 +157,36 @@ export function DevFeeCard() {
             </div>
           </div>
 
+          {/* On-chain per-token dev share */}
+          <div className="rounded-lg border border-border bg-background/60 p-3">
+            <p className="font-display text-xs uppercase text-muted-foreground">
+              Your share, read from chain
+            </p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Each launch writes its fee recipients permanently into the token. This is what every deployed token
+              actually pays you on trading volume.
+            </p>
+            {ledger.isLoading ? (
+              <p className="mt-3 text-xs text-muted-foreground">Reading launch transactions…</p>
+            ) : ledger.data && ledger.data.length > 0 ? (
+              <ul className="mt-3 divide-y divide-border">
+                {ledger.data.map((row) => (
+                  <li key={row.digest} className="flex flex-wrap items-baseline justify-between gap-2 py-2">
+                    <span className="font-bold">${row.symbol}</span>
+                    <span className="text-xs text-muted-foreground">{row.launchpad}</span>
+                    <span className={row.devBps ? "font-display text-lime" : "text-xs text-muted-foreground"}>
+                      {row.devBps ? `${row.devBps / 100}% of creator fees to you` : (row.note ?? "no dev share")}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="mt-3 text-xs text-muted-foreground">
+                {ledger.error?.message ?? "No deployed launches yet."}
+              </p>
+            )}
+          </div>
+
           {/* Claim form */}
           <div className="rounded-lg border border-border bg-background/60 p-3">
             <label className="font-display text-xs uppercase text-muted-foreground">
