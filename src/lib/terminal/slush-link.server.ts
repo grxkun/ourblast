@@ -92,9 +92,6 @@ export async function createSlushClaimLink(amountSui: number): Promise<SlushLink
 export async function payableBalanceSui(): Promise<number> {
   const sender = await deployerAddress();
   if (!sender) return 0;
-  const total = (await gasCoins(sender)).reduce((sum, coin) => sum + BigInt(coin.version ? 0 : 0), 0n);
-  // Coin balances are not part of the owned-object shape, so read them back by id.
-  void total;
   const { rpc } = await import("./suipump-launch.server");
   const result = await rpc<{ totalBalance: string }>("suix_getBalance", [sender, "0x2::sui::SUI"]).catch(() => null);
   const balance = BigInt(result?.totalBalance ?? "0");
