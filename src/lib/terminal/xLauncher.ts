@@ -82,19 +82,18 @@ const FIELD_NAME =
 export function parseDeployTweet(rawText: string, defaultPad = LAUNCHPAD.id): DeployRequest | null {
   // Read the launchpad wherever it appears — on the raw text first, because
   // mention stripping would eat "@perpsplexity" before we could see it.
-  const rawPadMatch = rawText.match(PAD_ANYWHERE);
+  // Read the pad from the raw text too, because mention stripping would eat
+  // "@perpsplexity" before we could see it.
+  const rawPadMatch = findPadMatch(rawText);
   let text = normalizeCommandText(rawText);
 
-  const textPadMatch = text.match(PAD_ANYWHERE);
+  const textPadMatch = findPadMatch(text);
   const padMatch = textPadMatch ?? rawPadMatch;
   let requestedPad: string | null = null;
-  if (padMatch?.[1]) {
-    const candidate = padMatch[1].replace(/\s+/g, "").replace(/^@/, "");
-    // Only accept words that actually name a supported pad (typos included);
-    // anything else ("on Monday") is chatter and leaves the default pad.
-    if (matchLaunchpad(candidate)) {
-      requestedPad = candidate;
-      if (textPadMatch) text = (text.slice(0, textPadMatch.index) + " " + text.slice((textPadMatch.index ?? 0) + textPadMatch[0].length)).trim();
+  if (padMatch) {
+    requestedPad = padMatch.candidate;
+    if (textPadMatch) {
+      text = (text.slice(0, textPadMatch.index) + " " + text.slice(textPadMatch.index + textPadMatch.length)).trim();
     }
   }
 
