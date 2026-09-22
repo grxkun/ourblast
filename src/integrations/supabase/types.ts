@@ -927,6 +927,7 @@ export type Database = {
           designation_tx: string | null
           id: string
           launchpad: string
+          recalled_at: string | null
           recipient_name: string | null
           recipient_wallet: string
           recipient_x_handle: string | null
@@ -952,6 +953,7 @@ export type Database = {
           designation_tx?: string | null
           id?: string
           launchpad?: string
+          recalled_at?: string | null
           recipient_name?: string | null
           recipient_wallet: string
           recipient_x_handle?: string | null
@@ -977,6 +979,7 @@ export type Database = {
           designation_tx?: string | null
           id?: string
           launchpad?: string
+          recalled_at?: string | null
           recipient_name?: string | null
           recipient_wallet?: string
           recipient_x_handle?: string | null
