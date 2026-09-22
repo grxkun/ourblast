@@ -222,6 +222,73 @@ async function usdcSeedCoin(tx: Transaction, owner: string, seedUnits: bigint): 
   return tx.splitCoins(baseRef, [seedUnits])[0]!;
 }
 
+interface SuiCoin {
+  objectId: string;
+  version: string;
+  digest: string;
+  balance: bigint;
+}
+
+async function suiCoins(owner: string): Promise<SuiCoin[]> {
+  const result = await rpc<{
+    data: { coinObjectId: string; version: string; digest: string; balance: string }[];
+  }>("suix_getCoins", [owner, "0x2::sui::SUI", null, 50]);
+  return (result.data ?? [])
+    .map((coin) => ({
+      objectId: coin.coinObjectId,
+      version: String(coin.version),
+      digest: coin.digest,
+      balance: BigInt(coin.balance),
+    }))
+    .sort((a, b) => (a.balance > b.balance ? -1 : 1));
+}
+
+/**
+ * The launch capital is a fixed amount read from Perpsplexity's config (5 SUI
+ * on mainnet). The reference create transaction pays it from a coin holding
+ * exactly that amount — never by splitting the gas coin, because a gas payment
+ * reserves its whole balance, which is what made our prepare ask for the
+ * wallet's entire 33 SUI instead of 5. So: find (or mint, in its own small
+ * transaction) a Coin<SUI> worth exactly the launch fee, and keep it out of the
+ * gas payment. Leverage never touches this amount.
+ */
+async function exactFeeCoin(
+  sender: string,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  keypair: any,
+  gasPrice: number,
+  amountMist: bigint,
+): Promise<{ fee: SuiCoin; gas: SuiCoin[] }> {
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    const coins = await suiCoins(sender);
+    if (coins.length === 0) {
+      throw new Error("The bot wallet holds no SUI coin. Send a few SUI to it with a normal transfer, then launch again.");
+    }
+    const exact = coins.find((coin) => coin.balance === amountMist);
+    const rest = exact ? coins.filter((coin) => coin.objectId !== exact.objectId) : [];
+    if (exact && rest.length > 0) return { fee: exact, gas: rest };
+
+    const source = coins.find((coin) => coin.balance > amountMist + 100_000_000n);
+    if (!source) {
+      throw new Error(
+        `The bot wallet needs at least ${Number(amountMist) / 1_000_000_000 + 0.1} SUI in one coin for the launch fee plus gas.`,
+      );
+    }
+    // Mint the exact-amount coin on its own; this transaction may safely split
+    // from its gas coin because nothing else in it reserves a balance.
+    const splitTx = new Transaction();
+    withGas(splitTx, sender, [{ ...source, type: "0x2::coin::Coin<0x2::sui::SUI>" }], gasPrice, 50_000_000);
+    const [piece] = splitTx.splitCoins(splitTx.gas, [amountMist]);
+    splitTx.transferObjects([piece!], sender);
+    const run = await signAndExecute(splitTx, keypair);
+    if (!run.ok || !run.digest) throw new Error(run.error ?? "Could not set aside the launch fee coin.");
+    const receipt = await fetchReceipt(run.digest);
+    if (!receipt.ok) throw new Error(receipt.error ?? "Could not set aside the launch fee coin.");
+    await new Promise((resolve) => setTimeout(resolve, 2000));
+  }
+  throw new Error("Could not set aside the exact launch fee coin.");
+}
+
 async function readLaunchFeeMist(): Promise<bigint> {
   const result = await rpc<{
     data?: { content?: { fields?: { params?: { fields?: { launch_fee_mist?: string } }; paused?: boolean } } | null };
