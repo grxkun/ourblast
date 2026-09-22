@@ -53,7 +53,10 @@ export function MyTokensCard() {
         </p>
       ) : (
         <ul className="divide-y divide-border">
-          {tokens.map((t) => (
+          {tokens.map((t) => {
+            const onChain = findLiveFee(live.data?.rows, { symbol: t.symbol });
+            const mine = walletShareSui(onChain, profile?.wallet_address ?? null);
+            return (
             <li key={`${t.symbol}-${t.createdAt}`} className="py-3">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <div className="min-w-0">
@@ -64,6 +67,12 @@ export function MyTokensCard() {
                   <p className="font-body text-xs text-muted-foreground">
                     {t.launchpad} · {t.status.toLowerCase()} · {timeAgo(t.createdAt)}
                   </p>
+                  {onChain ? (
+                    <p className="font-body text-xs text-lime">
+                      {formatSui(onChain.pendingSui)} waiting in the token
+                      {mine > 0 ? ` · your share ${formatSui(mine)}` : ""}
+                    </p>
+                  ) : null}
                 </div>
                 <div className="flex items-center gap-2">
                   {t.tokenUrl ? (
