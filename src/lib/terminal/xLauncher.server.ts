@@ -129,6 +129,7 @@ async function feeRouting(
   // and gas, 10% is swapped to BLAST and burned from the same wallet.
   const bot = (process.env['OURBLAST_BOT_WALLET_ADDRESS']?.trim() || BOT_WALLET_ADDRESS).toLowerCase();
   const developer = FOUNDER_ADDRESS.toLowerCase();
+  const treasury = DEFAULT_TREASURY_ADDRESS.toLowerCase();
   // A tweet may hand the creator fees to someone else ("Set @adiniyi as fee
   // receiver"): that wallet takes the launcher's 70% instead.
   const named = (receiver?.wallet ?? "").trim().toLowerCase();
