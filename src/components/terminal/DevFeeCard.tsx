@@ -136,7 +136,7 @@ export function DevFeeCard() {
               <p className="font-display text-xs uppercase text-muted-foreground">Game sessions</p>
               <p className="font-display text-xl">{data.gameSessions}</p>
               <p className="text-xs text-muted-foreground">
-                ~{data.estimatedDevGameShareSui.toFixed(2)} SUI dev share
+                ~{data.estimatedDevGameShareSui.toFixed(2)} SUI dev share — already paid on chain
               </p>
             </div>
             <div className="rounded-lg border border-border bg-background/60 p-3">
