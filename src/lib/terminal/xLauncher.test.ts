@@ -311,3 +311,29 @@ describe("launchpad after chatter", () => {
     expect(parsed?.launchpad).toBe("suipump");
   });
 });
+
+describe("fee receiver in the tweet", () => {
+  it("reads 'Set @adiniyi as fee receiver' and keeps the name and ticker", async () => {
+    const { parseDeployTweet } = await import("./xLauncher");
+    const request = parseDeployTweet(
+      "Hay @OURBLASTBOT\n\nLaunch a token named Baldeniyi ticker $BALDENIYI,\n\nSet @adiniyi as fee receiver",
+    );
+    expect(request?.symbol).toBe("BALDENIYI");
+    expect(request?.name).toBe("Baldeniyi");
+    expect(request?.feeReceiver).toEqual({ handle: "adiniyi" });
+  });
+
+  it("reads a wallet fee receiver", async () => {
+    const { parseDeployTweet } = await import("./xLauncher");
+    const wallet = `0x${"a".repeat(64)}`;
+    const request = parseDeployTweet(`deploy $DOG Sui Dog, fee receiver: ${wallet}`);
+    expect(request?.symbol).toBe("DOG");
+    expect(request?.feeReceiver?.wallet).toBe(wallet);
+    expect(request?.name).toBe("Sui Dog");
+  });
+
+  it("leaves the fee receiver unset when the tweet does not name one", async () => {
+    const { parseDeployTweet } = await import("./xLauncher");
+    expect(parseDeployTweet("deploy $DOG Sui Dog")?.feeReceiver).toBeUndefined();
+  });
+});

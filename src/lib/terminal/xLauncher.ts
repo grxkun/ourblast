@@ -28,6 +28,16 @@ export const DEFAULT_LAUNCHER_SETTINGS: LauncherSettings = {
   autoLaunchEnabled: false,
 };
 
+/**
+ * Who the caller wants the creator fees to go to, read from the tweet
+ * ("Set @adiniyi as fee receiver", "fee receiver: 0x…"). Metadata only — naming
+ * someone implies no endorsement by them.
+ */
+export interface FeeReceiverRequest {
+  handle?: string | undefined;
+  wallet?: string | undefined;
+}
+
 export interface DeployRequest {
   symbol: string;
   name: string;
@@ -35,6 +45,39 @@ export interface DeployRequest {
   launchpad: string;
   /** Present for market-backed launches on Perpsplexity. */
   perps?: PerpsPositionRequest | undefined;
+  /** Present when the tweet names a creator-fee receiver. */
+  feeReceiver?: FeeReceiverRequest | undefined;
+}
+
+/** "Set @adiniyi as fee receiver", "fee receiver: @x", "creator fees to 0x…". */
+const FEE_RECEIVER_PATTERNS: RegExp[] = [
+  /\bset\s+(?:@([a-z0-9_]{1,15})|(0x[a-f0-9]{6,66}))\s+as\s+(?:the\s+|my\s+)?(?:creator\s+)?fee\s+(?:receiver|recipient|wallet|payout)\b/i,
+  /\b(?:creator\s+)?fee\s+(?:receiver|recipient|wallet|payout)\s*(?:is\s+)?[:=]?\s*(?:@([a-z0-9_]{1,15})|(0x[a-f0-9]{6,66}))/i,
+  /\b(?:creator\s+)?fees?\s+(?:go(?:es)?\s+)?to\s+(?:@([a-z0-9_]{1,15})|(0x[a-f0-9]{6,66}))/i,
+];
+
+/** Leftovers of the same phrases, removed so they never leak into the token name. */
+const FEE_PHRASE_CLEANUP: RegExp[] = [
+  /\bset\s+(?:@?[a-z0-9_]{1,20}\s+)?as\s+(?:the\s+|my\s+)?(?:creator\s+)?fee\s+(?:receiver|recipient|wallet|payout)\b/gi,
+  /\b(?:creator\s+)?fee\s+(?:receiver|recipient|wallet|payout)\s*(?:is\s+)?[:=]?\s*(?:0x[a-f0-9]{6,66}|@?[a-z0-9_]{1,20})?/gi,
+  /\b(?:creator\s+)?fees?\s+(?:go(?:es)?\s+)?to\s+(?:0x[a-f0-9]{6,66}|@?[a-z0-9_]{1,20})/gi,
+];
+
+/** Reads the fee receiver out of the raw tweet text (before mentions are stripped). */
+export function extractFeeReceiver(rawText: string): FeeReceiverRequest | null {
+  for (const pattern of FEE_RECEIVER_PATTERNS) {
+    const match = rawText.match(pattern);
+    if (!match) continue;
+    if (match[1]) return { handle: match[1].toLowerCase() };
+    if (match[2]) return { wallet: match[2].toLowerCase() };
+  }
+  return null;
+}
+
+function stripFeePhrases(text: string): string {
+  let out = text;
+  for (const pattern of FEE_PHRASE_CLEANUP) out = out.replace(pattern, " ");
+  return out.replace(/\s{2,}/g, " ").replace(/\s+([,.;:])/g, "$1").trim();
 }
 
 /**
@@ -72,6 +115,10 @@ const DEPLOY_VERB = /\b(?:deploy|launch|create|mint|make)\b/i;
 const FIELD_NAME =
   /\b(?:n[ase]?me|title)\s*[:=]\s*([^$]+?)(?=\s+\b(?:ticker|symbol|sym|image|img|picture|pic|supply|desc|description|underlying|market|asset|position|direction|side|leverage|lev|mc)\b|\s*$)/i;
 
+/** "named Baldeniyi ticker $BALDENIYI" — a colon-free name, ended by the next label or comma. */
+const FIELD_NAME_LOOSE =
+  /\b(?:named|called)\s+([a-z0-9][^$,\n]*?)(?=\s+\b(?:ticker|symbol|sym|image|img|picture|pic|supply|desc|description|underlying|market|asset|position|direction|side|leverage|lev|mc|fee|fees)\b|[,\n]|\s*$)/i;
+
 /** "Underlying: NVDA" / "market = TSLA" — shared with the terminal parser. */
 
 /**
@@ -83,7 +130,9 @@ export function parseDeployTweet(rawText: string, defaultPad = LAUNCHPAD.id): De
   // Read the launchpad wherever it appears — on the raw text first, because
   // mention stripping would eat "@perpsplexity" before we could see it.
   const rawPadMatch = findPadMatch(rawText);
-  let text = normalizeCommandText(rawText);
+  // Same reason: "@adiniyi" must be read before mention stripping removes it.
+  const feeReceiver = extractFeeReceiver(rawText) ?? undefined;
+  let text = stripFeePhrases(normalizeCommandText(rawText));
 
   const textPadMatch = findPadMatch(text);
   const padMatch = textPadMatch ?? rawPadMatch;
@@ -110,7 +159,7 @@ export function parseDeployTweet(rawText: string, defaultPad = LAUNCHPAD.id): De
       .replace(/[\s.,!?;:-]+$/g, "")
       .trim();
     const name = rawName.length >= 2 ? rawName.slice(0, 64) : symbol;
-    return { symbol, name, launchpad: pad.id, perps };
+    return { symbol, name, launchpad: pad.id, perps, feeReceiver };
   }
 
   // Field-style tweets: "deploy a token on suipump / Name: THINKING CAT / ticker: $HMMM".
@@ -121,19 +170,19 @@ export function parseDeployTweet(rawText: string, defaultPad = LAUNCHPAD.id): De
   // normalizeSymbol keeps the meaningful part.
   const labelled = text.match(/\b(?:ticker|symbol|sym)\s*(?:is\s+)?[:=]?\s*\$?((?:[a-z0-9]+[/\\_.-]){0,2}[a-z0-9]{2,10})\b/i);
   const cashtag = labelled ?? text.match(/\$([a-z0-9]{2,10})\b/i);
-  const nameMatch = text.match(FIELD_NAME);
+  const nameMatch = text.match(FIELD_NAME) ?? text.match(FIELD_NAME_LOOSE);
   const nameRaw = nameMatch?.[1]?.trim().replace(/[\s,;:.\-–—]+$/g, "") ?? "";
   if (!cashtag?.[1]) {
     // No ticker anywhere: derive one from an explicit "Name: …" so field-style
     // tweets without a cashtag still launch ("Name: Monerochan" → $MONEROCHAN).
     const derived = nameRaw.replace(/[^a-z0-9]/gi, "").toUpperCase().slice(0, 10);
     if (derived.length < 2) return null;
-    return { symbol: derived, name: nameRaw.slice(0, 64), launchpad: pad.id, perps };
+    return { symbol: derived, name: nameRaw.slice(0, 64), launchpad: pad.id, perps, feeReceiver };
   }
   const symbol = normalizeSymbol(cashtag[1]);
   if (!symbol) return null;
   const name = nameRaw.length >= 2 ? nameRaw.slice(0, 64) : symbol;
-  return { symbol, name, launchpad: pad.id, perps };
+  return { symbol, name, launchpad: pad.id, perps, feeReceiver };
 }
 
 export function padFor(settings: LauncherSettings, requested?: string | null): LaunchpadConfig {

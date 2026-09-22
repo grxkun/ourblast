@@ -14,6 +14,8 @@ import { launchXRequest } from "@/lib/terminal/xLauncher.functions";
 type Row = {
   id: string;
   x_username: string;
+  fee_receiver_x_username: string | null;
+  fee_receiver_wallet: string | null;
   symbol: string;
   name: string;
   launchpad: string;
@@ -45,7 +47,7 @@ export function XLaunchQueue() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("x_launch_requests")
-        .select("id, x_username, symbol, name, launchpad, dev_buy, ourblast_fee_percent, status, token_url, pool_url, notice, underlying, perps_long, leverage_bps, starting_cap_usd")
+        .select("id, x_username, fee_receiver_x_username, fee_receiver_wallet, symbol, name, launchpad, dev_buy, ourblast_fee_percent, status, token_url, pool_url, notice, underlying, perps_long, leverage_bps, starting_cap_usd")
         .order("created_at", { ascending: false })
         .limit(10);
       if (error) throw error;
@@ -109,6 +111,14 @@ export function XLaunchQueue() {
                   <header className="flex items-center justify-between gap-2">
                     <p className="font-body text-xs font-bold uppercase text-muted-foreground">🚀 New X launch</p>
                     <Badge variant="outline">@{row.x_username}</Badge>
+                    {row.fee_receiver_x_username || row.fee_receiver_wallet ? (
+                      <Badge variant="outline">
+                        fees →{" "}
+                        {row.fee_receiver_x_username
+                          ? `@${row.fee_receiver_x_username}`
+                          : `${row.fee_receiver_wallet!.slice(0, 6)}…${row.fee_receiver_wallet!.slice(-4)}`}
+                      </Badge>
+                    ) : null}
                   </header>
                   <p className="mt-2 font-display text-3xl">${row.symbol}</p>
                   <p className="text-sm">{row.name}</p>
