@@ -101,4 +101,5 @@
 - [ ] Live test blocked: launch fee 75 SUI + ≥1 USDC seed vs bot wallet ~28.79 SUI — needs funding
 - Note: X bot behavior for Suipump unchanged; perps replies keep single-$cashtag rule
 
-- Check https://x.com/halt_ab/status/2102385655183794521 — bot never replied; ingest + reply
+- [x] Check https://x.com/halt_ab/status/2102385655183794521 — bot never replied; ingested + replied
+- [x] Add fee claim link to deployed X launch replies
