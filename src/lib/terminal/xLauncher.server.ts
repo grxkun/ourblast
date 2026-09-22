@@ -433,7 +433,11 @@ export async function executeLaunchRequest(requestId: string): Promise<LaunchOut
   const tokenUrl = isPerps
     ? `https://suiscan.xyz/mainnet/coin/${deployment.tokenAddress}`
     : tokenPageUrl(pad, deployment.tokenAddress);
-  const poolUrl = isPerps ? pad.site : poolPageUrl(pad, deployment.tokenAddress);
+  const poolUrl = isPerps
+    ? perpsPoolId
+      ? `${pad.site}/pool/${perpsPoolId}`
+      : pad.site
+    : poolPageUrl(pad, deployment.tokenAddress);
   const positionLine = isPerps && request.underlying
     ? `${request.underlying.toUpperCase().replace(/USD$/, "")} ${request.perps_long === false ? "SHORT" : "LONG"} ${(request.leverage_bps ?? 10_000) / 10_000}x`
     : null;
