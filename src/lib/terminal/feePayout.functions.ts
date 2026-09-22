@@ -173,68 +173,8 @@ export const getClaimViewer = createServerFn({ method: "POST" })
 export const claimFeeLink = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => z.object({ token: z.string().min(8).max(64) }).parse(input))
-  .handler(async ({ data, context }) => {
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-
-    const { data: link, error: linkError } = await supabaseAdmin
-      .from("fee_claim_links")
-      .select("token, launch_symbol, x_username, status")
-      .eq("token", data.token)
-      .maybeSingle();
-    if (linkError) throw new Error(linkError.message);
-    if (!link) return { ok: false as const, message: "This claim link does not exist." };
-
-    const { data: account } = await supabaseAdmin
-      .from("x_accounts")
-      .select("username")
-      .eq("user_id", context.userId)
-      .maybeSingle();
-    const viewerX = (account?.username ?? "").replace(/^@/, "");
-    const reservedFor = (link.x_username ?? "").replace(/^@/, "");
-    if (!viewerX) return { ok: false as const, message: "Sign in with X first so we can verify the handle." };
-    if (viewerX.toLowerCase() !== reservedFor.toLowerCase()) {
-      return { ok: false as const, message: `These fees are reserved for @${reservedFor}, not @${viewerX}.` };
-    }
-
-    const { data: profile } = await supabaseAdmin
-      .from("profiles")
-      .select("wallet_address")
-      .eq("id", context.userId)
-      .maybeSingle();
-    const wallet = (profile?.wallet_address ?? "").trim().toLowerCase();
-    if (!/^0x[a-f0-9]{40,64}$/.test(wallet)) {
-      return { ok: false as const, message: "Connect a Sui wallet to your OURBLAST account first." };
-    }
-
-    const { data: row, error } = await supabaseAdmin
-      .from("fee_claim_links")
-      .update({ status: "claimed", claimed_wallet: wallet, claimed_at: new Date().toISOString() })
-      .eq("token", data.token)
-      .eq("status", "pending")
-      .select("token, launch_symbol, x_username, amount_sui, status, claimed_wallet")
-      .maybeSingle();
-    if (error) throw new Error(error.message);
-    if (!row) return { ok: false as const, message: "This claim link was already used or has expired." };
-
-    // Remember the destination so this launcher's future launches pay them
-    // straight on chain instead of parking the share again.
-    await supabaseAdmin.from("launch_fee_payouts").upsert(
-      {
-        user_id: context.userId,
-        launch_symbol: row.launch_symbol,
-        launchpad: "suipump",
-        mode: "wallet",
-        destination_wallet: wallet,
-        destination_x_username: reservedFor,
-      },
-      { onConflict: "user_id,launch_symbol" },
-    );
-
-    return {
-      ok: true as const,
-      message: `Verified. Your $${row.launch_symbol} creator share is routed to ${wallet.slice(0, 6)}…${wallet.slice(-4)}.`,
-      claim: row,
-    };
-  });
+  .handler(async ({ data, context }) =>
+    performClaim(await claimStore(), context.userId, data.token),
+  );
 
 export type { FeePayout };
