@@ -15,7 +15,7 @@ export const DESIGNATION_DISCLAIMER =
 export const DESIGNATION_AUTHORIZATION =
   "I authorize OurBlast to designate this wallet as the creator-fee recipient.";
 
-export const DESIGNATION_STATUSES = ["designated", "claimable", "claimed"] as const;
+export const DESIGNATION_STATUSES = ["designated", "claimable", "claimed", "recalled"] as const;
 export type DesignationStatus = (typeof DESIGNATION_STATUSES)[number];
 
 export interface CreatorFeeDesignation {
@@ -60,7 +60,20 @@ export function looksLikeTokenAddress(value: string): boolean {
   return /^0x[a-f0-9]{6,}/i.test(value.trim());
 }
 
+/**
+ * A designation the recipient has not claimed yet can be taken back by the
+ * deployer, who then claims the parked fees themselves through a fresh link.
+ * Once claimed, it stands.
+ */
+export function canRecallDesignation(row: Pick<CreatorFeeDesignation, "status">): boolean {
+  return row.status !== "claimed" && row.status !== "recalled";
+}
+
+export const RECALL_NOTE =
+  "Recalling ends the endorsement: the designated wallet can no longer claim, its claim link stops working, and a new claim link is issued to you.";
+
 export function statusLabel(row: Pick<CreatorFeeDesignation, "status" | "unclaimedAmount">): string {
+  if (row.status === "recalled") return "Endorsement Recalled";
   if (row.status === "claimed") return "Claimed";
   if (row.status === "claimable" || row.unclaimedAmount > 0) return "Claimable";
   return "Fee Recipient Designated";
@@ -68,6 +81,7 @@ export function statusLabel(row: Pick<CreatorFeeDesignation, "status" | "unclaim
 
 /** Shown on the dashboard, where "has the recipient acted yet" is the useful read. */
 export function claimStateLabel(row: Pick<CreatorFeeDesignation, "status">): string {
+  if (row.status === "recalled") return "Recalled by Deployer";
   return row.status === "claimed" ? "Claimed" : "Recipient Not Yet Claimed";
 }
 

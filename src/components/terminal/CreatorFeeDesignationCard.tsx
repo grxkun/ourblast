@@ -1,17 +1,23 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { Copy, HandCoins, Link2, ShieldAlert } from "lucide-react";
+import { Copy, HandCoins, Link2, RotateCcw, ShieldAlert } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useBlast } from "@/components/blast/session";
-import { designateCreatorFee, getMyDesignations } from "@/lib/terminal/creatorFee.functions";
 import {
+  designateCreatorFee,
+  getMyDesignations,
+  recallCreatorFeeDesignation,
+} from "@/lib/terminal/creatorFee.functions";
+import {
+  canRecallDesignation,
   DESIGNATION_AUTHORIZATION,
   DESIGNATION_DISCLAIMER,
   formatSui,
+  RECALL_NOTE,
   recipientLockedNote,
   shareText,
   shortWallet,
@@ -63,6 +69,18 @@ export function CreatorFeeDesignationCard() {
     onSuccess: () => {
       toast.success("Recipient designated. The claim page is live.");
       setAuthorized(false);
+      void queryClient.invalidateQueries({ queryKey: ["my-fee-designations", userId] });
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
+
+  const recallFn = useServerFn(recallCreatorFeeDesignation);
+  const [confirmRecall, setConfirmRecall] = useState<string | null>(null);
+  const recall = useMutation({
+    mutationFn: (tokenAddress: string) => recallFn({ data: { tokenAddress } }),
+    onSuccess: (result) => {
+      toast[result.ok ? "success" : "error"](result.message);
+      setConfirmRecall(null);
       void queryClient.invalidateQueries({ queryKey: ["my-fee-designations", userId] });
     },
     onError: (error: Error) => toast.error(error.message),
@@ -220,6 +238,27 @@ export function CreatorFeeDesignationCard() {
                       <button type="button" className="inline-flex items-center gap-1 underline" onClick={() => void copyShare(row)}>
                         <Copy className="size-3" /> Share text
                       </button>
+                      {canRecallDesignation({ status: row.status as "designated" }) ? (
+                        confirmRecall === row.token_address ? (
+                          <button
+                            type="button"
+                            className="inline-flex items-center gap-1 font-bold text-destructive underline"
+                            disabled={recall.isPending}
+                            onClick={() => recall.mutate(row.token_address)}
+                          >
+                            <RotateCcw className="size-3" /> {recall.isPending ? "Recalling…" : "Confirm recall"}
+                          </button>
+                        ) : (
+                          <button
+                            type="button"
+                            className="inline-flex items-center gap-1 underline"
+                            title={RECALL_NOTE}
+                            onClick={() => setConfirmRecall(row.token_address)}
+                          >
+                            <RotateCcw className="size-3" /> Recall
+                          </button>
+                        )
+                      ) : null}
                     </span>
                   </li>
                 ))}
