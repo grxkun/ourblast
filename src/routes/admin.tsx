@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { SectionTitle } from "@/components/blast/AppShell";
 import { LauncherSettingsCard } from "@/components/terminal/LauncherSettingsCard";
 import { SuipumpReadinessCard } from "@/components/terminal/SuipumpReadinessCard";
+import { DevFeeCard } from "@/components/terminal/DevFeeCard";
 import { PlayerAvatar } from "@/components/blast/PlayerBadge";
 import { useBlast } from "@/components/blast/session";
 import { formatNumber, shortAddress, timeAgo } from "@/lib/blast";
@@ -37,7 +38,7 @@ export const Route = createFileRoute("/admin")({
   component: AdminPage,
 });
 
-type Tab = "players" | "scores" | "chat" | "memes" | "launcher" | "challenge" | "log";
+type Tab = "players" | "scores" | "chat" | "memes" | "launcher" | "challenge" | "fees" | "log";
 
 const TABS: { key: Tab; label: string }[] = [
   { key: "players", label: "Players" },
@@ -46,6 +47,7 @@ const TABS: { key: Tab; label: string }[] = [
   { key: "memes", label: "Memes" },
   { key: "launcher", label: "X launcher" },
   { key: "challenge", label: "Challenge" },
+  { key: "fees", label: "Fees" },
   { key: "log", label: "Audit log" },
 ];
 
