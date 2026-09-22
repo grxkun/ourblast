@@ -540,7 +540,7 @@ async function postDeployedReply(
         poolUrl,
         claimToken,
         positionLine,
-        request.fee_receiver_x_username ?? (request.fee_receiver_wallet ? null : null),
+        request.fee_receiver_x_username,
       ),
     );
     const client = await db();
