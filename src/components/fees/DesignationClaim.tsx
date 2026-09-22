@@ -7,6 +7,8 @@ import { Button } from "@/components/ui/button";
 import { useBlast } from "@/components/blast/session";
 import { supabase } from "@/integrations/supabase/client";
 import { claimCreatorFeeDesignation } from "@/lib/terminal/creatorFee.functions";
+import { getLiveCreatorFees } from "@/lib/terminal/liveFees.functions";
+import { findLiveFee, walletShareSui } from "@/lib/terminal/liveFees";
 import {
   DESIGNATION_DISCLAIMER,
   formatSui,
