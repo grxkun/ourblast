@@ -11,6 +11,9 @@ import { completeXLogin } from "@/lib/terminal/x-login.functions";
 /** Set before leaving for X so we know whether this was a sign-in or a link-up. */
 export const X_FLOW_KEY = "ourblast.x.flow";
 
+/** Optional in-app path to land on after the X round-trip (e.g. a claim page). */
+export const X_RETURN_TO_KEY = "ourblast.x.returnTo";
+
 export const Route = createFileRoute("/oauth/x/return")({
   head: () => ({
     meta: [
@@ -43,11 +46,15 @@ function XReturn() {
     const error = params.get("error_description") ?? params.get("error");
     const flow = sessionStorage.getItem(X_FLOW_KEY) ?? "login";
     sessionStorage.removeItem(X_FLOW_KEY);
+    const stored = sessionStorage.getItem(X_RETURN_TO_KEY);
+    sessionStorage.removeItem(X_RETURN_TO_KEY);
+    // Only same-site app paths, never an attacker-supplied absolute URL.
+    const returnTo = stored && /^\/[A-Za-z0-9\-._~/]*$/.test(stored) ? stored : "/terminal";
 
     const fail = (reason: string) => {
       setMessage(reason);
       toast.error(reason);
-      void navigate({ to: "/terminal" });
+      void navigate({ to: returnTo });
     };
 
     if (!code || !state) {
@@ -69,7 +76,7 @@ function XReturn() {
         await queryClient.invalidateQueries();
         toast.success(`Signed in as 𝕏 @${result.username} 💥`);
       }
-      void navigate({ to: "/terminal" });
+      void navigate({ to: returnTo });
     };
 
     finish().catch((err: unknown) => {
