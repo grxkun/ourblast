@@ -1,0 +1,217 @@
+/**
+ * Creator-fee vault claiming on Suipump.
+ *
+ * Suipump accumulates each token's creator fee inside its Curve object and
+ * releases it with `bonding_curve::claim_creator_fees(&CreatorCap, &mut Curve,
+ * &Clock)`. That single call pays every payee written into the curve at launch
+ * (bot, buy & burn, dev, treasury, launcher) in their on-chain shares — so one
+ * press distributes everything, with nobody needing a Suipump account.
+ *
+ * OURBLAST keeps the CreatorCap in the bot wallet, which is why the terminal can
+ * trigger the distribution at all. It never changes where the money goes: the
+ * recipients and shares are fixed on chain at launch.
+ */
+
+import { Transaction } from "@mysten/sui/transactions";
+
+import {
+  gasCoins,
+  loadDeployer,
+  readSuipumpConfig,
+  referenceGasPrice,
+  rpc,
+  signAndExecute,
+  withGas,
+  normalizeType,
+} from "./suipump-launch.server";
+
+const CLOCK_ID = "0x0000000000000000000000000000000000000000000000000000000000000006";
+const CLAIM_GAS_BUDGET_MIST = 60_000_000;
+const MIST_PER_SUI = 1_000_000_000;
+
+export interface CreatorFeeVault {
+  /** Shared Curve object id — the vault identity used to claim. */
+  curveId: string;
+  capId: string;
+  symbol: string;
+  name: string;
+  coinType: string;
+  /** Unclaimed creator fees held by the curve, in MIST. */
+  pendingMist: string;
+  pendingSui: number;
+  graduated: boolean;
+  payouts: { recipient: string; bps: number }[];
+}
+
+interface ObjectData {
+  objectId: string;
+  version: string;
+  digest: string;
+  type?: string;
+  owner?: { AddressOwner?: string; Shared?: { initial_shared_version: number } } | string;
+  content?: { fields?: Record<string, unknown> };
+}
+
+async function readObject(objectId: string): Promise<ObjectData | null> {
+  const result = await rpc<{ data?: ObjectData }>("sui_getObject", [
+    objectId,
+    { showType: true, showOwner: true, showContent: true },
+  ]).catch(() => null);
+  return result?.data ?? null;
+}
+
+function curveCoinType(type: string): string | null {
+  const match = normalizeType(type).match(/::bonding_curve::Curve<(.+)>$/);
+  return match?.[1] ?? null;
+}
+
+function readPayouts(fields: Record<string, unknown> | undefined): { recipient: string; bps: number }[] {
+  const raw = (fields?.["payouts"] ?? []) as { fields?: { recipient?: string; bps?: string } }[];
+  return raw
+    .map((row) => ({
+      recipient: String(row.fields?.recipient ?? "").toLowerCase(),
+      bps: Number(row.fields?.bps ?? 0),
+    }))
+    .filter((row) => row.recipient.startsWith("0x"));
+}
+
+/** Every Suipump curve whose creator cap the bot wallet still holds. */
+export async function listCreatorFeeVaults(): Promise<CreatorFeeVault[]> {
+  const config = readSuipumpConfig();
+  const keypair = await loadDeployer();
+  const bot = keypair?.getPublicKey().toSuiAddress();
+  if (!bot) return [];
+
+  const owned = await rpc<{
+    data: { data: ObjectData | null }[];
+  }>("suix_getOwnedObjects", [
+    bot,
+    {
+      filter: { StructType: `${config.packageId}::bonding_curve::CreatorCap` },
+      options: { showType: true, showContent: true },
+    },
+    null,
+    50,
+  ]).catch(() => ({ data: [] as { data: ObjectData | null }[] }));
+
+  const caps = (owned.data ?? [])
+    .map((entry) => entry.data)
+    .filter((entry): entry is ObjectData => !!entry);
+
+  const vaults: CreatorFeeVault[] = [];
+  for (const cap of caps) {
+    const curveId = String(cap.content?.fields?.["curve_id"] ?? "");
+    if (!curveId.startsWith("0x")) continue;
+    const curve = await readObject(curveId);
+    const coinType = curveCoinType(curve?.type ?? "");
+    if (!curve || !coinType) continue;
+    const fields = curve.content?.fields;
+    const pendingMist = String(fields?.["creator_fees"] ?? "0");
+    vaults.push({
+      curveId,
+      capId: cap.objectId,
+      symbol: String(fields?.["symbol"] ?? "").toUpperCase(),
+      name: String(fields?.["name"] ?? ""),
+      coinType,
+      pendingMist,
+      pendingSui: Number(pendingMist) / MIST_PER_SUI,
+      graduated: Boolean(fields?.["graduated"]),
+      payouts: readPayouts(fields),
+    });
+  }
+  return vaults.sort((a, b) => b.pendingSui - a.pendingSui);
+}
+
+export interface ClaimVaultResult {
+  ok: boolean;
+  message: string;
+  digest: string | null;
+  claimedSui: number;
+}
+
+/**
+ * Releases one curve's accumulated creator fees to its on-chain payees. The
+ * distribution itself is decided by Suipump from the shares written at launch.
+ */
+export async function claimCreatorFeeVault(curveId: string): Promise<ClaimVaultResult> {
+  const config = readSuipumpConfig();
+  const keypair = await loadDeployer();
+  const sender = keypair?.getPublicKey().toSuiAddress();
+  if (!keypair || !sender) {
+    return { ok: false, message: "The launch wallet is not configured yet.", digest: null, claimedSui: 0 };
+  }
+
+  const curve = await readObject(curveId);
+  const coinType = curveCoinType(curve?.type ?? "");
+  if (!curve || !coinType || typeof curve.owner === "string" || !curve.owner?.Shared) {
+    return { ok: false, message: "That token's fee vault could not be read on chain.", digest: null, claimedSui: 0 };
+  }
+  const pendingMist = Number(curve.content?.fields?.["creator_fees"] ?? 0);
+  if (pendingMist <= 0) {
+    return { ok: false, message: "There are no creator fees waiting for this token yet.", digest: null, claimedSui: 0 };
+  }
+
+  const caps = await rpc<{ data: { data: ObjectData | null }[] }>("suix_getOwnedObjects", [
+    sender,
+    {
+      filter: { StructType: `${config.packageId}::bonding_curve::CreatorCap` },
+      options: { showType: true, showContent: true },
+    },
+    null,
+    50,
+  ]).catch(() => ({ data: [] as { data: ObjectData | null }[] }));
+  const cap = (caps.data ?? [])
+    .map((entry) => entry.data)
+    .find((entry) => entry && String(entry.content?.fields?.["curve_id"] ?? "") === curveId);
+  if (!cap) {
+    return {
+      ok: false,
+      message: "OURBLAST does not hold the creator key for this token, so it cannot release its fees.",
+      digest: null,
+      claimedSui: 0,
+    };
+  }
+
+  const coins = await gasCoins(sender);
+  if (coins.length === 0) {
+    return {
+      ok: false,
+      message: "The bot wallet has no SUI to pay network costs with. Send it a little SUI and try again.",
+      digest: null,
+      claimedSui: 0,
+    };
+  }
+  const gasPrice = await referenceGasPrice();
+
+  const tx = new Transaction();
+  withGas(tx, sender, coins, gasPrice, CLAIM_GAS_BUDGET_MIST);
+  tx.moveCall({
+    target: `${config.packageId}::bonding_curve::claim_creator_fees`,
+    typeArguments: [coinType],
+    arguments: [
+      tx.objectRef({ objectId: cap.objectId, version: cap.version, digest: cap.digest }),
+      tx.sharedObjectRef({
+        objectId: curveId,
+        initialSharedVersion: String(curve.owner.Shared.initial_shared_version),
+        mutable: true,
+      }),
+      tx.sharedObjectRef({ objectId: CLOCK_ID, initialSharedVersion: "1", mutable: false }),
+    ],
+  });
+
+  const executed = await signAndExecute(tx, keypair);
+  if (!executed.ok) {
+    return {
+      ok: false,
+      message: executed.error ?? "The network rejected the fee distribution, so nothing moved.",
+      digest: executed.digest,
+      claimedSui: 0,
+    };
+  }
+  return {
+    ok: true,
+    message: "Creator fees distributed on chain.",
+    digest: executed.digest,
+    claimedSui: pendingMist / MIST_PER_SUI,
+  };
+}
