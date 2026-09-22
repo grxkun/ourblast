@@ -912,6 +912,84 @@ export type Database = {
           },
         ]
       }
+      creator_fee_designations: {
+        Row: {
+          authorized: boolean
+          chain: string
+          claim_tx: string | null
+          claimed_amount: number
+          claimed_at: string | null
+          claimed_wallet: string | null
+          created_at: string
+          deployer_user_id: string
+          deployer_wallet: string | null
+          designated_at: string
+          designation_tx: string | null
+          id: string
+          launchpad: string
+          recipient_name: string | null
+          recipient_wallet: string
+          recipient_x_handle: string | null
+          status: string
+          token_address: string
+          token_name: string | null
+          token_symbol: string
+          trading_volume: number
+          unclaimed_amount: number
+          updated_at: string
+        }
+        Insert: {
+          authorized?: boolean
+          chain?: string
+          claim_tx?: string | null
+          claimed_amount?: number
+          claimed_at?: string | null
+          claimed_wallet?: string | null
+          created_at?: string
+          deployer_user_id: string
+          deployer_wallet?: string | null
+          designated_at?: string
+          designation_tx?: string | null
+          id?: string
+          launchpad?: string
+          recipient_name?: string | null
+          recipient_wallet: string
+          recipient_x_handle?: string | null
+          status?: string
+          token_address: string
+          token_name?: string | null
+          token_symbol: string
+          trading_volume?: number
+          unclaimed_amount?: number
+          updated_at?: string
+        }
+        Update: {
+          authorized?: boolean
+          chain?: string
+          claim_tx?: string | null
+          claimed_amount?: number
+          claimed_at?: string | null
+          claimed_wallet?: string | null
+          created_at?: string
+          deployer_user_id?: string
+          deployer_wallet?: string | null
+          designated_at?: string
+          designation_tx?: string | null
+          id?: string
+          launchpad?: string
+          recipient_name?: string | null
+          recipient_wallet?: string
+          recipient_x_handle?: string | null
+          status?: string
+          token_address?: string
+          token_name?: string | null
+          token_symbol?: string
+          trading_volume?: number
+          unclaimed_amount?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       daily_challenges: {
         Row: {
           created_at: string
