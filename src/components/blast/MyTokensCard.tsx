@@ -5,18 +5,30 @@ import { useServerFn } from "@tanstack/react-start";
 import { SectionTitle } from "@/components/blast/AppShell";
 import { useBlast } from "@/components/blast/session";
 import { getMyTokens } from "@/lib/terminal/feePayout.functions";
+import { getLiveCreatorFees } from "@/lib/terminal/liveFees.functions";
+import { findLiveFee, walletShareSui } from "@/lib/terminal/liveFees";
+import { formatSui } from "@/lib/terminal/creatorFee";
 import { timeAgo } from "@/lib/blast";
 
 /** "My tokens" — every token the player's linked X account launched, and where its fee share goes. */
 export function MyTokensCard() {
-  const { userId } = useBlast();
+  const { userId, profile } = useBlast();
   const fetchMyTokens = useServerFn(getMyTokens);
+  const readLive = useServerFn(getLiveCreatorFees);
 
   const myTokens = useQuery({
     queryKey: ["my-tokens", userId],
     enabled: Boolean(userId),
     refetchInterval: 60_000,
     queryFn: () => fetchMyTokens({}),
+  });
+
+  const live = useQuery({
+    queryKey: ["live-creator-fees"],
+    enabled: Boolean(userId),
+    refetchInterval: 60_000,
+    staleTime: 30_000,
+    queryFn: () => readLive({}),
   });
 
   if (!userId) return null;
