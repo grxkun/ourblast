@@ -137,18 +137,28 @@ async function feeRouting(
     ? named
     : (receiver?.handle ? await launcherWallet(receiver.handle) : null) ?? (receiver?.handle ? null : await launcherWallet(xUsername));
   const botShareBps = toBps(CREATOR_FEE_SPLIT.bot + CREATOR_FEE_SPLIT.buyBurn);
-  if (launcher && launcher !== bot && launcher !== developer) {
+  const treasuryBps = toBps(CREATOR_FEE_SPLIT.treasury);
+  if (launcher && launcher !== bot && launcher !== developer && launcher !== treasury) {
     return {
-      payees: [bot, developer, launcher],
-      shareBps: [botShareBps, toBps(CREATOR_FEE_SPLIT.developer), toBps(CREATOR_FEE_SPLIT.launcher)],
+      payees: [bot, developer, treasury, launcher],
+      shareBps: [
+        botShareBps,
+        toBps(CREATOR_FEE_SPLIT.developer),
+        treasuryBps,
+        toBps(CREATOR_FEE_SPLIT.launcher),
+      ],
       launcherPaidOnChain: true,
     };
   }
 
   // No known launcher wallet: the bot wallet holds their share until they claim it.
   return {
-    payees: [bot, developer],
-    shareBps: [botShareBps + toBps(CREATOR_FEE_SPLIT.launcher), toBps(CREATOR_FEE_SPLIT.developer)],
+    payees: [bot, developer, treasury],
+    shareBps: [
+      botShareBps + toBps(CREATOR_FEE_SPLIT.launcher),
+      toBps(CREATOR_FEE_SPLIT.developer),
+      treasuryBps,
+    ],
     launcherPaidOnChain: false,
   };
 }
