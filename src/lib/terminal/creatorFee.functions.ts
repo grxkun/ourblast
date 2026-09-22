@@ -9,6 +9,12 @@ import {
   recipientLockedNote,
 } from "./creatorFee";
 
+/** Unguessable token for a one-time claim link. */
+function claimToken(): string {
+  const bytes = crypto.getRandomValues(new Uint8Array(24));
+  return Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0")).join("");
+}
+
 const designationSchema = z.object({
   tokenAddress: z.string().min(4).max(120),
   tokenSymbol: z.string().min(1).max(12),
