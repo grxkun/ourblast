@@ -88,6 +88,13 @@
 - [x] Public /launches page: detected tweets, parsed token, tx digest, final result
 
 ## Perpsplexity (market-backed memecoins)
+## Admin: Dev Fee Claim
+
+- [x] Add "Fees" tab to admin panel with dev wallet + bot wallet balances
+- [x] "Claim to Dev Wallet" button: server-side SUI transfer from bot wallet to FOUNDER_ADDRESS
+- [ ] Publish to go live
+
+## Perpsplexity (market-backed memecoins)
 - [ ] PerpsplexityAdapter: publish template (identifier patch) → prepare_composite_registered → engine::activate + composite_pool::activate, exact official mainnet flow
 - [ ] X command: Launch … Underlying: X Position: LONG/SHORT Leverage: Nx on @perpsplexity; terminal card ⚡ line
 - [ ] x_launch_requests: underlying/perps_long/leverage_bps/starting_cap_usd columns (migration applied)
