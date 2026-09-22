@@ -96,6 +96,62 @@ export const getFeeClaim = createServerFn({ method: "POST" })
     return row ?? null;
   });
 
+/** Supabase-backed store for the shared claim-flow logic in claimFlow.ts. */
+async function claimStore(): Promise<ClaimStore> {
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  return {
+    async getLink(token) {
+      const { data, error } = await supabaseAdmin
+        .from("fee_claim_links")
+        .select("token, launch_symbol, x_username, status, amount_sui, claimed_wallet")
+        .eq("token", token)
+        .maybeSingle();
+      if (error) throw new Error(error.message);
+      return data ?? null;
+    },
+    async getXUsername(userId) {
+      const { data } = await supabaseAdmin
+        .from("x_accounts")
+        .select("username")
+        .eq("user_id", userId)
+        .maybeSingle();
+      return data?.username ?? null;
+    },
+    async getWallet(userId) {
+      const { data } = await supabaseAdmin
+        .from("profiles")
+        .select("wallet_address")
+        .eq("id", userId)
+        .maybeSingle();
+      return data?.wallet_address ?? null;
+    },
+    async markClaimed(token, wallet) {
+      const { data, error } = await supabaseAdmin
+        .from("fee_claim_links")
+        .update({ status: "claimed", claimed_wallet: wallet, claimed_at: new Date().toISOString() })
+        .eq("token", token)
+        .eq("status", "pending")
+        .select("token, launch_symbol, x_username, amount_sui, status, claimed_wallet")
+        .maybeSingle();
+      if (error) throw new Error(error.message);
+      return data ?? null;
+    },
+    async rememberPayout({ userId, symbol, wallet, xUsername }) {
+      await supabaseAdmin.from("launch_fee_payouts").upsert(
+        {
+          user_id: userId,
+          launch_symbol: symbol,
+          launchpad: "suipump",
+          mode: "wallet",
+          destination_wallet: wallet,
+          destination_x_username: xUsername,
+        },
+        { onConflict: "user_id,launch_symbol" },
+      );
+    },
+  };
+}
+
 /**
  * What the signed-in visitor of a claim page has in place: the X account they
  * signed in with and the Sui wallet on their profile. Both must be present and
@@ -104,24 +160,9 @@ export const getFeeClaim = createServerFn({ method: "POST" })
 export const getClaimViewer = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => z.object({ token: z.string().min(8).max(64) }).parse(input))
-  .handler(async ({ data, context }) => {
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const [{ data: account }, { data: profile }, { data: row }] = await Promise.all([
-      supabaseAdmin.from("x_accounts").select("username").eq("user_id", context.userId).maybeSingle(),
-      supabaseAdmin.from("profiles").select("wallet_address").eq("id", context.userId).maybeSingle(),
-      supabaseAdmin.from("fee_claim_links").select("x_username").eq("token", data.token).maybeSingle(),
-    ]);
-    const xUsername = (account?.username ?? "").replace(/^@/, "") || null;
-    const walletRaw = (profile?.wallet_address ?? "").trim().toLowerCase();
-    const wallet = /^0x[a-f0-9]{40,64}$/.test(walletRaw) ? walletRaw : null;
-    const reservedFor = (row?.x_username ?? "").replace(/^@/, "") || null;
-    return {
-      xUsername,
-      wallet,
-      reservedFor,
-      xMatches: Boolean(xUsername && reservedFor && xUsername.toLowerCase() === reservedFor.toLowerCase()),
-    };
-  });
+  .handler(async ({ data, context }) =>
+    readClaimViewer(await claimStore(), context.userId, data.token),
+  );
 
 /**
  * Records which wallet claimed the reserved launcher share. Only the X account
