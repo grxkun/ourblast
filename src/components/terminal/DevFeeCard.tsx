@@ -67,8 +67,13 @@ export function DevFeeCard() {
       </header>
 
       <p className="mt-2 text-sm text-muted-foreground">
-        Your developer share (10% of game fees and 10% of launch creator fees) is paid on-chain directly to your
-        dev wallet. Use this to transfer accumulated SUI from the bot wallet to your dev wallet.
+        Your developer share (10% of game fees and 10% of launch creator fees) is already paid straight to your dev
+        wallet on chain — there is nothing of yours waiting here to be claimed.
+      </p>
+      <p className="mt-2 text-sm text-muted-foreground">
+        The bot wallet balance below is <span className="font-bold">not your share</span>: it is the launch gas float,
+        the 10% @ourblastbot ops share and the 10% BLAST buy &amp; burn reserve. Moving it to your dev wallet takes
+        funds out of launches and the burn reserve.
       </p>
 
       {status.isLoading ? (
