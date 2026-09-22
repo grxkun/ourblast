@@ -67,6 +67,9 @@ export async function runXMentionPoll(): Promise<{
     .eq("posted", false)
     .not("post_error", "is", null)
     .neq("reply_text", "")
+    // Test/simulation mentions have fake post ids — X can never answer them.
+    .not("x_post_id", "like", "test-%")
+    .not("x_post_id", "like", "sim-%")
     .gte("created_at", new Date(Date.now() - 48 * 3600_000).toISOString())
     .order("created_at", { ascending: true })
     .limit(5);
