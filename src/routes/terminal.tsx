@@ -76,6 +76,7 @@ function TerminalPage() {
       )}
       {ready ? (
         <div className="mt-6 space-y-6">
+          <CreatorClaimCard />
           <FeeRoutingCard />
           <CreatorFeeDesignationCard />
           <GasReserveCard />
