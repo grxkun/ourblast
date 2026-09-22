@@ -114,7 +114,7 @@ function CreatorFeesPage() {
       ) : null}
 
       <ul className="space-y-3">
-        {list.map((row) => (
+        {list.map(({ row, onChain, unclaimed }) => (
           <li key={row.token_address} className="space-y-2 border-2 border-border p-4">
             <div className="flex flex-wrap items-baseline justify-between gap-2">
               <p className="font-display text-2xl">
@@ -124,7 +124,7 @@ function CreatorFeesPage() {
                 ) : null}
               </p>
               <p className="font-display text-xl text-primary">
-                Unclaimed: {formatSui(Number(row.unclaimed_amount ?? 0))}
+                Unclaimed: {onChain || unclaimed > 0 ? formatSui(unclaimed) : live.isLoading ? "reading…" : "0 SUI"}
               </p>
             </div>
             <dl className="grid grid-cols-[auto_1fr] gap-x-6 gap-y-1 text-xs">
@@ -137,10 +137,14 @@ function CreatorFeesPage() {
               <dd className="font-bold">{shortWallet(row.deployer_wallet)}</dd>
               <dt className="text-muted-foreground">Launchpad</dt>
               <dd className="font-bold uppercase">{row.launchpad}</dd>
-              <dt className="text-muted-foreground">Trading volume</dt>
-              <dd className="font-bold">
-                {Number(row.trading_volume ?? 0) > 0 ? formatSui(Number(row.trading_volume)) : "Not indexed yet"}
-              </dd>
+              {onChain ? (
+                <>
+                  <dt className="text-muted-foreground">Fees in the token now</dt>
+                  <dd className="font-bold">{formatSui(onChain.pendingSui)}</dd>
+                  <dt className="text-muted-foreground">Read from chain</dt>
+                  <dd className="font-bold">{timeAgo(live.data?.readAt ?? new Date().toISOString())}</dd>
+                </>
+              ) : null}
               <dt className="text-muted-foreground">Designated</dt>
               <dd className="font-bold">{timeAgo(row.designated_at)}</dd>
               <dt className="text-muted-foreground">Status</dt>
@@ -154,7 +158,11 @@ function CreatorFeesPage() {
               >
                 View claim page
               </Link>
-              <button type="button" onClick={() => void copyShare(row)} className="flex items-center gap-1 text-xs underline">
+              <button
+                type="button"
+                onClick={() => void copyShare(row, unclaimed)}
+                className="flex items-center gap-1 text-xs underline"
+              >
                 <Copy className="size-3" /> Copy share text
               </button>
             </div>
