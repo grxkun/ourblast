@@ -42,7 +42,21 @@ export interface DeployRequest {
  * matchLaunchpad tolerates typos ("on Peropelxity" → Perpsplexity) and
  * rejects non-pad words ("on Monday" → no pad).
  */
-const PAD_ANYWHERE = /\bon\s+@?([a-z][a-z0-9.]{2,20})\b/i;
+const PAD_ANYWHERE = /\bon\s+@?([a-z][a-z0-9.]{2,20})\b/gi;
+
+/**
+ * Scans every "on <word>" phrase, not just the first, so chatter like
+ * "a bet on NVDA ... on Perpsplexity" still resolves the real pad.
+ */
+function findPadMatch(source: string): { candidate: string; index: number; length: number } | null {
+  for (const match of source.matchAll(PAD_ANYWHERE)) {
+    const candidate = (match[1] ?? "").replace(/\s+/g, "").replace(/^@/, "");
+    if (candidate && matchLaunchpad(candidate)) {
+      return { candidate, index: match.index ?? 0, length: match[0].length };
+    }
+  }
+  return null;
+}
 
 /** "Deploy a $TETY", "deploy a ticker $TETY", "launch me a new meme coin $TETY", "create token called $TETY". */
 const DEPLOY_CALL =
@@ -68,19 +82,16 @@ const FIELD_NAME =
 export function parseDeployTweet(rawText: string, defaultPad = LAUNCHPAD.id): DeployRequest | null {
   // Read the launchpad wherever it appears — on the raw text first, because
   // mention stripping would eat "@perpsplexity" before we could see it.
-  const rawPadMatch = rawText.match(PAD_ANYWHERE);
+  const rawPadMatch = findPadMatch(rawText);
   let text = normalizeCommandText(rawText);
 
-  const textPadMatch = text.match(PAD_ANYWHERE);
+  const textPadMatch = findPadMatch(text);
   const padMatch = textPadMatch ?? rawPadMatch;
   let requestedPad: string | null = null;
-  if (padMatch?.[1]) {
-    const candidate = padMatch[1].replace(/\s+/g, "").replace(/^@/, "");
-    // Only accept words that actually name a supported pad (typos included);
-    // anything else ("on Monday") is chatter and leaves the default pad.
-    if (matchLaunchpad(candidate)) {
-      requestedPad = candidate;
-      if (textPadMatch) text = (text.slice(0, textPadMatch.index) + " " + text.slice((textPadMatch.index ?? 0) + textPadMatch[0].length)).trim();
+  if (padMatch) {
+    requestedPad = padMatch.candidate;
+    if (textPadMatch) {
+      text = (text.slice(0, textPadMatch.index) + " " + text.slice(textPadMatch.index + textPadMatch.length)).trim();
     }
   }
 

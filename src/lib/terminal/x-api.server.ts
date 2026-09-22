@@ -200,10 +200,39 @@ export async function fetchTweetDetails(credentials: XCredentials, postId: strin
   };
 }
 
+/**
+ * X rejects any post carrying more than one $cashtag, and user-supplied names,
+ * tickers or notes can easily inject a second one. Keep the first cashtag and
+ * drop the "$" from every later one so the reply stays postable.
+ */
+export function enforceSingleCashtag(text: string): string {
+  let seen = false;
+  return text.replace(/\$([A-Za-z][A-Za-z0-9]{0,14})\b/g, (match, symbol: string) => {
+    if (!seen) {
+      seen = true;
+      return match;
+    }
+    return symbol;
+  });
+}
+
 /** Post a reply to a tweet. Returns the new post id. */
 export async function postReply(credentials: XCredentials, inReplyToPostId: string, text: string): Promise<string> {
-  const result = await request<{ data: { id: string } }>(credentials, "POST", "/2/tweets", {
-    body: { text, reply: { in_reply_to_tweet_id: inReplyToPostId } },
-  });
-  return result.data.id;
+  const safeText = enforceSingleCashtag(text);
+  try {
+    const result = await request<{ data: { id: string } }>(credentials, "POST", "/2/tweets", {
+      body: { text: safeText, reply: { in_reply_to_tweet_id: inReplyToPostId } },
+    });
+    return result.data.id;
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "";
+    // X refuses identical text; our standard replies repeat, so retry once with
+    // a short unique marker instead of silently never replying.
+    if (!/duplicate content/i.test(message)) throw error;
+    const marker = Date.now().toString(36).slice(-5).toUpperCase();
+    const retry = await request<{ data: { id: string } }>(credentials, "POST", "/2/tweets", {
+      body: { text: `${safeText}\n\nref ${marker}`, reply: { in_reply_to_tweet_id: inReplyToPostId } },
+    });
+    return retry.data.id;
+  }
 }
