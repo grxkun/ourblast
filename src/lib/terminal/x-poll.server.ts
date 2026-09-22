@@ -57,6 +57,38 @@ export async function runXMentionPoll(): Promise<{
     handled += 1;
   }
 
+  // Replies X refused earlier (a second $cashtag in the text, duplicate content)
+  // get a fresh attempt here — postReply sanitizes cashtags and de-duplicates
+  // the text itself, so an old stored reply can now go through.
+  const { postReply, friendlyXError } = await import("./x-api.server");
+  const { data: failedReplies } = await supabaseAdmin
+    .from("x_mentions")
+    .select("id, x_post_id, reply_text")
+    .eq("posted", false)
+    .not("post_error", "is", null)
+    .neq("reply_text", "")
+    .gte("created_at", new Date(Date.now() - 48 * 3600_000).toISOString())
+    .order("created_at", { ascending: true })
+    .limit(5);
+  for (const row of failedReplies ?? []) {
+    if (!row.reply_text) continue;
+    try {
+      const replyPostId = await postReply(credentials, row.x_post_id, row.reply_text);
+      await supabaseAdmin
+        .from("x_mentions")
+        .update({
+          reply_text: row.reply_text,
+          posted: true,
+          reply_post_id: replyPostId,
+          post_error: null,
+          posted_at: new Date().toISOString(),
+        })
+        .eq("id", row.id);
+    } catch (error) {
+      await supabaseAdmin.from("x_mentions").update({ post_error: friendlyXError(error) }).eq("id", row.id);
+    }
+  }
+
   const newest = mentions.at(-1)?.id ?? state?.last_mention_id ?? null;
   await supabaseAdmin
     .from("x_bot_state")

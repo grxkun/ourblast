@@ -105,8 +105,10 @@ export function XMentionInbox() {
               ) : null}
             </div>
             <p className="mt-2 break-words">{row.text}</p>
-            <p className="mt-2 break-words rounded bg-muted p-2 text-xs">{row.reply_text}</p>
-            {row.post_error ? <p className="mt-2 text-xs text-destructive">X error: {row.post_error}</p> : null}
+            <p className="mt-2 break-words rounded bg-muted p-2 text-xs">
+              {row.reply_text ? enforceSingleCashtag(row.reply_text) : ""}
+            </p>
+            {row.post_error ? <p className="mt-2 text-xs text-destructive">{row.post_error}</p> : null}
           </li>
         ))}
         {!mentions.isLoading && (mentions.data ?? []).length === 0 ? (
