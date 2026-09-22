@@ -1,0 +1,225 @@
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
+import { useState } from "react";
+import { Copy, Wallet, ArrowDownToLine } from "lucide-react";
+import { toast } from "sonner";
+
+import { Button } from "@/components/ui/button";
+import { getDevFeeStatus, claimDevFees } from "@/lib/dev-fee.functions";
+import { formatSui } from "@/lib/sui-balance";
+import { shortAddress } from "@/lib/blast";
+
+export function DevFeeCard() {
+  const queryClient = useQueryClient();
+  const statusFn = useServerFn(getDevFeeStatus);
+  const claimFn = useServerFn(claimDevFees);
+  const [amount, setAmount] = useState("");
+  const [confirming, setConfirming] = useState(false);
+
+  const status = useQuery({
+    queryKey: ["dev-fee-status"],
+    queryFn: () => statusFn({}),
+    staleTime: 30_000,
+  });
+
+  const claim = useMutation({
+    mutationFn: (amountSui: number) => claimFn({ data: { amountSui } }),
+    onSuccess: (result) => {
+      toast.success(`Sent ${result.amountSui} SUI to your dev wallet`, {
+        description: `tx ${shortAddress(result.digest)}`,
+      });
+      setAmount("");
+      setConfirming(false);
+      void queryClient.invalidateQueries({ queryKey: ["dev-fee-status"] });
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || "Transfer failed.");
+      setConfirming(false);
+    },
+  });
+
+  const data = status.data;
+
+  const handleClaim = () => {
+    const amountSui = Number(amount);
+    if (!Number.isFinite(amountSui) || amountSui <= 0) {
+      toast.error("Enter a valid SUI amount.");
+      return;
+    }
+    if (data && amountSui > data.botBalanceSui) {
+      toast.error("Amount exceeds the bot wallet balance.");
+      return;
+    }
+    if (!confirming) {
+      setConfirming(true);
+      return;
+    }
+    claim.mutate(amountSui);
+  };
+
+  return (
+    <section className="border border-border bg-card p-4">
+      <header className="flex flex-wrap items-center justify-between gap-2">
+        <h2 className="font-display text-lg uppercase">
+          <Wallet className="mr-2 inline size-4" />
+          Dev fee claim
+        </h2>
+      </header>
+
+      <p className="mt-2 text-sm text-muted-foreground">
+        Your developer share (10% of game fees and 10% of launch creator fees) is paid on-chain directly to your
+        dev wallet. Use this to transfer accumulated SUI from the bot wallet to your dev wallet.
+      </p>
+
+      {status.isLoading ? (
+        <p className="mt-4 text-sm text-muted-foreground">Loading wallet balances…</p>
+      ) : data ? (
+        <div className="mt-4 space-y-4">
+          {/* Dev wallet */}
+          <div className="rounded-lg border border-border bg-background/60 p-3">
+            <div className="flex items-center justify-between">
+              <span className="font-display text-xs uppercase text-muted-foreground">Your dev wallet</span>
+              <span className="font-display text-lg text-lime">
+                {formatSui(data.devBalanceSui)} SUI
+              </span>
+            </div>
+            <div className="mt-1 flex items-center gap-2">
+              <code className="min-w-0 flex-1 truncate text-xs text-muted-foreground">{data.devWallet}</code>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  void navigator.clipboard.writeText(data.devWallet);
+                  toast.success("Address copied.");
+                }}
+              >
+                <Copy className="size-3" />
+              </Button>
+            </div>
+          </div>
+
+          {/* Bot wallet */}
+          <div className="rounded-lg border border-border bg-background/60 p-3">
+            <div className="flex items-center justify-between">
+              <span className="font-display text-xs uppercase text-muted-foreground">Bot wallet (@ourblastbot)</span>
+              <span className="font-display text-lg">
+                {formatSui(data.botBalanceSui)} SUI
+              </span>
+            </div>
+            <div className="mt-1 flex items-center gap-2">
+              <code className="min-w-0 flex-1 truncate text-xs text-muted-foreground">{data.botWallet}</code>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  void navigator.clipboard.writeText(data.botWallet);
+                  toast.success("Address copied.");
+                }}
+              >
+                <Copy className="size-3" />
+              </Button>
+            </div>
+          </div>
+
+          {/* Stats */}
+          <div className="grid grid-cols-2 gap-3 text-sm">
+            <div className="rounded-lg border border-border bg-background/60 p-3">
+              <p className="font-display text-xs uppercase text-muted-foreground">Game sessions</p>
+              <p className="font-display text-xl">{data.gameSessions}</p>
+              <p className="text-xs text-muted-foreground">
+                ~{data.estimatedDevGameShareSui.toFixed(2)} SUI dev share
+              </p>
+            </div>
+            <div className="rounded-lg border border-border bg-background/60 p-3">
+              <p className="font-display text-xs uppercase text-muted-foreground">Tokens deployed</p>
+              <p className="font-display text-xl">{data.launchesDeployed}</p>
+              <p className="text-xs text-muted-foreground">creator fees auto-paid on-chain</p>
+            </div>
+          </div>
+
+          {/* Claim form */}
+          <div className="rounded-lg border border-border bg-background/60 p-3">
+            <label className="font-display text-xs uppercase text-muted-foreground">
+              Amount to transfer (SUI)
+            </label>
+            <div className="mt-2 flex gap-2">
+              <input
+                type="number"
+                step="0.001"
+                min="0"
+                placeholder="0.0"
+                value={amount}
+                onChange={(e) => setAmount(e.target.value)}
+                className="flex-1 rounded-xl border border-input bg-background px-3 py-2 font-body text-sm outline-none focus:border-ring"
+              />
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setAmount(data.botBalanceSui ? String(Math.floor(data.botBalanceSui * 1000) / 1000) : "0")}
+              >
+                Max
+              </Button>
+            </div>
+
+            {data.error ? (
+              <p className="mt-2 text-xs text-destructive">{data.error}</p>
+            ) : !data.botReady ? (
+              <p className="mt-2 text-xs text-destructive">Bot wallet key not configured.</p>
+            ) : null}
+
+            {confirming ? (
+              <div className="mt-3 flex flex-col gap-2">
+                <p className="text-sm font-medium">
+                  Send {amount} SUI from the bot wallet to your dev wallet?
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  This is a real on-chain transfer signed by the bot wallet. It cannot be undone.
+                </p>
+                <div className="flex gap-2">
+                  <Button
+                    type="button"
+                    onClick={() => claim.mutate(Number(amount))}
+                    disabled={claim.isPending}
+                    className="flex-1"
+                  >
+                    {claim.isPending ? "Sending…" : (
+                      <>
+                        <ArrowDownToLine className="mr-1 inline size-4" />
+                        Confirm transfer
+                      </>
+                    )}
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => setConfirming(false)}
+                    disabled={claim.isPending}
+                  >
+                    Cancel
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <Button
+                type="button"
+                className="mt-3 w-full"
+                onClick={handleClaim}
+                disabled={!data.botReady || claim.isPending}
+              >
+                <ArrowDownToLine className="mr-1 inline size-4" />
+                Claim to dev wallet
+              </Button>
+            )}
+          </div>
+        </div>
+      ) : (
+        <p className="mt-4 text-sm text-destructive">
+          {status.error?.message ?? "Failed to load wallet balances."}
+        </p>
+      )}
+    </section>
+  );
+}
