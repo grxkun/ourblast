@@ -115,6 +115,10 @@ const DEPLOY_VERB = /\b(?:deploy|launch|create|mint|make)\b/i;
 const FIELD_NAME =
   /\b(?:n[ase]?me|title)\s*[:=]\s*([^$]+?)(?=\s+\b(?:ticker|symbol|sym|image|img|picture|pic|supply|desc|description|underlying|market|asset|position|direction|side|leverage|lev|mc)\b|\s*$)/i;
 
+/** "named Baldeniyi ticker $BALDENIYI" — a colon-free name, ended by the next label or comma. */
+const FIELD_NAME_LOOSE =
+  /\b(?:named|called)\s+([a-z0-9][^$,\n]*?)(?=\s+\b(?:ticker|symbol|sym|image|img|picture|pic|supply|desc|description|underlying|market|asset|position|direction|side|leverage|lev|mc|fee|fees)\b|[,\n]|\s*$)/i;
+
 /** "Underlying: NVDA" / "market = TSLA" — shared with the terminal parser. */
 
 /**
