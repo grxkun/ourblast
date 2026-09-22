@@ -252,14 +252,29 @@ interface SharedRef {
   initialSharedVersion: string;
 }
 
+/**
+ * Initial shared version of a shared object. Read through GraphQL first, with a
+ * JSON-RPC fallback: a single flaky read used to abort an entire launch.
+ */
 export async function sharedRef(objectId: string): Promise<SharedRef> {
-  const data = await gql<{ object: { owner: { initialSharedVersion?: number } | null } | null }>(
+  const viaGraphql = await gql<{ object: { owner: { initialSharedVersion?: number } | null } | null }>(
     `query($id:SuiAddress!){object(address:$id){owner{__typename ... on Shared{initialSharedVersion}}}}`,
     { id: objectId },
-  );
-  const initial = data.object?.owner?.initialSharedVersion;
-  if (initial === undefined || initial === null) throw new Error("That Suipump object is not shared.");
-  return { objectId, initialSharedVersion: String(initial) };
+  )
+    .then((data) => data.object?.owner?.initialSharedVersion ?? null)
+    .catch(() => null);
+  if (viaGraphql !== null) return { objectId, initialSharedVersion: String(viaGraphql) };
+
+  const viaRpc = await rpc<{
+    data?: { owner?: { Shared?: { initial_shared_version: number } } | string };
+  }>("sui_getObject", [objectId, { showOwner: true }])
+    .then((result) => {
+      const owner = result.data?.owner;
+      return typeof owner === "string" ? null : (owner?.Shared?.initial_shared_version ?? null);
+    })
+    .catch(() => null);
+  if (viaRpc !== null) return { objectId, initialSharedVersion: String(viaRpc) };
+  throw new Error(`The on-chain object ${objectId.slice(0, 10)}… could not be read as a shared object.`);
 }
 
 export async function referenceGasPrice(): Promise<number> {
