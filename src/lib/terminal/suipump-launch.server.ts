@@ -770,10 +770,13 @@ export async function launchOnSuipump(input: SuipumpLaunchInput): Promise<Suipum
   const createResult = tx.moveCall({
     target: `${config.packageId}::${SUIPUMP_MODULE}::${SUIPUMP_CREATE_FUNCTION}`,
     typeArguments: [coinType],
+    // Order is the on-chain signature of create_and_return in the V17 package:
+    // (LaunchTicket, &LaunchIssuerRegistry, TreasuryCap, Coin<SUI>, name,
+    // symbol, description, payees, shares, optionA, optionB, &Clock).
     arguments: [
-      tx.objectRef({ objectId: cap.objectId, version: cap.version, digest: cap.digest }),
-      tx.sharedObjectRef({ ...registry, mutable: false }),
       tx.objectRef({ objectId: ticket.objectId, version: ticket.version, digest: ticket.digest }),
+      tx.sharedObjectRef({ ...registry, mutable: false }),
+      tx.objectRef({ objectId: cap.objectId, version: cap.version, digest: cap.digest }),
       launchFee!,
       tx.pure.string(name),
       tx.pure.string(symbol),
