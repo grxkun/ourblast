@@ -3,6 +3,7 @@ import { z } from "zod";
 
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { FEE_PAYOUT_MODES, normalizeFeePayout, type FeePayout } from "./feePayout";
+import { performClaim, readClaimViewer, type ClaimStore } from "./claimFlow";
 
 const payoutSchema = z.object({
   symbol: z.string().min(1).max(10),
@@ -96,6 +97,62 @@ export const getFeeClaim = createServerFn({ method: "POST" })
     return row ?? null;
   });
 
+/** Supabase-backed store for the shared claim-flow logic in claimFlow.ts. */
+async function claimStore(): Promise<ClaimStore> {
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  return {
+    async getLink(token) {
+      const { data, error } = await supabaseAdmin
+        .from("fee_claim_links")
+        .select("token, launch_symbol, x_username, status, amount_sui, claimed_wallet")
+        .eq("token", token)
+        .maybeSingle();
+      if (error) throw new Error(error.message);
+      return data ?? null;
+    },
+    async getXUsername(userId) {
+      const { data } = await supabaseAdmin
+        .from("x_accounts")
+        .select("username")
+        .eq("user_id", userId)
+        .maybeSingle();
+      return data?.username ?? null;
+    },
+    async getWallet(userId) {
+      const { data } = await supabaseAdmin
+        .from("profiles")
+        .select("wallet_address")
+        .eq("id", userId)
+        .maybeSingle();
+      return data?.wallet_address ?? null;
+    },
+    async markClaimed(token, wallet) {
+      const { data, error } = await supabaseAdmin
+        .from("fee_claim_links")
+        .update({ status: "claimed", claimed_wallet: wallet, claimed_at: new Date().toISOString() })
+        .eq("token", token)
+        .eq("status", "pending")
+        .select("token, launch_symbol, x_username, amount_sui, status, claimed_wallet")
+        .maybeSingle();
+      if (error) throw new Error(error.message);
+      return data ?? null;
+    },
+    async rememberPayout({ userId, symbol, wallet, xUsername }) {
+      await supabaseAdmin.from("launch_fee_payouts").upsert(
+        {
+          user_id: userId,
+          launch_symbol: symbol,
+          launchpad: "suipump",
+          mode: "wallet",
+          destination_wallet: wallet,
+          destination_x_username: xUsername,
+        },
+        { onConflict: "user_id,launch_symbol" },
+      );
+    },
+  };
+}
+
 /**
  * What the signed-in visitor of a claim page has in place: the X account they
  * signed in with and the Sui wallet on their profile. Both must be present and
@@ -104,24 +161,9 @@ export const getFeeClaim = createServerFn({ method: "POST" })
 export const getClaimViewer = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => z.object({ token: z.string().min(8).max(64) }).parse(input))
-  .handler(async ({ data, context }) => {
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const [{ data: account }, { data: profile }, { data: row }] = await Promise.all([
-      supabaseAdmin.from("x_accounts").select("username").eq("user_id", context.userId).maybeSingle(),
-      supabaseAdmin.from("profiles").select("wallet_address").eq("id", context.userId).maybeSingle(),
-      supabaseAdmin.from("fee_claim_links").select("x_username").eq("token", data.token).maybeSingle(),
-    ]);
-    const xUsername = (account?.username ?? "").replace(/^@/, "") || null;
-    const walletRaw = (profile?.wallet_address ?? "").trim().toLowerCase();
-    const wallet = /^0x[a-f0-9]{40,64}$/.test(walletRaw) ? walletRaw : null;
-    const reservedFor = (row?.x_username ?? "").replace(/^@/, "") || null;
-    return {
-      xUsername,
-      wallet,
-      reservedFor,
-      xMatches: Boolean(xUsername && reservedFor && xUsername.toLowerCase() === reservedFor.toLowerCase()),
-    };
-  });
+  .handler(async ({ data, context }) =>
+    readClaimViewer(await claimStore(), context.userId, data.token),
+  );
 
 /**
  * Records which wallet claimed the reserved launcher share. Only the X account
@@ -131,68 +173,8 @@ export const getClaimViewer = createServerFn({ method: "POST" })
 export const claimFeeLink = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => z.object({ token: z.string().min(8).max(64) }).parse(input))
-  .handler(async ({ data, context }) => {
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-
-    const { data: link, error: linkError } = await supabaseAdmin
-      .from("fee_claim_links")
-      .select("token, launch_symbol, x_username, status")
-      .eq("token", data.token)
-      .maybeSingle();
-    if (linkError) throw new Error(linkError.message);
-    if (!link) return { ok: false as const, message: "This claim link does not exist." };
-
-    const { data: account } = await supabaseAdmin
-      .from("x_accounts")
-      .select("username")
-      .eq("user_id", context.userId)
-      .maybeSingle();
-    const viewerX = (account?.username ?? "").replace(/^@/, "");
-    const reservedFor = (link.x_username ?? "").replace(/^@/, "");
-    if (!viewerX) return { ok: false as const, message: "Sign in with X first so we can verify the handle." };
-    if (viewerX.toLowerCase() !== reservedFor.toLowerCase()) {
-      return { ok: false as const, message: `These fees are reserved for @${reservedFor}, not @${viewerX}.` };
-    }
-
-    const { data: profile } = await supabaseAdmin
-      .from("profiles")
-      .select("wallet_address")
-      .eq("id", context.userId)
-      .maybeSingle();
-    const wallet = (profile?.wallet_address ?? "").trim().toLowerCase();
-    if (!/^0x[a-f0-9]{40,64}$/.test(wallet)) {
-      return { ok: false as const, message: "Connect a Sui wallet to your OURBLAST account first." };
-    }
-
-    const { data: row, error } = await supabaseAdmin
-      .from("fee_claim_links")
-      .update({ status: "claimed", claimed_wallet: wallet, claimed_at: new Date().toISOString() })
-      .eq("token", data.token)
-      .eq("status", "pending")
-      .select("token, launch_symbol, x_username, amount_sui, status, claimed_wallet")
-      .maybeSingle();
-    if (error) throw new Error(error.message);
-    if (!row) return { ok: false as const, message: "This claim link was already used or has expired." };
-
-    // Remember the destination so this launcher's future launches pay them
-    // straight on chain instead of parking the share again.
-    await supabaseAdmin.from("launch_fee_payouts").upsert(
-      {
-        user_id: context.userId,
-        launch_symbol: row.launch_symbol,
-        launchpad: "suipump",
-        mode: "wallet",
-        destination_wallet: wallet,
-        destination_x_username: reservedFor,
-      },
-      { onConflict: "user_id,launch_symbol" },
-    );
-
-    return {
-      ok: true as const,
-      message: `Verified. Your $${row.launch_symbol} creator share is routed to ${wallet.slice(0, 6)}…${wallet.slice(-4)}.`,
-      claim: row,
-    };
-  });
+  .handler(async ({ data, context }) =>
+    performClaim(await claimStore(), context.userId, data.token),
+  );
 
 export type { FeePayout };
