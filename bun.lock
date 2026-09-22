@@ -10,7 +10,6 @@
         "@lovable.dev/mcp-js": "^3.0.0",
         "@mysten/sui": "^2.29.0",
         "@mysten/wallet-standard": "^0.21.22",
-        "@mysten/zksend": "^1.2.29",
         "@radix-ui/react-accordion": "^1.2.12",
         "@radix-ui/react-alert-dialog": "^1.1.15",
         "@radix-ui/react-aspect-ratio": "^1.1.8",
@@ -308,10 +307,6 @@
     "@mysten/utils": ["@mysten/utils@0.4.1", "https://europe-west4-npm.pkg.dev/lovable-core-prod/sandbox-npm-cache/@mysten/utils/-/utils-0.4.1.tgz", { "dependencies": { "@scure/base": "^2.3.0" } }, "sha512-gffLJ84CbqG/CcOPuVlwXIRu37tFn0BtUx7CQtbLwJzWjUE7FU2Gq8BXWjzxImnvufcyLTaNWtCPG6wq22Zhog=="],
 
     "@mysten/wallet-standard": ["@mysten/wallet-standard@0.21.22", "https://europe-west4-npm.pkg.dev/lovable-core-prod/sandbox-npm-cache/@mysten/wallet-standard/-/wallet-standard-0.21.22.tgz", { "dependencies": { "@wallet-standard/core": "1.1.2" }, "peerDependencies": { "@mysten/sui": "^2.29.0" } }, "sha512-Q14BeG1LDHD+74PTZd+nsIlRubRq1m/as7QTlzr8/fAp98c/ZQWvnjsQgJcosXbbOsz+OAL8/xnOVC/2qKyCwA=="],
-
-    "@mysten/window-wallet-core": ["@mysten/window-wallet-core@0.3.0", "https://europe-west4-npm.pkg.dev/lovable-core-prod/sandbox-npm-cache/@mysten/window-wallet-core/-/window-wallet-core-0.3.0.tgz", { "dependencies": { "@mysten/utils": "^0.4.1", "jose": "^6.2.9", "valibot": "^1.4.2" } }, "sha512-RTtdNHL1ywN13RYXChSTcXDYB6l3IBckMNoWi+FU9hvPJXUT51fhBLreN/tgQhosrcEAd+6r25/qBYRY/coMqQ=="],
-
-    "@mysten/zksend": ["@mysten/zksend@1.2.29", "https://europe-west4-npm.pkg.dev/lovable-core-prod/sandbox-npm-cache/@mysten/zksend/-/zksend-1.2.29.tgz", { "dependencies": { "@mysten/utils": "^0.4.1", "@mysten/wallet-standard": "^0.21.27", "@mysten/window-wallet-core": "^0.3.0", "mitt": "^3.0.1", "nanostores": "^1.4.2", "valibot": "^1.4.2" }, "peerDependencies": { "@mysten/sui": "^2.31.3" } }, "sha512-qnRhWchOvrH0zkiSTeFE/Qt5xd7weFH7Y8xW9DvWD25kLwgzDmkdqznsWTnBIbjJB/QodZlAOumVTWU/R8H9Iw=="],
 
     "@napi-rs/wasm-runtime": ["@napi-rs/wasm-runtime@1.2.0", "", { "dependencies": { "@tybys/wasm-util": "^0.10.3" }, "peerDependencies": { "@emnapi/core": "^2.0.0-alpha.3", "@emnapi/runtime": "^2.0.0-alpha.3" } }, "sha512-kDoONqMa+VnZ4vvvu/ZUurpJ4gkZU57e7g69qpNgWhYcZFPUHZM2CEMKm+cG6ufDVALbjMvfmMjFVqaK7uEMnA=="],
 
@@ -1497,8 +1492,6 @@
 
     "minimatch": ["minimatch@3.1.5", "", { "dependencies": { "brace-expansion": "^1.1.7" } }, "sha512-VgjWUsnnT6n+NUk6eZq77zeFdpW2LWDzP6zFGrCbHXiYNul5Dzqk2HHQ5uFH2DNW5Xbp8+jVzaeNt94ssEEl4w=="],
 
-    "mitt": ["mitt@3.0.1", "https://europe-west4-npm.pkg.dev/lovable-core-prod/sandbox-npm-cache/mitt/-/mitt-3.0.1.tgz", {}, "sha512-vKivATfr97l2/QBCYAkXYDbrIWPM2IIKEl7YPhjCvKlG3kE2gm+uBo6nEXK3M5/Ffh/FLpKExzOQ3JJoJGFKBw=="],
-
     "motion": ["motion@13.2.0", "https://europe-west4-npm.pkg.dev/lovable-core-prod/sandbox-npm-cache/motion/-/motion-13.2.0.tgz", { "dependencies": { "framer-motion": "^13.2.0", "tslib": "^2.4.0" }, "peerDependencies": { "react": "^18.0.0 || ^19.0.0", "react-dom": "^18.0.0 || ^19.0.0" }, "optionalPeers": ["react", "react-dom"] }, "sha512-4Hrb5vD6HhjFstLUiCmWvtpsw+WTpP4R+QXfSDYZBz7+uxE/LrRg3aV0ReJxHrTRffHhbIE6svEqnotngXvesQ=="],
 
     "motion-dom": ["motion-dom@13.2.0", "https://europe-west4-npm.pkg.dev/lovable-core-prod/sandbox-npm-cache/motion-dom/-/motion-dom-13.2.0.tgz", { "dependencies": { "motion-utils": "^13.0.0" } }, "sha512-N6gdSoWRDk0Rh/fVtlqUtLs+fEN3ELFZI3cn3IQE9Mnf3E+Mh8wjO6MstzCOPFh4Yf0L1as5m2eUyYWj8ylVSQ=="],
@@ -1508,8 +1501,6 @@
     "ms": ["ms@2.1.3", "", {}, "sha512-6FlzubTLZG3J2a/NVCAleEhjzq5oxgHyaCU9yYXvcLsvoVaHJq/s5xXI6/XXP6tz7R9xAOtHnSO/tXtF3WRTlA=="],
 
     "nanoid": ["nanoid@6.0.1", "https://europe-west4-npm.pkg.dev/lovable-core-prod/sandbox-npm-cache/nanoid/-/nanoid-6.0.1.tgz", { "bin": { "nanoid": "bin/nanoid.js" } }, "sha512-3wVS3i51pE2pi1k5FFL/95BGfVS0kSsvDVuGXHOtxox/TywUmtgq+3qiTOTbs9J7KfHaXPiN171k/A6dBnaXFw=="],
-
-    "nanostores": ["nanostores@1.5.3", "https://europe-west4-npm.pkg.dev/lovable-core-prod/sandbox-npm-cache/nanostores/-/nanostores-1.5.3.tgz", {}, "sha512-rQLB6eV4f2AW/n3L0JmwCROpaisYy9EDEADvEFSd1C/qG8hB6O5TPlh9A791JRbJr4CnMQBzptDcvD9OR1+6WA=="],
 
     "natural-compare": ["natural-compare@1.4.0", "", {}, "sha512-OWND8ei3VtNC9h7V60qff3SVobHr996CTwgxubgyQYEpg290h9J0buyECNNJexkFm5sOajh5G116RYA1c8ZMSw=="],
 
@@ -1922,8 +1913,6 @@
     "@jridgewell/trace-mapping/@jridgewell/sourcemap-codec": ["@jridgewell/sourcemap-codec@1.5.5", "", {}, "sha512-cYQ9310grqxueWbl+WuIUIaiUaDcj7WOq5fVhEljNVgRfOUhY9fy2zTvfoqWsnebh8Sl70VScFbICvJnLKB0Og=="],
 
     "@modelcontextprotocol/sdk/ajv": ["ajv@8.20.0", "https://europe-west1-npm.pkg.dev/lovable-core-prod/sandbox-npm-cache/ajv/-/ajv-8.20.0.tgz", { "dependencies": { "fast-deep-equal": "^3.1.3", "fast-uri": "^3.0.1", "json-schema-traverse": "^1.0.0", "require-from-string": "^2.0.2" } }, "sha512-Thbli+OlOj+iMPYFBVBfJ3OmCAnaSyNn4M1vz9T6Gka5Jt9ba/HIR56joy65tY6kx/FCF5VXNB819Y7/GUrBGA=="],
-
-    "@mysten/zksend/@mysten/wallet-standard": ["@mysten/wallet-standard@0.21.27", "https://europe-west4-npm.pkg.dev/lovable-core-prod/sandbox-npm-cache/@mysten/wallet-standard/-/wallet-standard-0.21.27.tgz", { "dependencies": { "@wallet-standard/core": "1.1.2" }, "peerDependencies": { "@mysten/sui": "^2.31.3" } }, "sha512-K2XxTd1VpDDPaXndLhH/NlGDLTI63WXbq4wQLLRnPLoiICY6G2x2yR0f5mafsA5vT6tjfJTf5kwVDRnB8hGzdA=="],
 
     "@streamdown/code/shiki": ["shiki@3.23.0", "https://europe-west4-npm.pkg.dev/lovable-core-prod/sandbox-npm-cache/shiki/-/shiki-3.23.0.tgz", { "dependencies": { "@shikijs/core": "3.23.0", "@shikijs/engine-javascript": "3.23.0", "@shikijs/engine-oniguruma": "3.23.0", "@shikijs/langs": "3.23.0", "@shikijs/themes": "3.23.0", "@shikijs/types": "3.23.0", "@shikijs/vscode-textmate": "^10.0.2", "@types/hast": "^3.0.4" } }, "sha512-55Dj73uq9ZXL5zyeRPzHQsK7Nbyt6Y10k5s7OjuFZGMhpp4r/rsLBH0o/0fstIzX1Lep9VxefWljK/SKCzygIA=="],
 
