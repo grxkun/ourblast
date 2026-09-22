@@ -388,28 +388,22 @@ export async function executeLaunchRequest(requestId: string): Promise<LaunchOut
       failure = outcome.message;
     }
   } else if (pad.id === "perpsplexity") {
-    // Market-backed launch: token + composite pool + leveraged position, one
-    // atomic on-chain flow, signed by the OurBlastBot wallet.
-    if (!request.underlying) {
-      failure = "Add the underlying market to the call, e.g. Underlying: NVDA.";
+    // Bonding-curve launch ("curve pool"): the raising path, which is what a
+    // launch call means. Backed/composite pools are for creators who already
+    // hold the liquidity, so they are never used for a plain launch call.
+    const { launchCurveOnPerpsplexity } = await import("./perpsplexity-launch.server");
+    const outcome = await launchCurveOnPerpsplexity({
+      symbol: request.symbol,
+      name: request.name,
+      description: request.tweet_text ?? "",
+      iconUrl: request.icon_url ?? "",
+      startingCapUsd: request.starting_cap_usd ? Number(request.starting_cap_usd) : null,
+    });
+    if (outcome.status === "CONFIRMED" && outcome.coinType) {
+      deployment = { tokenAddress: outcome.coinType, transactionDigest: outcome.digest ?? "" };
+      perpsPoolId = outcome.poolId ?? null;
     } else {
-      const { launchOnPerpsplexity } = await import("./perpsplexity-launch.server");
-      const outcome = await launchOnPerpsplexity({
-        symbol: request.symbol,
-        name: request.name,
-        description: request.tweet_text ?? "",
-        iconUrl: request.icon_url ?? "",
-        underlying: request.underlying,
-        long: request.perps_long ?? true,
-        leverageBps: request.leverage_bps ?? 10_000,
-        startingCapUsd: request.starting_cap_usd ? Number(request.starting_cap_usd) : null,
-      });
-      if (outcome.status === "CONFIRMED" && outcome.coinType) {
-        deployment = { tokenAddress: outcome.coinType, transactionDigest: outcome.digest ?? "" };
-        perpsPoolId = outcome.poolId ?? null;
-      } else {
-        failure = outcome.error ?? "The Perpsplexity launch did not confirm on chain.";
-      }
+      failure = outcome.error ?? "The Perpsplexity launch did not confirm on chain.";
     }
   } else {
     const result = await launchpadAdapter.launchToken(launchConfigFor(request));
@@ -438,9 +432,9 @@ export async function executeLaunchRequest(requestId: string): Promise<LaunchOut
       ? `${pad.site}/pool/${perpsPoolId}`
       : pad.site
     : poolPageUrl(pad, deployment.tokenAddress);
-  const positionLine = isPerps && request.underlying
-    ? `${request.underlying.toUpperCase().replace(/USD$/, "")} ${request.perps_long === false ? "SHORT" : "LONG"} ${(request.leverage_bps ?? 10_000) / 10_000}x`
-    : null;
+  // A curve launch has no leveraged position yet — the pool raises first, so the
+  // reply must not claim one.
+  const positionLine = isPerps ? "Bonding curve" : null;
   await client
     .from("x_launch_requests")
     .update({

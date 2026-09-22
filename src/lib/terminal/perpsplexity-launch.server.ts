@@ -687,3 +687,185 @@ export async function launchOnPerpsplexity(input: PerpsLaunchInput): Promise<Per
     engineId,
   };
 }
+
+/**
+ * Bonding-curve launch on Perpsplexity ("curve pool" — the raising path).
+ *
+ * Traced verbatim from the official mainnet launch transaction
+ * 2ZJsmUn6EVJy9cWH9QGWsSULr8HN1PJuLnLbfZ3FCJMV (BABYWAL/$BBW):
+ *   1. publish the patched coin template + make the upgrade cap immutable
+ *   2. one transaction: <coin>::create → settings::spot(0, false) →
+ *      split 1 USDC seed → split the config launch fee in SUI →
+ *      launchpad::launch_registered → transfer PoolCap, LpPosition and the
+ *      SUI refund back to the launch wallet.
+ * Composite ("backed") pools are for creators who already hold liquidity;
+ * curve pools are how a launch raises it, so this is the default path.
+ */
+export interface PerpsCurveInput {
+  name: string;
+  symbol: string;
+  description: string;
+  iconUrl: string;
+  /** Target raise in quote (USD) terms; defaults to the form's 5,000. */
+  startingCapUsd: number | null;
+}
+
+const CURVE_BUDGET = 500_000_000;
+const CURVE_DEFAULT_CAP_UNITS = 5_000_000_000n; // 5,000 USDC, the form default.
+
+export async function launchCurveOnPerpsplexity(input: PerpsCurveInput): Promise<PerpsLaunchResult> {
+  const keypair = await loadDeployer();
+  if (!keypair) return fail("The bot launch wallet is not configured.");
+  const sender = keypair.getPublicKey().toSuiAddress();
+
+  let names: { module: string; struct: string };
+  try {
+    names = deriveNames(input.symbol);
+  } catch (error) {
+    return fail((error as Error).message);
+  }
+
+  let launchFeeMist: bigint;
+  try {
+    launchFeeMist = await readLaunchFeeMist();
+  } catch (error) {
+    return fail((error as Error).message);
+  }
+
+  const capUnits = input.startingCapUsd && input.startingCapUsd > 0
+    ? perpsQuoteUnits(Math.round(input.startingCapUsd))
+    : CURVE_DEFAULT_CAP_UNITS;
+  if (capUnits <= SEED_UNITS) return fail("The raise target must be larger than the 1 USDC seed.");
+  const bondTargetUnits = capUnits - SEED_UNITS;
+
+  const [gas, gasPrice] = await Promise.all([gasCoins(sender), referenceGasPrice().catch(() => 1000)]);
+  if (gas.length === 0) return fail("The bot wallet has no SUI for gas or the launch fee.");
+
+  const description =
+    input.description.trim() || `${input.name} — launched on Perpsplexity via OurBlast.`;
+
+  // Step 1 — publish the coin package.
+  let moduleBase64: string;
+  try {
+    moduleBase64 = patchTemplateIdentifiers(TEMPLATE_MODULE, names);
+  } catch (error) {
+    return fail(`Could not patch the coin template: ${(error as Error).message}`);
+  }
+  const publishTx = new Transaction();
+  withGas(publishTx, sender, gas, gasPrice, PUBLISH_BUDGET);
+  const [upgradeCap] = publishTx.publish({
+    modules: [Array.from(Buffer.from(moduleBase64, "base64"))],
+    dependencies: TEMPLATE_DEPENDENCIES,
+  });
+  publishTx.moveCall({ target: "0x2::package::make_immutable", arguments: [upgradeCap!] });
+  const publishRun = await signAndExecute(publishTx, keypair);
+  if (!publishRun.ok || !publishRun.digest) return fail(publishRun.error ?? "Coin package publish failed.");
+  const publishReceipt = await fetchReceipt(publishRun.digest);
+  if (!publishReceipt.ok) return fail(publishReceipt.error ?? "Coin package publish failed on chain.");
+  const creatorCap = publishReceipt.created.find((change) => change.objectType.endsWith("::CreatorCap"));
+  if (!creatorCap) return fail("The coin package published but no creator capability appeared.");
+  const packageId = creatorCap.objectType.split("::")[0]!;
+  const coinType = `${packageId}::${names.module}::${names.struct}`;
+
+  // Step 2 — the curve launch itself, one atomic transaction.
+  let capRef: { objectId: string; version: string; digest: string };
+  try {
+    capRef = await objectRef(creatorCap.objectId, "The coin creator capability");
+  } catch (error) {
+    return fail((error as Error).message, { coinType, packageId });
+  }
+  const [launchpadRef, configRef, clockRef, coinRegistryRef] = await Promise.all([
+    sharedRef(PERPSPLEXITY_LAUNCHPAD_ID),
+    sharedRef(PERPSPLEXITY_CONFIG_ID),
+    sharedRef(CLOCK),
+    sharedRef(COIN_REGISTRY),
+  ]);
+
+  let feeCoin: SuiCoin | null = null;
+  let launchGas: { objectId: string; version: string; digest: string; type: string }[] = [];
+  try {
+    if (launchFeeMist > 0n) {
+      const picked = await exactFeeCoin(sender, keypair, gasPrice, launchFeeMist);
+      feeCoin = picked.fee;
+      launchGas = picked.gas.map((coin) => ({ ...coin, type: "0x2::coin::Coin<0x2::sui::SUI>" }));
+    } else {
+      launchGas = await gasCoins(sender);
+    }
+  } catch (error) {
+    return fail((error as Error).message, { coinType, packageId });
+  }
+  if (launchGas.length === 0) {
+    return fail(
+      "The bot wallet has no SUI coin left to pay gas. Send a few SUI to it with a normal transfer, then launch again.",
+      { coinType, packageId },
+    );
+  }
+
+  const tx = new Transaction();
+  withGas(tx, sender, launchGas, gasPrice, CURVE_BUDGET);
+  const created = tx.moveCall({
+    target: `${packageId}::${names.module}::create`,
+    arguments: [
+      tx.objectRef(capRef),
+      tx.sharedObjectRef({ ...coinRegistryRef, mutable: true }),
+      tx.pure.string(input.name.trim()),
+      tx.pure.string(names.struct),
+      tx.pure.string(description),
+      tx.pure.string(input.iconUrl),
+    ],
+  }) as TransactionArgument[];
+  const initializer = created[0]!;
+  const treasuryCap = created[1]!;
+  const settings = tx.moveCall({
+    target: `${PERPSPLEXITY_PACKAGE_ID}::settings::spot`,
+    arguments: [tx.pure.u64(0), tx.pure.bool(false)],
+  });
+  let seed: TransactionArgument;
+  try {
+    seed = await usdcSeedCoin(tx, sender, SEED_UNITS);
+  } catch (error) {
+    return fail((error as Error).message, { coinType, packageId });
+  }
+  const fee = feeCoin
+    ? tx.objectRef({ objectId: feeCoin.objectId, version: feeCoin.version, digest: feeCoin.digest })
+    : tx.moveCall({ target: "0x2::coin::zero", typeArguments: ["0x2::sui::SUI"] });
+  const results = tx.moveCall({
+    target: `${PERPSPLEXITY_PACKAGE_ID}::launchpad::launch_registered`,
+    typeArguments: [coinType, PERPSPLEXITY_QUOTE_TYPE],
+    arguments: [
+      tx.sharedObjectRef({ ...launchpadRef, mutable: true }),
+      tx.sharedObjectRef({ ...configRef, mutable: false }),
+      treasuryCap,
+      initializer,
+      seed,
+      fee,
+      tx.pure.u64(SUPPLY),
+      settings,
+      tx.pure.u64(bondTargetUnits),
+      tx.sharedObjectRef({ ...clockRef, mutable: false }),
+    ],
+  }) as TransactionArgument[];
+  tx.transferObjects([results[0]!, results[1]!, results[2]!], sender);
+
+  const run = await signAndExecute(tx, keypair);
+  if (!run.ok || !run.digest) {
+    return fail(run.error ?? "The curve launch did not go through.", { digest: run.digest, coinType, packageId });
+  }
+  const receipt = await fetchReceipt(run.digest);
+  if (!receipt.ok) {
+    return fail(receipt.error ?? "The curve launch failed on chain.", { digest: run.digest, coinType, packageId });
+  }
+  const poolCreated = receipt.events.find(
+    (event) => event.type === `${PERPSPLEXITY_ORIGINAL_PACKAGE_ID}::pool::PoolCreated`,
+  );
+  const poolId = eventField(poolCreated, "pool");
+  if (!poolId) {
+    return fail("The launch finished without the pool's on-chain confirmation.", {
+      digest: run.digest,
+      coinType,
+      packageId,
+    });
+  }
+
+  return { status: "CONFIRMED", digest: run.digest, error: null, coinType, packageId, poolId, engineId: null };
+}
