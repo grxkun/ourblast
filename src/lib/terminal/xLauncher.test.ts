@@ -221,6 +221,21 @@ describe("X mention → Suipump launch screen → verified result", () => {
     expect(reply).toContain(outcome.tokenUrl!);
     expect(reply).toContain(outcome.poolUrl!);
   });
+
+  it("includes the creator-fee claim link when one is available", () => {
+    const reply = composeDeployedLaunchReply(
+      "GUDSUI",
+      "https://suipump.org/token/0xabc",
+      "https://suipump.org/pool/0xabc",
+      "claim-token-123",
+      null,
+      "mjbdran",
+    );
+
+    expect(reply).toContain("Creator fees designated to @mjbdran.");
+    expect(reply).toContain("Creator fee share for @mjbdran:");
+    expect(reply).toContain("https://ourblast.xyz/claim/claim-token-123");
+  });
 });
 
 const { parseDeployTweet } = await import("./xLauncher");
