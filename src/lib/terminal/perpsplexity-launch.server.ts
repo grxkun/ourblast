@@ -77,7 +77,7 @@ const TEMPLATE_DEPENDENCIES = [
 ];
 
 const CLOCK = "0x6";
-const COIN_REGISTRY = "0xc";
+const COIN_REGISTRY = "0x000000000000000000000000000000000000000000000000000000000000000c";
 const IDENTIFIERS_KIND = 0x7;
 const MOVE_KEYWORDS = new Set(
   "abort.acquires.as.break.const.continue.copy.else.entry.enum.false.friend.fun.has.if.invariant.let.loop.macro.match.module.move.mut.native.public.return.script.spec.struct.true.type.use.while".split("."),
@@ -424,8 +424,17 @@ export async function launchOnPerpsplexity(input: PerpsLaunchInput): Promise<Per
   } catch (error) {
     return fail((error as Error).message, { coinType, packageId });
   }
-  const [registryRef, marketRef, lendingRef, baseOracleRef, collateralOracleRef, launchpadRef, configRef, clockRef] =
-    await Promise.all([
+  const [
+    registryRef,
+    marketRef,
+    lendingRef,
+    baseOracleRef,
+    collateralOracleRef,
+    launchpadRef,
+    configRef,
+    clockRef,
+    coinRegistryRef,
+  ] = await Promise.all([
       sharedRef(PERPSPLEXITY_REGISTRY_ID),
       sharedRef(market.marketId),
       sharedRef(PERPSPLEXITY_LENDING_MARKET_ID),
@@ -434,6 +443,9 @@ export async function launchOnPerpsplexity(input: PerpsLaunchInput): Promise<Per
       sharedRef(PERPSPLEXITY_LAUNCHPAD_ID),
       sharedRef(PERPSPLEXITY_CONFIG_ID),
       sharedRef(CLOCK),
+      // Sui's coin registry is a shared object with a real initial version; a
+      // hardcoded version 1 makes the whole launch unusable on chain.
+      sharedRef(COIN_REGISTRY),
     ]);
   // The launch capital is exactly the fee Perpsplexity's config publishes
   // (5 SUI on mainnet, matching the reference create transaction: -5.000000000
@@ -465,7 +477,7 @@ export async function launchOnPerpsplexity(input: PerpsLaunchInput): Promise<Per
     target: `${packageId}::${names.module}::create`,
     arguments: [
       prepareTx.objectRef(capRef),
-      prepareTx.sharedObjectRef({ objectId: COIN_REGISTRY, initialSharedVersion: "1", mutable: true }),
+      prepareTx.sharedObjectRef({ ...coinRegistryRef, mutable: true }),
       prepareTx.pure.string(input.name.trim()),
       prepareTx.pure.string(names.struct),
       prepareTx.pure.string(description),

@@ -358,6 +358,8 @@ export async function executeLaunchRequest(requestId: string): Promise<LaunchOut
   const pad = resolveLaunchpad(request.launchpad);
   let deployment: { tokenAddress: string; transactionDigest: string } | undefined;
   let failure: string | null = null;
+  // Perpsplexity's own pool page, so the reply links the market, not a homepage.
+  let perpsPoolId: string | null = null;
   const routing = await feeRouting(request.x_username, {
     handle: request.fee_receiver_x_username,
     wallet: request.fee_receiver_wallet,
@@ -404,6 +406,7 @@ export async function executeLaunchRequest(requestId: string): Promise<LaunchOut
       });
       if (outcome.status === "CONFIRMED" && outcome.coinType) {
         deployment = { tokenAddress: outcome.coinType, transactionDigest: outcome.digest ?? "" };
+        perpsPoolId = outcome.poolId ?? null;
       } else {
         failure = outcome.error ?? "The Perpsplexity launch did not confirm on chain.";
       }
@@ -430,7 +433,11 @@ export async function executeLaunchRequest(requestId: string): Promise<LaunchOut
   const tokenUrl = isPerps
     ? `https://suiscan.xyz/mainnet/coin/${deployment.tokenAddress}`
     : tokenPageUrl(pad, deployment.tokenAddress);
-  const poolUrl = isPerps ? pad.site : poolPageUrl(pad, deployment.tokenAddress);
+  const poolUrl = isPerps
+    ? perpsPoolId
+      ? `${pad.site}/pool/${perpsPoolId}`
+      : pad.site
+    : poolPageUrl(pad, deployment.tokenAddress);
   const positionLine = isPerps && request.underlying
     ? `${request.underlying.toUpperCase().replace(/USD$/, "")} ${request.perps_long === false ? "SHORT" : "LONG"} ${(request.leverage_bps ?? 10_000) / 10_000}x`
     : null;
