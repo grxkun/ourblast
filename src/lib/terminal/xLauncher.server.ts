@@ -35,6 +35,9 @@ export interface LaunchRequestRow {
   icon_url: string | null;
   /** The caller's original tweet text, quoted in the coin's description. */
   tweet_text: string | null;
+  /** Creator-fee receiver named in the tweet ("Set @adiniyi as fee receiver"). */
+  fee_receiver_x_username: string | null;
+  fee_receiver_wallet: string | null;
   /** Perpsplexity market-backed launch fields (null for plain launches). */
   underlying: string | null;
   perps_long: boolean | null;
@@ -96,7 +99,21 @@ interface FeeRouting {
   launcherPaidOnChain: boolean;
 }
 
-async function feeRouting(xUsername: string): Promise<FeeRouting> {
+/**
+ * The handle whose wallet receives the launcher's 70%: the fee receiver named
+ * in the tweet when there is one, otherwise the caller themselves.
+ */
+export function feeReceiverHandle(row: {
+  x_username: string;
+  fee_receiver_x_username?: string | null;
+}): string {
+  return (row.fee_receiver_x_username ?? row.x_username ?? "").replace(/^@/, "");
+}
+
+async function feeRouting(
+  xUsername: string,
+  receiver?: { handle?: string | null; wallet?: string | null },
+): Promise<FeeRouting> {
   const configured = overridePayees();
   if (configured.length > 0) {
     const even = Math.floor(10_000 / configured.length);
@@ -111,7 +128,12 @@ async function feeRouting(xUsername: string): Promise<FeeRouting> {
   // and gas, 10% is swapped to BLAST and burned from the same wallet.
   const bot = (process.env['OURBLAST_BOT_WALLET_ADDRESS']?.trim() || BOT_WALLET_ADDRESS).toLowerCase();
   const developer = FOUNDER_ADDRESS.toLowerCase();
-  const launcher = await launcherWallet(xUsername);
+  // A tweet may hand the creator fees to someone else ("Set @adiniyi as fee
+  // receiver"): that wallet takes the launcher's 70% instead.
+  const named = (receiver?.wallet ?? "").trim().toLowerCase();
+  const launcher = /^0x[0-9a-f]{64}$/.test(named)
+    ? named
+    : (receiver?.handle ? await launcherWallet(receiver.handle) : null) ?? (receiver?.handle ? null : await launcherWallet(xUsername));
   const botShareBps = toBps(CREATOR_FEE_SPLIT.bot + CREATOR_FEE_SPLIT.buyBurn);
   if (launcher && launcher !== bot && launcher !== developer) {
     return {
@@ -239,6 +261,8 @@ export async function createLaunchRequest(
       ourblast_fee_percent: settings.ourblastFeePercent,
       icon_url: iconUrl?.slice(0, 500) ?? null,
       tweet_text: tweetText?.slice(0, 1000) ?? null,
+      fee_receiver_x_username: request.feeReceiver?.handle ?? null,
+      fee_receiver_wallet: request.feeReceiver?.wallet ?? null,
       underlying: request.perps?.underlying ?? null,
       perps_long: request.perps ? request.perps.long : null,
       leverage_bps: request.perps?.leverageBps ?? null,
@@ -322,7 +346,10 @@ export async function executeLaunchRequest(requestId: string): Promise<LaunchOut
   const pad = resolveLaunchpad(request.launchpad);
   let deployment: { tokenAddress: string; transactionDigest: string } | undefined;
   let failure: string | null = null;
-  const routing = await feeRouting(request.x_username);
+  const routing = await feeRouting(request.x_username, {
+    handle: request.fee_receiver_x_username,
+    wallet: request.fee_receiver_wallet,
+  });
 
   if (pad.id === "suipump") {
     // Real Suipump create call, signed by the OurBlastBot wallet. Stays inert
@@ -414,7 +441,7 @@ export async function executeLaunchRequest(requestId: string): Promise<LaunchOut
   // there is no launch-time payee split to claim there.
   const claimToken = isPerps || routing.launcherPaidOnChain
     ? null
-    : await ensureFeeClaimLink(request.symbol, request.x_username);
+    : await ensureFeeClaimLink(request.symbol, feeReceiverHandle(request));
 
   await postDeployedReply(request, tokenUrl, poolUrl, claimToken, positionLine);
   return { status: "DEPLOYED", notice: null, tokenUrl, poolUrl };
