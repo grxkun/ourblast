@@ -38,6 +38,14 @@ export function DesignationClaim({ tokenAddress }: { tokenAddress: string }) {
     staleTime: 15_000,
   });
 
+  const readLive = useServerFn(getLiveCreatorFees);
+  const live = useQuery({
+    queryKey: ["live-creator-fees"],
+    queryFn: () => readLive({}),
+    refetchInterval: 60_000,
+    staleTime: 30_000,
+  });
+
   const claimFn = useServerFn(claimCreatorFeeDesignation);
   const claim = useMutation({
     mutationFn: () => claimFn({ data: { tokenAddress: address } }),
@@ -67,7 +75,14 @@ export function DesignationClaim({ tokenAddress }: { tokenAddress: string }) {
     );
   }
 
-  const unclaimed = Number(row.unclaimed_amount ?? 0);
+  // Real balance read off chain; the stored snapshot is only a fallback.
+  const onChain = findLiveFee(live.data?.rows, { symbol: row.token_symbol, tokenAddress: row.token_address });
+  const recipientShare = walletShareSui(onChain, row.recipient_wallet);
+  const unclaimed = onChain
+    ? recipientShare > 0
+      ? recipientShare
+      : onChain.pendingSui
+    : Number(row.unclaimed_amount ?? 0);
 
   const copyShare = async () => {
     await navigator.clipboard
