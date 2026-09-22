@@ -110,55 +110,54 @@ export const claimCreatorFeeDesignation = createServerFn({ method: "POST" })
     z.object({ tokenAddress: z.string().min(4).max(120) }).parse(input),
   )
   .handler(async ({ data, context }) => {
-    const tokenAddress = data.tokenAddress.trim().toLowerCase();
-    const { data: profile } = await context.supabase
-      .from("profiles")
-      .select("wallet_address")
-      .eq("id", context.userId)
-      .maybeSingle();
-    const wallet = profile?.wallet_address?.toLowerCase() ?? null;
-    if (!wallet) return { ok: false, message: "Connect the designated Sui wallet first." };
-
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { data: row } = await supabaseAdmin
-      .from("creator_fee_designations")
-      .select("recipient_wallet, status, unclaimed_amount, designation_tx")
-      .eq("token_address", tokenAddress)
-      .maybeSingle();
-    if (!row) return { ok: false, message: "No designation exists for that token." };
-    if (row.status === "claimed") return { ok: false, message: "This designation was already claimed." };
-    if (row.status === "recalled") {
-      return { ok: false, message: "The deployer recalled this endorsement, so it can no longer be claimed." };
-    }
-    if (row.recipient_wallet.toLowerCase() !== wallet) {
-      return {
-        ok: false,
-        message: "The connected wallet is not the designated recipient wallet for this token.",
-      };
-    }
 
-    const { data: updated, error } = await supabaseAdmin
-      .from("creator_fee_designations")
-      .update({
-        status: "claimed",
-        claimed_wallet: wallet,
-        claimed_at: new Date().toISOString(),
-        claimed_amount: Number(row.unclaimed_amount ?? 0),
-        unclaimed_amount: 0,
-        claim_tx: row.designation_tx ?? null,
-      })
-      .eq("token_address", tokenAddress)
-      .neq("status", "claimed")
-      .select("token_address, status, claimed_wallet")
-      .maybeSingle();
-    if (error) throw new Error(error.message);
-    if (!updated) return { ok: false, message: "This designation was already claimed." };
-
-    return {
-      ok: true,
-      message:
-        "Claimed. Creator fees for this token pay to your wallet on chain — OURBLAST never holds them.",
+    const store: DesignationClaimStore = {
+      async getDesignation(tokenAddress) {
+        const { data: row } = await supabaseAdmin
+          .from("creator_fee_designations")
+          .select("token_address, recipient_wallet, recipient_x_handle, status, unclaimed_amount, designation_tx, claimed_wallet")
+          .eq("token_address", tokenAddress)
+          .maybeSingle();
+        return row ?? null;
+      },
+      async getWallet(userId) {
+        const { data: profile } = await context.supabase
+          .from("profiles")
+          .select("wallet_address")
+          .eq("id", userId)
+          .maybeSingle();
+        return profile?.wallet_address ?? null;
+      },
+      async getXUsername(userId) {
+        const { data: account } = await context.supabase
+          .from("x_accounts")
+          .select("username")
+          .eq("user_id", userId)
+          .maybeSingle();
+        return account?.username ?? null;
+      },
+      async markClaimed({ tokenAddress, wallet, amount, claimTx }) {
+        const { data: updated, error } = await supabaseAdmin
+          .from("creator_fee_designations")
+          .update({
+            status: "claimed",
+            claimed_wallet: wallet,
+            claimed_at: new Date().toISOString(),
+            claimed_amount: amount,
+            unclaimed_amount: 0,
+            claim_tx: claimTx,
+          })
+          .eq("token_address", tokenAddress)
+          .neq("status", "claimed")
+          .select("token_address, recipient_wallet, status, claimed_wallet")
+          .maybeSingle();
+        if (error) throw new Error(error.message);
+        return updated ?? null;
+      },
     };
+
+    return performDesignationClaim(store, context.userId, data.tokenAddress);
   });
 
 /**
