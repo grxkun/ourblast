@@ -149,8 +149,12 @@ export function DevFeeCard() {
           {/* Claim form */}
           <div className="rounded-lg border border-border bg-background/60 p-3">
             <label className="font-display text-xs uppercase text-muted-foreground">
-              Amount to transfer (SUI)
+              Move ops funds out of the bot wallet (SUI)
             </label>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Type the amount yourself. This is not a dev-share payout — every SUI you move here is gas, ops or burn
+              reserve money.
+            </p>
             <div className="mt-2 flex gap-2">
               <input
                 type="number"
@@ -161,15 +165,8 @@ export function DevFeeCard() {
                 onChange={(e) => setAmount(e.target.value)}
                 className="flex-1 rounded-xl border border-input bg-background px-3 py-2 font-body text-sm outline-none focus:border-ring"
               />
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => setAmount(data.botBalanceSui ? String(Math.floor(data.botBalanceSui * 1000) / 1000) : "0")}
-              >
-                Max
-              </Button>
             </div>
+
 
             {data.error ? (
               <p className="mt-2 text-xs text-destructive">{data.error}</p>
