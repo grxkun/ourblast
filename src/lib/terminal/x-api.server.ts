@@ -2,6 +2,7 @@
  * Minimal X API v2 client using OAuth 1.0a user-context signing, so @ourblastbot can
  * read its mentions and post replies. Server-only: credentials are read from env here.
  */
+import { enforceSingleCashtag } from "./x-bot";
 
 const API = "https://api.x.com";
 
@@ -201,19 +202,17 @@ export async function fetchTweetDetails(credentials: XCredentials, postId: strin
 }
 
 /**
- * X rejects any post carrying more than one $cashtag, and user-supplied names,
- * tickers or notes can easily inject a second one. Keep the first cashtag and
- * drop the "$" from every later one so the reply stays postable.
+ * Short, human-readable reason for a failed X write. Safe to store and show on
+ * public pages — never contains the raw API payload.
  */
-export function enforceSingleCashtag(text: string): string {
-  let seen = false;
-  return text.replace(/\$([A-Za-z][A-Za-z0-9]{0,14})\b/g, (match, symbol: string) => {
-    if (!seen) {
-      seen = true;
-      return match;
-    }
-    return symbol;
-  });
+export function friendlyXError(error: unknown): string {
+  const message = error instanceof Error ? error.message : String(error ?? "");
+  if (/cashtag/i.test(message)) return "X rejected the reply: more than one $cashtag in the text.";
+  if (/duplicate content/i.test(message)) return "X rejected the reply as duplicate text.";
+  if (/too many requests|rate.?limit|\[429\]/i.test(message)) return "X rate-limited the bot; it retries automatically.";
+  if (/not-authorized|unauthorized|forbidden|\[401\]|\[403\]/i.test(message))
+    return "X rejected the reply: the bot account was not allowed to post.";
+  return "X rejected the reply.";
 }
 
 /** Post a reply to a tweet. Returns the new post id. */
