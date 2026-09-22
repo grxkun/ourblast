@@ -1,5 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
 import { Copy, HandCoins } from "lucide-react";
 import { toast } from "sonner";
 
@@ -11,6 +12,8 @@ import {
   shareText,
   shortWallet,
 } from "@/lib/terminal/creatorFee";
+import { getLiveCreatorFees } from "@/lib/terminal/liveFees.functions";
+import { findLiveFee, walletShareSui } from "@/lib/terminal/liveFees";
 import { timeAgo } from "@/lib/blast";
 
 export const Route = createFileRoute("/creator-fees")({
@@ -51,18 +54,29 @@ function CreatorFeesPage() {
     staleTime: 30_000,
   });
 
-  const copyShare = async (row: {
-    token_symbol: string;
-    unclaimed_amount: number | string;
-    recipient_x_handle: string | null;
-    recipient_wallet: string;
-    token_address: string;
-  }) => {
+  const readLive = useServerFn(getLiveCreatorFees);
+  const live = useQuery({
+    queryKey: ["live-creator-fees"],
+    queryFn: () => readLive({}),
+    refetchInterval: 60_000,
+    staleTime: 30_000,
+  });
+
+  const copyShare = async (
+    row: {
+      token_symbol: string;
+      unclaimed_amount: number | string;
+      recipient_x_handle: string | null;
+      recipient_wallet: string;
+      token_address: string;
+    },
+    amount: number,
+  ) => {
     await navigator.clipboard
       .writeText(
         shareText({
           tokenSymbol: row.token_symbol,
-          unclaimedAmount: Number(row.unclaimed_amount ?? 0),
+          unclaimedAmount: amount,
           recipientXHandle: row.recipient_x_handle,
           recipientWallet: row.recipient_wallet,
           claimUrl: `${window.location.origin}/claim/${row.token_address}`,
@@ -72,7 +86,20 @@ function CreatorFeesPage() {
     toast.success("Share text copied.");
   };
 
-  const list = rows.data ?? [];
+  // Live on-chain balances beat the stored snapshot, and the dashboard is
+  // explicitly sorted by unclaimed amount rather than popularity.
+  const liveRows = live.data?.rows;
+  const list = (rows.data ?? [])
+    .map((row) => {
+      const onChain = findLiveFee(liveRows, { symbol: row.token_symbol, tokenAddress: row.token_address });
+      const recipientShare = walletShareSui(onChain, row.recipient_wallet);
+      return {
+        row,
+        onChain,
+        unclaimed: recipientShare > 0 ? recipientShare : (onChain?.pendingSui ?? Number(row.unclaimed_amount ?? 0)),
+      };
+    })
+    .sort((a, b) => b.unclaimed - a.unclaimed);
 
   return (
     <div className="mx-auto w-full max-w-4xl space-y-4 px-4 py-10">
@@ -87,7 +114,7 @@ function CreatorFeesPage() {
       ) : null}
 
       <ul className="space-y-3">
-        {list.map((row) => (
+        {list.map(({ row, onChain, unclaimed }) => (
           <li key={row.token_address} className="space-y-2 border-2 border-border p-4">
             <div className="flex flex-wrap items-baseline justify-between gap-2">
               <p className="font-display text-2xl">
@@ -97,7 +124,7 @@ function CreatorFeesPage() {
                 ) : null}
               </p>
               <p className="font-display text-xl text-primary">
-                Unclaimed: {formatSui(Number(row.unclaimed_amount ?? 0))}
+                Unclaimed: {onChain || unclaimed > 0 ? formatSui(unclaimed) : live.isLoading ? "reading…" : "0 SUI"}
               </p>
             </div>
             <dl className="grid grid-cols-[auto_1fr] gap-x-6 gap-y-1 text-xs">
@@ -110,10 +137,14 @@ function CreatorFeesPage() {
               <dd className="font-bold">{shortWallet(row.deployer_wallet)}</dd>
               <dt className="text-muted-foreground">Launchpad</dt>
               <dd className="font-bold uppercase">{row.launchpad}</dd>
-              <dt className="text-muted-foreground">Trading volume</dt>
-              <dd className="font-bold">
-                {Number(row.trading_volume ?? 0) > 0 ? formatSui(Number(row.trading_volume)) : "Not indexed yet"}
-              </dd>
+              {onChain ? (
+                <>
+                  <dt className="text-muted-foreground">Fees in the token now</dt>
+                  <dd className="font-bold">{formatSui(onChain.pendingSui)}</dd>
+                  <dt className="text-muted-foreground">Read from chain</dt>
+                  <dd className="font-bold">{timeAgo(live.data?.readAt ?? new Date().toISOString())}</dd>
+                </>
+              ) : null}
               <dt className="text-muted-foreground">Designated</dt>
               <dd className="font-bold">{timeAgo(row.designated_at)}</dd>
               <dt className="text-muted-foreground">Status</dt>
@@ -127,7 +158,11 @@ function CreatorFeesPage() {
               >
                 View claim page
               </Link>
-              <button type="button" onClick={() => void copyShare(row)} className="flex items-center gap-1 text-xs underline">
+              <button
+                type="button"
+                onClick={() => void copyShare(row, unclaimed)}
+                className="flex items-center gap-1 text-xs underline"
+              >
                 <Copy className="size-3" /> Copy share text
               </button>
             </div>

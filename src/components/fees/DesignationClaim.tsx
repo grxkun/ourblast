@@ -7,6 +7,8 @@ import { Button } from "@/components/ui/button";
 import { useBlast } from "@/components/blast/session";
 import { supabase } from "@/integrations/supabase/client";
 import { claimCreatorFeeDesignation } from "@/lib/terminal/creatorFee.functions";
+import { getLiveCreatorFees } from "@/lib/terminal/liveFees.functions";
+import { findLiveFee, walletShareSui } from "@/lib/terminal/liveFees";
 import {
   DESIGNATION_DISCLAIMER,
   formatSui,
@@ -34,6 +36,14 @@ export function DesignationClaim({ tokenAddress }: { tokenAddress: string }) {
       return data;
     },
     staleTime: 15_000,
+  });
+
+  const readLive = useServerFn(getLiveCreatorFees);
+  const live = useQuery({
+    queryKey: ["live-creator-fees"],
+    queryFn: () => readLive({}),
+    refetchInterval: 60_000,
+    staleTime: 30_000,
   });
 
   const claimFn = useServerFn(claimCreatorFeeDesignation);
@@ -65,7 +75,14 @@ export function DesignationClaim({ tokenAddress }: { tokenAddress: string }) {
     );
   }
 
-  const unclaimed = Number(row.unclaimed_amount ?? 0);
+  // Real balance read off chain; the stored snapshot is only a fallback.
+  const onChain = findLiveFee(live.data?.rows, { symbol: row.token_symbol, tokenAddress: row.token_address });
+  const recipientShare = walletShareSui(onChain, row.recipient_wallet);
+  const unclaimed = onChain
+    ? recipientShare > 0
+      ? recipientShare
+      : onChain.pendingSui
+    : Number(row.unclaimed_amount ?? 0);
 
   const copyShare = async () => {
     await navigator.clipboard
@@ -95,7 +112,17 @@ export function DesignationClaim({ tokenAddress }: { tokenAddress: string }) {
             {statusLabel({ status: row.status as "designated", unclaimedAmount: unclaimed })}
           </dd>
           <dt className="text-muted-foreground">Unclaimed creator fees</dt>
-          <dd className="font-bold">{formatSui(unclaimed)}</dd>
+          <dd className="font-bold">
+            {onChain || unclaimed > 0 ? formatSui(unclaimed) : live.isLoading ? "reading from chain…" : "0 SUI"}
+          </dd>
+          {onChain ? (
+            <>
+              <dt className="text-muted-foreground">Fees waiting in the token</dt>
+              <dd className="font-bold">{formatSui(onChain.pendingSui)}</dd>
+              <dt className="text-muted-foreground">Read from chain</dt>
+              <dd className="font-bold">{timeAgo(live.data?.readAt ?? new Date().toISOString())}</dd>
+            </>
+          ) : null}
           <dt className="text-muted-foreground">Fee recipient wallet</dt>
           <dd className="break-all font-bold">{row.recipient_wallet}</dd>
           {row.recipient_x_handle || row.recipient_name ? (
@@ -108,7 +135,9 @@ export function DesignationClaim({ tokenAddress }: { tokenAddress: string }) {
             </>
           ) : null}
           <dt className="text-muted-foreground">Trading volume</dt>
-          <dd className="font-bold">{Number(row.trading_volume ?? 0) > 0 ? formatSui(Number(row.trading_volume)) : "Not indexed yet"}</dd>
+          <dd className="font-bold">
+            {Number(row.trading_volume ?? 0) > 0 ? formatSui(Number(row.trading_volume)) : "—"}
+          </dd>
           <dt className="text-muted-foreground">Claimed so far</dt>
           <dd className="font-bold">{formatSui(Number(row.claimed_amount ?? 0))}</dd>
           <dt className="text-muted-foreground">Token address</dt>
