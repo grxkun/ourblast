@@ -1,6 +1,6 @@
 import { runTerminalAgent } from "./agent";
 import { composeXReply, X_BOT_HANDLE, type XMentionOutcome, type XMentionPayload } from "./x-bot";
-import { fetchTweetImage, postReply, readXCredentials } from "./x-api.server";
+import { fetchTweetImage, friendlyXError, postReply, readXCredentials } from "./x-api.server";
 import { imageUrlInText } from "./xLauncher";
 
 /** Live posting only when all four @ourblastbot credentials are saved. */
@@ -125,7 +125,7 @@ export async function handleXMention(payload: XMentionPayload, source: "webhook"
     try {
       replyPostId = await postReply(credentials, payload.postId, reply);
     } catch (error) {
-      postError = error instanceof Error ? error.message.slice(0, 500) : "Reply could not be posted.";
+      postError = friendlyXError(error);
     }
   }
 

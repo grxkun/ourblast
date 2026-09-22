@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
 import { getXBotStatus, pollXMentionsNow, simulateXMention } from "@/lib/terminal/x-bot.functions";
-import { X_BOT_HANDLE } from "@/lib/terminal/x-bot";
+import { enforceSingleCashtag, X_BOT_HANDLE } from "@/lib/terminal/x-bot";
 
 export function XMentionInbox() {
   const [draft, setDraft] = useState(`${X_BOT_HANDLE} launch $DOG Sui Dog`);
@@ -105,8 +105,10 @@ export function XMentionInbox() {
               ) : null}
             </div>
             <p className="mt-2 break-words">{row.text}</p>
-            <p className="mt-2 break-words rounded bg-muted p-2 text-xs">{row.reply_text}</p>
-            {row.post_error ? <p className="mt-2 text-xs text-destructive">X error: {row.post_error}</p> : null}
+            <p className="mt-2 break-words rounded bg-muted p-2 text-xs">
+              {row.reply_text ? enforceSingleCashtag(row.reply_text) : ""}
+            </p>
+            {row.post_error ? <p className="mt-2 text-xs text-destructive">{row.post_error}</p> : null}
           </li>
         ))}
         {!mentions.isLoading && (mentions.data ?? []).length === 0 ? (

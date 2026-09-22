@@ -34,6 +34,22 @@ const terminalLink = (params?: Record<string, string>) => {
 /** X hard-limits a post to 280 characters. */
 const fit = (text: string) => (text.length <= 280 ? text : `${text.slice(0, 277).trimEnd()}…`);
 
+/**
+ * X rejects any post carrying more than one $cashtag, and user-supplied names,
+ * tickers or notes can easily inject a second one. Keep the first cashtag and
+ * drop the "$" from every later one so the reply stays postable.
+ */
+export function enforceSingleCashtag(text: string): string {
+  let seen = false;
+  return text.replace(/\$([A-Za-z][A-Za-z0-9]{0,14})\b/g, (match, symbol: string) => {
+    if (!seen) {
+      seen = true;
+      return match;
+    }
+    return symbol;
+  });
+}
+
 const compact = (value: number) => {
   if (value >= 1_000_000_000) return `${+(value / 1_000_000_000).toFixed(2)}B`;
   if (value >= 1_000_000) return `${+(value / 1_000_000).toFixed(2)}M`;
