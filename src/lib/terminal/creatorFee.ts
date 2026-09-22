@@ -84,11 +84,11 @@ export function formatSui(amount: number): string {
 export interface DesignationInput {
   tokenAddress: string;
   tokenSymbol: string;
-  tokenName?: string | null;
-  launchpad?: string | null;
+  tokenName?: string | null | undefined;
+  launchpad?: string | null | undefined;
   recipientWallet: string;
-  recipientName?: string | null;
-  recipientXHandle?: string | null;
+  recipientName?: string | null | undefined;
+  recipientXHandle?: string | null | undefined;
   authorized: boolean;
 }
 
