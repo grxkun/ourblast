@@ -33,7 +33,7 @@ export const CREATOR_FEE_ROUTES = [
 export const LAUNCHER_SHARE_USES = "fees, burn, buyback, holder rewards — your call";
 
 /** One-line summary used in terminal replies and X replies. */
-export const FEE_SUMMARY = "0 launch fee. Creator fees from the pad split 10% @ourblastbot / 10% BLAST buy & burn / 10% dev / 70% launcher.";
+export const FEE_SUMMARY = "0 launch fee. Creator fees from the pad split 10% @ourblastbot / 10% BLAST buy & burn / 10% dev / 10% treasury / 60% launcher.";
 
 export function shareOf(amount: number, share: number): number {
   return Math.round(amount * share * 1_000_000) / 1_000_000;
