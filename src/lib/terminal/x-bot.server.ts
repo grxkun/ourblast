@@ -108,10 +108,10 @@ export async function handleXMention(payload: XMentionPayload, source: "webhook"
     const replyPostId: string | null = null;
     const postError: string | null = null;
 
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    await supabaseAdmin.from("x_mentions").upsert(
-      {
-        x_post_id: payload.postId,
+    // Fills in the claim row this call already inserted.
+    await supabaseAdmin
+      .from("x_mentions")
+      .update({
         x_username: username,
         text,
         intent: "launchToken",
@@ -123,9 +123,8 @@ export async function handleXMention(payload: XMentionPayload, source: "webhook"
         posted_at: replyPostId ? new Date().toISOString() : null,
         source,
         result: { requestId: row.id, symbol: row.symbol, launchpad: row.launchpad } as unknown as Record<string, never>,
-      },
-      { onConflict: "x_post_id", ignoreDuplicates: true },
-    );
+      })
+      .eq("x_post_id", payload.postId);
 
     return {
       postId: payload.postId,
