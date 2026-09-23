@@ -177,26 +177,22 @@ export async function handleXMention(payload: XMentionPayload, source: "webhook"
     postError,
   };
 
-  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
   await supabaseAdmin
     .from("x_mentions")
-    .upsert(
-      {
-        x_post_id: outcome.postId,
-        x_username: outcome.username,
-        text: outcome.text,
-        intent: outcome.intent,
-        status: outcome.status,
-        reply_text: outcome.reply,
-        posted: outcome.posted,
-        reply_post_id: replyPostId,
-        post_error: postError,
-        posted_at: replyPostId ? new Date().toISOString() : null,
-        source,
-        result: { live: Boolean(credentials), launch: result.launch ? { ...result.launch } : null, message: result.message } as unknown as Record<string, never>,
-      },
-      { onConflict: "x_post_id", ignoreDuplicates: true },
-    );
+    .update({
+      x_username: outcome.username,
+      text: outcome.text,
+      intent: outcome.intent,
+      status: outcome.status,
+      reply_text: outcome.reply,
+      posted: outcome.posted,
+      reply_post_id: replyPostId,
+      post_error: postError,
+      posted_at: replyPostId ? new Date().toISOString() : null,
+      source,
+      result: { live: Boolean(credentials), launch: result.launch ? { ...result.launch } : null, message: result.message } as unknown as Record<string, never>,
+    })
+    .eq("x_post_id", outcome.postId);
 
   return outcome;
 }
