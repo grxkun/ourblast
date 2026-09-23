@@ -6,7 +6,14 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { createFeeClaimLink } from "@/lib/terminal/feePayout.functions";
 import { Input } from "@/components/ui/input";
-import { CREATOR_FEE_ROUTES, GAS_NOTE_TERMINAL, LAUNCHER_SHARE_USES, LAUNCH_FEE_SUI } from "@/lib/terminal/fees";
+import {
+  CREATOR_FEE_ROUTES,
+  CREATOR_FEE_SPLIT,
+  GAS_NOTE_TERMINAL,
+  LAUNCHER_SHARE_USES,
+  LAUNCH_FEE_SUI,
+} from "@/lib/terminal/fees";
+const LAUNCHER_PERCENT = Math.round(CREATOR_FEE_SPLIT.launcher * 100);
 import { X_BOT_HANDLE } from "@/lib/terminal/x-bot";
 import { LAUNCHPADS, resolveLaunchpad } from "@/lib/terminal/launchpad";
 import { normalizeLaunchConfig } from "@/lib/terminal/launchSettings";
@@ -181,10 +188,10 @@ export function LaunchCard({ launch, editing, onEdit, onChange, onLaunch, onGene
               </li>
             ))}
           </ul>
-          <p className="mt-2 text-[0.65rem] text-muted-foreground">Of the creator fee the launchpad pays on trading volume. Your 70%: {LAUNCHER_SHARE_USES}.</p>
+          <p className="mt-2 text-[0.65rem] text-muted-foreground">Of the creator fee the launchpad pays on trading volume. Your {LAUNCHER_PERCENT}%: {LAUNCHER_SHARE_USES}.</p>
           <p className="mt-1 text-[0.65rem] text-muted-foreground">{GAS_NOTE_TERMINAL} Same for launch calls from {X_BOT_HANDLE} on X.</p>
           <div className="mt-3 border-t border-border pt-3">
-            <p className="font-display text-sm uppercase">Who claims your 70%</p>
+            <p className="font-display text-sm uppercase">Who claims your {LAUNCHER_PERCENT}%</p>
             <div className="mt-2 flex flex-wrap gap-2">
               {([
                 { mode: "creator" as FeePayoutMode, label: "Me (default)" },

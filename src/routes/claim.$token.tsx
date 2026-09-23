@@ -11,16 +11,17 @@ import { CREATOR_FEE_SPLIT } from "@/lib/terminal/fees";
 import { looksLikeTokenAddress } from "@/lib/terminal/creatorFee";
 import { DesignationClaim } from "@/components/fees/DesignationClaim";
 
+const LAUNCHER_PERCENT = Math.round(CREATOR_FEE_SPLIT.launcher * 100);
+
 export const Route = createFileRoute("/claim/$token")({
   head: () => ({
     meta: [
-      { title: "Claim your 70% creator share | OURBLAST" },
+      { title: `Claim your ${LAUNCHER_PERCENT}% creator share | OURBLAST` },
       {
         name: "description",
-        content:
-          "Verify the X account a launch was called from, connect a Sui wallet, and claim the 70% creator fee share reserved for you.",
+        content: `Verify the X account a launch was called from, connect a Sui wallet, and claim the ${LAUNCHER_PERCENT}% creator fee share reserved for you.`,
       },
-      { property: "og:title", content: "Claim your 70% creator share — OURBLAST" },
+      { property: "og:title", content: `Claim your ${LAUNCHER_PERCENT}% creator share — OURBLAST` },
       {
         property: "og:description",
         content: "Sign in with X, connect a Sui wallet, and release the launcher share reserved for your handle.",

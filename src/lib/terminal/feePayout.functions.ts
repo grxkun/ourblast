@@ -3,6 +3,7 @@ import { z } from "zod";
 
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { FEE_PAYOUT_MODES, normalizeFeePayout, type FeePayout } from "./feePayout";
+import { CREATOR_FEE_SPLIT } from "./fees";
 import { performClaim, readClaimViewer, type ClaimStore } from "./claimFlow";
 
 const payoutSchema = z.object({
@@ -197,7 +198,7 @@ export type MyTokenRow = {
 
 /**
  * Tokens the signed-in user launched through their linked X account, plus how
- * their 70% creator-fee share is routed for each: paid straight to their
+ * their launcher creator-fee share is routed for each: paid straight to their
  * wallet on chain, parked behind a claim link, or handled by Perpsplexity's
  * own pool. Read from the user's own session — no admin needed.
  */
@@ -258,7 +259,7 @@ export const getMyTokens = createServerFn({ method: "GET" })
         tokenUrl: l.token_url ?? null,
         txDigest: l.tx_digest ?? null,
         createdAt: l.created_at,
-        shareBps: perps ? 1000 : 7000,
+        shareBps: perps ? 1000 : Math.round(CREATOR_FEE_SPLIT.launcher * 10_000),
         feeMode,
         claimToken: feeMode === "claim" && claim?.status === "pending" ? claim.token : null,
         claimStatus: claim?.status ?? null,
