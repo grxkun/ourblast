@@ -198,7 +198,7 @@ export type MyTokenRow = {
 
 /**
  * Tokens the signed-in user launched through their linked X account, plus how
- * their 70% creator-fee share is routed for each: paid straight to their
+ * their launcher creator-fee share is routed for each: paid straight to their
  * wallet on chain, parked behind a claim link, or handled by Perpsplexity's
  * own pool. Read from the user's own session — no admin needed.
  */
