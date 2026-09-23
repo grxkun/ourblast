@@ -10,7 +10,7 @@ const c=await ref("0x03b8007014a39411da697fb4d7d7d9268324518ca9236f7cc8c19ec3c63
 const reg=await ref("0xb622741bfcfd6ef13b40c2d5c2adc8d796f68b3b1254fabaa571bffa3a91e875");
 const clock=await ref("0x0000000000000000000000000000000000000000000000000000000000000006");
 console.log("ticket",t.type,"reg owner",JSON.stringify(reg.owner));
-const gas=await ref("0x8f6850ac66db6007cd5c1f76a4995d0481cc8ca0fb9f1c3fe3072a1af5211b52");
+const gas=await ref("0x4d6f6041c4a4f714eb6bcd383838e40dadae4850e7578822575fd356af44f537");
 const tx=new Transaction();
 tx.setSender(sender);tx.setGasPrice(750);tx.setGasBudget(500_000_000);
 tx.setGasPayment([{objectId:gas.objectId,version:gas.version,digest:gas.digest}]);
