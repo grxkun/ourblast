@@ -91,6 +91,40 @@ export const adminOverview = createServerFn({ method: "GET" })
     };
   });
 
+export const botHealth = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    await assertStaff(context);
+    const db = await admin();
+    const [state, failedReplies, recentMentions] = await Promise.all([
+      db
+        .from("x_bot_state")
+        .select(
+          "updated_at, last_mention_id, last_poll_success_at, last_search_success_at, last_reply_success_at, last_poll_error",
+        )
+        .eq("id", true)
+        .maybeSingle(),
+      db
+        .from("x_mentions")
+        .select("id", { count: "exact", head: true })
+        .eq("posted", false)
+        .not("post_error", "is", null)
+        .not("x_post_id", "like", "test-%")
+        .not("x_post_id", "like", "sim-%")
+        .gte("created_at", new Date(Date.now() - 48 * 3600_000).toISOString()),
+      db
+        .from("x_mentions")
+        .select("id", { count: "exact", head: true })
+        .gte("created_at", new Date(Date.now() - 24 * 3600_000).toISOString()),
+    ]);
+    return {
+      state: state.data ?? null,
+      pendingFailedReplies: failedReplies.count ?? 0,
+      mentionsLast24h: recentMentions.count ?? 0,
+    };
+  });
+
+
 export const adjustPoints = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: unknown) =>
