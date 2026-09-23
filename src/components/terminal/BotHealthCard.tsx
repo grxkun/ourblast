@@ -5,10 +5,10 @@ import { Activity, MessageSquareReply, Radar, Search } from "lucide-react";
 import { botHealth } from "@/lib/admin.functions";
 import { timeAgo } from "@/lib/blast";
 
-function age(iso: string | null | undefined): { label: string; fresh: boolean } {
-  if (!iso) return { label: "never", fresh: false };
+function ageLabel(iso: string | null | undefined): { text: string; fresh: boolean } {
+  if (!iso) return { text: "never", fresh: false };
   const ms = Date.now() - new Date(iso).getTime();
-  return { label: timeAgo(iso), fresh: ms < 15 * 60_000 };
+  return { text: timeAgo(iso), fresh: ms < 15 * 60_000 };
 }
 
 export function BotHealthCard() {
@@ -20,14 +20,10 @@ export function BotHealthCard() {
   });
 
   const state = health.data?.state ?? null;
-  const poll = age(state?.last_poll_success_at);
-  const search = age(state?.last_search_success_at);
-  const reply = age(state?.last_reply_success_at);
-
   const rows = [
-    { icon: Radar, label: "Mention poll", ...poll },
-    { icon: Search, label: "Search fallback", ...search },
-    { icon: MessageSquareReply, label: "Last reply posted", ...reply },
+    { icon: Radar, name: "Mention poll", ...ageLabel(state?.last_poll_success_at) },
+    { icon: Search, name: "Search fallback", ...ageLabel(state?.last_search_success_at) },
+    { icon: MessageSquareReply, name: "Last reply posted", ...ageLabel(state?.last_reply_success_at) },
   ];
 
   return (
@@ -44,23 +40,16 @@ export function BotHealthCard() {
         <>
           <div className="divide-y divide-border rounded-xl border border-border">
             {rows.map((row) => (
-              <div key={row.label} className="flex items-center justify-between px-4 py-2.5">
+              <div key={row.name} className="flex items-center justify-between px-4 py-2.5">
                 <span className="flex items-center gap-2 font-body text-sm text-foreground">
                   <row.icon className="h-3.5 w-3.5 text-muted-foreground" />
-                  {row.label}
+                  {row.name}
                 </span>
                 <span
                   className={`font-body text-xs ${row.fresh ? "text-emerald-500" : "text-muted-foreground"}`}
                 >
-                  {row.label === "Last reply posted" ? row.label && row.label : null}
-                  {row.label ? age(undefined) && null : null}
-                  {row.label && ""}
-                  {row.label === "" ? "" : ""}
                   {row.fresh ? "● " : "○ "}
-                  {row.label && null}
-                  {row.label}
-                  {" — "}
-                  {row.label}
+                  {row.text}
                 </span>
               </div>
             ))}
