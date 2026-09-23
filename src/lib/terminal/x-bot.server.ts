@@ -30,6 +30,43 @@ export async function handleXMention(payload: XMentionPayload, source: "webhook"
     };
   }
 
+  // One X post = one handled mention. The claim row is inserted BEFORE any work,
+  // so polling, the search fallback, the webhook and manual ingest race on the
+  // unique x_post_id constraint instead of on a check-then-act read: whoever
+  // loses the insert returns the already-recorded outcome and posts nothing.
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const { error: claimError } = await supabaseAdmin.from("x_mentions").insert({
+    x_post_id: payload.postId,
+    x_username: username,
+    text,
+    intent: "processing",
+    status: "READY",
+    reply_text: "",
+    posted: false,
+    source,
+    result: {} as unknown as Record<string, never>,
+  });
+  if (claimError) {
+    // 23505 = unique violation: another worker already claimed this tweet.
+    if (claimError.code !== "23505") throw new Error(claimError.message);
+    const { data: existing } = await supabaseAdmin
+      .from("x_mentions")
+      .select("x_username, text, intent, status, reply_text, posted, reply_post_id, post_error")
+      .eq("x_post_id", payload.postId)
+      .maybeSingle();
+    return {
+      postId: payload.postId,
+      username: existing?.x_username ?? username,
+      text: existing?.text ?? text,
+      intent: existing?.intent ?? "unknown",
+      status: (existing?.status as XMentionOutcome["status"]) ?? "READY",
+      reply: existing?.reply_text ?? "",
+      posted: Boolean(existing?.posted),
+      replyPostId: existing?.reply_post_id ?? null,
+      postError: existing?.post_error ?? null,
+    };
+  }
+
   const context = {
     // X mentions carry no wallet authorisation: signing always happens in the terminal.
     walletConnected: false,
