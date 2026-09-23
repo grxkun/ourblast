@@ -10,7 +10,7 @@ export async function runXMentionPoll(): Promise<{
   reason: string | null;
   error: string | null;
 }> {
-  const { readXCredentials, getBotAccount, listMentions } = await import("./x-api.server");
+  const { readXCredentials, getBotAccount, listMentions, searchMentions } = await import("./x-api.server");
   const credentials = readXCredentials();
   if (!credentials) return { live: false, handled: 0, confirmed: 0, reason: "X credentials not saved yet", error: null };
 
@@ -25,7 +25,19 @@ export async function runXMentionPoll(): Promise<{
   let mentions;
   try {
     if (!botUserId) botUserId = (await getBotAccount(credentials)).id;
-    mentions = await listMentions(credentials, botUserId, state?.last_mention_id ?? null);
+    const sinceId = state?.last_mention_id ?? null;
+    // Two sources: the mentions timeline sometimes stalls for hours, so recent
+    // search runs alongside it. Results are merged, de-duplicated, oldest first.
+    const timeline = await listMentions(credentials, botUserId, sinceId);
+    let searched: Awaited<ReturnType<typeof searchMentions>> = [];
+    try {
+      searched = await searchMentions(credentials, "ourblastbot", sinceId);
+    } catch (error) {
+      console.error(`X mention search failed: ${error instanceof Error ? error.message : "unknown"}`);
+    }
+    const byId = new Map<string, (typeof timeline)[number]>();
+    for (const item of [...timeline, ...searched]) if (!byId.has(item.id)) byId.set(item.id, item);
+    mentions = [...byId.values()].sort((a, b) => (BigInt(a.id) < BigInt(b.id) ? -1 : 1));
   } catch (error) {
     const message = error instanceof Error ? error.message : "X read failed";
     console.error(`X mention poll failed: ${message}`);

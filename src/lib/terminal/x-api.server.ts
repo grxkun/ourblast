@@ -152,6 +152,46 @@ export async function listMentions(credentials: XCredentials, botUserId: string,
     .reverse();
 }
 
+/**
+ * Recent search for tweets mentioning the bot. The mentions timeline sometimes stalls
+ * or skips tweets, so this is used as a second source; results are newest last.
+ */
+export async function searchMentions(credentials: XCredentials, handle: string, sinceId?: string | null) {
+  const query: Record<string, string> = {
+    query: `@${handle.replace(/^@/, "")} -is:retweet`,
+    max_results: "25",
+    "tweet.fields": "author_id,created_at,attachments",
+    expansions: "author_id,attachments.media_keys",
+    "user.fields": "username",
+    "media.fields": "url,preview_image_url,type",
+  };
+  if (sinceId) query["since_id"] = sinceId;
+
+  const result = await request<{
+    data?: Array<{ id: string; text: string; author_id?: string; attachments?: { media_keys?: string[] } }>;
+    includes?: {
+      users?: Array<{ id: string; username: string }>;
+      media?: Array<{ media_key: string; url?: string; preview_image_url?: string; type?: string }>;
+    };
+  }>(credentials, "GET", "/2/tweets/search/recent", { query });
+
+  const users = new Map((result.includes?.users ?? []).map((user) => [user.id, user.username]));
+  const media = new Map(
+    (result.includes?.media ?? []).map((item) => [item.media_key, item.url ?? item.preview_image_url ?? null]),
+  );
+  return (result.data ?? [])
+    .map((tweet): XMentionItem => {
+      const key = tweet.attachments?.media_keys?.find((mediaKey) => media.get(mediaKey));
+      return {
+        id: tweet.id,
+        text: tweet.text,
+        imageUrl: key ? media.get(key) ?? null : null,
+        ...(tweet.author_id ? { author_id: tweet.author_id, username: users.get(tweet.author_id) ?? "" } : {}),
+      };
+    })
+    .reverse();
+}
+
 /** The first picture attached to one tweet, read on demand. */
 export async function fetchTweetImage(credentials: XCredentials, postId: string): Promise<string | null> {
   const result = await request<{
