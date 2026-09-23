@@ -9,6 +9,7 @@ import { LauncherSettingsCard } from "@/components/terminal/LauncherSettingsCard
 import { SuipumpReadinessCard } from "@/components/terminal/SuipumpReadinessCard";
 import { DevFeeCard } from "@/components/terminal/DevFeeCard";
 import { CreatorClaimCard } from "@/components/terminal/CreatorClaimCard";
+import { BotHealthCard } from "@/components/terminal/BotHealthCard";
 import { PlayerAvatar } from "@/components/blast/PlayerBadge";
 import { useBlast } from "@/components/blast/session";
 import { formatNumber, shortAddress, timeAgo } from "@/lib/blast";
@@ -294,6 +295,7 @@ function AdminPage() {
         </div>
       ) : tab === "launcher" ? (
         <div className="max-w-2xl">
+          <BotHealthCard />
           <LauncherSettingsCard />
           <SuipumpReadinessCard />
         </div>

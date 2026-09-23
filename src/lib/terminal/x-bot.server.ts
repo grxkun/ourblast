@@ -160,6 +160,8 @@ export async function handleXMention(payload: XMentionPayload, source: "webhook"
   if (credentials) {
     try {
       replyPostId = await postReply(credentials, payload.postId, reply);
+      const { recordXBotHealth } = await import("./x-bot-health.server");
+      await recordXBotHealth({ last_reply_success_at: new Date().toISOString() });
     } catch (error) {
       postError = friendlyXError(error);
     }

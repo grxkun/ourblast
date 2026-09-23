@@ -29,9 +29,11 @@ export async function runXMentionPoll(): Promise<{
     // Two sources: the mentions timeline sometimes stalls for hours, so recent
     // search runs alongside it. Results are merged, de-duplicated, oldest first.
     const timeline = await listMentions(credentials, botUserId, sinceId);
+    const { recordXBotHealth } = await import("./x-bot-health.server");
     let searched: Awaited<ReturnType<typeof searchMentions>> = [];
     try {
       searched = await searchMentions(credentials, "ourblastbot", sinceId);
+      await recordXBotHealth({ last_search_success_at: new Date().toISOString() });
     } catch (error) {
       console.error(`X mention search failed: ${error instanceof Error ? error.message : "unknown"}`);
     }
@@ -41,6 +43,8 @@ export async function runXMentionPoll(): Promise<{
   } catch (error) {
     const message = error instanceof Error ? error.message : "X read failed";
     console.error(`X mention poll failed: ${message}`);
+    const { recordXBotHealth } = await import("./x-bot-health.server");
+    await recordXBotHealth({ last_poll_error: message.slice(0, 500) });
     return { live: true, handled: 0, confirmed: 0, reason: null, error: message.slice(0, 500) };
   }
   const { handleXMention } = await import("./x-bot.server");
@@ -92,6 +96,8 @@ export async function runXMentionPoll(): Promise<{
     if (!row.reply_text) continue;
     try {
       const replyPostId = await postReply(credentials, row.x_post_id, row.reply_text);
+      const { recordXBotHealth } = await import("./x-bot-health.server");
+      await recordXBotHealth({ last_reply_success_at: new Date().toISOString() });
       await supabaseAdmin
         .from("x_mentions")
         .update({
@@ -110,7 +116,13 @@ export async function runXMentionPoll(): Promise<{
   const newest = mentions.at(-1)?.id ?? state?.last_mention_id ?? null;
   await supabaseAdmin
     .from("x_bot_state")
-    .update({ last_mention_id: newest, bot_user_id: botUserId, updated_at: new Date().toISOString() })
+    .update({
+      last_mention_id: newest,
+      bot_user_id: botUserId,
+      updated_at: new Date().toISOString(),
+      last_poll_success_at: new Date().toISOString(),
+      last_poll_error: null,
+    })
     .eq("id", true);
 
   // Retry queued automatic launches after a deployment fix or temporary chain
