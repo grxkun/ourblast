@@ -50,6 +50,9 @@ export async function runXMentionPoll(): Promise<{
     // Skip the bot's own tweets — a reply quoting a launch example must never
     // be re-ingested as a new launch call.
     if ((mention.username ?? "").replace(/^@/, "").toLowerCase() === "ourblastbot") continue;
+    // Cheap pre-filter only; handleXMention claims the tweet atomically, so a
+    // tweet arriving from both the timeline and the search fallback (or from two
+    // overlapping polls) is still answered exactly once.
     const { data: seen } = await supabaseAdmin
       .from("x_mentions")
       .select("id")

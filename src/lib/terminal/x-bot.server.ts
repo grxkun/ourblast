@@ -30,6 +30,43 @@ export async function handleXMention(payload: XMentionPayload, source: "webhook"
     };
   }
 
+  // One X post = one handled mention. The claim row is inserted BEFORE any work,
+  // so polling, the search fallback, the webhook and manual ingest race on the
+  // unique x_post_id constraint instead of on a check-then-act read: whoever
+  // loses the insert returns the already-recorded outcome and posts nothing.
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const { error: claimError } = await supabaseAdmin.from("x_mentions").insert({
+    x_post_id: payload.postId,
+    x_username: username,
+    text,
+    intent: "processing",
+    status: "READY",
+    reply_text: "",
+    posted: false,
+    source,
+    result: {} as unknown as Record<string, never>,
+  });
+  if (claimError) {
+    // 23505 = unique violation: another worker already claimed this tweet.
+    if (claimError.code !== "23505") throw new Error(claimError.message);
+    const { data: existing } = await supabaseAdmin
+      .from("x_mentions")
+      .select("x_username, text, intent, status, reply_text, posted, reply_post_id, post_error")
+      .eq("x_post_id", payload.postId)
+      .maybeSingle();
+    return {
+      postId: payload.postId,
+      username: existing?.x_username ?? username,
+      text: existing?.text ?? text,
+      intent: existing?.intent ?? "unknown",
+      status: (existing?.status as XMentionOutcome["status"]) ?? "READY",
+      reply: existing?.reply_text ?? "",
+      posted: Boolean(existing?.posted),
+      replyPostId: existing?.reply_post_id ?? null,
+      postError: existing?.post_error ?? null,
+    };
+  }
+
   const context = {
     // X mentions carry no wallet authorisation: signing always happens in the terminal.
     walletConnected: false,
@@ -71,10 +108,10 @@ export async function handleXMention(payload: XMentionPayload, source: "webhook"
     const replyPostId: string | null = null;
     const postError: string | null = null;
 
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    await supabaseAdmin.from("x_mentions").upsert(
-      {
-        x_post_id: payload.postId,
+    // Fills in the claim row this call already inserted.
+    await supabaseAdmin
+      .from("x_mentions")
+      .update({
         x_username: username,
         text,
         intent: "launchToken",
@@ -86,9 +123,8 @@ export async function handleXMention(payload: XMentionPayload, source: "webhook"
         posted_at: replyPostId ? new Date().toISOString() : null,
         source,
         result: { requestId: row.id, symbol: row.symbol, launchpad: row.launchpad } as unknown as Record<string, never>,
-      },
-      { onConflict: "x_post_id", ignoreDuplicates: true },
-    );
+      })
+      .eq("x_post_id", payload.postId);
 
     return {
       postId: payload.postId,
@@ -141,26 +177,22 @@ export async function handleXMention(payload: XMentionPayload, source: "webhook"
     postError,
   };
 
-  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
   await supabaseAdmin
     .from("x_mentions")
-    .upsert(
-      {
-        x_post_id: outcome.postId,
-        x_username: outcome.username,
-        text: outcome.text,
-        intent: outcome.intent,
-        status: outcome.status,
-        reply_text: outcome.reply,
-        posted: outcome.posted,
-        reply_post_id: replyPostId,
-        post_error: postError,
-        posted_at: replyPostId ? new Date().toISOString() : null,
-        source,
-        result: { live: Boolean(credentials), launch: result.launch ? { ...result.launch } : null, message: result.message } as unknown as Record<string, never>,
-      },
-      { onConflict: "x_post_id", ignoreDuplicates: true },
-    );
+    .update({
+      x_username: outcome.username,
+      text: outcome.text,
+      intent: outcome.intent,
+      status: outcome.status,
+      reply_text: outcome.reply,
+      posted: outcome.posted,
+      reply_post_id: replyPostId,
+      post_error: postError,
+      posted_at: replyPostId ? new Date().toISOString() : null,
+      source,
+      result: { live: Boolean(credentials), launch: result.launch ? { ...result.launch } : null, message: result.message } as unknown as Record<string, never>,
+    })
+    .eq("x_post_id", outcome.postId);
 
   return outcome;
 }
