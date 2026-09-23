@@ -1798,18 +1798,30 @@ export type Database = {
           bot_user_id: string | null
           id: boolean
           last_mention_id: string | null
+          last_poll_error: string | null
+          last_poll_success_at: string | null
+          last_reply_success_at: string | null
+          last_search_success_at: string | null
           updated_at: string
         }
         Insert: {
           bot_user_id?: string | null
           id?: boolean
           last_mention_id?: string | null
+          last_poll_error?: string | null
+          last_poll_success_at?: string | null
+          last_reply_success_at?: string | null
+          last_search_success_at?: string | null
           updated_at?: string
         }
         Update: {
           bot_user_id?: string | null
           id?: boolean
           last_mention_id?: string | null
+          last_poll_error?: string | null
+          last_poll_success_at?: string | null
+          last_reply_success_at?: string | null
+          last_search_success_at?: string | null
           updated_at?: string
         }
         Relationships: []
