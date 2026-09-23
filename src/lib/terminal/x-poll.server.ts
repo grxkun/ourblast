@@ -60,7 +60,7 @@ export async function runXMentionPoll(): Promise<{
       .maybeSingle();
     if (seen) continue;
 
-    const outcome = await handleXMention(
+    await handleXMention(
       {
         postId: mention.id,
         username: mention.username ?? "",
