@@ -6,7 +6,14 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { createFeeClaimLink } from "@/lib/terminal/feePayout.functions";
 import { Input } from "@/components/ui/input";
-import { CREATOR_FEE_ROUTES, GAS_NOTE_TERMINAL, LAUNCHER_SHARE_USES, LAUNCH_FEE_SUI } from "@/lib/terminal/fees";
+import {
+  CREATOR_FEE_ROUTES,
+  CREATOR_FEE_SPLIT,
+  GAS_NOTE_TERMINAL,
+  LAUNCHER_SHARE_USES,
+  LAUNCH_FEE_SUI,
+} from "@/lib/terminal/fees";
+const LAUNCHER_PERCENT = Math.round(CREATOR_FEE_SPLIT.launcher * 100);
 import { X_BOT_HANDLE } from "@/lib/terminal/x-bot";
 import { LAUNCHPADS, resolveLaunchpad } from "@/lib/terminal/launchpad";
 import { normalizeLaunchConfig } from "@/lib/terminal/launchSettings";
