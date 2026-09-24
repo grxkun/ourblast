@@ -50,7 +50,10 @@ export async function runXMentionPoll(): Promise<{
   const { handleXMention } = await import("./x-bot.server");
 
   let handled = 0;
-  for (const mention of mentions) {
+  // Oldest mention that failed this run: the cursor must not move past it,
+  // otherwise the next poll would never see it again.
+  let firstFailedIndex = -1;
+  for (const [index, mention] of mentions.entries()) {
     // Skip the bot's own tweets — a reply quoting a launch example must never
     // be re-ingested as a new launch call.
     if ((mention.username ?? "").replace(/^@/, "").toLowerCase() === "ourblastbot") continue;
@@ -64,16 +67,21 @@ export async function runXMentionPoll(): Promise<{
       .maybeSingle();
     if (seen) continue;
 
-    await handleXMention(
-      {
-        postId: mention.id,
-        username: mention.username ?? "",
-        text: mention.text,
-        imageUrl: mention.imageUrl ?? null,
-      },
-      "poll",
-    );
-    handled += 1;
+    try {
+      await handleXMention(
+        {
+          postId: mention.id,
+          username: mention.username ?? "",
+          text: mention.text,
+          imageUrl: mention.imageUrl ?? null,
+        },
+        "poll",
+      );
+      handled += 1;
+    } catch (error) {
+      if (firstFailedIndex === -1) firstFailedIndex = index;
+      console.error(`X mention ${mention.id} failed, will retry: ${error instanceof Error ? error.message : "unknown"}`);
+    }
   }
 
   // Replies X refused earlier (a second $cashtag in the text, duplicate content)
@@ -113,7 +121,10 @@ export async function runXMentionPoll(): Promise<{
     }
   }
 
-  const newest = mentions.at(-1)?.id ?? state?.last_mention_id ?? null;
+  const newest =
+    (firstFailedIndex === -1 ? mentions.at(-1)?.id : mentions[firstFailedIndex - 1]?.id) ??
+    state?.last_mention_id ??
+    null;
   await supabaseAdmin
     .from("x_bot_state")
     .update({
