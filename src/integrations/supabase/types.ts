@@ -71,6 +71,87 @@ export type Database = {
         }
         Relationships: []
       }
+      bank_choices: {
+        Row: {
+          command_text: string
+          created_at: string
+          expires_at: string
+          id: string
+          options: Json
+          x_post_id: string
+          x_username: string
+        }
+        Insert: {
+          command_text: string
+          created_at?: string
+          expires_at?: string
+          id?: string
+          options: Json
+          x_post_id: string
+          x_username: string
+        }
+        Update: {
+          command_text?: string
+          created_at?: string
+          expires_at?: string
+          id?: string
+          options?: Json
+          x_post_id?: string
+          x_username?: string
+        }
+        Relationships: []
+      }
+      bank_swaps: {
+        Row: {
+          amount_in: string
+          coin_in: string
+          coin_out: string
+          created_at: string
+          error: string | null
+          id: string
+          quoted_out: string | null
+          side: string
+          status: string
+          tx_digest: string | null
+          updated_at: string
+          wallet: string
+          x_post_id: string
+          x_username: string
+        }
+        Insert: {
+          amount_in: string
+          coin_in: string
+          coin_out: string
+          created_at?: string
+          error?: string | null
+          id?: string
+          quoted_out?: string | null
+          side: string
+          status?: string
+          tx_digest?: string | null
+          updated_at?: string
+          wallet: string
+          x_post_id: string
+          x_username: string
+        }
+        Update: {
+          amount_in?: string
+          coin_in?: string
+          coin_out?: string
+          created_at?: string
+          error?: string | null
+          id?: string
+          quoted_out?: string | null
+          side?: string
+          status?: string
+          tx_digest?: string | null
+          updated_at?: string
+          wallet?: string
+          x_post_id?: string
+          x_username?: string
+        }
+        Relationships: []
+      }
       bank_transfers: {
         Row: {
           amount_atomic: number | null
