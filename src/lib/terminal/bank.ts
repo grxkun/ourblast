@@ -101,8 +101,8 @@ const THEN_SEND = /\b(?:and|then|,)\s+(?:then\s+)?(?:send|transfer|give|forward)
 const TOKEN = String.raw`(0x[0-9a-fA-F]{1,64}::[A-Za-z0-9_]+::[A-Za-z0-9_]+|\$?[A-Za-z][A-Za-z0-9_]{0,19})`;
 const NUM = String.raw`([0-9]+(?:\.[0-9]+)?)`;
 const FILLER = String.raw`(?:(?:a|an|the|some)\s+)?(?:(?:token|coin)\s+)?`;
-const BUY_A = new RegExp(String.raw`\bbuy\s+${NUM}\s*\$?sui\s+(?:worth\s+)?(?:of\s+)?${FILLER}${TOKEN}`, "i");
-const BUY_B = new RegExp(String.raw`\bbuy\s+${FILLER}${TOKEN}(?:\s+or\s+[a-z0-9 ]{1,30}?)?\s+(?:with|for|using)\s+${NUM}\s*\$?sui\b`, "i");
+const BUY_A = new RegExp(String.raw`\bbuy\s+(?:me\s+)?${NUM}\s*\$?sui\s+(?:worth\s+)?(?:of\s+)?${FILLER}${TOKEN}`, "i");
+const BUY_B = new RegExp(String.raw`\bbuy\s+(?:me\s+)?${FILLER}${TOKEN}(?:\s+or\s+[a-z0-9 ]{1,30}?)?\s+(?:with|for|using)\s+${NUM}\s*\$?sui\b`, "i");
 const SELL = new RegExp(String.raw`\bsell\s+(all|[0-9]+(?:\.[0-9]+)?%?)\s+(?:of\s+)?(?:my\s+)?${TOKEN}(?:\s+(?:for|into)\s+\$?sui)?\b`, "i");
 
 function tokenOf(raw: string) {
