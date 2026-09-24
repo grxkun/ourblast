@@ -43,6 +43,8 @@ describe("parseSwapCommand", () => {
   it("reads sells", () => {
     expect(parseSwapCommand("@ourblastbot sell 50% $moo")).toMatchObject({ side: "sell", amount: "50%", token: "MOO" });
     expect(parseSwapCommand(`sell all ${CT}`)).toMatchObject({ amount: "all", isCoinType: true });
+    expect(parseSwapCommand("@ourblastbot sell 25 MOO for SUI")).toMatchObject({ side: "sell", amount: "25", token: "MOO" });
+    expect(parseSwapCommand(`sell 10 ${CT} into SUI`)).toMatchObject({ side: "sell", amount: "10", isCoinType: true });
     expect(parseSwapCommand("sell 120% $moo")).toBeNull();
     expect(parseSwapCommand("send 5 SUI to @bob")).toBeNull();
   });

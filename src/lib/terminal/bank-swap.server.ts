@@ -18,10 +18,21 @@ const SLIPPAGE = 0.01;
 const SWAP_GAS_BUDGET = 50_000_000n; // 0.05 SUI
 // nodeinfra rejects this build ("Index store not available"); suiscan works.
 const BUILD_RPC = "https://rpc-mainnet.suiscan.xyz";
+const AFTERMATH_ATTEMPTS = 4;
+const AFTERMATH_TIMEOUT_MS = 20_000;
 
 export type SwapResult =
   | { ok: true; digest: string; received: bigint | null; quoted: bigint; coinOut: string }
   | { ok: false; error: string };
+
+function isTransientAftermathError(error: unknown): boolean {
+  const message = String((error as Error)?.message ?? error);
+  return /HTTP 5\d\d|timeout|timed out|fetch failed|network|ECONNRESET|temporarily unavailable/i.test(message);
+}
+
+async function waitBeforeRetry(attempt: number): Promise<void> {
+  await new Promise((resolve) => setTimeout(resolve, 500 * 2 ** (attempt - 1)));
+}
 
 function formatUnits(value: bigint, decimals: number): string {
   const base = 10n ** BigInt(decimals);
@@ -58,34 +69,38 @@ export async function executeBankSwap(
   if (amountIn <= 0n) return { ok: false, error: "Amount is too small." };
 
   let tx;
-  let quoted: bigint;
+  let quoted = 0n;
   try {
     const sdk = await Aftermath.create({ network: "MAINNET" });
     const router = sdk.Router();
-    const route = await router.getCompleteTradeRouteGivenAmountIn({ coinInType: inType, coinOutType: outType, coinInAmount: amountIn });
-    if (normalizeStructTag(route.coinIn.type) !== inType || normalizeStructTag(route.coinOut.type) !== outType) {
-      return { ok: false, error: "Aggregator returned a route for different coins — not trading." };
-    }
-    if (BigInt(route.coinIn.amount) !== amountIn) return { ok: false, error: "Aggregator changed the trade size — not trading." };
-    quoted = BigInt(route.coinOut.amount);
-    if (quoted <= 0n) return { ok: false, error: "No liquidity for this token right now." };
-    // Aftermath's transaction endpoint sometimes returns a one-off HTTP 500
-    // even though the route is valid, so give it a few attempts.
-    for (let attempt = 1; ; attempt++) {
+    // A route can become stale while Aftermath builds it. On a temporary API
+    // failure, request a fresh quote before trying the transaction builder again.
+    for (let attempt = 1; attempt <= AFTERMATH_ATTEMPTS; attempt += 1) {
       try {
+        const route = await router.getCompleteTradeRouteGivenAmountIn(
+          { coinInType: inType, coinOutType: outType, coinInAmount: amountIn },
+          AbortSignal.timeout(AFTERMATH_TIMEOUT_MS),
+        );
+        if (normalizeStructTag(route.coinIn.type) !== inType || normalizeStructTag(route.coinOut.type) !== outType) {
+          return { ok: false, error: "Aggregator returned a route for different coins — not trading." };
+        }
+        if (BigInt(route.coinIn.amount) !== amountIn) return { ok: false, error: "Aggregator changed the trade size — not trading." };
+        quoted = BigInt(route.coinOut.amount);
+        if (quoted <= 0n) return { ok: false, error: "No liquidity for this token right now." };
         tx = await router.getTransactionForCompleteTradeRoute({ walletAddress: sender, completeRoute: route, slippage: SLIPPAGE });
         break;
       } catch (error) {
-        if (attempt >= 3 || !/HTTP 5\d\d/.test(String((error as Error)?.message))) throw error;
-        await new Promise((r) => setTimeout(r, 800 * attempt));
+        if (attempt >= AFTERMATH_ATTEMPTS || !isTransientAftermathError(error)) throw error;
+        await waitBeforeRetry(attempt);
       }
     }
   } catch (error) {
     console.error("aftermath route failed", error);
     if (/insufficient/i.test(String((error as Error)?.message))) return { ok: false, error: "Not enough balance for this trade plus fees." };
-    if (/HTTP 5\d\d/.test(String((error as Error)?.message))) return { ok: false, error: "Aftermath is having trouble right now. Nothing was spent — try again in a minute." };
+    if (isTransientAftermathError(error)) return { ok: false, error: "Aftermath is having trouble right now. Nothing was spent — try again in a minute." };
     return { ok: false, error: "No swap route found for this token on Aftermath." };
   }
+  if (!tx) return { ok: false, error: "Aftermath could not prepare this trade. Nothing was spent." };
 
   const gas = await gasCoins(sender);
   if (gas.length === 0) return { ok: false, error: "Your OurBank wallet has no SUI for network fees." };
