@@ -11,7 +11,9 @@ import {
   cancelTransfer,
   confirmTransfer,
   getMyBankWallet,
+  importBankWallet,
   listMyTransfers,
+  resetBankWallet,
   withdrawBankWallet,
   prepareTransfer,
   transferCoinChoices,
@@ -188,7 +190,12 @@ function BankWalletPanel({ userId }: { userId: string }) {
   const queryClient = useQueryClient();
   const get = useServerFn(getMyBankWallet);
   const withdraw = useServerFn(withdrawBankWallet);
+  const doImport = useServerFn(importBankWallet);
+  const doReset = useServerFn(resetBankWallet);
   const wallet = useQuery({ queryKey: ["bank-wallet", userId], queryFn: () => get(), refetchInterval: 20_000 });
+  const [showImport, setShowImport] = useState(false);
+  const [keyInput, setKeyInput] = useState("");
+
   const out = useMutation({
     mutationFn: (coinType: string) => withdraw({ data: { coinType } }),
     onSuccess: () => {
@@ -197,6 +204,27 @@ function BankWalletPanel({ userId }: { userId: string }) {
     },
     onError: (e: Error) => toast.error(e.message),
   });
+
+  const imp = useMutation({
+    mutationFn: (privateKey: string) => doImport({ data: { privateKey } }),
+    onSuccess: () => {
+      toast.success("Wallet imported.");
+      setShowImport(false);
+      setKeyInput("");
+      void queryClient.invalidateQueries({ queryKey: ["bank-wallet", userId] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const reset = useMutation({
+    mutationFn: () => doReset(),
+    onSuccess: () => {
+      toast.success("New wallet generated.");
+      void queryClient.invalidateQueries({ queryKey: ["bank-wallet", userId] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
   const w = wallet.data;
   if (!w) return null;
   if (!w.linked) return <p className="mt-3 text-sm text-muted-foreground">Sign in with X to get an OurBank wallet for instant sends.</p>;
@@ -206,9 +234,37 @@ function BankWalletPanel({ userId }: { userId: string }) {
       <p className="mt-1 break-all text-xs text-muted-foreground">
         Send coins (plus a little SUI for fees) to <span className="text-foreground">{w.address}</span>
       </p>
-      <Button size="sm" variant="outline" className="mt-2" onClick={() => { void navigator.clipboard.writeText(w.address); toast("Address copied"); }}>
-        Copy address
-      </Button>
+      <div className="mt-2 flex flex-wrap gap-2">
+        <Button size="sm" variant="outline" onClick={() => { void navigator.clipboard.writeText(w.address); toast("Address copied"); }}>
+          Copy address
+        </Button>
+        <Button size="sm" variant="outline" onClick={() => setShowImport((v) => !v)}>
+          {showImport ? "Cancel" : "Import wallet"}
+        </Button>
+        <Button size="sm" variant="ghost" disabled={reset.isPending} onClick={() => reset.mutate()}>
+          {reset.isPending ? "Generating…" : "New wallet"}
+        </Button>
+      </div>
+
+      {showImport ? (
+        <div className="mt-2 space-y-2">
+          <p className="text-xs text-muted-foreground">
+            Paste a Sui private key to use your own wallet. Your current OurBank wallet must be empty (withdraw first), since the old key is discarded.
+          </p>
+          <input
+            type="password"
+            className="w-full rounded border border-border bg-background px-2 py-1 text-xs"
+            placeholder="Suiprivkey1… or base64 hex"
+            value={keyInput}
+            onChange={(e) => setKeyInput(e.target.value)}
+            autoComplete="off"
+          />
+          <Button size="sm" disabled={imp.isPending || !keyInput.trim()} onClick={() => imp.mutate(keyInput)}>
+            {imp.isPending ? "Importing…" : "Import this wallet"}
+          </Button>
+        </div>
+      ) : null}
+
       <ul className="mt-2 space-y-1">
         {w.balances.length === 0 ? <li className="text-xs text-muted-foreground">Empty — tweets use the approval flow until you top up.</li> : null}
         {w.balances.map((b) => (
@@ -218,7 +274,7 @@ function BankWalletPanel({ userId }: { userId: string }) {
           </li>
         ))}
       </ul>
-      <p className="mt-2 text-xs text-muted-foreground">OurBlast holds this wallet's key for you. Only keep what you plan to send.</p>
+      <p className="mt-2 text-xs text-muted-foreground">OurBlast holds this wallet's key for you. Import your own key if you'd rather keep custody. Only keep what you plan to send.</p>
     </div>
   );
 }
