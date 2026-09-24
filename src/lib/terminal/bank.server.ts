@@ -69,6 +69,10 @@ export async function createBankTransferFromMention(postId: string, username: st
   const db = await admin();
   const who = describeRecipient(command.recipientKind, command.recipient);
 
+  // Instant path: the sender has a funded OurBank wallet, so the bot sends now.
+  const instant = await tryInstantSend(postId, username, command, who);
+  if (instant !== undefined) return instant;
+
   const sender = await walletForXHandle(username);
   if (!sender?.wallet) {
     return `@${username} to send with OurBank, sign in with X at ${X_BOT_SITE}/terminal and connect your Sui wallet first. Then tweet again.`;
