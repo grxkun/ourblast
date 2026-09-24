@@ -220,12 +220,11 @@ export const exportBankWalletKey = createServerFn({ method: "POST" })
     if (!handle) throw new Error("Sign in with X first.");
     const { findBankWallet } = await import("./bank-wallet.server");
     const { decryptConnectionKey } = await import("@/lib/connection-key.server");
-    const { Ed25519Keypair } = await import("@mysten/sui/keypairs/ed25519");
     const { encodeSuiPrivateKey } = await import("@mysten/sui/cryptography");
     const wallet = await findBankWallet(handle);
     if (!wallet) throw new Error("No OurBank wallet yet.");
     const rawKey = decryptConnectionKey(wallet.secret_ciphertext);
-    const keypair = Ed25519Keypair.fromSecretKey(rawKey);
-    const suiPrivKey = encodeSuiPrivateKey(keypair.getSecretKey().slice(0, 32), "ED25519");
+    const keyBytes = new Uint8Array(Buffer.from(rawKey, "base64"));
+    const suiPrivKey = encodeSuiPrivateKey(keyBytes, "ED25519");
     return { address: wallet.address, secretKey: suiPrivKey };
   });
