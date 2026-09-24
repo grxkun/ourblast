@@ -104,4 +104,4 @@
 - [x] Check https://x.com/halt_ab/status/2102385655183794521 — bot never replied; ingested + replied
 - [x] Add fee claim link to deployed X launch replies
 
-- [ ] Blast.fun launchpad support — blocked: waiting for official launchpad docs + verified contract addresses from user
+- [x] Blast.fun launchpad support (official memez-fun flow; first live launch still to be watched)
