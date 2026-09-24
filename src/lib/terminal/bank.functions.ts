@@ -184,3 +184,26 @@ export const withdrawBankWallet = createServerFn({ method: "POST" })
     if (!sent.ok) throw new Error(sent.error);
     return { digest: sent.digest };
   });
+
+/** Import a wallet you already own by pasting its private key. Replaces the generated OurBank wallet (must be empty). */
+export const importBankWallet = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d) => z.object({ privateKey: z.string().min(10).max(200) }).parse(d))
+  .handler(async ({ data, context }) => {
+    const handle = await myXHandle(context.userId);
+    if (!handle) throw new Error("Sign in with X first.");
+    const { replaceBankWalletKey } = await import("./bank-wallet.server");
+    const wallet = await replaceBankWalletKey(handle, context.userId, data.privateKey);
+    return { address: wallet.address };
+  });
+
+/** Generate a brand-new OurBank wallet, replacing the current one (must be empty). */
+export const resetBankWallet = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const handle = await myXHandle(context.userId);
+    if (!handle) throw new Error("Sign in with X first.");
+    const { replaceBankWalletKey } = await import("./bank-wallet.server");
+    const wallet = await replaceBankWalletKey(handle, context.userId, null);
+    return { address: wallet.address };
+  });
