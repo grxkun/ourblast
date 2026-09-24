@@ -263,3 +263,29 @@ export const runSwapTweetAdmin = createServerFn({ method: "POST" })
     await logAction(actor, "run_swap_tweet", { targetRef: data.postId, reason: result.reply.slice(0, 200) });
     return result;
   });
+
+export const listSwapAttemptsAdmin = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    await assertStaff(context);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data } = await supabaseAdmin.from("bank_swaps")
+      .select("id, x_post_id, x_username, side, coin_in, coin_out, amount_in, quoted_out, status, tx_digest, error, created_at, updated_at")
+      .order("created_at", { ascending: false }).limit(40);
+    const rows = data ?? [];
+    const chain = new Map<string, { state: string; error: string | null }>();
+    await Promise.all(rows.filter((r) => r.tx_digest).map(async (r) => {
+      try {
+        const res = await fetch("https://rpc-mainnet.suiscan.xyz", {
+          method: "POST", headers: { "content-type": "application/json" },
+          body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "sui_getTransactionBlock", params: [r.tx_digest, { showEffects: true }] }),
+          signal: AbortSignal.timeout(5000),
+        });
+        const j = await res.json() as { result?: { effects?: { status?: { status?: string; error?: string } } }; error?: { message?: string } };
+        const st = j.result?.effects?.status;
+        chain.set(r.id, st ? { state: st.status === "success" ? "CONFIRMED" : "CHAIN FAILED", error: st.error ?? null }
+          : { state: "NOT FOUND ON CHAIN", error: j.error?.message ?? null });
+      } catch { chain.set(r.id, { state: "CHECK UNAVAILABLE", error: null }); }
+    }));
+    return rows.map((r) => ({ ...r, chain: chain.get(r.id) ?? { state: "NO DIGEST", error: null } }));
+  });
