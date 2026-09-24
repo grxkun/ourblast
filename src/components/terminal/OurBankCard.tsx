@@ -218,14 +218,20 @@ function BankWalletPanel({ userId }: { userId: string }) {
     onError: (e: Error) => toast.error(e.message),
   });
 
-  const backupInstructions = `OURBLAST WALLET BACKUP\n\n` +
-    `Wallet address: ${wallet.data?.address ?? ""}\n\n` +
-    `1. Withdraw all funds from this OurBank wallet to your connected Sui wallet.\n` +
-    `2. Save the private key below in a secure location (password manager, offline note).\n` +
-    `3. NEVER share this key with anyone — not even OurBlast support.\n` +
-    `4. With this key you have full custody of your funds. If you lose it, no one can recover it.\n` +
-    `5. To restore: Import wallet → paste this key in the OurBank card.\n` +
-    (revealedKey ? `\nPrivate key: ${revealedKey}\n` : "\nPrivate key: [Reveal it in the backup dialog first]\n`);
+  const backupInstructions = [
+    "OURBLAST WALLET BACKUP",
+    "",
+    `Wallet address: ${wallet.data?.address ?? ""}`,
+    "",
+    "1. Withdraw all funds from this OurBank wallet to your connected Sui wallet.",
+    "2. Save the private key below in a secure location (password manager, offline note).",
+    "3. NEVER share this key with anyone, not even OurBlast support.",
+    "4. With this key you have full custody of your funds. If you lose it, no one can recover it.",
+    "5. To restore: Import wallet and paste this key in the OurBank card.",
+    "",
+    revealedKey ? `Private key: ${revealedKey}` : "Private key: [Reveal it in the backup dialog first]",
+  ].join("
+");
 
   const out = useMutation({
     mutationFn: (coinType: string) => withdraw({ data: { coinType } }),
