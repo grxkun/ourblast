@@ -71,6 +71,78 @@ export type Database = {
         }
         Relationships: []
       }
+      bank_transfers: {
+        Row: {
+          amount_atomic: number | null
+          amount_display: number
+          coin_type: string | null
+          confirmed_reply_post_id: string | null
+          created_at: string
+          decimals: number | null
+          error: string | null
+          expires_at: string
+          id: string
+          recipient_address: string | null
+          recipient_input: string
+          recipient_kind: string
+          reply_post_id: string | null
+          sender_user_id: string
+          sender_wallet: string
+          sender_x_username: string
+          status: string
+          symbol: string
+          tx_digest: string | null
+          updated_at: string
+          x_post_id: string
+        }
+        Insert: {
+          amount_atomic?: number | null
+          amount_display: number
+          coin_type?: string | null
+          confirmed_reply_post_id?: string | null
+          created_at?: string
+          decimals?: number | null
+          error?: string | null
+          expires_at?: string
+          id?: string
+          recipient_address?: string | null
+          recipient_input: string
+          recipient_kind: string
+          reply_post_id?: string | null
+          sender_user_id: string
+          sender_wallet: string
+          sender_x_username: string
+          status?: string
+          symbol: string
+          tx_digest?: string | null
+          updated_at?: string
+          x_post_id: string
+        }
+        Update: {
+          amount_atomic?: number | null
+          amount_display?: number
+          coin_type?: string | null
+          confirmed_reply_post_id?: string | null
+          created_at?: string
+          decimals?: number | null
+          error?: string | null
+          expires_at?: string
+          id?: string
+          recipient_address?: string | null
+          recipient_input?: string
+          recipient_kind?: string
+          reply_post_id?: string | null
+          sender_user_id?: string
+          sender_wallet?: string
+          sender_x_username?: string
+          status?: string
+          symbol?: string
+          tx_digest?: string | null
+          updated_at?: string
+          x_post_id?: string
+        }
+        Relationships: []
+      }
       blast_commitments: {
         Row: {
           amount_atomic: number
