@@ -13,7 +13,7 @@ import { encodeString, encodeUleb, parseModule, readUleb, serializeModule } from
 const CONSTANTS_KIND = 0x6;
 const IDENTIFIERS_KIND = 0x7;
 const TOKEN_U8 = 0x02;
-const TOKEN_VECTOR = 0x06;
+const TOKEN_VECTOR = 0x0a;
 
 export interface BlastfunCoinMeta {
   module: string;
