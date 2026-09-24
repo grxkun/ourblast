@@ -230,8 +230,7 @@ function BankWalletPanel({ userId }: { userId: string }) {
     "5. To restore: Import wallet and paste this key in the OurBank card.",
     "",
     revealedKey ? `Private key: ${revealedKey}` : "Private key: [Reveal it in the backup dialog first]",
-  ].join("
-");
+  ].join("\n");
 
   const out = useMutation({
     mutationFn: (coinType: string) => withdraw({ data: { coinType } }),
