@@ -90,6 +90,42 @@ export async function runXMentionPoll(): Promise<{
     }
   }
 
+  // A run killed mid-way (time limit) can't run its catch block, so its claim
+  // row stays "processing" forever and the cursor has already moved past it.
+  // Re-handle such rows after 3 minutes — but only when nothing was recorded
+  // for that tweet yet (no transfer/trade, no launch request), so no action
+  // that may have touched the chain is ever repeated.
+  const { data: stale } = await supabaseAdmin
+    .from("x_mentions")
+    .select("x_post_id, x_username, text")
+    .eq("intent", "processing")
+    .eq("posted", false)
+    .lt("created_at", new Date(Date.now() - 3 * 60_000).toISOString())
+    .gte("created_at", new Date(Date.now() - 24 * 3600_000).toISOString())
+    .limit(3);
+  for (const row of stale ?? []) {
+    const [{ data: transfer }, { data: launch }] = await Promise.all([
+      supabaseAdmin.from("bank_transfers").select("id").eq("x_post_id", row.x_post_id).maybeSingle(),
+      supabaseAdmin.from("x_launch_requests").select("id").eq("x_post_id", row.x_post_id).maybeSingle(),
+    ]);
+    if (transfer || launch) continue;
+    const { data: released } = await supabaseAdmin
+      .from("x_mentions")
+      .delete()
+      .eq("x_post_id", row.x_post_id)
+      .eq("intent", "processing")
+      .eq("posted", false)
+      .select("id");
+    if (!released?.length) continue;
+    try {
+      await handleXMention({ postId: row.x_post_id, username: row.x_username ?? "", text: row.text ?? "", imageUrl: null }, "poll");
+      handled += 1;
+    } catch (error) {
+      console.error(`Stale mention ${row.x_post_id} retry failed: ${error instanceof Error ? error.message : "unknown"}`);
+    }
+  }
+
+
   // Replies X refused earlier (a second $cashtag in the text, duplicate content)
   // get a fresh attempt here — postReply sanitizes cashtags and de-duplicates
   // the text itself, so an old stored reply can now go through.
