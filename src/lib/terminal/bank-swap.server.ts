@@ -165,17 +165,40 @@ async function buildBluefinSwap(sender: string, inType: string, outType: string,
   }
   const quoted = quote.swaps.reduce((total, swap) => total + BigInt(swap.returnAmount), 0n);
   if (quoted <= 0n) throw new Error("No Bluefin liquidity.");
+  // Pay with the wallet's real coin objects. Without this the SDK withdraws
+  // from the newer "address balance", which OurBank wallets don't hold, and
+  // the trade fails on chain.
+  const tx = new Transaction();
+  tx.setSender(sender);
+  let coinIn;
+  if (inType === SUI) {
+    [coinIn] = tx.splitCoins(tx.gas, [amountIn]);
+  } else {
+    const { rpc } = await import("./suipump-launch.server");
+    const coins = await rpc<{ data: { coinObjectId: string; balance: string }[] }>(
+      "suix_getCoins",
+      [sender, inType, null, 50],
+    );
+    const owned = coins.data ?? [];
+    const total = owned.reduce((sum, c) => sum + BigInt(c.balance), 0n);
+    if (!owned.length || total < amountIn) throw new Error("insufficient balance");
+    const primary = tx.object(owned[0]!.coinObjectId);
+    if (owned.length > 1) tx.mergeCoins(primary, owned.slice(1).map((c) => tx.object(c.coinObjectId)));
+    [coinIn] = tx.splitCoins(primary, [amountIn]);
+  }
   const built = await withTimeout(
     buildBluefinTx({
       quoteResponse: quote,
       accountAddress: sender,
       slippage: SLIPPAGE,
       commission: { partner: sender, commissionBps: 0 },
+      extendTx: { tx, coinIn },
     }),
     AFTERMATH_TIMEOUT_MS,
     "Bluefin transaction",
   );
   if (!(built.tx instanceof Transaction)) throw new Error("Bluefin returned an unsupported sponsored transaction.");
+  if (built.coinOut) built.tx.transferObjects([built.coinOut], built.tx.pure.address(sender));
   return { tx: built.tx, quoted, venue: "Bluefin" };
 }
 
