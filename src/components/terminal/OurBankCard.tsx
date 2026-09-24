@@ -275,6 +275,9 @@ function BankWalletPanel({ userId }: { userId: string }) {
         <Button size="sm" variant="outline" onClick={() => { void navigator.clipboard.writeText(w.address); toast("Address copied"); }}>
           Copy address
         </Button>
+        <Button size="sm" variant="outline" onClick={() => { setShowBackup(true); setRevealedKey(null); setAcknowledged(false); }}>
+          Backup
+        </Button>
         <Button size="sm" variant="outline" onClick={() => setShowImport((v) => !v)}>
           {showImport ? "Cancel" : "Import wallet"}
         </Button>
