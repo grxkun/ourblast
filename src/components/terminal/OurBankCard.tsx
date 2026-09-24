@@ -10,7 +10,9 @@ import { supabase } from "@/integrations/supabase/client";
 import {
   cancelTransfer,
   confirmTransfer,
+  getMyBankWallet,
   listMyTransfers,
+  withdrawBankWallet,
   prepareTransfer,
   transferCoinChoices,
 } from "@/lib/terminal/bank.functions";
@@ -117,8 +119,10 @@ export function OurBankCard() {
       </h2>
       <p className="mt-2 text-sm text-muted-foreground">
         Tweet <code className="text-foreground">@ourblastbot send 25 SUI to @friend</code> (or to a <code>name.sui</code> or 0x
-        address). Any Sui coin works. It appears here, and nothing moves until you approve it with your own wallet.
+        address). Any Sui coin works. Top up your OurBank wallet below and sends go out instantly; otherwise the request waits here for your wallet's approval.
       </p>
+
+      {userId ? <BankWalletPanel userId={userId} /> : null}
 
       {!userId ? <p className="mt-3 text-sm text-muted-foreground">Sign in with X and connect your wallet to use OurBank.</p> : null}
       {userId && transfers.isLoading ? <p className="mt-3 text-sm text-muted-foreground">Loading transfers…</p> : null}
@@ -177,5 +181,44 @@ export function OurBankCard() {
         })}
       </ul>
     </section>
+  );
+}
+
+function BankWalletPanel({ userId }: { userId: string }) {
+  const queryClient = useQueryClient();
+  const get = useServerFn(getMyBankWallet);
+  const withdraw = useServerFn(withdrawBankWallet);
+  const wallet = useQuery({ queryKey: ["bank-wallet", userId], queryFn: () => get(), refetchInterval: 20_000 });
+  const out = useMutation({
+    mutationFn: (coinType: string) => withdraw({ data: { coinType } }),
+    onSuccess: () => {
+      toast.success("Withdrawn to your connected wallet.");
+      void queryClient.invalidateQueries({ queryKey: ["bank-wallet", userId] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+  const w = wallet.data;
+  if (!w) return null;
+  if (!w.linked) return <p className="mt-3 text-sm text-muted-foreground">Sign in with X to get an OurBank wallet for instant sends.</p>;
+  return (
+    <div className="mt-3 border border-primary/40 p-3 text-sm">
+      <p className="font-display uppercase">Your OurBank wallet · instant sends</p>
+      <p className="mt-1 break-all text-xs text-muted-foreground">
+        Send coins (plus a little SUI for fees) to <span className="text-foreground">{w.address}</span>
+      </p>
+      <Button size="sm" variant="outline" className="mt-2" onClick={() => { void navigator.clipboard.writeText(w.address); toast("Address copied"); }}>
+        Copy address
+      </Button>
+      <ul className="mt-2 space-y-1">
+        {w.balances.length === 0 ? <li className="text-xs text-muted-foreground">Empty — tweets use the approval flow until you top up.</li> : null}
+        {w.balances.map((b) => (
+          <li key={b.coinType} className="flex items-center justify-between gap-2">
+            <span>{b.amount.toLocaleString(undefined, { maximumFractionDigits: 6 })} {b.symbol}</span>
+            <Button size="sm" variant="ghost" disabled={out.isPending} onClick={() => out.mutate(b.coinType)}>Withdraw</Button>
+          </li>
+        ))}
+      </ul>
+      <p className="mt-2 text-xs text-muted-foreground">OurBlast holds this wallet's key for you. Only keep what you plan to send.</p>
+    </div>
   );
 }
