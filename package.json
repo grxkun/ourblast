@@ -15,12 +15,14 @@
     "rolldown": "1.2.1"
   },
   "dependencies": {
+    "@bluefin-exchange/bluefin7k-aggregator-sdk": "^7.6.3",
     "@cetusprotocol/aggregator-sdk": "1.7.3",
     "@hookform/resolvers": "^5.2.2",
     "@lovable.dev/cloud-auth-js": "^1.1.2",
     "@lovable.dev/mcp-js": "^3.0.0",
     "@mysten/sui": "2.31.2",
     "@mysten/wallet-standard": "^0.21.22",
+    "@pythnetwork/pyth-sui-js": "^4.0.0",
     "@radix-ui/react-accordion": "^1.2.12",
     "@radix-ui/react-alert-dialog": "^1.1.15",
     "@radix-ui/react-aspect-ratio": "^1.1.8",
