@@ -166,6 +166,15 @@ function RootShell({ children }: { children: ReactNode }) {
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
 
+  // Sign-ins are saved per address, and X always returns to ourblast.xyz.
+  // Keep everyone on that one address so they stay signed in.
+  useEffect(() => {
+    if (window.location.hostname === "www.ourblast.xyz") {
+      window.location.replace(`https://ourblast.xyz${window.location.pathname}${window.location.search}${window.location.hash}`);
+    }
+  }, []);
+
+
   return (
     <QueryClientProvider client={queryClient}>
       <BlastProvider>
