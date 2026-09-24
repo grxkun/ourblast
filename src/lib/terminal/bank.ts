@@ -77,3 +77,58 @@ export const BANK_STATUSES = [
   "EXPIRED",
 ] as const;
 export type BankStatus = (typeof BANK_STATUSES)[number];
+
+/** "buy 5 SUI of 0x…::x::X" / "sell 50% 0x…::x::X" — swaps inside the OurBank wallet. */
+export interface SwapCommand {
+  side: "buy" | "sell";
+  /** buy: SUI to spend. sell: token amount, "all", or a percentage like "50%". */
+  amount: string;
+  token: string;
+  isCoinType: boolean;
+}
+
+const TOKEN = String.raw`(0x[0-9a-fA-F]{1,64}::[A-Za-z0-9_]+::[A-Za-z0-9_]+|\$?[A-Za-z][A-Za-z0-9_]{0,19})`;
+const NUM = String.raw`([0-9]+(?:\.[0-9]+)?)`;
+const BUY_A = new RegExp(String.raw`\bbuy\s+${NUM}\s*\$?sui\s+(?:worth\s+)?(?:of\s+)?${TOKEN}`, "i");
+const BUY_B = new RegExp(String.raw`\bbuy\s+${TOKEN}\s+(?:with|for|using)\s+${NUM}\s*\$?sui\b`, "i");
+const SELL = new RegExp(String.raw`\bsell\s+(all|[0-9]+(?:\.[0-9]+)?%?)\s+(?:of\s+)?(?:my\s+)?${TOKEN}`, "i");
+
+function tokenOf(raw: string) {
+  const isCoinType = COIN_TYPE.test(raw);
+  return { token: isCoinType ? raw : raw.replace(/^\$/, "").toUpperCase(), isCoinType };
+}
+
+export function parseSwapCommand(raw: string): SwapCommand | null {
+  const text = raw.replace(/@ourblastbot\b/gi, " ").replace(/\s+/g, " ").trim();
+  let m = BUY_A.exec(text);
+  if (m) return { side: "buy", amount: m[1]!, ...tokenOf(m[2]!) };
+  m = BUY_B.exec(text);
+  if (m) return { side: "buy", amount: m[2]!, ...tokenOf(m[1]!) };
+  m = SELL.exec(text);
+  if (m) {
+    const amount = m[1]!.toLowerCase();
+    const t = tokenOf(m[2]!);
+    if (!t.isCoinType && t.token === "SUI") return null;
+    if (amount.endsWith("%") && !(Number(amount.slice(0, -1)) > 0 && Number(amount.slice(0, -1)) <= 100)) return null;
+    if (amount !== "all" && !amount.endsWith("%") && !(Number(amount) > 0)) return null;
+    return { side: "sell", amount, ...t };
+  }
+  return null;
+}
+
+/** A reply that picks option N ("2", "#2", "option 2") or pastes the start of a coin type. */
+export function parseChoiceReply(raw: string, options: string[]): string | null {
+  const text = raw.replace(/@[A-Za-z0-9_]+/g, " ").trim();
+  const n = /^(?:#|option\s*|no\.?\s*)?([1-9])\b/i.exec(text);
+  if (n) return options[Number(n[1]) - 1] ?? null;
+  const hex = /0x[0-9a-f]{4,64}/i.exec(text)?.[0].toLowerCase();
+  if (!hex) return null;
+  const hits = options.filter((o) => o.toLowerCase().startsWith(hex) || o.toLowerCase().replace(/^0x0+/, "0x").startsWith(hex));
+  return hits.length === 1 ? hits[0]! : null;
+}
+
+/** "0x1234…abcd::moo::MOO" — short enough for a tweet, unique enough to pick. */
+export function shortCoinType(type: string): string {
+  const [addr = "", ...rest] = type.split("::");
+  return `${addr.slice(0, 6)}…${addr.slice(-4)}::${rest.join("::")}`;
+}

@@ -32,3 +32,24 @@ describe("toAtomic", () => {
     expect(() => toAtomic("1.1234567", 6)).toThrow();
   });
 });
+
+import { parseChoiceReply, parseSwapCommand } from "./bank";
+const CT = "0x" + "ab".repeat(32) + "::moo::MOO";
+describe("parseSwapCommand", () => {
+  it("reads buys by coin type", () => {
+    expect(parseSwapCommand(`@ourblastbot buy 5 SUI of ${CT}`)).toMatchObject({ side: "buy", amount: "5", token: CT, isCoinType: true });
+    expect(parseSwapCommand(`@ourblastbot buy ${CT} with 2.5 sui`)).toMatchObject({ side: "buy", amount: "2.5", isCoinType: true });
+  });
+  it("reads sells", () => {
+    expect(parseSwapCommand("@ourblastbot sell 50% $moo")).toMatchObject({ side: "sell", amount: "50%", token: "MOO" });
+    expect(parseSwapCommand(`sell all ${CT}`)).toMatchObject({ amount: "all", isCoinType: true });
+    expect(parseSwapCommand("sell 120% $moo")).toBeNull();
+    expect(parseSwapCommand("send 5 SUI to @bob")).toBeNull();
+  });
+  it("reads choice replies", () => {
+    const opts = [CT, "0x" + "cd".repeat(32) + "::moo::MOO"];
+    expect(parseChoiceReply("@ourblastbot 2", opts)).toBe(opts[1]);
+    expect(parseChoiceReply("@ourblastbot 0xabab", opts)).toBe(CT);
+    expect(parseChoiceReply("@ourblastbot hello", opts)).toBeNull();
+  });
+});
