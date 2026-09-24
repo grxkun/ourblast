@@ -211,12 +211,26 @@ function BankWalletPanel({ userId }: { userId: string }) {
   const [showBackup, setShowBackup] = useState(false);
   const [revealedKey, setRevealedKey] = useState<string | null>(null);
   const [acknowledged, setAcknowledged] = useState(false);
+  const [keyCountdown, setKeyCountdown] = useState(0);
 
   const exportKey = useMutation({
     mutationFn: () => doExport(),
-    onSuccess: (data) => setRevealedKey(data.secretKey),
+    onSuccess: (data) => { setRevealedKey(data.secretKey); setKeyCountdown(60); },
     onError: (e: Error) => toast.error(e.message),
   });
+
+  // Auto-hide the revealed key and clear the clipboard after the countdown.
+  useEffect(() => {
+    if (!revealedKey) return;
+    if (keyCountdown <= 0) {
+      setRevealedKey(null);
+      setAcknowledged(false);
+      void navigator.clipboard.writeText("").catch(() => {});
+      return;
+    }
+    const t = setTimeout(() => setKeyCountdown((n) => n - 1), 1000);
+    return () => clearTimeout(t);
+  }, [revealedKey, keyCountdown]);
 
   const backupInstructions = [
     "OURBLAST WALLET BACKUP",
