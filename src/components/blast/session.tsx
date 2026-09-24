@@ -54,6 +54,9 @@ type BlastSession = {
   pay: (purpose: PaymentPurpose) => Promise<string>;
   /** Finds an already-confirmed on-chain payment when the wallet never returned. */
   recoverEntry: (purpose: PaymentPurpose) => Promise<string>;
+  /** Builds and signs a transaction with the connected wallet. */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  signAndExecute: (build: (tx: any, sender: string) => void | Promise<void>) => Promise<{ digest: string; sender: string }>;
 };
 
 // Keep a single context instance across hot-reloads / duplicate module copies,
@@ -299,6 +302,40 @@ export function BlastProvider({ children }: { children: React.ReactNode }) {
     [userId, wallets],
   );
 
+  /** Signs a transaction with the connected wallet. The wallet owner always approves. */
+  const signAndExecute = useCallback(
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    async (build: (tx: any, sender: string) => void | Promise<void>) => {
+      if (!userId) throw new Error("Connect your wallet first.");
+      let session = active.current;
+      if (!session) {
+        const target = wallets.find((w) => /slush/i.test(w.name)) ?? wallets[0];
+        if (!target) throw new Error("No Sui wallet found in this browser.");
+        const res = await target.raw.features["standard:connect"].connect();
+        const account = res?.accounts?.[0] ?? target.raw.accounts?.[0];
+        if (!account) throw new Error("Wallet did not share an account.");
+        session = { raw: target.raw, account };
+        active.current = session;
+      }
+      const { Transaction } = await import("@mysten/sui/transactions");
+      const tx = new Transaction();
+      tx.setSender(session.account.address);
+      await build(tx, session.account.address);
+      const chain: string =
+        (session.account.chains as string[] | undefined)?.find((c) => c.startsWith("sui:")) ?? "sui:mainnet";
+      const feature =
+        session.raw.features["sui:signAndExecuteTransaction"] ??
+        session.raw.features["sui:signAndExecuteTransactionBlock"];
+      if (!feature) throw new Error("This wallet cannot send transactions.");
+      const result = feature.signAndExecuteTransaction
+        ? await feature.signAndExecuteTransaction({ transaction: tx, account: session.account, chain })
+        : await feature.signAndExecuteTransactionBlock({ transactionBlock: tx, account: session.account, chain });
+      if (!result?.digest) throw new Error("Wallet did not return a transaction.");
+      return { digest: result.digest as string, sender: session.account.address as string };
+    },
+    [userId, wallets],
+  );
+
   /** Checks the chain for a paid-but-unclaimed entry from this wallet. */
   const recoverEntry = useCallback(async (purpose: PaymentPurpose) => {
     const { paymentId } = await recoverPayment({ data: { purpose } });
@@ -327,6 +364,7 @@ export function BlastProvider({ children }: { children: React.ReactNode }) {
       disconnect,
       pay,
       recoverEntry,
+      signAndExecute,
       refresh: () => {
         void queryClient.invalidateQueries();
       },
@@ -343,6 +381,7 @@ export function BlastProvider({ children }: { children: React.ReactNode }) {
       disconnect,
       pay,
       recoverEntry,
+      signAndExecute,
       queryClient,
     ],
   );
