@@ -104,11 +104,28 @@ export async function runXMentionPoll(): Promise<{
     .gte("created_at", new Date(Date.now() - 24 * 3600_000).toISOString())
     .limit(3);
   for (const row of stale ?? []) {
-    const [{ data: transfer }, { data: launch }] = await Promise.all([
+    const [{ data: transfer }, { data: launch }, { data: swap }] = await Promise.all([
       supabaseAdmin.from("bank_transfers").select("id").eq("x_post_id", row.x_post_id).maybeSingle(),
       supabaseAdmin.from("x_launch_requests").select("id").eq("x_post_id", row.x_post_id).maybeSingle(),
+      supabaseAdmin.from("bank_swaps").select("id, status, tx_digest, wallet, created_at").eq("x_post_id", row.x_post_id).maybeSingle(),
     ]);
     if (transfer || launch) continue;
+    if (swap) {
+      // A swap row without a digest may still have reached the chain. Only
+      // release it when the wallet has sent no transaction since it was saved.
+      if (swap.status !== "SUBMITTED" || swap.tx_digest) continue;
+      try {
+        const { rpc } = await import("./suipump-launch.server");
+        const recent = await rpc<{ data: { timestampMs?: string }[] }>("suix_queryTransactionBlocks", [
+          { filter: { FromAddress: swap.wallet } }, null, 1, true,
+        ]);
+        const lastMs = Number(recent.data[0]?.timestampMs ?? 0);
+        if (lastMs >= Date.parse(swap.created_at) - 5_000) continue;
+      } catch {
+        continue;
+      }
+      await supabaseAdmin.from("bank_swaps").delete().eq("id", swap.id).eq("status", "SUBMITTED").is("tx_digest", null);
+    }
     const { data: released } = await supabaseAdmin
       .from("x_mentions")
       .delete()

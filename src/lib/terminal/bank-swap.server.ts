@@ -16,7 +16,8 @@ import { toAtomic, type SwapCommand } from "./bank";
 const SUI = normalizeStructTag("0x2::sui::SUI");
 const SLIPPAGE = 0.01;
 const SWAP_GAS_BUDGET = 50_000_000n; // 0.05 SUI
-const BUILD_RPC = "https://sui-mainnet.nodeinfra.com";
+// nodeinfra rejects this build ("Index store not available"); suiscan works.
+const BUILD_RPC = "https://rpc-mainnet.suiscan.xyz";
 
 export type SwapResult =
   | { ok: true; digest: string; received: bigint | null; quoted: bigint; coinOut: string }
