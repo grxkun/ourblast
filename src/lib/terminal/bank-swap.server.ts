@@ -1,5 +1,6 @@
 import { Aftermath } from "aftermath-ts-sdk";
 import { AggregatorClient, Env } from "@cetusprotocol/aggregator-sdk";
+import { buildTx as buildBluefinTx, getQuote as getBluefinQuote } from "@bluefin-exchange/bluefin7k-aggregator-sdk";
 import { Transaction } from "@mysten/sui/transactions";
 import { Ed25519Keypair } from "@mysten/sui/keypairs/ed25519";
 import { SuiJsonRpcClient } from "@mysten/sui/jsonRpc";
@@ -20,11 +21,12 @@ const SLIPPAGE = 0.01;
 const SWAP_GAS_BUDGET = 50_000_000n; // 0.05 SUI
 // nodeinfra rejects this build ("Index store not available"); suiscan works.
 const BUILD_RPC = "https://rpc-mainnet.suiscan.xyz";
-const AFTERMATH_ATTEMPTS = 3;
-const AFTERMATH_TIMEOUT_MS = 8_000;
-// The whole quote+build phase must end well inside one bot run.
-const AFTERMATH_DEADLINE_MS = 25_000;
-const BUILD_TIMEOUT_MS = 12_000;
+const AFTERMATH_ATTEMPTS = 2;
+const AFTERMATH_TIMEOUT_MS = 6_000;
+// Cetus starts shortly after Aftermath. The first valid route wins, so a slow
+// aggregator cannot consume the entire X poll before the fallback is tried.
+const CETUS_HEAD_START_MS = 1_500;
+const BUILD_TIMEOUT_MS = 8_000;
 
 function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise<T> {
   return Promise.race([
@@ -34,8 +36,10 @@ function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise
 }
 
 export type SwapResult =
-  | { ok: true; digest: string; received: bigint | null; quoted: bigint; coinOut: string }
+  | { ok: true; digest: string; received: bigint | null; quoted: bigint; coinOut: string; venue: "Bluefin" | "Aftermath" | "Cetus" }
   | { ok: false; error: string };
+
+type BuiltSwap = { tx: Transaction; quoted: bigint; venue: "Bluefin" | "Aftermath" | "Cetus" };
 
 function isTransientAftermathError(error: unknown): boolean {
   const message = String((error as Error)?.message ?? error);
@@ -80,61 +84,40 @@ export async function executeBankSwap(
   if (inType === outType) return { ok: false, error: "Nothing to swap." };
   if (amountIn <= 0n) return { ok: false, error: "Amount is too small." };
 
-  let tx;
-  let quoted = 0n;
+  let built: BuiltSwap;
   try {
-    const sdk = await Aftermath.create({ network: "MAINNET" });
-    const router = sdk.Router();
-    // A route can become stale while Aftermath builds it. On a temporary API
-    // failure, request a fresh quote before trying the transaction builder again.
-    const deadline = Date.now() + AFTERMATH_DEADLINE_MS;
-    for (let attempt = 1; attempt <= AFTERMATH_ATTEMPTS; attempt += 1) {
-      try {
-        const route = await withTimeout(
-          router.getCompleteTradeRouteGivenAmountIn(
-            { coinInType: inType, coinOutType: outType, coinInAmount: amountIn },
-            AbortSignal.timeout(AFTERMATH_TIMEOUT_MS),
-          ),
-          AFTERMATH_TIMEOUT_MS + 1_000,
-          "Aftermath route",
-        );
-        if (normalizeStructTag(route.coinIn.type) !== inType || normalizeStructTag(route.coinOut.type) !== outType) {
-          return { ok: false, error: "Aggregator returned a route for different coins — not trading." };
-        }
-        if (BigInt(route.coinIn.amount) !== amountIn) return { ok: false, error: "Aggregator changed the trade size — not trading." };
-        quoted = BigInt(route.coinOut.amount);
-        if (quoted <= 0n) return { ok: false, error: "No liquidity for this token right now." };
-        tx = await withTimeout(
-          router.getTransactionForCompleteTradeRoute({ walletAddress: sender, completeRoute: route, slippage: SLIPPAGE }),
-          AFTERMATH_TIMEOUT_MS,
-          "Aftermath transaction",
-        );
-        break;
-      } catch (error) {
-        if (attempt >= AFTERMATH_ATTEMPTS || !isTransientAftermathError(error) || Date.now() > deadline - 10_000) throw error;
-        await waitBeforeRetry(attempt);
-      }
-    }
+    // First check the exact pair against Bluefin's own pool source. BLAST has
+    // Bluefin liquidity, so this avoids needlessly asking unrelated routers.
+    built = await buildBluefinSwap(sender, inType, outType, amountIn).catch(() =>
+      Promise.any([
+        buildAftermathSwap(sender, inType, outType, amountIn),
+        (async () => {
+          await new Promise((resolve) => setTimeout(resolve, CETUS_HEAD_START_MS));
+          const result = await buildCetusSwap(sender, inType, outType, amountIn);
+          if (!result.ok) throw new Error(result.error);
+          return { ...result, venue: "Cetus" as const };
+        })(),
+      ]),
+    );
   } catch (error) {
-    console.error("aftermath route failed, trying Cetus", error);
-    if (/insufficient/i.test(String((error as Error)?.message))) return { ok: false, error: "Not enough balance for this trade plus fees." };
-    const cetus = await buildCetusSwap(sender, inType, outType, amountIn);
-    if (!cetus.ok) {
-      if (isTransientAftermathError(error)) return { ok: false, error: "Aftermath and Cetus are having trouble right now. Nothing was spent — try again in a minute." };
-      return { ok: false, error: "No swap route found for this token on Aftermath or Cetus." };
+    const messages = error instanceof AggregateError
+      ? error.errors.map((item) => String((item as Error)?.message ?? item)).join(" | ")
+      : String((error as Error)?.message ?? error);
+    console.error("swap aggregators failed", messages);
+    if (/insufficient/i.test(messages)) return { ok: false, error: "Not enough balance for this trade plus fees." };
+    if (/timeout|HTTP 5\d\d|fetch failed|network|temporarily unavailable/i.test(messages)) {
+      return { ok: false, error: "Aftermath and Cetus are having trouble right now. Nothing was spent — try again in a minute." };
     }
-    tx = cetus.tx;
-    quoted = cetus.quoted;
+    return { ok: false, error: "No swap route found for this token on Aftermath or Cetus." };
   }
-  if (!tx) return { ok: false, error: "Aftermath could not prepare this trade. Nothing was spent." };
 
   const gas = await gasCoins(sender);
   if (gas.length === 0) return { ok: false, error: "Your OurBank wallet has no SUI for network fees." };
-  withGas(tx, sender, gas, await referenceGasPrice(), Number(SWAP_GAS_BUDGET));
+  withGas(built.tx, sender, gas, await referenceGasPrice(), Number(SWAP_GAS_BUDGET));
   try {
     // Resolve the aggregator's object inputs once; signAndExecute then simulates and submits.
     await withTimeout(
-      tx.build({ client: new SuiJsonRpcClient({ url: BUILD_RPC, network: "mainnet" }) }),
+      built.tx.build({ client: new SuiJsonRpcClient({ url: BUILD_RPC, network: "mainnet" }) }),
       BUILD_TIMEOUT_MS,
       "Swap build",
     );
@@ -143,7 +126,7 @@ export async function executeBankSwap(
     return { ok: false, error: `Could not prepare the swap: ${(error as Error).message.slice(0, 100)}` };
   }
 
-  const executed = await signAndExecute(tx, keypair);
+  const executed = await signAndExecute(built.tx, keypair);
   if (!executed.ok || !executed.digest) return { ok: false, error: executed.error ?? "Swap failed." };
 
   let received: bigint | null = null;
@@ -159,7 +142,76 @@ export async function executeBankSwap(
   } catch {
     /* quote is shown instead */
   }
-  return { ok: true, digest: executed.digest, received, quoted, coinOut: outType };
+  return { ok: true, digest: executed.digest, received, quoted: built.quoted, coinOut: outType, venue: built.venue };
+}
+
+async function buildBluefinSwap(sender: string, inType: string, outType: string, amountIn: bigint): Promise<BuiltSwap> {
+  const quote = await withTimeout(
+    getBluefinQuote(
+      { tokenIn: inType, tokenOut: outType, amountIn: amountIn.toString(), sources: ["bluefin"] },
+      { signal: AbortSignal.timeout(AFTERMATH_TIMEOUT_MS) },
+    ),
+    AFTERMATH_TIMEOUT_MS,
+    "Bluefin pool check",
+  );
+  if (normalizeStructTag(quote.tokenIn) !== inType || normalizeStructTag(quote.tokenOut) !== outType) {
+    throw new Error("Bluefin returned different coins.");
+  }
+  if (!quote.swaps.length || !quote.routes?.length) throw new Error("No Bluefin pool route.");
+  const routedAmount = quote.swaps.reduce((total, swap) => total + BigInt(swap.amount), 0n);
+  if (routedAmount !== amountIn) throw new Error("Bluefin changed the trade size.");
+  if (!quote.routes.every((route) => route.hops.every((hop) => hop.pool.type === "bluefin"))) {
+    throw new Error("Bluefin returned a route outside its own pool.");
+  }
+  const quoted = quote.swaps.reduce((total, swap) => total + BigInt(swap.returnAmount), 0n);
+  if (quoted <= 0n) throw new Error("No Bluefin liquidity.");
+  const built = await withTimeout(
+    buildBluefinTx({
+      quoteResponse: quote,
+      accountAddress: sender,
+      slippage: SLIPPAGE,
+      commission: { partner: sender, commissionBps: 0 },
+    }),
+    AFTERMATH_TIMEOUT_MS,
+    "Bluefin transaction",
+  );
+  if (!(built.tx instanceof Transaction)) throw new Error("Bluefin returned an unsupported sponsored transaction.");
+  return { tx: built.tx, quoted, venue: "Bluefin" };
+}
+
+async function buildAftermathSwap(sender: string, inType: string, outType: string, amountIn: bigint): Promise<BuiltSwap> {
+  const sdk = await Aftermath.create({ network: "MAINNET" });
+  const router = sdk.Router();
+  let lastError: unknown = new Error("No Aftermath route.");
+  for (let attempt = 1; attempt <= AFTERMATH_ATTEMPTS; attempt += 1) {
+    try {
+      const route = await withTimeout(
+        router.getCompleteTradeRouteGivenAmountIn(
+          { coinInType: inType, coinOutType: outType, coinInAmount: amountIn },
+          AbortSignal.timeout(AFTERMATH_TIMEOUT_MS),
+        ),
+        AFTERMATH_TIMEOUT_MS,
+        "Aftermath route",
+      );
+      if (normalizeStructTag(route.coinIn.type) !== inType || normalizeStructTag(route.coinOut.type) !== outType) {
+        throw new Error("Aftermath returned different coins.");
+      }
+      if (BigInt(route.coinIn.amount) !== amountIn) throw new Error("Aftermath changed the trade size.");
+      const quoted = BigInt(route.coinOut.amount);
+      if (quoted <= 0n) throw new Error("No Aftermath liquidity.");
+      const tx = await withTimeout(
+        router.getTransactionForCompleteTradeRoute({ walletAddress: sender, completeRoute: route, slippage: SLIPPAGE }),
+        AFTERMATH_TIMEOUT_MS,
+        "Aftermath transaction",
+      );
+      return { tx, quoted, venue: "Aftermath" };
+    } catch (error) {
+      lastError = error;
+      if (attempt >= AFTERMATH_ATTEMPTS || !isTransientAftermathError(error)) break;
+      await waitBeforeRetry(attempt);
+    }
+  }
+  throw lastError;
 }
 
 /**

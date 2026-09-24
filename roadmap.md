@@ -87,6 +87,9 @@
 ## Launch status page
 - [x] Public /launches page: detected tweets, parsed token, tx digest, final result
 
+## OurBank swaps
+- [x] Check Bluefin liquidity before BLAST buy/sell execution; retain Aftermath and Cetus fallbacks
+
 ## Perpsplexity (market-backed memecoins)
 ## Admin: Dev Fee Claim
 
