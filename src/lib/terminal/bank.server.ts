@@ -373,7 +373,23 @@ async function handleSwapMention(postId: string, username: string, text: string,
   const detail = command.side === "buy"
     ? `${got} ${symbolOut} for ${formatUnits(amountIn, 9)} SUI`
     : `${formatUnits(amountIn, decimalsIn)} ${symbolIn} for ${got} SUI`;
-  return `@${username} ${verb} ${detail} via Aftermath ✅ https://suiscan.xyz/mainnet/tx/${result.digest}`;
+  const done = `@${username} ${verb} ${detail} via Aftermath ✅ https://suiscan.xyz/mainnet/tx/${result.digest}`;
+  if (!command.sendTo) return done;
+
+  // Second step: forward exactly what the swap delivered, only after it confirmed.
+  const who = describeRecipient(command.sendTo.recipientKind, command.sendTo.recipient);
+  const amountOut = result.received;
+  if (!amountOut || amountOut <= 0n) return `${done} — couldn't confirm the amount received, so nothing was sent to ${who}.`;
+  const { ensureBankWallet, sendFromBankWallet } = await import("./bank-wallet.server");
+  let to = await resolveRecipient(command.sendTo.recipientKind, command.sendTo.recipient);
+  if (!to && command.sendTo.recipientKind === "x") to = (await ensureBankWallet(command.sendTo.recipient, null)).address;
+  if (!to) return `${done} — ${who} doesn't point to a Sui address, so the tokens stay in your wallet.`;
+  if (to === normalizeSuiAddress(wallet.address)) return done;
+  const sent = await sendFromBankWallet(wallet, coinOut, amountOut, to);
+  if (!sent.ok) return `${done} — sending to ${who} failed, tokens stay in your wallet.`;
+  await db.from("bank_swaps").update({ error: `forwarded to ${who}: ${sent.digest}` }).eq("id", row.id);
+  const tag = command.side === "buy" ? symbolOut : "SUI";
+  return `@${username} ${verb} ${got} ${tag} via Aftermath and sent it to ${who} ✅ https://suiscan.xyz/mainnet/tx/${sent.digest}`;
 }
 
 /** Single entry for OurBank tweets: token choice replies, swaps, then transfers. */
