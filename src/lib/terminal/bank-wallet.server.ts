@@ -21,6 +21,44 @@ async function chain() {
 
 export interface BankWallet { address: string; x_username: string; user_id: string | null }
 
+/**
+ * Replaces the wallet for an X handle with a user-supplied key (import) or a
+ * freshly generated one (reset). The old wallet must be empty first — funds
+ * in a wallet whose key we discard are lost forever. Returns the new wallet.
+ */
+export async function replaceBankWalletKey(
+  handle: string,
+  userId: string | null,
+  secretKey: string | null,
+): Promise<BankWallet> {
+  const existing = await findBankWallet(handle);
+  if (existing) {
+    const balances = await bankBalances(existing.address).catch(() => []);
+    if (balances.length > 0) {
+      throw new Error("Withdraw all funds from your current OurBank wallet first — replacing the key would lose them.");
+    }
+  }
+  const keypair = secretKey ? Ed25519Keypair.fromSecretKey(secretKey.trim()) : Ed25519Keypair.generate();
+  const address = keypair.getPublicKey().toSuiAddress();
+  const ciphertext = encryptConnectionKey(keypair.getSecretKey());
+  const db = await admin();
+  if (existing) {
+    const { error } = await db
+      .from("bank_wallets")
+      .update({ address, secret_ciphertext: ciphertext, user_id: userId ?? existing.user_id })
+      .eq("x_username", handle.toLowerCase());
+    if (error?.code === "23505") throw new Error("That wallet address is already linked to another account.");
+    if (error) throw new Error(error.message);
+  } else {
+    const { error } = await db
+      .from("bank_wallets")
+      .insert({ x_username: handle.toLowerCase(), user_id: userId, address, secret_ciphertext: ciphertext });
+    if (error?.code === "23505") throw new Error("That wallet address is already linked to another account.");
+    if (error) throw new Error(error.message);
+  }
+  return { address, x_username: handle.toLowerCase(), user_id: userId ?? existing?.user_id ?? null };
+}
+
 export async function findBankWallet(handle: string): Promise<(BankWallet & { secret_ciphertext: string }) | null> {
   const db = await admin();
   const { data } = await db
