@@ -17,7 +17,7 @@ export async function runXMentionPoll(): Promise<{
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
   const { data: state } = await supabaseAdmin
     .from("x_bot_state")
-    .select("last_mention_id, bot_user_id")
+    .select("last_mention_id, bot_user_id, last_search_success_at")
     .eq("id", true)
     .maybeSingle();
 
@@ -31,11 +31,17 @@ export async function runXMentionPoll(): Promise<{
     const timeline = await listMentions(credentials, botUserId, sinceId);
     const { recordXBotHealth } = await import("./x-bot-health.server");
     let searched: Awaited<ReturnType<typeof searchMentions>> = [];
-    try {
-      searched = await searchMentions(credentials, "ourblastbot", sinceId);
-      await recordXBotHealth({ last_search_success_at: new Date().toISOString() });
-    } catch (error) {
-      console.error(`X mention search failed: ${error instanceof Error ? error.message : "unknown"}`);
+    // The poll now runs every 15s; the search fallback stays at roughly once a
+    // minute so the faster cadence does not multiply X search rate-limit usage.
+    const lastSearch = state?.last_search_success_at ? Date.parse(state.last_search_success_at) : 0;
+    const searchDue = !lastSearch || Date.now() - lastSearch > 45_000;
+    if (searchDue) {
+      try {
+        searched = await searchMentions(credentials, "ourblastbot", sinceId);
+        await recordXBotHealth({ last_search_success_at: new Date().toISOString() });
+      } catch (error) {
+        console.error(`X mention search failed: ${error instanceof Error ? error.message : "unknown"}`);
+      }
     }
     const byId = new Map<string, (typeof timeline)[number]>();
     for (const item of [...timeline, ...searched]) if (!byId.has(item.id)) byId.set(item.id, item);
