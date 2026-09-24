@@ -1,4 +1,6 @@
 import { Aftermath } from "aftermath-ts-sdk";
+import { AggregatorClient, Env } from "@cetusprotocol/aggregator-sdk";
+import { Transaction } from "@mysten/sui/transactions";
 import { Ed25519Keypair } from "@mysten/sui/keypairs/ed25519";
 import { SuiJsonRpcClient } from "@mysten/sui/jsonRpc";
 import { normalizeStructTag, normalizeSuiAddress } from "@mysten/sui/utils";
@@ -114,10 +116,15 @@ export async function executeBankSwap(
       }
     }
   } catch (error) {
-    console.error("aftermath route failed", error);
+    console.error("aftermath route failed, trying Cetus", error);
     if (/insufficient/i.test(String((error as Error)?.message))) return { ok: false, error: "Not enough balance for this trade plus fees." };
-    if (isTransientAftermathError(error)) return { ok: false, error: "Aftermath is having trouble right now. Nothing was spent — try again in a minute." };
-    return { ok: false, error: "No swap route found for this token on Aftermath." };
+    const cetus = await buildCetusSwap(sender, inType, outType, amountIn);
+    if (!cetus.ok) {
+      if (isTransientAftermathError(error)) return { ok: false, error: "Aftermath and Cetus are having trouble right now. Nothing was spent — try again in a minute." };
+      return { ok: false, error: "No swap route found for this token on Aftermath or Cetus." };
+    }
+    tx = cetus.tx;
+    quoted = cetus.quoted;
   }
   if (!tx) return { ok: false, error: "Aftermath could not prepare this trade. Nothing was spent." };
 
@@ -153,6 +160,39 @@ export async function executeBankSwap(
     /* quote is shown instead */
   }
   return { ok: true, digest: executed.digest, received, quoted, coinOut: outType };
+}
+
+/**
+ * Fallback: Cetus aggregator (Cetus CLMM + other Sui pools). Same guard rails:
+ * exact coins, exact size, 1% slippage; the tx is simulated before signing.
+ */
+async function buildCetusSwap(
+  sender: string,
+  inType: string,
+  outType: string,
+  amountIn: bigint,
+): Promise<{ ok: true; tx: Transaction; quoted: bigint } | { ok: false; error: string }> {
+  try {
+    const client = new AggregatorClient({ signer: sender, env: Env.Mainnet });
+    const router = await withTimeout(
+      client.findRouters({ from: inType, target: outType, amount: amountIn.toString(), byAmountIn: true }),
+      AFTERMATH_TIMEOUT_MS,
+      "Cetus route",
+    );
+    if (!router || router.error || router.insufficientLiquidity || router.paths.length === 0) {
+      return { ok: false, error: router?.error?.msg ?? "No Cetus route." };
+    }
+    if (BigInt(router.amountIn.toString()) !== amountIn) return { ok: false, error: "Cetus changed the trade size." };
+    const quoted = BigInt(router.amountOut.toString());
+    if (quoted <= 0n) return { ok: false, error: "No liquidity on Cetus." };
+    const tx = new Transaction();
+    tx.setSender(sender);
+    await withTimeout(client.fastRouterSwap({ router, slippage: SLIPPAGE, txb: tx }), AFTERMATH_TIMEOUT_MS, "Cetus transaction");
+    return { ok: true, tx, quoted };
+  } catch (error) {
+    console.error("cetus route failed", error);
+    return { ok: false, error: String((error as Error)?.message ?? error) };
+  }
 }
 
 export { SUI as SWAP_SUI, SWAP_GAS_BUDGET };
