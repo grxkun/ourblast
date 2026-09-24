@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { ArrowLeftRight } from "lucide-react";
 import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
 
 import { listSwapTweetsAdmin, runSwapTweetAdmin } from "@/lib/admin.functions";
 import { timeAgo } from "@/lib/blast";
@@ -49,15 +50,15 @@ export function SwapTweetsCard() {
                 <p className="mt-1 break-all font-body text-sm">{m.text}</p>
                 {m.swap?.error && <p className="mt-1 break-all text-xs text-muted-foreground">{m.swap.error}</p>}
                 {!done && (
-                  <button
-                    className="btn-primary mt-2 text-xs"
+                  <Button size="sm"
+                    className="mt-2"
                     disabled={mutation.isPending}
                     onClick={() => {
                       if (confirm(`Run this trade now for @${m.x_username}? Real SUI will be spent.`)) mutation.mutate(m.x_post_id);
                     }}
                   >
                     {mutation.isPending && mutation.variables === m.x_post_id ? "Running…" : "Run now"}
-                  </button>
+                  </Button>
                 )}
               </li>
             );
