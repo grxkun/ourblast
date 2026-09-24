@@ -145,7 +145,7 @@ export async function launchOnBlastfun(input: BlastfunLaunchInput): Promise<Blas
   if (gas.length === 0) return fail("The bot wallet has no SUI for gas.");
   const publishTx = new Transaction();
   withGas(publishTx, sender, gas, gasPrice, PUBLISH_BUDGET);
-  const [upgradeCap] = publishTx.publish({ modules: [Array.from(bytes)], dependencies: ["0x1", "0x2"].map((a) => a.padStart(66, "0").replace(/^0+x?/, "0x")) });
+  const [upgradeCap] = publishTx.publish({ modules: [Array.from(bytes)], dependencies: ["0x" + "1".padStart(64, "0"), "0x" + "2".padStart(64, "0")] });
   publishTx.moveCall({ target: "0x2::package::make_immutable", arguments: [upgradeCap!] });
   const published = await signAndExecute(publishTx, keypair);
   if (!published.ok || !published.digest) return fail(published.error ?? "Coin publish failed.");

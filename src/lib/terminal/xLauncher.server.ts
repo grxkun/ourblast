@@ -387,6 +387,21 @@ export async function executeLaunchRequest(requestId: string): Promise<LaunchOut
     } else if (outcome.status === "FAILED") {
       failure = outcome.message;
     }
+  } else if (pad.id === "blastfun") {
+    // Official Blast.fun flow: publish the coin, then open its bonding curve pool.
+    const { launchOnBlastfun } = await import("./blastfun-launch.server");
+    const outcome = await launchOnBlastfun({
+      symbol: request.symbol,
+      name: request.name,
+      description: request.tweet_text ?? "",
+      iconUrl: request.icon_url ?? "",
+      xLink: request.x_username ? `https://x.com/${request.x_username}` : null,
+    });
+    if (outcome.status === "CONFIRMED" && outcome.coinType) {
+      deployment = { tokenAddress: outcome.coinType, transactionDigest: outcome.digest ?? "" };
+    } else {
+      failure = outcome.error ?? "The Blast.fun launch did not confirm on chain.";
+    }
   } else if (pad.id === "perpsplexity") {
     // Perpsplexity's raising launch is a composite pool: its bonding curve is
     // coupled to an underlying market engine. A plain pool::Pool is not the
