@@ -337,6 +337,14 @@ function BankWalletPanel({ userId }: { userId: string }) {
                 ) : (
                   <p className="text-muted-foreground">Your wallet is empty, so no funds will be lost.</p>
                 )}
+                {!hasFunds && !isImport && (
+                  <p className="text-muted-foreground">
+                    Back up this wallet's key first?{" "}
+                    <button type="button" className="underline text-primary" onClick={() => { setConfirmAction(null); setShowBackup(true); setRevealedKey(null); setAcknowledged(false); }}>
+                      Open backup
+                    </button>
+                  </p>
+                )}
                 {isImport ? (
                   <p className="text-muted-foreground">
                     Save the private key you're importing somewhere safe. If you lose it, neither you nor OurBlast can recover the funds.
