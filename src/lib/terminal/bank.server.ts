@@ -1,6 +1,6 @@
 import { normalizeStructTag, normalizeSuiAddress } from "@mysten/sui/utils";
 
-import { describeRecipient, parseBankCommand, toAtomic, type BankCommand } from "./bank";
+import { describeRecipient, parseBankCommand, parseChoiceReply, parseSwapCommand, shortCoinType, toAtomic, type BankCommand } from "./bank";
 import { X_BOT_SITE } from "./x-bot";
 
 const SUI_TYPE = normalizeStructTag("0x2::sui::SUI");
@@ -63,14 +63,20 @@ export async function matchCoins(wallet: string, command: Pick<BankCommand, "tok
  * sender's own wallet can approve. Returns the reply text, or null when the tweet
  * is not a bank command. Nothing is ever sent by the bot itself.
  */
-export async function createBankTransferFromMention(postId: string, username: string, text: string): Promise<string | null> {
-  const command = parseBankCommand(text);
+export async function createBankTransferFromMention(
+  postId: string,
+  username: string,
+  text: string,
+  chosenCoinType?: string,
+): Promise<string | null> {
+  const parsed = parseBankCommand(text);
+  const command = parsed && chosenCoinType ? { ...parsed, token: chosenCoinType, isCoinType: true } : parsed;
   if (!command) return null;
   const db = await admin();
   const who = describeRecipient(command.recipientKind, command.recipient);
 
   // Instant path: the sender has a funded OurBank wallet, so the bot sends now.
-  const instant = await tryInstantSend(postId, username, command, who);
+  const instant = await tryInstantSend(postId, username, command, who, text);
   if (instant !== undefined) return instant;
 
   const sender = await walletForXHandle(username);
@@ -190,7 +196,7 @@ export async function maintainBankTransfers() {
  * reply, null for a duplicate tweet, or undefined to fall back to the
  * approve-in-terminal flow (no OurBank wallet, or not enough of that coin).
  */
-async function tryInstantSend(postId: string, username: string, command: BankCommand, who: string): Promise<string | null | undefined> {
+async function tryInstantSend(postId: string, username: string, command: BankCommand, who: string, text: string): Promise<string | null | undefined> {
   const { findBankWallet, ensureBankWallet, sendFromBankWallet, SUI_TYPE: SUI, GAS_BUDGET } = await import("./bank-wallet.server");
   const wallet = await findBankWallet(username);
   if (!wallet) return undefined;
@@ -201,6 +207,7 @@ async function tryInstantSend(postId: string, username: string, command: BankCom
   } catch {
     return `@${username} couldn't read your OurBank wallet right now. Try again in a minute.`;
   }
+  if (matches.length > 1) return askWhichCoin(postId, username, text, matches);
   if (matches.length !== 1) return undefined;
   const coin = matches[0]!;
   let amount: bigint;
@@ -252,4 +259,127 @@ async function tryInstantSend(postId: string, username: string, command: BankCom
   }
   await db.from("bank_transfers").update({ status: "CONFIRMED", tx_digest: sent.digest }).eq("id", row.id);
   return `@${username} sent ${command.amount} ${coin.symbol} to ${who} ✅ https://suiscan.xyz/mainnet/tx/${sent.digest}`;
+}
+
+/**
+ * Several coins in the OurBank wallet share this ticker: save the options and
+ * ask which contract address the user meant. They answer by replying "1", "2"…
+ */
+async function askWhichCoin(postId: string, username: string, text: string, matches: CoinMatch[]): Promise<string | null> {
+  const db = await admin();
+  const options = matches.slice(0, 4);
+  const { error } = await db.from("bank_choices").insert({
+    x_username: username.toLowerCase(),
+    x_post_id: postId,
+    command_text: text,
+    options: options.map((m) => m.coinType),
+  });
+  if (error?.code === "23505") return null;
+  if (error) throw new Error(error.message);
+  const list = options.map((m, i) => `${i + 1}) ${shortCoinType(m.coinType)}`).join("\n");
+  return `@${username} you hold ${options.length} tokens called ${options[0]!.symbol}. Which one? Reply with the number:\n${list}`;
+}
+
+/** A reply that answers the bot's "which token?" question, if one is waiting. */
+async function resolvePendingChoice(postId: string, username: string, text: string): Promise<string | null> {
+  const db = await admin();
+  const { data: pending } = await db
+    .from("bank_choices")
+    .select("id, x_post_id, command_text, options")
+    .eq("x_username", username.toLowerCase())
+    .gt("expires_at", new Date().toISOString())
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (!pending || pending.x_post_id === postId) return null;
+  const options = (pending.options as string[]) ?? [];
+  const chosen = parseChoiceReply(text, options);
+  if (!chosen) return null;
+  // Delete first: only one reply can ever act on this question.
+  const { data: taken } = await db.from("bank_choices").delete().eq("id", pending.id).select("id");
+  if (!taken?.length) return null;
+  if (parseSwapCommand(pending.command_text)) return handleSwapMention(postId, username, pending.command_text, chosen);
+  return createBankTransferFromMention(postId, username, pending.command_text, chosen);
+}
+
+/** Buy / sell inside the OurBank wallet via the Aftermath aggregator. */
+async function handleSwapMention(postId: string, username: string, text: string, chosenCoinType?: string): Promise<string | null> {
+  const parsed = parseSwapCommand(text);
+  if (!parsed) return null;
+  const command = chosenCoinType ? { ...parsed, token: chosenCoinType, isCoinType: true } : parsed;
+  const { findBankWallet } = await import("./bank-wallet.server");
+  const { executeBankSwap, swapAmountIn, formatUnits, SWAP_SUI, SWAP_GAS_BUDGET } = await import("./bank-swap.server");
+
+  if (command.side === "buy" && !command.isCoinType) {
+    return `@${username} to buy safely, paste the token's full contract address, e.g. buy 5 SUI of 0x…::coin::COIN`;
+  }
+  const wallet = await findBankWallet(username);
+  if (!wallet) return `@${username} you don't have an OurBank wallet yet. Sign in with X at ${X_BOT_SITE}/terminal to get one, fund it, then tweet again.`;
+
+  let coinIn: string, coinOut: string, decimalsIn: number, balanceIn: bigint, symbolOut: string, decimalsOut: number, symbolIn: string;
+  try {
+    const suiMatch = (await matchCoins(wallet.address, { token: SWAP_SUI, isCoinType: true }))[0];
+    if (command.side === "buy") {
+      coinIn = SWAP_SUI; symbolIn = "SUI"; decimalsIn = 9; balanceIn = suiMatch?.balance ?? 0n;
+      coinOut = normalizeStructTag(command.token);
+      const meta = await rpc<{ symbol: string; decimals: number } | null>("suix_getCoinMetadata", [coinOut]).catch(() => null);
+      if (!meta) return `@${username} couldn't find that token on Sui. Check the contract address.`;
+      symbolOut = meta.symbol.toUpperCase(); decimalsOut = meta.decimals;
+    } else {
+      const matches = await matchCoins(wallet.address, command);
+      if (matches.length === 0) return `@${username} no ${command.isCoinType ? "coin of that type" : command.token} in your OurBank wallet.`;
+      if (matches.length > 1) return askWhichCoin(postId, username, text, matches);
+      const coin = matches[0]!;
+      coinIn = coin.coinType; symbolIn = coin.symbol; decimalsIn = coin.decimals; balanceIn = coin.balance;
+      coinOut = SWAP_SUI; symbolOut = "SUI"; decimalsOut = 9;
+      if ((suiMatch?.balance ?? 0n) < SWAP_GAS_BUDGET) return `@${username} add a little SUI (0.05) to your OurBank wallet for network fees first.`;
+    }
+  } catch {
+    return `@${username} couldn't read your OurBank wallet right now. Try again in a minute.`;
+  }
+
+  let amountIn: bigint;
+  try {
+    amountIn = swapAmountIn(command, decimalsIn, balanceIn);
+  } catch (e) {
+    return `@${username} ${(e as Error).message}`;
+  }
+  const needed = command.side === "buy" ? amountIn + SWAP_GAS_BUDGET : amountIn;
+  if (amountIn <= 0n) return `@${username} that amount is too small.`;
+  if (needed > balanceIn) {
+    return `@${username} your OurBank wallet doesn't hold enough ${symbolIn}${command.side === "buy" ? " (plus 0.05 SUI for fees)" : ""}.`;
+  }
+
+  const db = await admin();
+  const { data: row, error } = await db
+    .from("bank_swaps")
+    .insert({
+      x_post_id: postId, x_username: username.toLowerCase(), wallet: normalizeSuiAddress(wallet.address),
+      side: command.side, coin_in: coinIn, coin_out: coinOut, amount_in: amountIn.toString(),
+    })
+    .select("id")
+    .single();
+  if (error?.code === "23505") return null; // one tweet = one trade
+  if (error || !row) throw new Error(error?.message ?? "Could not save swap.");
+
+  const result = await executeBankSwap(wallet, coinIn, coinOut, amountIn);
+  if (!result.ok) {
+    await db.from("bank_swaps").update({ status: "FAILED", error: result.error }).eq("id", row.id);
+    return `@${username} swap not done: ${result.error.slice(0, 140)}`;
+  }
+  await db.from("bank_swaps").update({ status: "CONFIRMED", tx_digest: result.digest, quoted_out: result.quoted.toString() }).eq("id", row.id);
+  const got = formatUnits(result.received ?? result.quoted, decimalsOut);
+  const verb = command.side === "buy" ? "bought" : "sold";
+  const detail = command.side === "buy"
+    ? `${got} ${symbolOut} for ${formatUnits(amountIn, 9)} SUI`
+    : `${formatUnits(amountIn, decimalsIn)} ${symbolIn} for ${got} SUI`;
+  return `@${username} ${verb} ${detail} via Aftermath ✅ https://suiscan.xyz/mainnet/tx/${result.digest}`;
+}
+
+/** Single entry for OurBank tweets: token choice replies, swaps, then transfers. */
+export async function handleBankMention(postId: string, username: string, text: string): Promise<string | null> {
+  const choice = await resolvePendingChoice(postId, username, text);
+  if (choice !== null) return choice;
+  if (parseSwapCommand(text)) return handleSwapMention(postId, username, text);
+  return createBankTransferFromMention(postId, username, text);
 }
