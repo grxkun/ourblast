@@ -71,6 +71,7 @@ export async function executeBankSwap(
     tx = await router.getTransactionForCompleteTradeRoute({ walletAddress: sender, completeRoute: route, slippage: SLIPPAGE });
   } catch (error) {
     console.error("aftermath route failed", error);
+    if (/insufficient/i.test(String((error as Error)?.message))) return { ok: false, error: "Not enough balance for this trade plus fees." };
     return { ok: false, error: "No swap route found for this token on Aftermath." };
   }
 
