@@ -96,7 +96,7 @@ export function Terminal({ tryCommand }: { tryCommand?: { command: string; nonce
           : out.transferId ? await approveTransfer(out.transferId).catch((e: Error) => ({ status: "FAILED" as const, message: e.message, digest: null }))
           : null;
         if (signed) {
-          status = signed.status === "CONFIRMED" ? "CONFIRMED" : signed.status === "FAILED" ? "FAILED" : "SUBMITTED";
+          status = signed.status === "CONFIRMED" ? "CONFIRMED" : signed.status === "FAILED" ? "FAILED" : "SUBMITTING";
           message = signed.status === "CONFIRMED"
             ? `Done ✅ https://suiscan.xyz/mainnet/tx/${signed.digest}`
             : `${signed.message ?? "Submitted — still confirming."}${signed.status === "FAILED" ? " You can retry from Trade wallet in OurBank below." : ""}`;
