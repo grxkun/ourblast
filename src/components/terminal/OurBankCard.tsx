@@ -203,10 +203,29 @@ function BankWalletPanel({ userId }: { userId: string }) {
   const withdraw = useServerFn(withdrawBankWallet);
   const doImport = useServerFn(importBankWallet);
   const doReset = useServerFn(resetBankWallet);
+  const doExport = useServerFn(exportBankWalletKey);
   const wallet = useQuery({ queryKey: ["bank-wallet", userId], queryFn: () => get(), refetchInterval: 20_000 });
   const [showImport, setShowImport] = useState(false);
   const [keyInput, setKeyInput] = useState("");
   const [confirmAction, setConfirmAction] = useState<"import" | "reset" | null>(null);
+  const [showBackup, setShowBackup] = useState(false);
+  const [revealedKey, setRevealedKey] = useState<string | null>(null);
+  const [acknowledged, setAcknowledged] = useState(false);
+
+  const exportKey = useMutation({
+    mutationFn: () => doExport(),
+    onSuccess: (data) => setRevealedKey(data.secretKey),
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const backupInstructions = `OURBLAST WALLET BACKUP\n\n` +
+    `Wallet address: ${wallet.data?.address ?? ""}\n\n` +
+    `1. Withdraw all funds from this OurBank wallet to your connected Sui wallet.\n` +
+    `2. Save the private key below in a secure location (password manager, offline note).\n` +
+    `3. NEVER share this key with anyone — not even OurBlast support.\n` +
+    `4. With this key you have full custody of your funds. If you lose it, no one can recover it.\n` +
+    `5. To restore: Import wallet → paste this key in the OurBank card.\n` +
+    (revealedKey ? `\nPrivate key: ${revealedKey}\n` : "\nPrivate key: [Reveal it in the backup dialog first]\n`);
 
   const out = useMutation({
     mutationFn: (coinType: string) => withdraw({ data: { coinType } }),
