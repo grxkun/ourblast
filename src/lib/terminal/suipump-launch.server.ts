@@ -344,6 +344,7 @@ export async function signAndExecute(
 
   // Submission goes through the JSON-RPC mirrors first: the GraphQL submit
   // endpoint times out on large transactions such as the pool creation.
+  let lastSubmitError: string | null = null;
   for (const url of RPC_MIRRORS) {
     const submitted = await fetch(url, {
       method: "POST",
@@ -372,6 +373,7 @@ export async function signAndExecute(
         return null;
       });
     if (submitted?.error) {
+      lastSubmitError = submitted.error.message;
       console.error("submit via", url, "rejected:", JSON.stringify(submitted.error).slice(0, 600));
       continue;
     }
@@ -449,7 +451,7 @@ export async function signAndExecute(
     return {
       digest: effects?.digest ?? null,
       ok: false,
-      error: effects?.executionError?.message ?? "the transaction did not go through",
+      error: effects?.executionError?.message ?? lastSubmitError ?? "the transaction did not go through",
       created: [],
     };
   }
