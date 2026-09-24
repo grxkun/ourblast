@@ -1,11 +1,12 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { Landmark } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { useBlast } from "@/components/blast/session";
+import { supabase } from "@/integrations/supabase/client";
 import {
   cancelTransfer,
   confirmTransfer,
