@@ -11,6 +11,7 @@ import { DevFeeCard } from "@/components/terminal/DevFeeCard";
 import { CreatorClaimCard } from "@/components/terminal/CreatorClaimCard";
 import { BotHealthCard } from "@/components/terminal/BotHealthCard";
 import { SwapTweetsCard } from "@/components/terminal/SwapTweetsCard";
+import { SwapAttemptsCard } from "@/components/terminal/SwapAttemptsCard";
 import { PlayerAvatar } from "@/components/blast/PlayerBadge";
 import { useBlast } from "@/components/blast/session";
 import { formatNumber, shortAddress, timeAgo } from "@/lib/blast";
@@ -298,6 +299,7 @@ function AdminPage() {
         <div className="max-w-2xl">
           <BotHealthCard />
           <SwapTweetsCard />
+          <SwapAttemptsCard />
           <LauncherSettingsCard />
           <SuipumpReadinessCard />
         </div>
