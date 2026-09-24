@@ -159,5 +159,12 @@ export async function runXMentionPoll(): Promise<{
     }
   }
 
+  try {
+    const { maintainBankTransfers } = await import("./bank.server");
+    await maintainBankTransfers();
+  } catch (error) {
+    console.error(`OurBank maintenance failed: ${error instanceof Error ? error.message : "unknown"}`);
+  }
+
   return { live: true, handled, confirmed, reason: null, error: null };
 }
