@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { TradeWalletPanel } from "./TradeWalletPanel";
 import { useServerFn } from "@tanstack/react-start";
 import { Landmark, AlertTriangle, ShieldCheck } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -136,6 +137,7 @@ export function OurBankCard() {
       </p>
 
       {userId ? <BankWalletPanel userId={userId} /> : null}
+      {userId ? <TradeWalletPanel userId={userId} /> : null}
 
       {!userId ? <p className="mt-3 text-sm text-muted-foreground">Sign in with X and connect your wallet to use OurBank.</p> : null}
       {userId && transfers.isLoading ? <p className="mt-3 text-sm text-muted-foreground">Loading transfers…</p> : null}
