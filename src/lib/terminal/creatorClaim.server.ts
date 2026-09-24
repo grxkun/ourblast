@@ -4,7 +4,7 @@
  * Suipump accumulates each token's creator fee inside its Curve object and
  * releases it with `bonding_curve::claim_creator_fees(&CreatorCap, &mut Curve,
  * &Clock)`. That single call pays every payee written into the curve at launch
- * (bot, buy & burn, dev, treasury, launcher) in their on-chain shares — so one
+ * (bot, dev, treasury, launcher) in their on-chain shares — so one
  * press distributes everything, with nobody needing a Suipump account.
  *
  * OURBLAST keeps the CreatorCap in the bot wallet, which is why the terminal can

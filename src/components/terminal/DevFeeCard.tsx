@@ -123,7 +123,7 @@ export function DevFeeCard() {
           <div className="rounded-lg border border-border bg-background/60 p-3">
             <div className="flex items-center justify-between">
               <span className="font-display text-xs uppercase text-muted-foreground">
-                Bot wallet — gas, ops &amp; burn reserve (not your share)
+                Bot wallet — gas &amp; ops (not your share)
               </span>
               <span className="font-display text-lg">
                 {formatSui(data.botBalanceSui)} SUI
@@ -197,7 +197,7 @@ export function DevFeeCard() {
               Move ops funds out of the bot wallet (SUI)
             </label>
             <p className="mt-1 text-xs text-muted-foreground">
-              Type the amount yourself. This is not a dev-share payout — every SUI you move here is gas, ops or burn
+              Type the amount yourself. This is not a dev-share payout — every SUI you move here is gas or ops
               reserve money.
             </p>
             <div className="mt-2 flex gap-2">
