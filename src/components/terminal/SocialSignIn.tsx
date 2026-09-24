@@ -9,8 +9,8 @@ import { Button } from "@/components/ui/button";
  * for a wallet, which can be connected later from the same header.
  */
 export function SocialSignIn() {
-  const { userId, connect, connecting, loginWithGoogle, loginWithX } = useBlast();
-  if (userId) return null;
+  const { userId, ready, connect, connecting, loginWithGoogle, loginWithX } = useBlast();
+  if (!ready || userId) return null;
 
   return (
     <section className="panel space-y-4 p-5">
