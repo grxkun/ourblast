@@ -207,3 +207,21 @@ export const resetBankWallet = createServerFn({ method: "POST" })
     const wallet = await replaceBankWalletKey(handle, context.userId, null);
     return { address: wallet.address };
   });
+
+/**
+ * Decrypts and returns the private key for the signed-in user's OurBank wallet.
+ * This is the real backup — with this key the user has full custody of their funds.
+ * The key is shown only to the authenticated wallet owner.
+ */
+export const exportBankWalletKey = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const handle = await myXHandle(context.userId);
+    if (!handle) throw new Error("Sign in with X first.");
+    const { findBankWallet } = await import("./bank-wallet.server");
+    const { decryptConnectionKey } = await import("@/lib/connection-key.server");
+    const wallet = await findBankWallet(handle);
+    if (!wallet) throw new Error("No OurBank wallet yet.");
+    const secretKey = decryptConnectionKey(wallet.secret_ciphertext);
+    return { address: wallet.address, secretKey };
+  });

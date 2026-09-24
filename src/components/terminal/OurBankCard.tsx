@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { Landmark, AlertTriangle } from "lucide-react";
+import { Landmark, AlertTriangle, ShieldCheck } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
@@ -20,6 +20,7 @@ import { supabase } from "@/integrations/supabase/client";
 import {
   cancelTransfer,
   confirmTransfer,
+  exportBankWalletKey,
   getMyBankWallet,
   importBankWallet,
   listMyTransfers,
@@ -202,10 +203,34 @@ function BankWalletPanel({ userId }: { userId: string }) {
   const withdraw = useServerFn(withdrawBankWallet);
   const doImport = useServerFn(importBankWallet);
   const doReset = useServerFn(resetBankWallet);
+  const doExport = useServerFn(exportBankWalletKey);
   const wallet = useQuery({ queryKey: ["bank-wallet", userId], queryFn: () => get(), refetchInterval: 20_000 });
   const [showImport, setShowImport] = useState(false);
   const [keyInput, setKeyInput] = useState("");
   const [confirmAction, setConfirmAction] = useState<"import" | "reset" | null>(null);
+  const [showBackup, setShowBackup] = useState(false);
+  const [revealedKey, setRevealedKey] = useState<string | null>(null);
+  const [acknowledged, setAcknowledged] = useState(false);
+
+  const exportKey = useMutation({
+    mutationFn: () => doExport(),
+    onSuccess: (data) => setRevealedKey(data.secretKey),
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const backupInstructions = [
+    "OURBLAST WALLET BACKUP",
+    "",
+    `Wallet address: ${wallet.data?.address ?? ""}`,
+    "",
+    "1. Withdraw all funds from this OurBank wallet to your connected Sui wallet.",
+    "2. Save the private key below in a secure location (password manager, offline note).",
+    "3. NEVER share this key with anyone, not even OurBlast support.",
+    "4. With this key you have full custody of your funds. If you lose it, no one can recover it.",
+    "5. To restore: Import wallet and paste this key in the OurBank card.",
+    "",
+    revealedKey ? `Private key: ${revealedKey}` : "Private key: [Reveal it in the backup dialog first]",
+  ].join("\n");
 
   const out = useMutation({
     mutationFn: (coinType: string) => withdraw({ data: { coinType } }),
@@ -254,6 +279,9 @@ function BankWalletPanel({ userId }: { userId: string }) {
       <div className="mt-2 flex flex-wrap gap-2">
         <Button size="sm" variant="outline" onClick={() => { void navigator.clipboard.writeText(w.address); toast("Address copied"); }}>
           Copy address
+        </Button>
+        <Button size="sm" variant="outline" onClick={() => { setShowBackup(true); setRevealedKey(null); setAcknowledged(false); }}>
+          Backup
         </Button>
         <Button size="sm" variant="outline" onClick={() => setShowImport((v) => !v)}>
           {showImport ? "Cancel" : "Import wallet"}
@@ -314,6 +342,14 @@ function BankWalletPanel({ userId }: { userId: string }) {
                 ) : (
                   <p className="text-muted-foreground">Your wallet is empty, so no funds will be lost.</p>
                 )}
+                {!hasFunds && !isImport && (
+                  <p className="text-muted-foreground">
+                    Back up this wallet's key first?{" "}
+                    <button type="button" className="underline text-primary" onClick={() => { setConfirmAction(null); setShowBackup(true); setRevealedKey(null); setAcknowledged(false); }}>
+                      Open backup
+                    </button>
+                  </p>
+                )}
                 {isImport ? (
                   <p className="text-muted-foreground">
                     Save the private key you're importing somewhere safe. If you lose it, neither you nor OurBlast can recover the funds.
@@ -342,6 +378,82 @@ function BankWalletPanel({ userId }: { userId: string }) {
                   ? (imp.isPending ? "Importing…" : "Yes, replace my wallet")
                   : (reset.isPending ? "Generating…" : "Yes, generate new wallet")}
             </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={showBackup} onOpenChange={(open) => { if (!open) { setShowBackup(false); setRevealedKey(null); setAcknowledged(false); } }}>
+        <AlertDialogContent className="max-w-xl">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <ShieldCheck className="size-5 text-primary" />
+              Back up your wallet
+            </AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-3">
+                <p>
+                  Wallet address: <code className="text-foreground">{w.address.slice(0, 10)}…{w.address.slice(-8)}</code>
+                </p>
+                <div className="rounded border border-border p-2 text-xs">
+                  <p className="font-medium text-foreground">Before replacing this wallet:</p>
+                  <ol className="mt-1 list-decimal space-y-1 pl-4">
+                    <li>Withdraw all funds to your connected Sui wallet.</li>
+                    <li>Reveal and copy the private key below.</li>
+                    <li>Store it somewhere secure — password manager or offline note.</li>
+                    <li>Never share it with anyone, not even OurBlast support.</li>
+                    <li>To restore: use "Import wallet" and paste this key.</li>
+                  </ol>
+                </div>
+                {hasFunds && (
+                  <p className="font-medium text-destructive">
+                    Your wallet still holds funds. Withdraw first before replacing.
+                  </p>
+                )}
+                {revealedKey ? (
+                  <div className="space-y-2">
+                    <p className="text-xs font-medium text-destructive">
+                      ⚠ This is your private key. Anyone with it controls your funds. Copy it now and never share it.
+                    </p>
+                    <div className="flex gap-2">
+                      <input
+                        readOnly
+                        className="w-full rounded border border-border bg-background px-2 py-1 text-xs font-mono"
+                        value={revealedKey}
+                        onFocus={(e) => e.target.select()}
+                      />
+                      <Button size="sm" variant="outline" onClick={() => { void navigator.clipboard.writeText(revealedKey); toast.success("Private key copied"); }}>
+                        Copy key
+                      </Button>
+                    </div>
+                    <Button size="sm" variant="ghost" onClick={() => { void navigator.clipboard.writeText(backupInstructions); toast.success("Instructions copied"); }}>
+                      Copy all backup instructions
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    <label className="flex items-start gap-2 text-xs">
+                      <input
+                        type="checkbox"
+                        checked={acknowledged}
+                        onChange={(e) => setAcknowledged(e.target.checked)}
+                        className="mt-0.5"
+                      />
+                      <span>I understand this key gives full control of my funds, and I will store it securely.</span>
+                    </label>
+                    <Button
+                      size="sm"
+                      disabled={!acknowledged || exportKey.isPending}
+                      onClick={() => exportKey.mutate()}
+                    >
+                      {exportKey.isPending ? "Decrypting…" : "Reveal private key"}
+                    </Button>
+                  </div>
+                )}
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Close</AlertDialogCancel>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
