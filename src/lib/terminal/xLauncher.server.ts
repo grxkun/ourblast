@@ -125,8 +125,7 @@ async function feeRouting(
     };
   }
 
-  // The bot wallet receives both OURBLAST shares (20% total): 10% funds ops
-  // and gas, 10% is swapped to BLAST and burned from the same wallet.
+  // The bot wallet receives OURBLAST's 10% ops & gas share.
   const bot = (process.env['OURBLAST_BOT_WALLET_ADDRESS']?.trim() || BOT_WALLET_ADDRESS).toLowerCase();
   const developer = FOUNDER_ADDRESS.toLowerCase();
   const treasury = treasuryPayee();
