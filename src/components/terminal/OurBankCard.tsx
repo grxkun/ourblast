@@ -1,10 +1,20 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { Landmark } from "lucide-react";
+import { Landmark, AlertTriangle } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { useBlast } from "@/components/blast/session";
 import { supabase } from "@/integrations/supabase/client";
 import {
@@ -195,6 +205,7 @@ function BankWalletPanel({ userId }: { userId: string }) {
   const wallet = useQuery({ queryKey: ["bank-wallet", userId], queryFn: () => get(), refetchInterval: 20_000 });
   const [showImport, setShowImport] = useState(false);
   const [keyInput, setKeyInput] = useState("");
+  const [confirmAction, setConfirmAction] = useState<"import" | "reset" | null>(null);
 
   const out = useMutation({
     mutationFn: (coinType: string) => withdraw({ data: { coinType } }),
@@ -211,6 +222,7 @@ function BankWalletPanel({ userId }: { userId: string }) {
       toast.success("Wallet imported.");
       setShowImport(false);
       setKeyInput("");
+      setConfirmAction(null);
       void queryClient.invalidateQueries({ queryKey: ["bank-wallet", userId] });
     },
     onError: (e: Error) => toast.error(e.message),
@@ -220,6 +232,7 @@ function BankWalletPanel({ userId }: { userId: string }) {
     mutationFn: () => doReset(),
     onSuccess: () => {
       toast.success("New wallet generated.");
+      setConfirmAction(null);
       void queryClient.invalidateQueries({ queryKey: ["bank-wallet", userId] });
     },
     onError: (e: Error) => toast.error(e.message),
@@ -228,6 +241,10 @@ function BankWalletPanel({ userId }: { userId: string }) {
   const w = wallet.data;
   if (!w) return null;
   if (!w.linked) return <p className="mt-3 text-sm text-muted-foreground">Sign in with X to get an OurBank wallet for instant sends.</p>;
+
+  const hasFunds = w.balances.length > 0;
+  const isImport = confirmAction === "import";
+
   return (
     <div className="mt-3 border border-primary/40 p-3 text-sm">
       <p className="font-display uppercase">Your OurBank wallet · instant sends</p>
@@ -241,7 +258,7 @@ function BankWalletPanel({ userId }: { userId: string }) {
         <Button size="sm" variant="outline" onClick={() => setShowImport((v) => !v)}>
           {showImport ? "Cancel" : "Import wallet"}
         </Button>
-        <Button size="sm" variant="ghost" disabled={reset.isPending} onClick={() => reset.mutate()}>
+        <Button size="sm" variant="ghost" disabled={reset.isPending} onClick={() => setConfirmAction("reset")}>
           {reset.isPending ? "Generating…" : "New wallet"}
         </Button>
       </div>
@@ -259,7 +276,7 @@ function BankWalletPanel({ userId }: { userId: string }) {
             onChange={(e) => setKeyInput(e.target.value)}
             autoComplete="off"
           />
-          <Button size="sm" disabled={imp.isPending || !keyInput.trim()} onClick={() => imp.mutate(keyInput)}>
+          <Button size="sm" disabled={imp.isPending || !keyInput.trim()} onClick={() => setConfirmAction("import")}>
             {imp.isPending ? "Importing…" : "Import this wallet"}
           </Button>
         </div>
@@ -275,6 +292,59 @@ function BankWalletPanel({ userId }: { userId: string }) {
         ))}
       </ul>
       <p className="mt-2 text-xs text-muted-foreground">OurBlast holds this wallet's key for you. Import your own key if you'd rather keep custody. Only keep what you plan to send.</p>
+
+      <AlertDialog open={confirmAction !== null} onOpenChange={(open) => { if (!open) setConfirmAction(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="size-5 text-destructive" />
+              {isImport ? "Replace wallet with your key?" : "Generate a new wallet?"}
+            </AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-2">
+                <p>
+                  This permanently replaces your current OurBank wallet
+                  {" "}<code className="text-foreground">{w.address.slice(0, 8)}…{w.address.slice(-6)}</code>.
+                  The old key is discarded and can never be recovered.
+                </p>
+                {hasFunds ? (
+                  <p className="font-medium text-destructive">
+                    Your wallet still holds funds. Withdraw everything first — replacing now would lose them permanently.
+                  </p>
+                ) : (
+                  <p className="text-muted-foreground">Your wallet is empty, so no funds will be lost.</p>
+                )}
+                {isImport ? (
+                  <p className="text-muted-foreground">
+                    Save the private key you're importing somewhere safe. If you lose it, neither you nor OurBlast can recover the funds.
+                  </p>
+                ) : (
+                  <p className="text-muted-foreground">
+                    The new wallet's key will be held by OurBlast. Only keep what you plan to send.
+                  </p>
+                )}
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              disabled={hasFunds || (isImport ? imp.isPending : reset.isPending) || (isImport && !keyInput.trim())}
+              onClick={() => {
+                if (isImport) imp.mutate(keyInput);
+                else reset.mutate();
+              }}
+            >
+              {hasFunds
+                ? "Withdraw first"
+                : isImport
+                  ? (imp.isPending ? "Importing…" : "Yes, replace my wallet")
+                  : (reset.isPending ? "Generating…" : "Yes, generate new wallet")}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
