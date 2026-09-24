@@ -428,6 +428,9 @@ function BankWalletPanel({ userId }: { userId: string }) {
                     <p className="text-xs font-medium text-destructive">
                       ⚠ This is your private key. Anyone with it controls your funds. Copy it now and never share it.
                     </p>
+                    <p className="text-xs text-muted-foreground">
+                      Auto-hides and clears clipboard in {keyCountdown}s
+                    </p>
                     <div className="flex gap-2">
                       <input
                         readOnly
@@ -435,11 +438,11 @@ function BankWalletPanel({ userId }: { userId: string }) {
                         value={revealedKey}
                         onFocus={(e) => e.target.select()}
                       />
-                      <Button size="sm" variant="outline" onClick={() => { void navigator.clipboard.writeText(revealedKey); toast.success("Private key copied"); }}>
+                      <Button size="sm" variant="outline" onClick={() => { void navigator.clipboard.writeText(revealedKey); toast.success("Private key copied"); setKeyCountdown(60); }}>
                         Copy key
                       </Button>
                     </div>
-                    <Button size="sm" variant="ghost" onClick={() => { void navigator.clipboard.writeText(backupInstructions); toast.success("Instructions copied"); }}>
+                    <Button size="sm" variant="ghost" onClick={() => { void navigator.clipboard.writeText(backupInstructions); toast.success("Instructions copied"); setKeyCountdown(60); }}>
                       Copy all backup instructions
                     </Button>
                   </div>
