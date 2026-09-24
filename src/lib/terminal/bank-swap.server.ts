@@ -157,12 +157,13 @@ async function buildBluefinSwap(sender: string, inType: string, outType: string,
   if (normalizeStructTag(quote.tokenIn) !== inType || normalizeStructTag(quote.tokenOut) !== outType) {
     throw new Error("Bluefin returned different coins.");
   }
-  if (BigInt(quote.swapAmount) !== amountIn) throw new Error("Bluefin changed the trade size.");
   if (!quote.swaps.length || !quote.routes?.length) throw new Error("No Bluefin pool route.");
-  if (quote.swaps.some((swap) => swap.functionName && !quote.routes?.some((route) => route.hops.some((hop) => hop.pool.type === "bluefin")))) {
+  const routedAmount = quote.swaps.reduce((total, swap) => total + BigInt(swap.amount), 0n);
+  if (routedAmount !== amountIn) throw new Error("Bluefin changed the trade size.");
+  if (!quote.routes.every((route) => route.hops.every((hop) => hop.pool.type === "bluefin"))) {
     throw new Error("Bluefin returned a route outside its own pool.");
   }
-  const quoted = BigInt(quote.returnAmountAfterCommission || quote.returnAmount);
+  const quoted = quote.swaps.reduce((total, swap) => total + BigInt(swap.returnAmount), 0n);
   if (quoted <= 0n) throw new Error("No Bluefin liquidity.");
   const built = await withTimeout(
     buildBluefinTx({
