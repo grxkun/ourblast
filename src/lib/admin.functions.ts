@@ -244,3 +244,22 @@ export const upsertChallenge = createServerFn({ method: "POST" })
     await logAction(actor, "challenge_update", { reason: data.title });
     return { ok: true };
   });
+
+export const listSwapTweetsAdmin = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    await assertStaff(context);
+    const { listSwapTweets } = await import("@/lib/terminal/bank.server");
+    return listSwapTweets();
+  });
+
+export const runSwapTweetAdmin = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) => z.object({ postId: z.string().min(1).max(80) }).parse(d))
+  .handler(async ({ context, data }) => {
+    const actor = await assertStaff(context);
+    const { runSwapFromTweet } = await import("@/lib/terminal/bank.server");
+    const result = await runSwapFromTweet(data.postId);
+    await logAction(actor, "run_swap_tweet", { targetRef: data.postId, reason: result.reply.slice(0, 200) });
+    return result;
+  });

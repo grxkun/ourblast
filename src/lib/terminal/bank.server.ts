@@ -407,3 +407,47 @@ export async function handleBankMention(postId: string, username: string, text: 
   if (parseSwapCommand(text)) return handleSwapMention(postId, username, text);
   return createBankTransferFromMention(postId, username, text);
 }
+
+/**
+ * Staff "Run now" for a buy/sell tweet that got stuck or failed. Only runs when
+ * the tweet has no confirmed trade; the old unfinished record is cleared so the
+ * normal one-trade-per-tweet guard applies again. Posts the reply on X.
+ */
+export async function runSwapFromTweet(postId: string): Promise<{ reply: string; posted: boolean; postError: string | null }> {
+  const db = await admin();
+  const { data: mention } = await db.from("x_mentions").select("x_username, text").eq("x_post_id", postId).maybeSingle();
+  if (!mention) throw new Error("Tweet not found.");
+  if (!parseSwapCommand(mention.text)) throw new Error("That tweet isn't a buy or sell.");
+  const { data: swap } = await db.from("bank_swaps").select("id, status, tx_digest").eq("x_post_id", postId).maybeSingle();
+  if (swap?.status === "CONFIRMED" || swap?.tx_digest) throw new Error("This trade already went through.");
+  if (swap) await db.from("bank_swaps").delete().eq("id", swap.id);
+
+  const reply = (await handleSwapMention(postId, mention.x_username, mention.text)) ?? "";
+  if (!reply) throw new Error("Nothing to run for this tweet.");
+  const { readXCredentials, postReply, friendlyXError } = await import("./x-api.server");
+  const credentials = readXCredentials();
+  let replyPostId: string | null = null;
+  let postError: string | null = null;
+  if (credentials) {
+    try { replyPostId = await postReply(credentials, postId, reply); } catch (e) { postError = friendlyXError(e); }
+  }
+  await db.from("x_mentions").update({
+    intent: "bankSwap", status: "READY", reply_text: reply, posted: Boolean(replyPostId),
+    reply_post_id: replyPostId, post_error: postError, posted_at: replyPostId ? new Date().toISOString() : null,
+  }).eq("x_post_id", postId);
+  return { reply, posted: Boolean(replyPostId), postError };
+}
+
+/** Recent buy/sell tweets with their trade state, for the staff panel. */
+export async function listSwapTweets() {
+  const db = await admin();
+  const { data: mentions } = await db.from("x_mentions")
+    .select("x_post_id, x_username, text, reply_text, posted, created_at")
+    .gte("created_at", new Date(Date.now() - 7 * 86400_000).toISOString())
+    .order("created_at", { ascending: false }).limit(200);
+  const swaps = (mentions ?? []).filter((m) => parseSwapCommand(m.text)).slice(0, 30);
+  const { data: rows } = await db.from("bank_swaps").select("x_post_id, status, tx_digest, error")
+    .in("x_post_id", swaps.map((m) => m.x_post_id).concat(["-"]));
+  const byId = new Map((rows ?? []).map((r) => [r.x_post_id, r]));
+  return swaps.map((m) => ({ ...m, swap: byId.get(m.x_post_id) ?? null }));
+}
