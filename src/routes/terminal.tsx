@@ -13,6 +13,7 @@ import { CreatorClaimCard } from "@/components/terminal/CreatorClaimCard";
 import { CreatorFeeDesignationCard } from "@/components/terminal/CreatorFeeDesignationCard";
 import { XConnectButton } from "@/components/terminal/XConnectButton";
 import { SocialSignIn } from "@/components/terminal/SocialSignIn";
+import { OurBankCard } from "@/components/terminal/OurBankCard";
 import { XLaunchQueue } from "@/components/terminal/XLaunchQueue";
 import { WalletButton } from "@/components/blast/WalletButton";
 import { resolveLaunchpad } from "@/lib/terminal/launchpad";
@@ -76,6 +77,7 @@ function TerminalPage() {
       )}
       {ready ? (
         <div className="mt-6 space-y-6">
+          <OurBankCard />
           <CreatorClaimCard />
           <FeeRoutingCard />
           <CreatorFeeDesignationCard />

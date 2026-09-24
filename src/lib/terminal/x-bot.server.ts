@@ -92,6 +92,37 @@ async function processClaimedMention(
     xUsername: username,
   };
 
+  // OurBank: "send 25 SUI to @alice". Creates a request only the sender's own
+  // wallet can approve in the terminal — the bot never moves anyone's funds.
+  const { createBankTransferFromMention } = await import("./bank.server");
+  const bankReply = await createBankTransferFromMention(payload.postId, username, text);
+  if (bankReply !== null) {
+    const credentials = source === "simulation" ? null : readXCredentials();
+    let replyPostId: string | null = null;
+    let postError: string | null = null;
+    if (credentials) {
+      try {
+        replyPostId = await postReply(credentials, payload.postId, bankReply);
+        await supabaseAdmin.from("bank_transfers").update({ reply_post_id: replyPostId }).eq("x_post_id", payload.postId);
+      } catch (error) {
+        postError = friendlyXError(error);
+      }
+    }
+    await supabaseAdmin
+      .from("x_mentions")
+      .update({
+        intent: "bankTransfer",
+        status: "READY",
+        reply_text: bankReply,
+        posted: Boolean(replyPostId),
+        reply_post_id: replyPostId,
+        post_error: postError,
+        posted_at: replyPostId ? new Date().toISOString() : null,
+      })
+      .eq("x_post_id", payload.postId);
+    return { postId: payload.postId, username, text, intent: "bankTransfer", status: "READY", reply: bankReply, posted: Boolean(replyPostId), replyPostId, postError };
+  }
+
   // Simple X launcher first: "Deploy $TETY Tety Yety Caty on Suipump" becomes one
   // launch request (one X post = one request) that a human confirms in the terminal.
   const { readDeployRequest, createLaunchRequest, composeReceivedReply, readLauncherSettings, executeLaunchRequest } =
