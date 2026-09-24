@@ -141,3 +141,46 @@ export const cancelTransfer = createServerFn({ method: "POST" })
     await db.from("bank_transfers").update({ status: "CANCELLED" }).eq("id", row.id);
     return { ok: true };
   });
+
+async function myXHandle(userId: string) {
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const { data } = await supabaseAdmin.from("x_accounts").select("username").eq("user_id", userId).maybeSingle();
+  return data?.username ?? null;
+}
+
+/** Your OurBank wallet (created on first visit): the address to top up, plus balances. */
+export const getMyBankWallet = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const handle = await myXHandle(context.userId);
+    if (!handle) return { linked: false as const };
+    const { ensureBankWallet, bankBalances } = await import("./bank-wallet.server");
+    const wallet = await ensureBankWallet(handle, context.userId);
+    const { rpc } = await import("./suipump-launch.server");
+    const balances = await bankBalances(wallet.address).catch(() => []);
+    const out = await Promise.all(
+      balances.map(async (b) => {
+        const meta = await rpc<{ symbol: string; decimals: number } | null>("suix_getCoinMetadata", [b.coinType]).catch(() => null);
+        const decimals = meta?.decimals ?? 9;
+        return { coinType: b.coinType, symbol: meta?.symbol ?? b.coinType.split("::").at(-1)!, amount: Number(b.balance) / 10 ** decimals };
+      }),
+    );
+    return { linked: true as const, address: wallet.address, handle, balances: out };
+  });
+
+/** Moves everything of one coin from your OurBank wallet to your connected wallet. */
+export const withdrawBankWallet = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d) => z.object({ coinType: z.string().min(3).max(300) }).parse(d))
+  .handler(async ({ data, context }) => {
+    const handle = await myXHandle(context.userId);
+    if (!handle) throw new Error("Sign in with X first.");
+    const { data: profile } = await context.supabase.from("profiles").select("wallet_address").eq("id", context.userId).maybeSingle();
+    if (!profile?.wallet_address) throw new Error("Connect your Sui wallet first.");
+    const { findBankWallet, sendFromBankWallet } = await import("./bank-wallet.server");
+    const wallet = await findBankWallet(handle);
+    if (!wallet) throw new Error("No OurBank wallet yet.");
+    const sent = await sendFromBankWallet(wallet, data.coinType, null, profile.wallet_address);
+    if (!sent.ok) throw new Error(sent.error);
+    return { digest: sent.digest };
+  });

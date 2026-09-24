@@ -69,6 +69,10 @@ export async function createBankTransferFromMention(postId: string, username: st
   const db = await admin();
   const who = describeRecipient(command.recipientKind, command.recipient);
 
+  // Instant path: the sender has a funded OurBank wallet, so the bot sends now.
+  const instant = await tryInstantSend(postId, username, command, who);
+  if (instant !== undefined) return instant;
+
   const sender = await walletForXHandle(username);
   if (!sender?.wallet) {
     return `@${username} to send with OurBank, sign in with X at ${X_BOT_SITE}/terminal and connect your Sui wallet first. Then tweet again.`;
@@ -179,4 +183,73 @@ export async function maintainBankTransfers() {
       await db.from("bank_transfers").update({ recipient_address: address, status: "PENDING_APPROVAL" }).eq("id", row.id);
     }
   }
+}
+
+/**
+ * Bankrbot-style send from the sender's bot-held OurBank wallet. Returns the
+ * reply, null for a duplicate tweet, or undefined to fall back to the
+ * approve-in-terminal flow (no OurBank wallet, or not enough of that coin).
+ */
+async function tryInstantSend(postId: string, username: string, command: BankCommand, who: string): Promise<string | null | undefined> {
+  const { findBankWallet, ensureBankWallet, sendFromBankWallet, SUI_TYPE: SUI, GAS_BUDGET } = await import("./bank-wallet.server");
+  const wallet = await findBankWallet(username);
+  if (!wallet) return undefined;
+
+  let matches: CoinMatch[];
+  try {
+    matches = await matchCoins(wallet.address, command);
+  } catch {
+    return `@${username} couldn't read your OurBank wallet right now. Try again in a minute.`;
+  }
+  if (matches.length !== 1) return undefined;
+  const coin = matches[0]!;
+  let amount: bigint;
+  try {
+    amount = toAtomic(command.amount, coin.decimals);
+  } catch (e) {
+    return `@${username} ${(e as Error).message}`;
+  }
+  const needed = coin.coinType === SUI ? amount + GAS_BUDGET : amount;
+  if (needed > coin.balance) return undefined;
+
+  let recipient = await resolveRecipient(command.recipientKind, command.recipient);
+  // X users without a linked wallet get an OurBank wallet they can use by signing in.
+  if (!recipient && command.recipientKind === "x") recipient = (await ensureBankWallet(command.recipient, null)).address;
+  if (!recipient) return `@${username} ${command.recipient} doesn't point to a Sui address.`;
+  if (recipient === normalizeSuiAddress(wallet.address)) return `@${username} that's your own wallet.`;
+
+  const db = await admin();
+  const senderUserId = wallet.user_id ?? (await walletForXHandle(username))?.userId;
+  if (!senderUserId) return undefined;
+  // Claim the tweet first: one tweet can never send twice.
+  const { data: row, error } = await db
+    .from("bank_transfers")
+    .insert({
+      x_post_id: postId,
+      sender_user_id: senderUserId,
+      sender_x_username: username,
+      sender_wallet: normalizeSuiAddress(wallet.address),
+      recipient_kind: command.recipientKind,
+      recipient_input: command.recipient,
+      recipient_address: recipient,
+      coin_type: coin.coinType,
+      symbol: coin.symbol,
+      decimals: coin.decimals,
+      amount_atomic: amount.toString() as unknown as number,
+      amount_display: Number(command.amount),
+      status: "SUBMITTED",
+      instant: true,
+    })
+    .select("id")
+    .single();
+  if (error?.code === "23505") return null;
+  if (error || !row) throw new Error(error?.message ?? "Could not save transfer.");
+
+  const sent = await sendFromBankWallet(wallet, coin.coinType, amount, recipient);
+  if (!sent.ok) {
+    await db.from("bank_transfers").update({ status: "FAILED", error: sent.error }).eq("id", row.id);
+    return `@${username} transfer failed: ${sent.error.slice(0, 120)}`;
+  }
+  await db.from("bank_transfers").update({ status: "CONFIRMED", tx_digest: sent.digest }).eq("id", row.id);
+  return `@${username} sent ${command.amount} ${coin.symbol} to ${who} ✅ https://suiscan.xyz/mainnet/tx/${sent.digest}`;
 }

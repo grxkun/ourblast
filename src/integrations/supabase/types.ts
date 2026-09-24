@@ -82,6 +82,7 @@ export type Database = {
           error: string | null
           expires_at: string
           id: string
+          instant: boolean
           recipient_address: string | null
           recipient_input: string
           recipient_kind: string
@@ -105,6 +106,7 @@ export type Database = {
           error?: string | null
           expires_at?: string
           id?: string
+          instant?: boolean
           recipient_address?: string | null
           recipient_input: string
           recipient_kind: string
@@ -128,6 +130,7 @@ export type Database = {
           error?: string | null
           expires_at?: string
           id?: string
+          instant?: boolean
           recipient_address?: string | null
           recipient_input?: string
           recipient_kind?: string
@@ -140,6 +143,36 @@ export type Database = {
           tx_digest?: string | null
           updated_at?: string
           x_post_id?: string
+        }
+        Relationships: []
+      }
+      bank_wallets: {
+        Row: {
+          address: string
+          created_at: string
+          id: string
+          secret_ciphertext: string
+          updated_at: string
+          user_id: string | null
+          x_username: string
+        }
+        Insert: {
+          address: string
+          created_at?: string
+          id?: string
+          secret_ciphertext: string
+          updated_at?: string
+          user_id?: string | null
+          x_username: string
+        }
+        Update: {
+          address?: string
+          created_at?: string
+          id?: string
+          secret_ciphertext?: string
+          updated_at?: string
+          user_id?: string | null
+          x_username?: string
         }
         Relationships: []
       }
