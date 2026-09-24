@@ -112,7 +112,8 @@ export async function createBankTransferFromMention(postId: string, username: st
     coin_type: coin?.coinType ?? null,
     symbol: coin?.symbol ?? command.token.split("::").at(-1)!.toUpperCase(),
     decimals: coin?.decimals ?? null,
-    amount_atomic: amountAtomic !== null ? amountAtomic.toString() : null,
+    // Sent as a string so big integers keep full precision in the numeric column.
+    amount_atomic: (amountAtomic !== null ? amountAtomic.toString() : null) as unknown as number | null,
     amount_display: Number(command.amount),
   });
   // One tweet = one transfer: a duplicate means we already answered it.
