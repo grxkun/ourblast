@@ -1,5 +1,6 @@
 import { Aftermath } from "aftermath-ts-sdk";
 import { AggregatorClient, Env } from "@cetusprotocol/aggregator-sdk";
+import { buildTx as buildBluefinTx, getQuote as getBluefinQuote } from "@bluefin-exchange/bluefin7k-aggregator-sdk";
 import { Transaction } from "@mysten/sui/transactions";
 import { Ed25519Keypair } from "@mysten/sui/keypairs/ed25519";
 import { SuiJsonRpcClient } from "@mysten/sui/jsonRpc";
@@ -35,10 +36,10 @@ function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise
 }
 
 export type SwapResult =
-  | { ok: true; digest: string; received: bigint | null; quoted: bigint; coinOut: string; venue: "Aftermath" | "Cetus" }
+  | { ok: true; digest: string; received: bigint | null; quoted: bigint; coinOut: string; venue: "Bluefin" | "Aftermath" | "Cetus" }
   | { ok: false; error: string };
 
-type BuiltSwap = { tx: Transaction; quoted: bigint; venue: "Aftermath" | "Cetus" };
+type BuiltSwap = { tx: Transaction; quoted: bigint; venue: "Bluefin" | "Aftermath" | "Cetus" };
 
 function isTransientAftermathError(error: unknown): boolean {
   const message = String((error as Error)?.message ?? error);
@@ -85,15 +86,19 @@ export async function executeBankSwap(
 
   let built: BuiltSwap;
   try {
-    built = await Promise.any([
-      buildAftermathSwap(sender, inType, outType, amountIn),
-      (async () => {
-        await new Promise((resolve) => setTimeout(resolve, CETUS_HEAD_START_MS));
-        const result = await buildCetusSwap(sender, inType, outType, amountIn);
-        if (!result.ok) throw new Error(result.error);
-        return { ...result, venue: "Cetus" as const };
-      })(),
-    ]);
+    // First check the exact pair against Bluefin's own pool source. BLAST has
+    // Bluefin liquidity, so this avoids needlessly asking unrelated routers.
+    built = await buildBluefinSwap(sender, inType, outType, amountIn).catch(() =>
+      Promise.any([
+        buildAftermathSwap(sender, inType, outType, amountIn),
+        (async () => {
+          await new Promise((resolve) => setTimeout(resolve, CETUS_HEAD_START_MS));
+          const result = await buildCetusSwap(sender, inType, outType, amountIn);
+          if (!result.ok) throw new Error(result.error);
+          return { ...result, venue: "Cetus" as const };
+        })(),
+      ]),
+    );
   } catch (error) {
     const messages = error instanceof AggregateError
       ? error.errors.map((item) => String((item as Error)?.message ?? item)).join(" | ")
@@ -138,6 +143,39 @@ export async function executeBankSwap(
     /* quote is shown instead */
   }
   return { ok: true, digest: executed.digest, received, quoted: built.quoted, coinOut: outType, venue: built.venue };
+}
+
+async function buildBluefinSwap(sender: string, inType: string, outType: string, amountIn: bigint): Promise<BuiltSwap> {
+  const quote = await withTimeout(
+    getBluefinQuote(
+      { tokenIn: inType, tokenOut: outType, amountIn: amountIn.toString(), sources: ["bluefin"] },
+      { signal: AbortSignal.timeout(AFTERMATH_TIMEOUT_MS) },
+    ),
+    AFTERMATH_TIMEOUT_MS,
+    "Bluefin pool check",
+  );
+  if (normalizeStructTag(quote.tokenIn) !== inType || normalizeStructTag(quote.tokenOut) !== outType) {
+    throw new Error("Bluefin returned different coins.");
+  }
+  if (BigInt(quote.swapAmount) !== amountIn) throw new Error("Bluefin changed the trade size.");
+  if (!quote.swaps.length || !quote.routes?.length) throw new Error("No Bluefin pool route.");
+  if (quote.swaps.some((swap) => swap.functionName && !quote.routes?.some((route) => route.hops.some((hop) => hop.pool.type === "bluefin")))) {
+    throw new Error("Bluefin returned a route outside its own pool.");
+  }
+  const quoted = BigInt(quote.returnAmountAfterCommission || quote.returnAmount);
+  if (quoted <= 0n) throw new Error("No Bluefin liquidity.");
+  const built = await withTimeout(
+    buildBluefinTx({
+      quoteResponse: quote,
+      accountAddress: sender,
+      slippage: SLIPPAGE,
+      commission: { partner: sender, commissionBps: 0 },
+    }),
+    AFTERMATH_TIMEOUT_MS,
+    "Bluefin transaction",
+  );
+  if (!(built.tx instanceof Transaction)) throw new Error("Bluefin returned an unsupported sponsored transaction.");
+  return { tx: built.tx, quoted, venue: "Bluefin" };
 }
 
 async function buildAftermathSwap(sender: string, inType: string, outType: string, amountIn: bigint): Promise<BuiltSwap> {
