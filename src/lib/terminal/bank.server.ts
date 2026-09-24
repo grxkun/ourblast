@@ -363,7 +363,14 @@ async function handleSwapMention(postId: string, username: string, text: string,
   if (error?.code === "23505") return "";
   if (error || !row) throw new Error(error?.message ?? "Could not save swap.");
 
-  const result = await executeBankSwap(wallet, coinIn, coinOut, amountIn);
+  let result: Awaited<ReturnType<typeof executeBankSwap>>;
+  try {
+    result = await executeBankSwap(wallet, coinIn, coinOut, amountIn);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Trade service failed.";
+    await db.from("bank_swaps").update({ status: "FAILED", error: message.slice(0, 500) }).eq("id", row.id);
+    return `@${username} swap not done: the trade service failed before submission. Nothing was spent — try again.`;
+  }
   if (!result.ok) {
     await db.from("bank_swaps").update({ status: "FAILED", error: result.error }).eq("id", row.id);
     return `@${username} swap not done: ${result.error.slice(0, 140)}`;
@@ -374,7 +381,7 @@ async function handleSwapMention(postId: string, username: string, text: string,
   const detail = command.side === "buy"
     ? `${got} ${symbolOut} for ${formatUnits(amountIn, 9)} SUI`
     : `${formatUnits(amountIn, decimalsIn)} ${symbolIn} for ${got} SUI`;
-  const done = `@${username} ${verb} ${detail} via Aftermath ✅ https://suiscan.xyz/mainnet/tx/${result.digest}`;
+  const done = `@${username} ${verb} ${detail} via ${result.venue} ✅ https://suiscan.xyz/mainnet/tx/${result.digest}`;
   if (!command.sendTo) return done;
 
   // Second step: forward exactly what the swap delivered, only after it confirmed.
@@ -390,7 +397,7 @@ async function handleSwapMention(postId: string, username: string, text: string,
   if (!sent.ok) return `${done} — sending to ${who} failed, tokens stay in your wallet.`;
   await db.from("bank_swaps").update({ error: `forwarded to ${who}: ${sent.digest}` }).eq("id", row.id);
   const tag = command.side === "buy" ? symbolOut : "SUI";
-  return `@${username} ${verb} ${got} ${tag} via Aftermath and sent it to ${who} ✅ https://suiscan.xyz/mainnet/tx/${sent.digest}`;
+  return `@${username} ${verb} ${got} ${tag} via ${result.venue} and sent it to ${who} ✅ https://suiscan.xyz/mainnet/tx/${sent.digest}`;
 }
 
 /** Single entry for OurBank tweets: token choice replies, swaps, then transfers. */
