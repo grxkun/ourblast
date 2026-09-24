@@ -2201,6 +2201,7 @@ export type Database = {
       }
       is_staff: { Args: { _user_id: string }; Returns: boolean }
       run_x_poll: { Args: never; Returns: undefined }
+      run_x_poll_burst: { Args: never; Returns: undefined }
       set_x_poll_secret: { Args: { p_secret: string }; Returns: undefined }
     }
     Enums: {
