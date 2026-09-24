@@ -69,10 +69,21 @@ export async function executeBankSwap(
     if (BigInt(route.coinIn.amount) !== amountIn) return { ok: false, error: "Aggregator changed the trade size — not trading." };
     quoted = BigInt(route.coinOut.amount);
     if (quoted <= 0n) return { ok: false, error: "No liquidity for this token right now." };
-    tx = await router.getTransactionForCompleteTradeRoute({ walletAddress: sender, completeRoute: route, slippage: SLIPPAGE });
+    // Aftermath's transaction endpoint sometimes returns a one-off HTTP 500
+    // even though the route is valid, so give it a few attempts.
+    for (let attempt = 1; ; attempt++) {
+      try {
+        tx = await router.getTransactionForCompleteTradeRoute({ walletAddress: sender, completeRoute: route, slippage: SLIPPAGE });
+        break;
+      } catch (error) {
+        if (attempt >= 3 || !/HTTP 5\d\d/.test(String((error as Error)?.message))) throw error;
+        await new Promise((r) => setTimeout(r, 800 * attempt));
+      }
+    }
   } catch (error) {
     console.error("aftermath route failed", error);
     if (/insufficient/i.test(String((error as Error)?.message))) return { ok: false, error: "Not enough balance for this trade plus fees." };
+    if (/HTTP 5\d\d/.test(String((error as Error)?.message))) return { ok: false, error: "Aftermath is having trouble right now. Nothing was spent — try again in a minute." };
     return { ok: false, error: "No swap route found for this token on Aftermath." };
   }
 
