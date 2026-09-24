@@ -221,10 +221,11 @@ export const exportBankWalletKey = createServerFn({ method: "POST" })
     const { findBankWallet } = await import("./bank-wallet.server");
     const { decryptConnectionKey } = await import("@/lib/connection-key.server");
     const { Ed25519Keypair } = await import("@mysten/sui/keypairs/ed25519");
-    const { encodeSuiPrivateKey } = await import("@mysten/sui/keypairs/ed25519");
+    const { encodeSuiPrivateKey } = await import("@mysten/sui/cryptography");
     const wallet = await findBankWallet(handle);
     if (!wallet) throw new Error("No OurBank wallet yet.");
     const rawKey = decryptConnectionKey(wallet.secret_ciphertext);
-    const suiPrivKey = encodeSuiPrivateKey(rawKey, "ED25519");
+    const keypair = Ed25519Keypair.fromSecretKey(rawKey);
+    const suiPrivKey = encodeSuiPrivateKey(keypair.getSecretKey().slice(0, 32), "ED25519");
     return { address: wallet.address, secretKey: suiPrivKey };
   });
