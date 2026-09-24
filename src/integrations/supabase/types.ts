@@ -101,6 +101,27 @@ export type Database = {
         }
         Relationships: []
       }
+      bank_preferences: {
+        Row: {
+          created_at: string
+          trade_wallet: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          trade_wallet?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          trade_wallet?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       bank_swaps: {
         Row: {
           amount_in: string
@@ -111,9 +132,11 @@ export type Database = {
           id: string
           quoted_out: string | null
           side: string
+          source: string
           status: string
           tx_digest: string | null
           updated_at: string
+          user_id: string | null
           wallet: string
           x_post_id: string
           x_username: string
@@ -127,9 +150,11 @@ export type Database = {
           id?: string
           quoted_out?: string | null
           side: string
+          source?: string
           status?: string
           tx_digest?: string | null
           updated_at?: string
+          user_id?: string | null
           wallet: string
           x_post_id: string
           x_username: string
@@ -143,9 +168,11 @@ export type Database = {
           id?: string
           quoted_out?: string | null
           side?: string
+          source?: string
           status?: string
           tx_digest?: string | null
           updated_at?: string
+          user_id?: string | null
           wallet?: string
           x_post_id?: string
           x_username?: string

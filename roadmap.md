@@ -108,3 +108,5 @@
 - [x] Add fee claim link to deployed X launch replies
 
 - [x] Blast.fun launchpad support (official memez-fun flow; first live launch still to be watched)
+
+- [x] Trade wallet choice (OurBank vs own wallet) for send/buy/sell on X and terminal chat

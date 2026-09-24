@@ -56,7 +56,7 @@ type BlastSession = {
   recoverEntry: (purpose: PaymentPurpose) => Promise<string>;
   /** Builds and signs a transaction with the connected wallet. */
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  signAndExecute: (build: (tx: any, sender: string) => void | Promise<void>) => Promise<{ digest: string; sender: string }>;
+  signAndExecute: (build: (tx: any, sender: string) => unknown) => Promise<{ digest: string; sender: string }>;
 };
 
 // Keep a single context instance across hot-reloads / duplicate module copies,
@@ -305,7 +305,7 @@ export function BlastProvider({ children }: { children: React.ReactNode }) {
   /** Signs a transaction with the connected wallet. The wallet owner always approves. */
   const signAndExecute = useCallback(
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    async (build: (tx: any, sender: string) => void | Promise<void>) => {
+    async (build: (tx: any, sender: string) => unknown) => {
       if (!userId) throw new Error("Connect your wallet first.");
       let session = active.current;
       if (!session) {
@@ -320,7 +320,9 @@ export function BlastProvider({ children }: { children: React.ReactNode }) {
       const { Transaction } = await import("@mysten/sui/transactions");
       const tx = new Transaction();
       tx.setSender(session.account.address);
-      await build(tx, session.account.address);
+      // A builder may return a ready-made transaction (e.g. server-prepared swap bytes) instead.
+      const replaced = await build(tx, session.account.address);
+      const finalTx = replaced && typeof replaced === "object" ? replaced : tx;
       const chain: string =
         (session.account.chains as string[] | undefined)?.find((c) => c.startsWith("sui:")) ?? "sui:mainnet";
       const feature =
@@ -328,8 +330,8 @@ export function BlastProvider({ children }: { children: React.ReactNode }) {
         session.raw.features["sui:signAndExecuteTransactionBlock"];
       if (!feature) throw new Error("This wallet cannot send transactions.");
       const result = feature.signAndExecuteTransaction
-        ? await feature.signAndExecuteTransaction({ transaction: tx, account: session.account, chain })
-        : await feature.signAndExecuteTransactionBlock({ transactionBlock: tx, account: session.account, chain });
+        ? await feature.signAndExecuteTransaction({ transaction: finalTx, account: session.account, chain })
+        : await feature.signAndExecuteTransactionBlock({ transactionBlock: finalTx, account: session.account, chain });
       if (!result?.digest) throw new Error("Wallet did not return a transaction.");
       return { digest: result.digest as string, sender: session.account.address as string };
     },

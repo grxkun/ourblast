@@ -15,6 +15,9 @@ import { supabase } from "@/integrations/supabase/client";
 import type { Json } from "@/integrations/supabase/types";
 import { runTerminalAgent } from "@/lib/terminal/agent";
 import { interpretCommand } from "@/lib/terminal/nlu.functions";
+import { runBankCommand } from "@/lib/terminal/bank.functions";
+import { parseBankCommand, parseSwapCommand } from "@/lib/terminal/bank";
+import { useBankApprovals } from "./useBankApprovals";
 import type { LaunchConfiguration, TerminalEntry, TerminalIntentName, TerminalStatus } from "@/lib/terminal/types";
 
 import { CommandSuggestions } from "./CommandSuggestions";
@@ -40,6 +43,8 @@ export function Terminal({ tryCommand }: { tryCommand?: { command: string; nonce
   const [launchOverrides, setLaunchOverrides] = useState<Record<string, LaunchConfiguration>>({});
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const interpret = useServerFn(interpretCommand);
+  const bankCommand = useServerFn(runBankCommand);
+  const { approveSwap, approveTransfer } = useBankApprovals();
 
   const cloudHistory = useQuery({
     queryKey: ["terminal-history", userId],
@@ -79,6 +84,28 @@ export function Terminal({ tryCommand }: { tryCommand?: { command: string; nonce
     setProcessing(true);
     try {
       const context = { walletConnected: Boolean(userId), walletAddress: profile?.wallet_address ?? null, source: "terminal" as const };
+      // Send / buy / sell (and "1"/"2" answers to a which-token question) run the same
+      // OurBank logic as an X mention, with the wallet the user picked.
+      const swap = parseSwapCommand(clean);
+      const isBank = Boolean(userId) && (swap || parseBankCommand(clean) || /^\s*#?[1-4]\s*$/.test(clean));
+      if (isBank) {
+        const out = await bankCommand({ data: { text: clean } });
+        let message = out.reply;
+        let status: TerminalStatus = /✅/.test(message) ? "CONFIRMED" : /not done|failed|couldn't|doesn't|no /i.test(message) ? "FAILED" : "READY";
+        const signed = out.swapId ? await approveSwap(out.swapId).catch((e: Error) => ({ status: "FAILED" as const, message: e.message, digest: null }))
+          : out.transferId ? await approveTransfer(out.transferId).catch((e: Error) => ({ status: "FAILED" as const, message: e.message, digest: null }))
+          : null;
+        if (signed) {
+          status = signed.status === "CONFIRMED" ? "CONFIRMED" : signed.status === "FAILED" ? "FAILED" : "SUBMITTING";
+          message = signed.status === "CONFIRMED"
+            ? `Done ✅ https://suiscan.xyz/mainnet/tx/${signed.digest}`
+            : `${signed.message ?? "Submitted — still confirming."}${signed.status === "FAILED" ? " You can retry from Trade wallet in OurBank below." : ""}`;
+        }
+        const intent: TerminalIntentName = swap ? (swap.side === "buy" ? "buyToken" : "sellToken") : "getWallet";
+        await saveEntry({ id: makeId(), command: clean, intent, result: { tool: intent, status, message }, createdAt: new Date().toISOString() });
+        await queryClient.invalidateQueries({ queryKey: ["own-swaps", userId] });
+        return;
+      }
       let response = await runTerminalAgent(clean, context);
       // Anything the rules cannot read gets rewritten into a canonical command and re-parsed.
       if (response.intent.name === "unknown") {
@@ -95,7 +122,7 @@ export function Terminal({ tryCommand }: { tryCommand?: { command: string; nonce
     } catch (error) {
       toast.error("Terminal history was not saved", { description: error instanceof Error ? error.message : "Try again." });
     } finally { setProcessing(false); }
-  }, [interpret, processing, profile?.wallet_address, saveEntry, userId]);
+  }, [interpret, processing, profile?.wallet_address, saveEntry, userId, bankCommand, approveSwap, approveTransfer, queryClient]);
 
   const handleSubmit = async (message: PromptInputMessage) => {
     const image = message.files.find((file) => file.mediaType?.startsWith("image/"));

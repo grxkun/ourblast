@@ -84,32 +84,9 @@ export async function executeBankSwap(
   if (inType === outType) return { ok: false, error: "Nothing to swap." };
   if (amountIn <= 0n) return { ok: false, error: "Amount is too small." };
 
-  let built: BuiltSwap;
-  try {
-    // First check the exact pair against Bluefin's own pool source. BLAST has
-    // Bluefin liquidity, so this avoids needlessly asking unrelated routers.
-    built = await buildBluefinSwap(sender, inType, outType, amountIn).catch(() =>
-      Promise.any([
-        buildAftermathSwap(sender, inType, outType, amountIn),
-        (async () => {
-          await new Promise((resolve) => setTimeout(resolve, CETUS_HEAD_START_MS));
-          const result = await buildCetusSwap(sender, inType, outType, amountIn);
-          if (!result.ok) throw new Error(result.error);
-          return { ...result, venue: "Cetus" as const };
-        })(),
-      ]),
-    );
-  } catch (error) {
-    const messages = error instanceof AggregateError
-      ? error.errors.map((item) => String((item as Error)?.message ?? item)).join(" | ")
-      : String((error as Error)?.message ?? error);
-    console.error("swap aggregators failed", messages);
-    if (/insufficient/i.test(messages)) return { ok: false, error: "Not enough balance for this trade plus fees." };
-    if (/timeout|HTTP 5\d\d|fetch failed|network|temporarily unavailable/i.test(messages)) {
-      return { ok: false, error: "Aftermath and Cetus are having trouble right now. Nothing was spent — try again in a minute." };
-    }
-    return { ok: false, error: "No swap route found for this token on Aftermath or Cetus." };
-  }
+  const picked = await pickSwapRoute(sender, inType, outType, amountIn);
+  if (!picked.ok) return picked;
+  const built = picked.built;
 
   const gas = await gasCoins(sender);
   if (gas.length === 0) return { ok: false, error: "Your OurBank wallet has no SUI for network fees." };
@@ -143,6 +120,72 @@ export async function executeBankSwap(
     /* quote is shown instead */
   }
   return { ok: true, digest: executed.digest, received, quoted: built.quoted, coinOut: outType, venue: built.venue };
+}
+
+/** Bluefin pool first, then Aftermath vs Cetus: first valid route wins. */
+async function pickSwapRoute(sender: string, inType: string, outType: string, amountIn: bigint): Promise<{ ok: true; built: BuiltSwap } | { ok: false; error: string }> {
+  let built: BuiltSwap;
+  try {
+    // First check the exact pair against Bluefin's own pool source. BLAST has
+    // Bluefin liquidity, so this avoids needlessly asking unrelated routers.
+    built = await buildBluefinSwap(sender, inType, outType, amountIn).catch(() =>
+      Promise.any([
+        buildAftermathSwap(sender, inType, outType, amountIn),
+        (async () => {
+          await new Promise((resolve) => setTimeout(resolve, CETUS_HEAD_START_MS));
+          const result = await buildCetusSwap(sender, inType, outType, amountIn);
+          if (!result.ok) throw new Error(result.error);
+          return { ...result, venue: "Cetus" as const };
+        })(),
+      ]),
+    );
+  } catch (error) {
+    const messages = error instanceof AggregateError
+      ? error.errors.map((item) => String((item as Error)?.message ?? item)).join(" | ")
+      : String((error as Error)?.message ?? error);
+    console.error("swap aggregators failed", messages);
+    if (/insufficient/i.test(messages)) return { ok: false, error: "Not enough balance for this trade plus fees." };
+    if (/timeout|HTTP 5\d\d|fetch failed|network|temporarily unavailable/i.test(messages)) {
+      return { ok: false, error: "Aftermath and Cetus are having trouble right now. Nothing was spent — try again in a minute." };
+    }
+    return { ok: false, error: "No swap route found for this token on Aftermath or Cetus." };
+  }
+  return { ok: true, built };
+}
+
+/**
+ * Same route checks, but for the user's own connected wallet: returns the fully
+ * built, unsigned transaction bytes for their wallet to review and sign.
+ * The server never signs this one.
+ */
+export async function prepareSwapForAddress(
+  address: string,
+  coinIn: string,
+  coinOut: string,
+  amountIn: bigint,
+): Promise<{ ok: true; bytes: string; quoted: bigint; venue: BuiltSwap["venue"] } | { ok: false; error: string }> {
+  const { gasCoins, referenceGasPrice, withGas } = await import("./suipump-launch.server");
+  const sender = normalizeSuiAddress(address);
+  const inType = normalizeStructTag(coinIn);
+  const outType = normalizeStructTag(coinOut);
+  if (inType === outType) return { ok: false, error: "Nothing to swap." };
+  if (amountIn <= 0n) return { ok: false, error: "Amount is too small." };
+  const picked = await pickSwapRoute(sender, inType, outType, amountIn);
+  if (!picked.ok) return picked;
+  const gas = await gasCoins(sender);
+  if (gas.length === 0) return { ok: false, error: "Your wallet has no SUI for network fees." };
+  withGas(picked.built.tx, sender, gas, await referenceGasPrice(), Number(SWAP_GAS_BUDGET));
+  try {
+    const bytes = await withTimeout(
+      picked.built.tx.build({ client: new SuiJsonRpcClient({ url: BUILD_RPC, network: "mainnet" }) }),
+      BUILD_TIMEOUT_MS,
+      "Swap build",
+    );
+    return { ok: true, bytes: Buffer.from(bytes).toString("base64"), quoted: picked.built.quoted, venue: picked.built.venue };
+  } catch (error) {
+    if (/timeout/i.test((error as Error).message)) return { ok: false, error: "The network was too slow to prepare this trade. Try again in a minute." };
+    return { ok: false, error: `Could not prepare the swap: ${(error as Error).message.slice(0, 100)}` };
+  }
 }
 
 async function buildBluefinSwap(sender: string, inType: string, outType: string, amountIn: bigint): Promise<BuiltSwap> {
