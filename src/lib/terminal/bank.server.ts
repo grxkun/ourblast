@@ -23,6 +23,15 @@ async function walletForXHandle(handle: string): Promise<{ userId: string; walle
   return { userId: account.user_id, wallet: profile?.wallet_address ?? null };
 }
 
+/** Which wallet this X user chose for sends, buys and sells: their OurBank wallet (default) or their own. */
+export async function tradeWalletFor(handle: string): Promise<"ourbank" | "own"> {
+  const db = await admin();
+  const { data: account } = await db.from("x_accounts").select("user_id").ilike("username", handle).maybeSingle();
+  if (!account) return "ourbank";
+  const { data } = await db.from("bank_preferences").select("trade_wallet").eq("user_id", account.user_id).maybeSingle();
+  return data?.trade_wallet === "own" ? "own" : "ourbank";
+}
+
 async function resolveSuins(name: string): Promise<string | null> {
   try {
     const addr = await rpc<string | null>("suix_resolveNameServiceAddress", [name]);
@@ -76,8 +85,11 @@ export async function createBankTransferFromMention(
   const who = describeRecipient(command.recipientKind, command.recipient);
 
   // Instant path: the sender has a funded OurBank wallet, so the bot sends now.
-  const instant = await tryInstantSend(postId, username, command, who, text);
-  if (instant !== undefined) return instant;
+  // Skipped when the user chose to approve everything with their own wallet.
+  if ((await tradeWalletFor(username)) === "ourbank") {
+    const instant = await tryInstantSend(postId, username, command, who, text);
+    if (instant !== undefined) return instant;
+  }
 
   const sender = await walletForXHandle(username);
   if (!sender?.wallet) {
@@ -313,8 +325,21 @@ async function handleSwapMention(postId: string, username: string, text: string,
   if (command.side === "buy" && !command.isCoinType) {
     return `@${username} to buy safely, paste the token's full contract address, e.g. buy 5 SUI of 0x…::coin::COIN`;
   }
-  const wallet = await findBankWallet(username);
-  if (!wallet) return `@${username} you don't have an OurBank wallet yet. Sign in with X at ${X_BOT_SITE}/terminal to get one, fund it, then tweet again.`;
+  const mode = await tradeWalletFor(username);
+  let wallet: { address: string; secret_ciphertext: string; user_id?: string | null } | null;
+  let ownerUserId: string | null = null;
+  if (mode === "own") {
+    // Own wallet: the bot only prepares the trade; the user signs it in the terminal.
+    if (command.sendTo) return `@${username} "buy and send" only works with your OurBank wallet. Switch it in the terminal, or send separately after the trade.`;
+    const linked = await walletForXHandle(username);
+    if (!linked?.wallet) return `@${username} connect your Sui wallet at ${X_BOT_SITE}/terminal first, then tweet again.`;
+    wallet = { address: normalizeSuiAddress(linked.wallet), secret_ciphertext: "" };
+    ownerUserId = linked.userId;
+  } else {
+    wallet = await findBankWallet(username);
+    if (!wallet) return `@${username} you don't have an OurBank wallet yet. Sign in with X at ${X_BOT_SITE}/terminal to get one, fund it, then tweet again.`;
+  }
+  const walletLabel = mode === "own" ? "wallet" : "OurBank wallet";
 
   let coinIn: string, coinOut: string, decimalsIn: number, balanceIn: bigint, symbolOut: string, decimalsOut: number, symbolIn: string;
   try {
@@ -327,15 +352,15 @@ async function handleSwapMention(postId: string, username: string, text: string,
       symbolOut = meta.symbol.toUpperCase(); decimalsOut = meta.decimals;
     } else {
       const matches = await matchCoins(wallet.address, command);
-      if (matches.length === 0) return `@${username} no ${command.isCoinType ? "coin of that type" : command.token} in your OurBank wallet.`;
+      if (matches.length === 0) return `@${username} no ${command.isCoinType ? "coin of that type" : command.token} in your ${walletLabel}.`;
       if (matches.length > 1) return askWhichCoin(postId, username, text, matches);
       const coin = matches[0]!;
       coinIn = coin.coinType; symbolIn = coin.symbol; decimalsIn = coin.decimals; balanceIn = coin.balance;
       coinOut = SWAP_SUI; symbolOut = "SUI"; decimalsOut = 9;
-      if ((suiMatch?.balance ?? 0n) < SWAP_GAS_BUDGET) return `@${username} add a little SUI (0.05) to your OurBank wallet for network fees first.`;
+      if ((suiMatch?.balance ?? 0n) < SWAP_GAS_BUDGET) return `@${username} add a little SUI (0.05) to your ${walletLabel} for network fees first.`;
     }
   } catch {
-    return `@${username} couldn't read your OurBank wallet right now. Try again in a minute.`;
+    return `@${username} couldn't read your ${walletLabel} right now. Try again in a minute.`;
   }
 
   let amountIn: bigint;
@@ -347,7 +372,7 @@ async function handleSwapMention(postId: string, username: string, text: string,
   const needed = command.side === "buy" ? amountIn + SWAP_GAS_BUDGET : amountIn;
   if (amountIn <= 0n) return `@${username} that amount is too small.`;
   if (needed > balanceIn) {
-    return `@${username} your OurBank wallet doesn't hold enough ${symbolIn}${command.side === "buy" ? " (plus 0.05 SUI for fees)" : ""}.`;
+    return `@${username} your ${walletLabel} doesn't hold enough ${symbolIn}${command.side === "buy" ? " (plus 0.05 SUI for fees)" : ""}.`;
   }
 
   const db = await admin();
@@ -356,12 +381,17 @@ async function handleSwapMention(postId: string, username: string, text: string,
     .insert({
       x_post_id: postId, x_username: username.toLowerCase(), wallet: normalizeSuiAddress(wallet.address),
       side: command.side, coin_in: coinIn, coin_out: coinOut, amount_in: amountIn.toString(),
+      ...(mode === "own" ? { status: "PENDING_APPROVAL", source: "own", user_id: ownerUserId } : {}),
     })
     .select("id")
     .single();
   // Another run already owns this trade — stay silent (never a generic reply).
   if (error?.code === "23505") return "";
   if (error || !row) throw new Error(error?.message ?? "Could not save swap.");
+  if (mode === "own") {
+    const what = command.side === "buy" ? `buy with ${formatUnits(amountIn, 9)} SUI` : `sell ${formatUnits(amountIn, decimalsIn)} ${symbolIn}`;
+    return `@${username} trade ready: ${what}. Approve it with your wallet at ${bankLink()} — nothing moves until you do.`;
+  }
 
   let result: Awaited<ReturnType<typeof executeBankSwap>>;
   try {
