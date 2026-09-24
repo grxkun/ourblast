@@ -359,7 +359,8 @@ async function handleSwapMention(postId: string, username: string, text: string,
     })
     .select("id")
     .single();
-  if (error?.code === "23505") return null; // one tweet = one trade
+  // Another run already owns this trade — stay silent (never a generic reply).
+  if (error?.code === "23505") return "";
   if (error || !row) throw new Error(error?.message ?? "Could not save swap.");
 
   const result = await executeBankSwap(wallet, coinIn, coinOut, amountIn);
