@@ -78,14 +78,13 @@ export function DevFeeCard() {
       </header>
 
       <p className="mt-2 text-sm text-muted-foreground">
-        Creator fees on every new token split 10% @ourblastbot · 10% BLAST buy &amp; burn · 10% dev (you) · 10% treasury
-        · 60% launcher. Your 10% (plus 10% of game fees) is paid straight to your dev wallet on chain — nothing of
-        yours is waiting here to be claimed.
+        Creator fees on every new token split 10% @ourblastbot · 10% dev (you) · 10% treasury · 70% launcher. Your 10%
+        (plus 10% of game fees) is paid straight to your dev wallet on chain — nothing of yours is waiting here to be
+        claimed.
       </p>
       <p className="mt-2 text-sm text-muted-foreground">
-        The bot wallet balance below is <span className="font-bold">not your share</span>: it is the launch gas float,
-        the @ourblastbot ops share and the BLAST buy &amp; burn reserve. Moving it to your dev wallet takes funds out of
-        launches and the burn reserve.
+        The bot wallet balance below is <span className="font-bold">not your share</span>: it is the launch gas float
+        and the @ourblastbot ops share. Moving it to your dev wallet takes funds out of launches.
       </p>
       <p className="mt-2 text-sm text-muted-foreground">
         Fees only move once someone releases them per token — use the <span className="font-bold">Claim creator fees</span>{" "}
@@ -124,7 +123,7 @@ export function DevFeeCard() {
           <div className="rounded-lg border border-border bg-background/60 p-3">
             <div className="flex items-center justify-between">
               <span className="font-display text-xs uppercase text-muted-foreground">
-                Bot wallet — gas, ops &amp; burn reserve (not your share)
+                Bot wallet — gas &amp; ops (not your share)
               </span>
               <span className="font-display text-lg">
                 {formatSui(data.botBalanceSui)} SUI
@@ -198,7 +197,7 @@ export function DevFeeCard() {
               Move ops funds out of the bot wallet (SUI)
             </label>
             <p className="mt-1 text-xs text-muted-foreground">
-              Type the amount yourself. This is not a dev-share payout — every SUI you move here is gas, ops or burn
+              Type the amount yourself. This is not a dev-share payout — every SUI you move here is gas or ops
               reserve money.
             </p>
             <div className="mt-2 flex gap-2">

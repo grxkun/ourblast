@@ -11,7 +11,7 @@ import { formatSui } from "@/lib/sui-balance";
 /**
  * One-press distribution of accumulated creator fees for every token OURBLAST
  * launched. Pressing Claim pays each recipient written into the token at launch
- * — launcher, treasury, dev, bot, buy & burn — with no launchpad account needed.
+ * — launcher, treasury, dev and bot — with no launchpad account needed.
  */
 export function CreatorClaimCard() {
   const { userId, ready } = useBlast();
@@ -58,7 +58,7 @@ export function CreatorClaimCard() {
 
       <p className="mt-2 text-sm text-muted-foreground">
         Trading fees pile up on each token until someone releases them. One press here pays every recipient set at
-        launch — launcher, treasury, dev, bot and buy &amp; burn — in one on-chain payment. No launchpad sign-in.
+        launch — launcher, treasury, dev and bot — in one on-chain payment. No launchpad sign-in.
       </p>
 
       {!userId ? (

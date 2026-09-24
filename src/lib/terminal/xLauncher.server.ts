@@ -50,7 +50,7 @@ const INTEGRATION_PENDING = "Launchpad integration coming soon.";
 
 /**
  * On-chain creator-fee routing. The published split — 20% OURBLAST treasury,
- * 10% developer, 70% launcher — is written straight into the bonding curve.
+ * 10% developer, 10% treasury, 70% launcher — is written straight into the bonding curve.
  *
  * When we know the launcher's wallet (their X account is linked to an OURBLAST
  * profile) their 70% goes to that wallet on chain. A claim/verification link is
@@ -125,8 +125,7 @@ async function feeRouting(
     };
   }
 
-  // The bot wallet receives both OURBLAST shares (20% total): 10% funds ops
-  // and gas, 10% is swapped to BLAST and burned from the same wallet.
+  // The bot wallet receives OURBLAST's 10% ops & gas share.
   const bot = (process.env['OURBLAST_BOT_WALLET_ADDRESS']?.trim() || BOT_WALLET_ADDRESS).toLowerCase();
   const developer = FOUNDER_ADDRESS.toLowerCase();
   const treasury = treasuryPayee();
@@ -136,7 +135,7 @@ async function feeRouting(
   const launcher = /^0x[0-9a-f]{64}$/.test(named)
     ? named
     : (receiver?.handle ? await launcherWallet(receiver.handle) : null) ?? (receiver?.handle ? null : await launcherWallet(xUsername));
-  const botShareBps = toBps(CREATOR_FEE_SPLIT.bot + CREATOR_FEE_SPLIT.buyBurn);
+  const botShareBps = toBps(CREATOR_FEE_SPLIT.bot);
   const treasuryBps = toBps(CREATOR_FEE_SPLIT.treasury);
   if (launcher && launcher !== bot && launcher !== developer && launcher !== treasury) {
     return {
