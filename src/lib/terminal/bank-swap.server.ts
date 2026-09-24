@@ -18,8 +18,18 @@ const SLIPPAGE = 0.01;
 const SWAP_GAS_BUDGET = 50_000_000n; // 0.05 SUI
 // nodeinfra rejects this build ("Index store not available"); suiscan works.
 const BUILD_RPC = "https://rpc-mainnet.suiscan.xyz";
-const AFTERMATH_ATTEMPTS = 4;
-const AFTERMATH_TIMEOUT_MS = 20_000;
+const AFTERMATH_ATTEMPTS = 3;
+const AFTERMATH_TIMEOUT_MS = 8_000;
+// The whole quote+build phase must end well inside one bot run.
+const AFTERMATH_DEADLINE_MS = 25_000;
+const BUILD_TIMEOUT_MS = 12_000;
+
+function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise<T> {
+  return Promise.race([
+    promise,
+    new Promise<T>((_, reject) => setTimeout(() => reject(new Error(`${label} timeout`)), ms)),
+  ]);
+}
 
 export type SwapResult =
   | { ok: true; digest: string; received: bigint | null; quoted: bigint; coinOut: string }
@@ -75,11 +85,16 @@ export async function executeBankSwap(
     const router = sdk.Router();
     // A route can become stale while Aftermath builds it. On a temporary API
     // failure, request a fresh quote before trying the transaction builder again.
+    const deadline = Date.now() + AFTERMATH_DEADLINE_MS;
     for (let attempt = 1; attempt <= AFTERMATH_ATTEMPTS; attempt += 1) {
       try {
-        const route = await router.getCompleteTradeRouteGivenAmountIn(
-          { coinInType: inType, coinOutType: outType, coinInAmount: amountIn },
-          AbortSignal.timeout(AFTERMATH_TIMEOUT_MS),
+        const route = await withTimeout(
+          router.getCompleteTradeRouteGivenAmountIn(
+            { coinInType: inType, coinOutType: outType, coinInAmount: amountIn },
+            AbortSignal.timeout(AFTERMATH_TIMEOUT_MS),
+          ),
+          AFTERMATH_TIMEOUT_MS + 1_000,
+          "Aftermath route",
         );
         if (normalizeStructTag(route.coinIn.type) !== inType || normalizeStructTag(route.coinOut.type) !== outType) {
           return { ok: false, error: "Aggregator returned a route for different coins — not trading." };
@@ -87,10 +102,14 @@ export async function executeBankSwap(
         if (BigInt(route.coinIn.amount) !== amountIn) return { ok: false, error: "Aggregator changed the trade size — not trading." };
         quoted = BigInt(route.coinOut.amount);
         if (quoted <= 0n) return { ok: false, error: "No liquidity for this token right now." };
-        tx = await router.getTransactionForCompleteTradeRoute({ walletAddress: sender, completeRoute: route, slippage: SLIPPAGE });
+        tx = await withTimeout(
+          router.getTransactionForCompleteTradeRoute({ walletAddress: sender, completeRoute: route, slippage: SLIPPAGE }),
+          AFTERMATH_TIMEOUT_MS,
+          "Aftermath transaction",
+        );
         break;
       } catch (error) {
-        if (attempt >= AFTERMATH_ATTEMPTS || !isTransientAftermathError(error)) throw error;
+        if (attempt >= AFTERMATH_ATTEMPTS || !isTransientAftermathError(error) || Date.now() > deadline - 10_000) throw error;
         await waitBeforeRetry(attempt);
       }
     }
@@ -107,8 +126,13 @@ export async function executeBankSwap(
   withGas(tx, sender, gas, await referenceGasPrice(), Number(SWAP_GAS_BUDGET));
   try {
     // Resolve the aggregator's object inputs once; signAndExecute then simulates and submits.
-    await tx.build({ client: new SuiJsonRpcClient({ url: BUILD_RPC, network: "mainnet" }) });
+    await withTimeout(
+      tx.build({ client: new SuiJsonRpcClient({ url: BUILD_RPC, network: "mainnet" }) }),
+      BUILD_TIMEOUT_MS,
+      "Swap build",
+    );
   } catch (error) {
+    if (/timeout/i.test((error as Error).message)) return { ok: false, error: "The network was too slow to prepare this trade. Nothing was spent — try again in a minute." };
     return { ok: false, error: `Could not prepare the swap: ${(error as Error).message.slice(0, 100)}` };
   }
 
