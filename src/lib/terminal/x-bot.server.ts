@@ -96,6 +96,10 @@ async function processClaimedMention(
   // wallet can approve in the terminal — the bot never moves anyone's funds.
   const { handleBankMention } = await import("./bank.server");
   const bankReply = await handleBankMention(payload.postId, username, text);
+  if (bankReply === "") {
+    // Duplicate handling of the same tweet: the run that owns it replies.
+    return { postId: payload.postId, username, text, intent: "bankTransfer", status: "READY", reply: "", posted: false, replyPostId: null, postError: null };
+  }
   if (bankReply !== null) {
     const credentials = source === "simulation" ? null : readXCredentials();
     let replyPostId: string | null = null;
