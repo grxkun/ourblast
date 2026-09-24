@@ -13,7 +13,7 @@ import { disconnectXAccount, getXConnectionStatus, startXConnect } from "@/lib/t
  * which completes the exchange and lands them back on /terminal.
  */
 export function XConnectButton() {
-  const { userId } = useBlast();
+  const { userId, ready, connecting, loginWithX } = useBlast();
   const queryClient = useQueryClient();
   const statusFn = useServerFn(getXConnectionStatus);
   const startFn = useServerFn(startXConnect);
@@ -44,10 +44,18 @@ export function XConnectButton() {
     onError: () => toast.error("Could not disconnect X."),
   });
 
+  if (!ready) {
+    return (
+      <Button type="button" variant="outline" disabled>
+        <Loader2 className="animate-spin" /> Checking sign-in…
+      </Button>
+    );
+  }
+
   if (!userId) {
     return (
-      <Button type="button" variant="outline" onClick={() => toast("Sign in first, then connect X.")}>
-        <AtSign /> Connect X
+      <Button type="button" variant="outline" disabled={connecting} onClick={() => void loginWithX()}>
+        {connecting ? <Loader2 className="animate-spin" /> : <AtSign />} Continue with X
       </Button>
     );
   }
