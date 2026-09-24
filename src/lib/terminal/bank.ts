@@ -103,7 +103,7 @@ const NUM = String.raw`([0-9]+(?:\.[0-9]+)?)`;
 const FILLER = String.raw`(?:(?:a|an|the|some)\s+)?(?:(?:token|coin)\s+)?`;
 const BUY_A = new RegExp(String.raw`\bbuy\s+${NUM}\s*\$?sui\s+(?:worth\s+)?(?:of\s+)?${FILLER}${TOKEN}`, "i");
 const BUY_B = new RegExp(String.raw`\bbuy\s+${FILLER}${TOKEN}(?:\s+or\s+[a-z0-9 ]{1,30}?)?\s+(?:with|for|using)\s+${NUM}\s*\$?sui\b`, "i");
-const SELL = new RegExp(String.raw`\bsell\s+(all|[0-9]+(?:\.[0-9]+)?%?)\s+(?:of\s+)?(?:my\s+)?${TOKEN}`, "i");
+const SELL = new RegExp(String.raw`\bsell\s+(all|[0-9]+(?:\.[0-9]+)?%?)\s+(?:of\s+)?(?:my\s+)?${TOKEN}(?:\s+(?:for|into)\s+\$?sui)?\b`, "i");
 
 function tokenOf(raw: string) {
   const isCoinType = COIN_TYPE.test(raw);
