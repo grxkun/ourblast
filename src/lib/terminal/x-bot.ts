@@ -116,7 +116,7 @@ export function composeXReply(result: TerminalToolResult): string {
   }
 
   if (result.tool === "unknown") {
-    return fit(`I didn't catch that. Try “${X_BOT_HANDLE} buy me TOKEN_ADDRESS with 1 SUI”, “sell 50% TOKEN_ADDRESS”, or “send 5 SUI to @friend”. Manage OurBank: ${terminalLink()}`);
+    return fit(`I didn't catch that. Try “${X_BOT_HANDLE} buy me TOKEN_ADDRESS with 1 SUI”, “sell 50% TOKEN_ADDRESS”, or “send 5 SUI to” plus a friend’s X handle. Manage OurBank: ${terminalLink()}`);
   }
 
   switch (result.status) {
