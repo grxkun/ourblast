@@ -33,7 +33,32 @@ export function OurBankCard() {
   const key = ["bank-transfers", userId];
 
   const list = useServerFn(listMyTransfers);
-  const transfers = useQuery({ queryKey: key, queryFn: () => list(), enabled: ready && Boolean(userId), refetchInterval: 20_000 });
+  const transfers = useQuery({
+    queryKey: key,
+    queryFn: () => list(),
+    enabled: ready && Boolean(userId),
+    // Live updates do the real work; this is only a safety net.
+    refetchInterval: 15_000,
+    refetchOnWindowFocus: true,
+  });
+
+  // A tweeted request shows up here the instant the bot saves it.
+  useEffect(() => {
+    if (!userId) return;
+    const channel = supabase
+      .channel(`ourbank-${userId}`)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "bank_transfers", filter: `sender_user_id=eq.${userId}` },
+        () => {
+          void queryClient.invalidateQueries({ queryKey: ["bank-transfers", userId] });
+        },
+      )
+      .subscribe();
+    return () => {
+      void supabase.removeChannel(channel);
+    };
+  }, [userId, queryClient]);
 
   const prepare = useServerFn(prepareTransfer);
   const confirm = useServerFn(confirmTransfer);
