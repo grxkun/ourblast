@@ -135,7 +135,7 @@ async function feeRouting(
   const launcher = /^0x[0-9a-f]{64}$/.test(named)
     ? named
     : (receiver?.handle ? await launcherWallet(receiver.handle) : null) ?? (receiver?.handle ? null : await launcherWallet(xUsername));
-  const botShareBps = toBps(CREATOR_FEE_SPLIT.bot + CREATOR_FEE_SPLIT.buyBurn);
+  const botShareBps = toBps(CREATOR_FEE_SPLIT.bot);
   const treasuryBps = toBps(CREATOR_FEE_SPLIT.treasury);
   if (launcher && launcher !== bot && launcher !== developer && launcher !== treasury) {
     return {
