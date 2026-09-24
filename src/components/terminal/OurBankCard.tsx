@@ -376,6 +376,82 @@ function BankWalletPanel({ userId }: { userId: string }) {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <AlertDialog open={showBackup} onOpenChange={(open) => { if (!open) { setShowBackup(false); setRevealedKey(null); setAcknowledged(false); } }}>
+        <AlertDialogContent className="max-w-xl">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <ShieldCheck className="size-5 text-primary" />
+              Back up your wallet
+            </AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-3">
+                <p>
+                  Wallet address: <code className="text-foreground">{w.address.slice(0, 10)}…{w.address.slice(-8)}</code>
+                </p>
+                <div className="rounded border border-border p-2 text-xs">
+                  <p className="font-medium text-foreground">Before replacing this wallet:</p>
+                  <ol className="mt-1 list-decimal space-y-1 pl-4">
+                    <li>Withdraw all funds to your connected Sui wallet.</li>
+                    <li>Reveal and copy the private key below.</li>
+                    <li>Store it somewhere secure — password manager or offline note.</li>
+                    <li>Never share it with anyone, not even OurBlast support.</li>
+                    <li>To restore: use "Import wallet" and paste this key.</li>
+                  </ol>
+                </div>
+                {hasFunds && (
+                  <p className="font-medium text-destructive">
+                    Your wallet still holds funds. Withdraw first before replacing.
+                  </p>
+                )}
+                {revealedKey ? (
+                  <div className="space-y-2">
+                    <p className="text-xs font-medium text-destructive">
+                      ⚠ This is your private key. Anyone with it controls your funds. Copy it now and never share it.
+                    </p>
+                    <div className="flex gap-2">
+                      <input
+                        readOnly
+                        className="w-full rounded border border-border bg-background px-2 py-1 text-xs font-mono"
+                        value={revealedKey}
+                        onFocus={(e) => e.target.select()}
+                      />
+                      <Button size="sm" variant="outline" onClick={() => { void navigator.clipboard.writeText(revealedKey); toast.success("Private key copied"); }}>
+                        Copy key
+                      </Button>
+                    </div>
+                    <Button size="sm" variant="ghost" onClick={() => { void navigator.clipboard.writeText(backupInstructions); toast.success("Instructions copied"); }}>
+                      Copy all backup instructions
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    <label className="flex items-start gap-2 text-xs">
+                      <input
+                        type="checkbox"
+                        checked={acknowledged}
+                        onChange={(e) => setAcknowledged(e.target.checked)}
+                        className="mt-0.5"
+                      />
+                      <span>I understand this key gives full control of my funds, and I will store it securely.</span>
+                    </label>
+                    <Button
+                      size="sm"
+                      disabled={!acknowledged || exportKey.isPending}
+                      onClick={() => exportKey.mutate()}
+                    >
+                      {exportKey.isPending ? "Decrypting…" : "Reveal private key"}
+                    </Button>
+                  </div>
+                )}
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Close</AlertDialogCancel>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
