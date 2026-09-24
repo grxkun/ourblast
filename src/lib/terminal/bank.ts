@@ -85,12 +85,24 @@ export interface SwapCommand {
   amount: string;
   token: string;
   isCoinType: boolean;
+  /** "…and send it to @bob": forward what was bought/received afterwards. */
+  sendTo?: { recipientKind: BankRecipientKind; recipient: string };
 }
+
+function parseTarget(targetRaw: string): { recipientKind: BankRecipientKind; recipient: string } | null {
+  const target = targetRaw.replace(/[.,!?;:)"']+$/, "").replace(/^[("']/, "");
+  if (ADDRESS.test(target)) return { recipientKind: "address", recipient: target.toLowerCase() };
+  if (/\.sui$/i.test(target) && SUINS.test(target)) return { recipientKind: "suins", recipient: target.toLowerCase() };
+  if (target.startsWith("@") && HANDLE.test(target) && !/^@ourblast(bot)?$/i.test(target)) return { recipientKind: "x", recipient: target.slice(1) };
+  return null;
+}
+const THEN_SEND = /\b(?:and|then|,)\s+(?:then\s+)?(?:send|transfer|give|forward)\s+(?:it|them|all|everything|the\s+tokens?)?\s*to\s+(\S+)/i;
 
 const TOKEN = String.raw`(0x[0-9a-fA-F]{1,64}::[A-Za-z0-9_]+::[A-Za-z0-9_]+|\$?[A-Za-z][A-Za-z0-9_]{0,19})`;
 const NUM = String.raw`([0-9]+(?:\.[0-9]+)?)`;
-const BUY_A = new RegExp(String.raw`\bbuy\s+${NUM}\s*\$?sui\s+(?:worth\s+)?(?:of\s+)?${TOKEN}`, "i");
-const BUY_B = new RegExp(String.raw`\bbuy\s+${TOKEN}\s+(?:with|for|using)\s+${NUM}\s*\$?sui\b`, "i");
+const FILLER = String.raw`(?:(?:a|an|the|some)\s+)?(?:(?:token|coin)\s+)?`;
+const BUY_A = new RegExp(String.raw`\bbuy\s+${NUM}\s*\$?sui\s+(?:worth\s+)?(?:of\s+)?${FILLER}${TOKEN}`, "i");
+const BUY_B = new RegExp(String.raw`\bbuy\s+${FILLER}${TOKEN}(?:\s+or\s+\S+)?\s+(?:with|for|using)\s+${NUM}\s*\$?sui\b`, "i");
 const SELL = new RegExp(String.raw`\bsell\s+(all|[0-9]+(?:\.[0-9]+)?%?)\s+(?:of\s+)?(?:my\s+)?${TOKEN}`, "i");
 
 function tokenOf(raw: string) {
@@ -99,6 +111,17 @@ function tokenOf(raw: string) {
 }
 
 export function parseSwapCommand(raw: string): SwapCommand | null {
+  const base = parseSwapOnly(raw);
+  if (!base) return null;
+  const then = THEN_SEND.exec(raw.replace(/\s+/g, " "));
+  if (then) {
+    const target = parseTarget(then[1]!);
+    if (target) base.sendTo = target;
+  }
+  return base;
+}
+
+function parseSwapOnly(raw: string): SwapCommand | null {
   const text = raw.replace(/@ourblastbot\b/gi, " ").replace(/\s+/g, " ").trim();
   let m = BUY_A.exec(text);
   if (m) return { side: "buy", amount: m[1]!, ...tokenOf(m[2]!) };

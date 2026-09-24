@@ -53,3 +53,13 @@ describe("parseSwapCommand", () => {
     expect(parseChoiceReply("@ourblastbot hello", opts)).toBeNull();
   });
 });
+describe("multi-step", () => {
+  it("buy then send", () => {
+    expect(parseSwapCommand(`@ourblast buy a token ${CT} with 1 sui and send it to @adeniyi`)).toMatchObject({
+      side: "buy", amount: "1", token: CT, sendTo: { recipientKind: "x", recipient: "adeniyi" },
+    });
+    expect(parseSwapCommand("@ourblast buy a token Suicat or token address with 1 sui and send it to @adeniyi")).toMatchObject({
+      token: "SUICAT", isCoinType: false, sendTo: { recipient: "adeniyi" },
+    });
+  });
+});
