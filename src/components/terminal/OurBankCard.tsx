@@ -211,12 +211,26 @@ function BankWalletPanel({ userId }: { userId: string }) {
   const [showBackup, setShowBackup] = useState(false);
   const [revealedKey, setRevealedKey] = useState<string | null>(null);
   const [acknowledged, setAcknowledged] = useState(false);
+  const [keyCountdown, setKeyCountdown] = useState(0);
 
   const exportKey = useMutation({
     mutationFn: () => doExport(),
-    onSuccess: (data) => setRevealedKey(data.secretKey),
+    onSuccess: (data) => { setRevealedKey(data.secretKey); setKeyCountdown(60); },
     onError: (e: Error) => toast.error(e.message),
   });
+
+  // Auto-hide the revealed key and clear the clipboard after the countdown.
+  useEffect(() => {
+    if (!revealedKey) return;
+    if (keyCountdown <= 0) {
+      setRevealedKey(null);
+      setAcknowledged(false);
+      void navigator.clipboard.writeText("").catch(() => {});
+      return;
+    }
+    const t = setTimeout(() => setKeyCountdown((n) => n - 1), 1000);
+    return () => clearTimeout(t);
+  }, [revealedKey, keyCountdown]);
 
   const backupInstructions = [
     "OURBLAST WALLET BACKUP",
@@ -414,6 +428,9 @@ function BankWalletPanel({ userId }: { userId: string }) {
                     <p className="text-xs font-medium text-destructive">
                       ⚠ This is your private key. Anyone with it controls your funds. Copy it now and never share it.
                     </p>
+                    <p className="text-xs text-muted-foreground">
+                      Auto-hides and clears clipboard in {keyCountdown}s
+                    </p>
                     <div className="flex gap-2">
                       <input
                         readOnly
@@ -421,11 +438,11 @@ function BankWalletPanel({ userId }: { userId: string }) {
                         value={revealedKey}
                         onFocus={(e) => e.target.select()}
                       />
-                      <Button size="sm" variant="outline" onClick={() => { void navigator.clipboard.writeText(revealedKey); toast.success("Private key copied"); }}>
+                      <Button size="sm" variant="outline" onClick={() => { void navigator.clipboard.writeText(revealedKey); toast.success("Private key copied"); setKeyCountdown(60); }}>
                         Copy key
                       </Button>
                     </div>
-                    <Button size="sm" variant="ghost" onClick={() => { void navigator.clipboard.writeText(backupInstructions); toast.success("Instructions copied"); }}>
+                    <Button size="sm" variant="ghost" onClick={() => { void navigator.clipboard.writeText(backupInstructions); toast.success("Instructions copied"); setKeyCountdown(60); }}>
                       Copy all backup instructions
                     </Button>
                   </div>
