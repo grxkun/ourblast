@@ -67,6 +67,23 @@ export async function handleXMention(payload: XMentionPayload, source: "webhook"
     };
   }
 
+  try {
+    return await processClaimedMention(payload, source, username, text);
+  } catch (error) {
+    // Release the claim so the next poll retries this tweet instead of it
+    // staying silently stuck in "processing" forever.
+    await supabaseAdmin.from("x_mentions").delete().eq("x_post_id", payload.postId).eq("posted", false);
+    throw error;
+  }
+}
+
+async function processClaimedMention(
+  payload: XMentionPayload,
+  source: "webhook" | "simulation" | "poll",
+  username: string,
+  text: string,
+): Promise<XMentionOutcome> {
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
   const context = {
     // X mentions carry no wallet authorisation: signing always happens in the terminal.
     walletConnected: false,
