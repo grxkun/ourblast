@@ -28,6 +28,9 @@ const AFTERMATH_TIMEOUT_MS = 6_000;
 // aggregator cannot consume the entire X poll before the fallback is tried.
 const CETUS_HEAD_START_MS = 1_500;
 const BUILD_TIMEOUT_MS = 8_000;
+// A unbonded-token lookup must not block the whole bot run; if the launchpad
+// feed or a shared-object read is slow, fall through to the DEX aggregators.
+const LAUNCHPAD_LOOKUP_MS = 5_000;
 
 function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise<T> {
   return Promise.race([
