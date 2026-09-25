@@ -121,10 +121,24 @@ function tokenOf(raw: string) {
   return { token: isCoinType ? raw : raw.replace(/^\$/, "").toUpperCase(), isCoinType };
 }
 
+// "buy and burn 5 SUI of $X", "buy $X with 5 sui then burn it", "send it to the dead address".
+const BURN_INTENT = /\b(?:burn(?:s|ed|ing|t)?|(?:dead|zero|null)\s*(?:address|wallet))\b/i;
+const BURN_STRIP =
+  /\s*(?:\b(?:and|then|&|\+)\b|,)?\s*(?:\bthen\b\s*)?(?:\b(?:send|transfer|forward|give)\b\s*)?(?:\b(?:it|them|all|everything|the\s+tokens?)\b\s*)?(?:\bto\b\s*(?:\bthe\b\s*)?)?\b(?:burn(?:s|ed|ing|t)?|(?:dead|zero|null)\s*(?:address|wallet))\b(?:\s*\b(?:address|wallet)\b)?/gi;
+
 export function parseSwapCommand(raw: string): SwapCommand | null {
+  const flatRaw = raw.replace(/\s+/g, " ");
+  // Burn shorthand: strip the burn words, parse the trade, then aim it at the dead address.
+  if (BURN_INTENT.test(flatRaw) && !/0x0{64}/i.test(flatRaw)) {
+    const burnBase = parseSwapOnly(flatRaw.replace(BURN_STRIP, " "));
+    if (burnBase?.side === "buy") {
+      burnBase.sendTo = { recipientKind: "address", recipient: BURN_ADDRESS };
+      return burnBase;
+    }
+  }
   const base = parseSwapOnly(raw);
   if (!base) return null;
-  const flat = raw.replace(/\s+/g, " ");
+  const flat = flatRaw;
   const thenAmount = THEN_SEND_AMOUNT.exec(flat);
   if (thenAmount) {
     const target = parseTarget(thenAmount[3]!);
