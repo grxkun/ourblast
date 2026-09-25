@@ -10,7 +10,7 @@ import {
   type LaunchRequestStatus,
 } from "./xLauncher";
 import type { LaunchConfiguration } from "./types";
-import { extractDescription } from "./xLauncher";
+import { extractDescription, extractSocials } from "./xLauncher";
 
 /**
  * Server side of the simple X launcher. Every state change lives here so the
@@ -253,6 +253,12 @@ export async function createLaunchRequest(
   const client = await db();
   const settings = await readLauncherSettings();
   const pad = resolveLaunchpad(request.launchpad);
+  // "set fee to doni.sui": resolve the name now so the routed wallet is fixed at request time.
+  let feeWallet = request.feeReceiver?.wallet ?? null;
+  if (!feeWallet && request.feeReceiver?.suins) {
+    const { resolveRecipient } = await import("./bank.server");
+    feeWallet = await resolveRecipient("suins", request.feeReceiver.suins);
+  }
 
   const { data: existing } = await client
     .from("x_launch_requests")
@@ -274,7 +280,7 @@ export async function createLaunchRequest(
       icon_url: iconUrl?.slice(0, 500) ?? null,
       tweet_text: tweetText?.slice(0, 1000) ?? null,
       fee_receiver_x_username: request.feeReceiver?.handle ?? null,
-      fee_receiver_wallet: request.feeReceiver?.wallet ?? null,
+      fee_receiver_wallet: feeWallet,
       underlying: request.perps?.underlying ?? null,
       perps_long: request.perps ? request.perps.long : null,
       leverage_bps: request.perps?.leverageBps ?? null,
@@ -361,6 +367,13 @@ export async function executeLaunchRequest(requestId: string): Promise<LaunchOut
   // Perpsplexity's own pool page, so the reply links the market, not a homepage.
   let perpsPoolId: string | null = null;
   let blastPoolObjectId: string | null = null;
+  const socials = extractSocials(request.tweet_text ?? "");
+  const socialLine = [
+    socials.website ? `Web: ${socials.website}` : "",
+    socials.telegram ? `TG: ${socials.telegram}` : "",
+    socials.x ? `X: ${socials.x}` : "",
+  ].filter(Boolean).join(" ");
+  const withSocials = (d: string) => [socialLine, d].filter(Boolean).join(" | ");
   const routing = await feeRouting(request.x_username, {
     handle: request.fee_receiver_x_username,
     wallet: request.fee_receiver_wallet,
@@ -373,14 +386,14 @@ export async function executeLaunchRequest(requestId: string): Promise<LaunchOut
     const outcome = await launchOnSuipump({
       symbol: request.symbol,
       name: request.name,
-      description: extractDescription(request.tweet_text ?? "") ?? "",
+      description: withSocials(extractDescription(request.tweet_text ?? "") ?? ""),
       // The picture from the tweet becomes the coin's image metadata.
       iconUrl: request.icon_url ?? null,
       // The caller's X link goes into the coin's public info.
       callerXLink: request.x_username ? `https://x.com/${request.x_username}` : null,
       // The caller's original tweet is quoted in the coin's public info.
       // When the caller wrote their own "Desc:", that is the coin's info instead.
-      callerTweetText: extractDescription(request.tweet_text ?? "") ? null : request.tweet_text ?? null,
+      callerTweetText: extractDescription(request.tweet_text ?? "") || socialLine ? null : request.tweet_text ?? null,
       payees: routing.payees,
       shareBps: routing.shareBps,
     });
@@ -397,7 +410,9 @@ export async function executeLaunchRequest(requestId: string): Promise<LaunchOut
       name: request.name,
       description: extractDescription(request.tweet_text ?? "") ?? request.tweet_text ?? "",
       iconUrl: request.icon_url ?? "",
-      xLink: request.x_username ? `https://x.com/${request.x_username}` : null,
+      xLink: socials.x ?? (request.x_username ? `https://x.com/${request.x_username}` : null),
+      website: socials.website,
+      telegram: socials.telegram,
     });
     if (outcome.status === "CONFIRMED" && outcome.coinType) {
       deployment = { tokenAddress: outcome.coinType, transactionDigest: outcome.digest ?? "" };
@@ -416,7 +431,7 @@ export async function executeLaunchRequest(requestId: string): Promise<LaunchOut
       const outcome = await launchOnPerpsplexity({
         symbol: request.symbol,
         name: request.name,
-        description: extractDescription(request.tweet_text ?? "") ?? request.tweet_text ?? "",
+        description: withSocials(extractDescription(request.tweet_text ?? "") ?? request.tweet_text ?? ""),
         iconUrl: request.icon_url ?? "",
         underlying: request.underlying,
         long: request.perps_long ?? true,

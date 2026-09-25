@@ -1,5 +1,6 @@
 import { normalizeCommandText } from "./commandParser";
 import { normalizeSymbol } from "./ticker";
+import { fixTypos } from "./typos";
 import { LAUNCHPAD, matchLaunchpad, resolveLaunchpad, type LaunchpadConfig } from "./launchpad";
 
 /**
@@ -36,6 +37,8 @@ export const DEFAULT_LAUNCHER_SETTINGS: LauncherSettings = {
 export interface FeeReceiverRequest {
   handle?: string | undefined;
   wallet?: string | undefined;
+  /** A SuiNS name ("doni.sui"), resolved to its address when the launch is recorded. */
+  suins?: string | undefined;
 }
 
 export interface DeployRequest {
@@ -51,16 +54,18 @@ export interface DeployRequest {
 
 /** "Set @adiniyi as fee receiver", "fee receiver: @x", "creator fees to 0x…". */
 const FEE_RECEIVER_PATTERNS: RegExp[] = [
-  /\bset\s+(?:@([a-z0-9_]{1,15})|(0x[a-f0-9]{6,66}))\s+as\s+(?:the\s+|my\s+)?(?:creator\s+)?fee\s+(?:receiver|recipient|wallet|payout)\b/i,
-  /\b(?:creator\s+)?fee\s+(?:receiver|recipient|wallet|payout)\s*(?:is\s+)?[:=]?\s*(?:@([a-z0-9_]{1,15})|(0x[a-f0-9]{6,66}))/i,
-  /\b(?:creator\s+)?fees?\s+(?:go(?:es)?\s+)?to\s+(?:@([a-z0-9_]{1,15})|(0x[a-f0-9]{6,66}))/i,
+  /\bset\s+(?:@([a-z0-9_]{1,15})|(0x[a-f0-9]{6,66})|([a-z0-9][a-z0-9-]{0,62}\.sui)\b)\s+as\s+(?:the\s+|my\s+)?(?:creator\s+)?fees?\s+(?:receiver|recipient|wallet|payout)\b/i,
+  /\b(?:creator\s+)?fees?\s+(?:receiver|recipient|wallet|payout)\s*(?:is\s+|to\s+)?[:=]?\s*(?:@([a-z0-9_]{1,15})|(0x[a-f0-9]{6,66})|([a-z0-9][a-z0-9-]{0,62}\.sui)\b)/i,
+  /\b(?:creator\s+)?fees?\s+(?:go(?:es)?\s+|goes\s+)?(?:payout\s+)?(?:to|for|->|=>)\s*(?:@([a-z0-9_]{1,15})|(0x[a-f0-9]{6,66})|([a-z0-9][a-z0-9-]{0,62}\.sui)\b)/i,
+  /\b(?:send|route|redirect|give|pay)\s+(?:all\s+)?(?:the\s+|my\s+)?(?:creator\s+)?fees?\s+to\s+(?:@([a-z0-9_]{1,15})|(0x[a-f0-9]{6,66})|([a-z0-9][a-z0-9-]{0,62}\.sui)\b)/i,
 ];
 
 /** Leftovers of the same phrases, removed so they never leak into the token name. */
 const FEE_PHRASE_CLEANUP: RegExp[] = [
-  /\bset\s+(?:@?[a-z0-9_]{1,20}\s+)?as\s+(?:the\s+|my\s+)?(?:creator\s+)?fee\s+(?:receiver|recipient|wallet|payout)\b/gi,
-  /\b(?:creator\s+)?fee\s+(?:receiver|recipient|wallet|payout)\s*(?:is\s+)?[:=]?\s*(?:0x[a-f0-9]{6,66}|@?[a-z0-9_]{1,20})?/gi,
-  /\b(?:creator\s+)?fees?\s+(?:go(?:es)?\s+)?to\s+(?:0x[a-f0-9]{6,66}|@?[a-z0-9_]{1,20})/gi,
+  /\b(?:set|send|route|redirect|give|pay)\s+(?:all\s+)?(?:the\s+|my\s+)?(?:creator\s+)?fees?\s+(?:receiver\s+|recipient\s+)?(?:to|as)\s+(?:0x[a-f0-9]{6,66}|[a-z0-9][a-z0-9-]{0,62}\.sui\b|@?[a-z0-9_]{1,20})/gi,
+  /\bset\s+(?:(?:0x[a-f0-9]{6,66}|[a-z0-9][a-z0-9-]{0,62}\.sui\b|@?[a-z0-9_]{1,20})\s+)?as\s+(?:the\s+|my\s+)?(?:creator\s+)?fees?\s+(?:receiver|recipient|wallet|payout)\b/gi,
+  /\b(?:creator\s+)?fees?\s+(?:receiver|recipient|wallet|payout)\s*(?:is\s+|to\s+)?[:=]?\s*(?:0x[a-f0-9]{6,66}|[a-z0-9][a-z0-9-]{0,62}\.sui\b|@?[a-z0-9_]{1,20})?/gi,
+  /\b(?:creator\s+)?fees?\s+(?:go(?:es)?\s+)?(?:payout\s+)?(?:to|for|->|=>)\s*(?:0x[a-f0-9]{6,66}|[a-z0-9][a-z0-9-]{0,62}\.sui\b|@?[a-z0-9_]{1,20})/gi,
 ];
 
 /** Reads the fee receiver out of the raw tweet text (before mentions are stripped). */
@@ -70,6 +75,7 @@ export function extractFeeReceiver(rawText: string): FeeReceiverRequest | null {
     if (!match) continue;
     if (match[1]) return { handle: match[1].toLowerCase() };
     if (match[2]) return { wallet: match[2].toLowerCase() };
+    if (match[3]) return { suins: match[3].toLowerCase() };
   }
   return null;
 }
@@ -85,7 +91,7 @@ function stripFeePhrases(text: string): string {
  * matchLaunchpad tolerates typos ("on Peropelxity" → Perpsplexity) and
  * rejects non-pad words ("on Monday" → no pad).
  */
-const PAD_ANYWHERE = /\bon\s+@?([a-z][a-z0-9.]{2,20})\b/gi;
+const PAD_ANYWHERE = /\b(?:on|in|at|via|using)\s+@?([a-z][a-z0-9.]{2,20})\b/gi;
 
 /**
  * Scans every "on <word>" phrase, not just the first, so chatter like
@@ -117,7 +123,7 @@ const FIELD_NAME =
 
 /** "named Baldeniyi ticker $BALDENIYI" — a colon-free name, ended by the next label or comma. */
 const FIELD_NAME_LOOSE =
-  /\b(?:named|called)\s+([a-z0-9][^$,\n]*?)(?=\s+\b(?:ticker|symbol|sym|image|img|picture|pic|supply|desc|description|underlying|market|asset|position|direction|side|leverage|lev|mc|fee|fees)\b|[,\n]|\s*$)/i;
+  /\b(?:named|called|name(?:\s+is)?)\s+([a-z0-9][^$,\n]*?)(?=\s+\b(?:ticker|symbol|sym|image|img|picture|pic|supply|desc|description|underlying|market|asset|position|direction|side|leverage|lev|mc|fee|fees)\b|[,\n]|\s*$)/i;
 
 /** "Underlying: NVDA" / "market = TSLA" — shared with the terminal parser. */
 
@@ -126,7 +132,8 @@ const FIELD_NAME_LOOSE =
  * "Deploy $TETY Tety Yety Caty on Suipump", "@bot hey... Deploy a $TETY nsme:
  * Tety Yety Caty on Suipump". Anything without a cashtag returns null.
  */
-export function parseDeployTweet(rawText: string, defaultPad = LAUNCHPAD.id): DeployRequest | null {
+export function parseDeployTweet(tweetText: string, defaultPad = LAUNCHPAD.id): DeployRequest | null {
+  const rawText = fixTypos(tweetText);
   // Read the launchpad wherever it appears — on the raw text first, because
   // mention stripping would eat "@perpsplexity" before we could see it.
   const rawPadMatch = findPadMatch(rawText);
@@ -211,4 +218,39 @@ export function extractDescription(rawText: string): string | null {
     .replace(/\s+/g, " ")
     .trim();
   return value && value.length >= 2 ? value : null;
+}
+
+export interface TokenSocials {
+  website: string | null;
+  telegram: string | null;
+  x: string | null;
+}
+
+const clean = (v?: string | null) => v?.replace(/[)\].,;!]+$/, "").trim() || null;
+
+/**
+ * "Website: foo.xyz" / "TG: t.me/foo" / "X: @foo" / "twitter: x.com/foo" —
+ * the project's own links, used for the token's metadata on the launchpad.
+ * t.co links are kept: they are the only form X gives us for a pasted link.
+ */
+export function extractSocials(tweetText: string): TokenSocials {
+  const text = fixTypos(tweetText);
+  const field = (labels: string) =>
+    text.match(new RegExp(`\\b(?:${labels})\\s*[:=-]\\s*(\\S+)`, "i"))?.[1] ?? null;
+  let website = clean(field("website|web|site|www|url|homepage"));
+  let telegram = clean(field("telegram|tg|tele"));
+  let x = clean(field("twitter|x|tw"));
+  // Bare links anywhere in the tweet.
+  telegram ??= clean(text.match(/\b(?:https?:\/\/)?t\.me\/[a-z0-9_+/]+/i)?.[0]);
+  x ??= clean(text.match(/\bhttps?:\/\/(?:www\.)?(?:x|twitter)\.com\/(?!i\/|ourblastbot)[a-z0-9_]{1,15}\b/i)?.[0]);
+  const withScheme = (v: string | null) => (v && !/^https?:\/\//i.test(v) ? `https://${v}` : v);
+  if (x?.startsWith("@")) x = `https://x.com/${x.slice(1)}`;
+  if (website && !/[.]/.test(website)) website = null;
+  if (telegram && !/[./]/.test(telegram)) telegram = `https://t.me/${telegram.replace(/^@/, "")}`;
+  return { website: withScheme(website), telegram: withScheme(telegram), x: withScheme(x) };
+}
+
+/** "Image: https://…" — an explicit picture link, even without a file extension. */
+export function imageFieldInText(text: string): string | null {
+  return clean(fixTypos(text).match(/\b(?:image|img|pic|picture|logo|icon)\s*[:=-]\s*(https?:\/\/\S+)/i)?.[1]);
 }

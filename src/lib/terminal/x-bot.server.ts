@@ -1,7 +1,7 @@
 import { runTerminalAgent } from "./agent";
 import { composeXReply, X_BOT_HANDLE, type XMentionOutcome, type XMentionPayload } from "./x-bot";
 import { fetchTweetImage, friendlyXError, postReply, readXCredentials } from "./x-api.server";
-import { imageUrlInText } from "./xLauncher";
+import { imageFieldInText, imageUrlInText } from "./xLauncher";
 
 /** Live posting only when all four @ourblastbot credentials are saved. */
 export const xBotIsLive = () => readXCredentials() !== null;
@@ -135,7 +135,7 @@ async function processClaimedMention(
   if (deploy) {
     // The picture on the tweet is the token image. Attached photo first; a plain
     // image link in the text is the fallback (t.co links point at the tweet, not a file).
-    let iconUrl = payload.imageUrl ?? imageUrlInText(text);
+    let iconUrl = payload.imageUrl ?? imageFieldInText(text) ?? imageUrlInText(text);
     if (!iconUrl && source === "poll") {
       const credentials = readXCredentials();
       if (credentials) iconUrl = await fetchTweetImage(credentials, payload.postId);
