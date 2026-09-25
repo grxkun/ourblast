@@ -94,8 +94,10 @@ async function processClaimedMention(
 
   // OurBank: "send 25 SUI to @alice". Creates a request only the sender's own
   // wallet can approve in the terminal — the bot never moves anyone's funds.
+  const { handleFeeClaimMention } = await import("./xClaim.server");
+  const claimReply = await handleFeeClaimMention(username, text);
   const { handleBankMention } = await import("./bank.server");
-  const bankReply = await handleBankMention(payload.postId, username, text);
+  const bankReply = claimReply ?? (await handleBankMention(payload.postId, username, text));
   if (bankReply === "") {
     // Duplicate handling of the same tweet: the run that owns it replies.
     return { postId: payload.postId, username, text, intent: "bankTransfer", status: "READY", reply: "", posted: false, replyPostId: null, postError: null };
