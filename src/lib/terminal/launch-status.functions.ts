@@ -10,6 +10,7 @@ export interface PublicLaunchRow {
   tweetText: string | null;
   symbol: string | null;
   name: string | null;
+  tokenAddress: string | null;
   launchpad: string | null;
   devBuy: boolean | null;
   ourblastFeePercent: number | null;
@@ -46,7 +47,7 @@ export const listPublicLaunches = createServerFn({ method: "GET" }).handler(asyn
     supabasePublic
       .from("x_launch_requests")
       .select(
-        "id, x_post_id, x_username, symbol, name, launchpad, dev_buy, ourblast_fee_percent, status, notice, token_url, pool_url, tx_digest, reply_post_id, deployed_reply_post_id, created_at",
+        "id, x_post_id, x_username, symbol, name, token_address, launchpad, dev_buy, ourblast_fee_percent, status, notice, token_url, pool_url, tx_digest, reply_post_id, deployed_reply_post_id, created_at",
       )
       .order("created_at", { ascending: false })
       .limit(50),
@@ -67,6 +68,7 @@ export const listPublicLaunches = createServerFn({ method: "GET" }).handler(asyn
     tweetText: mentionByPost.get(r.x_post_id)?.text ?? null,
     symbol: r.symbol,
     name: r.name,
+    tokenAddress: r.token_address,
     launchpad: r.launchpad,
     devBuy: r.dev_buy,
     ourblastFeePercent: r.ourblast_fee_percent == null ? null : Number(r.ourblast_fee_percent),
@@ -91,6 +93,7 @@ export const listPublicLaunches = createServerFn({ method: "GET" }).handler(asyn
       tweetText: m.text,
       symbol: null,
       name: null,
+      tokenAddress: null,
       launchpad: null,
       devBuy: null,
       ourblastFeePercent: null,
