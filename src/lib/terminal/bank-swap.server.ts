@@ -36,10 +36,10 @@ function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise
 }
 
 export type SwapResult =
-  | { ok: true; digest: string; received: bigint | null; quoted: bigint; coinOut: string; venue: "Bluefin" | "Aftermath" | "Cetus" }
+  | { ok: true; digest: string; received: bigint | null; quoted: bigint; coinOut: string; venue: "Bluefin" | "Aftermath" | "Cetus" | "Suipump" | "Blast.fun" }
   | { ok: false; error: string };
 
-type BuiltSwap = { tx: Transaction; quoted: bigint; venue: "Bluefin" | "Aftermath" | "Cetus" };
+type BuiltSwap = { tx: Transaction; quoted: bigint; venue: "Bluefin" | "Aftermath" | "Cetus" | "Suipump" | "Blast.fun" };
 
 function isTransientAftermathError(error: unknown): boolean {
   const message = String((error as Error)?.message ?? error);
