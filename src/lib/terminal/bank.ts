@@ -37,7 +37,10 @@ export function parseBankCommand(raw: string): BankCommand | null {
 
   let recipientKind: BankRecipientKind;
   let recipient: string;
-  if (ADDRESS.test(target)) {
+  if (/^(?:burn|dead|zero|null|0x0+)$/i.test(target)) {
+    recipientKind = "address";
+    recipient = `0x${"0".repeat(64)}`;
+  } else if (ADDRESS.test(target)) {
     recipientKind = "address";
     recipient = target.toLowerCase();
   } else if (/\.sui$/i.test(target) && SUINS.test(target)) {
