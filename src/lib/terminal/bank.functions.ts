@@ -366,7 +366,7 @@ export const runBankCommand = createServerFn({ method: "POST" })
     const { handleBankMention } = await import("./bank.server");
     const raw = (await handleBankMention(postId, handle, data.text)) ?? "";
     const reply = raw.replace(new RegExp(`^@${handle}\\s+`, "i"), "").trim() ||
-      "I couldn't read that. Try: send 1 SUI to @friend · buy 0.5 SUI of 0x…::coin::COIN · sell 50% 0x…::coin::COIN";
+      "I couldn't read that. Try: send 1 SUI to @friend · buy 0.5 SUI of 0x…::coin::COIN · sell 50% 0x…::coin::COIN · buy and burn 1 SUI of 0x…::coin::COIN";
     const { supabaseAdmin: db } = await import("@/integrations/supabase/client.server");
     const [{ data: swap }, { data: transfer }] = await Promise.all([
       db.from("bank_swaps").select("id").eq("x_post_id", postId).eq("status", "PENDING_APPROVAL").maybeSingle(),

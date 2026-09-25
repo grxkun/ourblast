@@ -79,3 +79,29 @@ describe("multi-step", () => {
     expect(whole?.sendTo?.amount).toBeUndefined();
   });
 });
+
+const BURN = "0x" + "0".repeat(64);
+describe("buy and burn", () => {
+  it("reads every common burn phrasing", () => {
+    const burnTo = { sendTo: { recipientKind: "address", recipient: BURN } };
+    expect(parseSwapCommand(`@ourblastbot buy and burn 5 sui of ${CT}`)).toMatchObject({ side: "buy", amount: "5", token: CT, ...burnTo });
+    expect(parseSwapCommand(`@ourblastbot buy & burn 5 sui of ${CT}`)).toMatchObject({ amount: "5", ...burnTo });
+    expect(parseSwapCommand(`buy ${CT} with 0.5 sui then burn it`)).toMatchObject({ amount: "0.5", token: CT, ...burnTo });
+    expect(parseSwapCommand(`buy 2 sui of ${CT} and burn`)).toMatchObject({ amount: "2", ...burnTo });
+    expect(parseSwapCommand(`buy 2 sui of ${CT} and send it to burn`)).toMatchObject({ amount: "2", ...burnTo });
+    expect(parseSwapCommand(`buy 2 sui of ${CT} and send it to the dead address`)).toMatchObject({ amount: "2", ...burnTo });
+    expect(parseSwapCommand(`buy 1 sui of ${CT} and send it to the zero address`)).toMatchObject({ amount: "1", ...burnTo });
+  });
+  it("keeps the explicit dead address working", () => {
+    expect(parseSwapCommand(`buy 5 sui of ${CT} and send it to ${BURN}`)).toMatchObject({ amount: "5", ...{ sendTo: { recipient: BURN } } });
+  });
+  it("leaves normal trades and sends alone", () => {
+    expect(parseSwapCommand(`buy 5 sui of ${CT}`)?.sendTo).toBeUndefined();
+    expect(parseSwapCommand(`buy 5 sui of ${CT} and send it to @adeniyi`)).toMatchObject({ sendTo: { recipientKind: "x", recipient: "adeniyi" } });
+  });
+  it("sends a plain transfer to the burn address", () => {
+    expect(parseBankCommand("@ourblastbot send 1000 $blast to burn")).toMatchObject({
+      amount: "1000", token: "BLAST", recipientKind: "address", recipient: BURN,
+    });
+  });
+});

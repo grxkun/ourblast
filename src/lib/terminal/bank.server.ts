@@ -1,6 +1,6 @@
 import { normalizeStructTag, normalizeSuiAddress } from "@mysten/sui/utils";
 
-import { describeRecipient, parseBankCommand, parseChoiceReply, parseSwapCommand, shortCoinType, toAtomic, type BankCommand } from "./bank";
+import { describeRecipient, isBurnAddress, parseBankCommand, parseChoiceReply, parseSwapCommand, shortCoinType, toAtomic, type BankCommand } from "./bank";
 import { X_BOT_SITE } from "./x-bot";
 
 const SUI_TYPE = normalizeStructTag("0x2::sui::SUI");
@@ -443,7 +443,9 @@ async function handleSwapMention(postId: string, username: string, text: string,
   await db.from("bank_swaps").update({ error: `forwarded to ${who}: ${sent.digest}` }).eq("id", row.id);
   const tag = command.side === "buy" ? symbolOut : "SUI";
   const sentAmount = command.sendTo.amount ? `${formatUnits(sendAmount, decimalsOut)} ${tag}` : "it";
-  return `@${username} ${verb} ${got} ${tag} via ${result.venue} and sent ${sentAmount} to ${who} ✅ https://suiscan.xyz/mainnet/tx/${sent.digest}`;
+  const burned = isBurnAddress(command.sendTo.recipientKind, command.sendTo.recipient);
+  const tail = burned ? `and burned ${sentAmount} 🔥` : `and sent ${sentAmount} to ${who}`;
+  return `@${username} ${verb} ${got} ${tag} via ${result.venue} ${tail} ✅ https://suiscan.xyz/mainnet/tx/${sent.digest}`;
 }
 
 /** Single entry for OurBank tweets: token choice replies, swaps, then transfers. */
