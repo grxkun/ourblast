@@ -1,0 +1,2 @@
+alter table public.x_launch_requests add column if not exists pool_object_id text;
+comment on column public.x_launch_requests.pool_object_id is 'Launchpad bonding-curve/pool shared object id (Blast.fun MemezFun). Null for Suipump (token_address is the curve).';
