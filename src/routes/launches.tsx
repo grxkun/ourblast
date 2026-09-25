@@ -256,6 +256,8 @@ function LaunchCard({ row }: { row: PublicLaunchRow }) {
           </a>
         )}
       </div>
+
+      {row.status === "DEPLOYED" && <LaunchTradePanel row={row} />}
     </article>
   );
 }
