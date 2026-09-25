@@ -1,9 +1,13 @@
 import { useMemo, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { queryOptions, useSuspenseQuery } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
 import { ExternalLink, Radio } from "lucide-react";
+import { toast } from "sonner";
 
 import { SectionTitle } from "@/components/blast/AppShell";
+import { useBlast } from "@/components/blast/session";
+import { runBankCommand } from "@/lib/terminal/bank.functions";
 import { listPublicLaunches, type PublicLaunchRow } from "@/lib/terminal/launch-status.functions";
 
 const launchesQuery = queryOptions({
