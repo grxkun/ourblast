@@ -147,6 +147,9 @@ function parseSwapOnly(raw: string): SwapCommand | null {
   if (m) return { side: "buy", amount: m[1]!, ...tokenOf(m[2]!) };
   m = BUY_B.exec(text);
   if (m) return { side: "buy", amount: m[2]!, ...tokenOf(m[1]!) };
+  // "buy 0x…::lads::LADS 0.1 sui" — amount straight after the token.
+  m = new RegExp(String.raw`\bbuy\s+(?:me\s+)?${FILLER}${TOKEN}\s+${NUM}\s*\$?sui\b`, "i").exec(text);
+  if (m) return { side: "buy", amount: m[2]!, ...tokenOf(m[1]!) };
   m = SELL.exec(text);
   if (m) {
     const amount = m[1]!.toLowerCase();
