@@ -68,6 +68,106 @@ function replyState(row: PublicLaunchRow): { label: string; className: string } 
   return { label: "No reply", className: "bg-muted text-muted-foreground border-border" };
 }
 
+function LaunchTradePanel({ row }: { row: PublicLaunchRow }) {
+  const { userId, ready } = useBlast();
+  const run = useServerFn(runBankCommand);
+  const [side, setSide] = useState<"buy" | "sell">("buy");
+  const [amount, setAmount] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [lastReply, setLastReply] = useState<string | null>(null);
+
+  if (!row.tokenAddress) return null;
+
+  const submit = async () => {
+    const amt = amount.trim();
+    const coin = row.tokenAddress!;
+    let text: string;
+    if (side === "buy") {
+      const sui = Number(amt);
+      if (!Number.isFinite(sui) || sui <= 0) {
+        toast.error("Enter how much SUI to spend, e.g. 0.5");
+        return;
+      }
+      text = `buy ${coin} with ${sui} sui`;
+    } else {
+      const isPct = amt.endsWith("%");
+      const n = Number(isPct ? amt.slice(0, -1) : amt);
+      if (!Number.isFinite(n) || n <= 0 || (isPct && n > 100)) {
+        toast.error("Enter how much to sell, e.g. 50% or 1000");
+        return;
+      }
+      text = `sell ${amt} ${coin}`;
+    }
+    setBusy(true);
+    try {
+      const result = await run({ data: { text } });
+      setLastReply(result.reply);
+      if (result.swapId) {
+        toast("Trade ready — approve it in the Trade wallet list on the Terminal page.");
+      } else if (/confirmed|done|bought|sold/i.test(result.reply)) {
+        toast.success(result.reply);
+      } else {
+        toast(result.reply);
+      }
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "The trade could not be started.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  if (!ready) return null;
+  if (!userId) {
+    return (
+      <p className="mt-3 rounded-sm border border-dashed border-border p-2 font-body text-xs text-muted-foreground">
+        Sign in on the <Link to="/terminal" className="underline underline-offset-2 hover:text-foreground">Terminal</Link> to buy or sell ${row.symbol} right here.
+      </p>
+    );
+  }
+
+  return (
+    <div className="mt-3 rounded-sm border border-border bg-muted/40 p-3">
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="font-mono text-[11px] uppercase text-muted-foreground">Trade ${row.symbol}</span>
+        <button
+          type="button"
+          onClick={() => setSide("buy")}
+          className={`rounded-sm border px-2 py-0.5 font-mono text-[11px] uppercase ${side === "buy" ? "border-primary bg-primary/15 text-primary" : "border-border text-muted-foreground hover:bg-muted"}`}
+        >
+          Buy
+        </button>
+        <button
+          type="button"
+          onClick={() => setSide("sell")}
+          className={`rounded-sm border px-2 py-0.5 font-mono text-[11px] uppercase ${side === "sell" ? "border-primary bg-primary/15 text-primary" : "border-border text-muted-foreground hover:bg-muted"}`}
+        >
+          Sell
+        </button>
+        <input
+          className="w-32 rounded-sm border border-border bg-background px-2 py-0.5 font-mono text-xs"
+          placeholder={side === "buy" ? "SUI, e.g. 0.5" : "50% or 1000"}
+          value={amount}
+          onChange={(e) => setAmount(e.target.value)}
+          inputMode="decimal"
+          autoComplete="off"
+        />
+        <button
+          type="button"
+          disabled={busy || !amount.trim()}
+          onClick={() => void submit()}
+          className="rounded-sm border-2 border-primary bg-primary/15 px-3 py-0.5 font-mono text-[11px] uppercase text-primary hover:bg-primary/25 disabled:opacity-50"
+        >
+          {busy ? "Working…" : side === "buy" ? "Buy now" : "Sell now"}
+        </button>
+      </div>
+      <p className="mt-1 font-body text-[11px] text-muted-foreground">
+        Same engine as tweeting the bot — uses your chosen trade wallet (OurBank = instant, your own wallet = you approve on the Terminal page).
+      </p>
+      {lastReply ? <p className="mt-1 font-body text-xs text-foreground/90">{lastReply}</p> : null}
+    </div>
+  );
+}
+
 function LaunchCard({ row }: { row: PublicLaunchRow }) {
   const isLaunch = row.symbol != null;
   const reply = replyState(row);
