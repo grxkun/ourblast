@@ -158,7 +158,7 @@ async function buildSuipumpBuy(
   tx.setSender(sender);
   const [coinIn] = tx.splitCoins(tx.gas, [amountIn]);
   // buy returns (Coin<T>, Coin<SUI> refund) — both go back to the sender.
-  const [tokenOut, suiRefund] = tx.moveCall({
+  const buyResult = tx.moveCall({
     target: `${SUICOMP}::${SUICOMP_MODULE}::buy`,
     typeArguments: [plan.coinType],
     arguments: [
@@ -170,7 +170,7 @@ async function buildSuipumpBuy(
       tx.sharedObjectRef({ objectId: CLOCK, initialSharedVersion: "1", mutable: false }),
     ],
   });
-  tx.transferObjects([tokenOut, suiRefund], tx.pure.address(sender));
+  tx.transferObjects([buyResult[0]!, buyResult[1]!], tx.pure.address(sender));
   return { tx, quoted: 0n, venue: "Suipump" };
 }
 
@@ -188,7 +188,7 @@ async function buildBlastfunBuy(
     target: `${MEMEZ_FUN_LATEST}::memez_allowed_versions::get_allowed_versions`,
     arguments: [tx.sharedObjectRef({ ...VERSION, mutable: false })],
   });
-  const [tokenOut] = tx.moveCall({
+  const pumpResult = tx.moveCall({
     target: `${MEMEZ_FUN_LATEST}::memez_pump::pump`,
     typeArguments: [plan.coinType, SUI],
     arguments: [
@@ -200,6 +200,6 @@ async function buildBlastfunBuy(
       versions,
     ],
   });
-  tx.transferObjects([tokenOut], tx.pure.address(sender));
+  tx.transferObjects([pumpResult[0]!], tx.pure.address(sender));
   return { tx, quoted: 0n, venue: "Blast.fun" };
 }
