@@ -91,7 +91,7 @@ function stripFeePhrases(text: string): string {
  * matchLaunchpad tolerates typos ("on Peropelxity" → Perpsplexity) and
  * rejects non-pad words ("on Monday" → no pad).
  */
-const PAD_ANYWHERE = /\b(?:on|in|at|via|using|to)\s+@?([a-z][a-z0-9.]{2,20})\b/gi;
+const PAD_ANYWHERE = /\b(?:on|in|at|via|using)\s+@?([a-z][a-z0-9.]{2,20})\b/gi;
 
 /**
  * Scans every "on <word>" phrase, not just the first, so chatter like

@@ -58,6 +58,8 @@ export interface BlastfunLaunchInput {
   description: string;
   iconUrl: string;
   xLink: string | null;
+  website?: string | null;
+  telegram?: string | null;
 }
 
 export interface BlastfunLaunchResult {
@@ -161,7 +163,10 @@ export async function launchOnBlastfun(input: BlastfunLaunchInput): Promise<Blas
   const tx = new Transaction();
   withGas(tx, sender, poolGas, gasPrice, POOL_BUDGET);
   const creationFee = tx.moveCall({ target: "0x2::coin::zero", typeArguments: [SUI] });
-  const links = input.xLink ? { X: input.xLink } : {};
+  const links: Record<string, string> = {};
+  if (input.xLink) links["X"] = input.xLink;
+  if (input.website) links["Website"] = input.website;
+  if (input.telegram) links["Telegram"] = input.telegram;
   const memezMetadata = tx.moveCall({
     target: `${MEMEZ_FUN_LATEST}::memez_metadata::new`,
     typeArguments: [coinType],
