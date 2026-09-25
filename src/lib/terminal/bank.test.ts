@@ -74,8 +74,8 @@ describe("multi-step", () => {
       sendTo: { recipientKind: "x", recipient: "adeniyi", amount: "1000", token: CT },
     });
     // "send it" still means the whole received amount.
-    expect(parseSwapCommand(`buy 0.1 sui of ${CT} and send it to adeniyi.sui`)).toMatchObject({
-      sendTo: { recipientKind: "suins", recipient: "adeniyi.sui", amount: undefined },
-    });
+    const whole = parseSwapCommand(`buy 0.1 sui of ${CT} and send it to adeniyi.sui`);
+    expect(whole).toMatchObject({ sendTo: { recipientKind: "suins", recipient: "adeniyi.sui" } });
+    expect(whole?.sendTo?.amount).toBeUndefined();
   });
 });
