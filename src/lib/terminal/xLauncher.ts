@@ -197,3 +197,18 @@ export function imageUrlInText(text: string): string | null {
   const match = text.match(/https?:\/\/[^\s"'<>]+\.(?:png|jpe?g|gif|webp)(?:\?[^\s"'<>]*)?/i);
   return match?.[0] ?? null;
 }
+
+/**
+ * "Desc : Your AI Trading Assistant…" / "Description = …" — the token's own
+ * description as the caller wrote it. Runs until the next field label or the end.
+ */
+export function extractDescription(rawText: string): string | null {
+  const match = rawText.match(
+    /\b(?:desc|description|about|bio)\s*[:=]\s*([\s\S]+?)(?=\n\s*(?:name|title|ticker|symbol|sym|image|img|pic|picture|supply|website|web|site|twitter|telegram|tg|x|fee|fees)\s*[:=]|$)/i,
+  );
+  const value = match?.[1]
+    ?.replace(/@[a-z0-9_]{1,15}/gi, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  return value && value.length >= 2 ? value : null;
+}
