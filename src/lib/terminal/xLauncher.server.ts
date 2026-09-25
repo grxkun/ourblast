@@ -399,6 +399,7 @@ export async function executeLaunchRequest(requestId: string): Promise<LaunchOut
     });
     if (outcome.status === "CONFIRMED" && outcome.coinType) {
       deployment = { tokenAddress: outcome.coinType, transactionDigest: outcome.digest ?? "" };
+      blastPoolObjectId = outcome.poolId ?? null;
     } else {
       failure = outcome.error ?? "The Blast.fun launch did not confirm on chain.";
     }
@@ -466,6 +467,7 @@ export async function executeLaunchRequest(requestId: string): Promise<LaunchOut
     .update({
       status: "DEPLOYED",
       token_address: deployment.tokenAddress,
+      pool_object_id: blastPoolObjectId,
       token_url: tokenUrl,
       pool_url: poolUrl,
       tx_digest: deployment.transactionDigest,
