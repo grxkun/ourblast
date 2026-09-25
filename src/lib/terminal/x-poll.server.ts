@@ -176,6 +176,17 @@ export async function runXMentionPoll(): Promise<{
         })
         .eq("id", row.id);
     } catch (error) {
+      const message = error instanceof Error ? error.message : String(error ?? "");
+      // A deleted or hidden target tweet can never be replied to. Mark the row
+      // as done so it leaves the retry queue instead of blocking newer replies
+      // and burning the X rate limit on every poll.
+      if (/deleted or not visible/i.test(message)) {
+        await supabaseAdmin
+          .from("x_mentions")
+          .update({ posted: true, post_error: "Reply abandoned: the tweet was deleted or is not visible." })
+          .eq("id", row.id);
+        continue;
+      }
       await supabaseAdmin.from("x_mentions").update({ post_error: friendlyXError(error) }).eq("id", row.id);
     }
   }
