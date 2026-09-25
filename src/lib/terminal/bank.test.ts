@@ -65,4 +65,17 @@ describe("multi-step", () => {
       token: "SUICAT", isCoinType: false, sendTo: { recipient: "adeniyi" },
     });
   });
+  it("buy then send an exact amount to a SuiNS name", () => {
+    expect(parseSwapCommand(`Buy 0.1 sui of ${CT} and send 1000 Blast to adeniyi.sui`)).toMatchObject({
+      side: "buy", amount: "0.1", token: CT,
+      sendTo: { recipientKind: "suins", recipient: "adeniyi.sui", amount: "1000", token: "BLAST" },
+    });
+    expect(parseSwapCommand(`buy 0.1 sui of ${CT} and send 1000 ${CT} to @adeniyi`)).toMatchObject({
+      sendTo: { recipientKind: "x", recipient: "adeniyi", amount: "1000", token: CT },
+    });
+    // "send it" still means the whole received amount.
+    const whole = parseSwapCommand(`buy 0.1 sui of ${CT} and send it to adeniyi.sui`);
+    expect(whole).toMatchObject({ sendTo: { recipientKind: "suins", recipient: "adeniyi.sui" } });
+    expect(whole?.sendTo?.amount).toBeUndefined();
+  });
 });

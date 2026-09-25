@@ -414,20 +414,36 @@ async function handleSwapMention(postId: string, username: string, text: string,
   const done = `@${username} ${verb} ${detail} via ${result.venue} ✅ https://suiscan.xyz/mainnet/tx/${result.digest}`;
   if (!command.sendTo) return done;
 
-  // Second step: forward exactly what the swap delivered, only after it confirmed.
+  // Second step: forward tokens, only after the swap confirmed. Either the whole
+  // amount received ("send it to …") or an explicit amount ("send 1000 BLAST to …").
   const who = describeRecipient(command.sendTo.recipientKind, command.sendTo.recipient);
-  const amountOut = result.received;
-  if (!amountOut || amountOut <= 0n) return `${done} — couldn't confirm the amount received, so nothing was sent to ${who}.`;
+  const received = result.received;
+  if (!received || received <= 0n) return `${done} — couldn't confirm the amount received, so nothing was sent to ${who}.`;
+  let sendAmount = received;
+  if (command.sendTo.amount) {
+    const want = (command.sendTo.token ?? "").replace(/^\$/, "");
+    const matches = want.includes("::") ? want.toLowerCase() === coinOut.toLowerCase() : want.toUpperCase() === symbolOut.toUpperCase();
+    if (!matches) return `${done} — you asked to send ${want}, but the trade delivered ${symbolOut}. Nothing was sent.`;
+    try {
+      sendAmount = toAtomic(command.sendTo.amount, decimalsOut);
+    } catch {
+      return `${done} — couldn't read the amount to send to ${who}.`;
+    }
+    if (sendAmount <= 0n || sendAmount > received) {
+      return `${done} — you only received ${got} ${symbolOut}, so ${command.sendTo.amount} ${symbolOut} couldn't be sent to ${who}.`;
+    }
+  }
   const { ensureBankWallet, sendFromBankWallet } = await import("./bank-wallet.server");
   let to = await resolveRecipient(command.sendTo.recipientKind, command.sendTo.recipient);
   if (!to && command.sendTo.recipientKind === "x") to = (await ensureBankWallet(command.sendTo.recipient, null)).address;
   if (!to) return `${done} — ${who} doesn't point to a Sui address, so the tokens stay in your wallet.`;
   if (to === normalizeSuiAddress(wallet.address)) return done;
-  const sent = await sendFromBankWallet(wallet, coinOut, amountOut, to);
+  const sent = await sendFromBankWallet(wallet, coinOut, sendAmount, to);
   if (!sent.ok) return `${done} — sending to ${who} failed, tokens stay in your wallet.`;
   await db.from("bank_swaps").update({ error: `forwarded to ${who}: ${sent.digest}` }).eq("id", row.id);
   const tag = command.side === "buy" ? symbolOut : "SUI";
-  return `@${username} ${verb} ${got} ${tag} via ${result.venue} and sent it to ${who} ✅ https://suiscan.xyz/mainnet/tx/${sent.digest}`;
+  const sentAmount = command.sendTo.amount ? `${formatUnits(sendAmount, decimalsOut)} ${tag}` : "it";
+  return `@${username} ${verb} ${got} ${tag} via ${result.venue} and sent ${sentAmount} to ${who} ✅ https://suiscan.xyz/mainnet/tx/${sent.digest}`;
 }
 
 /** Single entry for OurBank tweets: token choice replies, swaps, then transfers. */
