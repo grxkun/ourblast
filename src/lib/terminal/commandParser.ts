@@ -3,6 +3,7 @@ import { extractPerps } from "./perpsParse";
 import type { ParsedIntent, TerminalIntentName } from "./types";
 
 import { normalizeSymbol } from "./ticker";
+import { fixTypos } from "./typos";
 
 const cleanSymbol = (value?: string) => normalizeSymbol(value);
 
@@ -58,7 +59,7 @@ const numberFrom = (value: string): number | null => {
 const FEE_DESTINATION = /\b(?:creator\s+)?fees?\s*(?:go(?:es)?\s+)?(?:payout\s+)?to\s+(?:@([a-z0-9_]{1,15})|(0x[a-f0-9]{6,66}))/i;
 
 export function parseTerminalCommand(rawInput: string): ParsedIntent {
-  let source = rawInput;
+  let source = fixTypos(rawInput);
   let feeMode: string | null = null;
   let feeWallet: string | null = null;
   let feeX: string | null = null;
