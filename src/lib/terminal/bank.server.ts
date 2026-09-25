@@ -1,6 +1,6 @@
 import { normalizeStructTag, normalizeSuiAddress } from "@mysten/sui/utils";
 
-import { describeRecipient, parseBankCommand, parseChoiceReply, parseSwapCommand, shortCoinType, toAtomic, type BankCommand } from "./bank";
+import { describeRecipient, isBurnAddress, parseBankCommand, parseChoiceReply, parseSwapCommand, shortCoinType, toAtomic, type BankCommand } from "./bank";
 import { X_BOT_SITE } from "./x-bot";
 
 const SUI_TYPE = normalizeStructTag("0x2::sui::SUI");
