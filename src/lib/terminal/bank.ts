@@ -61,7 +61,14 @@ export function toAtomic(amount: string, decimals: number): bigint {
   return BigInt(whole) * 10n ** BigInt(decimals) + BigInt(frac.padEnd(decimals, "0") || "0");
 }
 
+/** The dead address: tokens sent here can never move again. */
+export const BURN_ADDRESS = `0x${"0".repeat(64)}`;
+export function isBurnAddress(kind: BankRecipientKind, recipient: string): boolean {
+  return kind === "address" && /^0x0{1,64}$/i.test(recipient);
+}
+
 export function describeRecipient(kind: BankRecipientKind, recipient: string): string {
+  if (isBurnAddress(kind, recipient)) return "the burn address 🔥";
   if (kind === "x") return `@${recipient}`;
   if (kind === "address") return `${recipient.slice(0, 6)}…${recipient.slice(-4)}`;
   return recipient;
