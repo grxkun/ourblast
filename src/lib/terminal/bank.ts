@@ -122,7 +122,12 @@ export function parseSwapCommand(raw: string): SwapCommand | null {
 }
 
 function parseSwapOnly(raw: string): SwapCommand | null {
-  const text = raw.replace(/@ourblastbot\b/gi, " ").replace(/\s+/g, " ").trim();
+  const text = raw
+    .replace(/@ourblastbot\b/gi, " ")
+    .replace(/\s+/g, " ")
+    // "buy me blast 0x…::blast::BLAST" — drop a token name written before its address.
+    .replace(/\b(?!(?:me|of|some|the|a|an|buy|sell|all|my)\b)\$?[A-Za-z][A-Za-z0-9_]{0,19}\s+(0x[0-9a-fA-F]{1,64}::[A-Za-z0-9_]+::[A-Za-z0-9_]+)/g, "$1")
+    .trim();
   let m = BUY_A.exec(text);
   if (m) return { side: "buy", amount: m[1]!, ...tokenOf(m[2]!) };
   m = BUY_B.exec(text);
