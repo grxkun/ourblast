@@ -5,13 +5,13 @@
  * launch, so a tweet can trigger a payout but can never redirect one.
  */
 
-const CLAIM_PATTERN = /\bcla[io]m\w*\b[^$]*?\bfee?s?\b|\bcla[io]m\w*\b\s+\$[a-z0-9]+/i;
+const CLAIM_PATTERN = /\bcla[io]?m\w*\b[^$]*?\bfees?\b|\bcla[io]?m\w*\b\s+\$[a-z0-9]+/i;
 
 export function readFeeClaimRequest(text: string): { symbol: string | null } | null {
   if (!CLAIM_PATTERN.test(text)) return null;
   if (/\b(deploy|launch|send|buy|sell)\b/i.test(text)) return null;
   const tag = text.match(/\$([a-z][a-z0-9]{0,15})\b/i);
-  return { symbol: tag ? tag[1].toUpperCase() : null };
+  return { symbol: tag?.[1] ? tag[1].toUpperCase() : null };
 }
 
 const same = (a?: string | null, b?: string | null) =>
