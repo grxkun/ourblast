@@ -85,8 +85,9 @@ export interface SwapCommand {
   amount: string;
   token: string;
   isCoinType: boolean;
-  /** "…and send it to @bob": forward what was bought/received afterwards. */
-  sendTo?: { recipientKind: BankRecipientKind; recipient: string };
+  /** "…and send it to @bob": forward what was bought/received afterwards.
+   *  With amount+token ("…and send 1000 BLAST to adeniyi.sui"): forward that exact amount. */
+  sendTo?: { recipientKind: BankRecipientKind; recipient: string; amount?: string; token?: string };
 }
 
 function parseTarget(targetRaw: string): { recipientKind: BankRecipientKind; recipient: string } | null {
@@ -97,6 +98,7 @@ function parseTarget(targetRaw: string): { recipientKind: BankRecipientKind; rec
   return null;
 }
 const THEN_SEND = /\b(?:and|then|,)\s+(?:then\s+)?(?:send|transfer|give|forward)\s+(?:it|them|all|everything|the\s+tokens?)?\s*to\s+(\S+)/i;
+const THEN_SEND_AMOUNT = /\b(?:and|then|,)\s+(?:then\s+)?(?:send|transfer|give|forward)\s+([0-9]+(?:\.[0-9]+)?)\s+(\$?[A-Za-z][A-Za-z0-9_]{0,19}|0x[0-9a-fA-F]{1,64}::[A-Za-z0-9_]+::[A-Za-z0-9_]+)\s+to\s+(\S+)/i;
 
 const TOKEN = String.raw`(0x[0-9a-fA-F]{1,64}::[A-Za-z0-9_]+::[A-Za-z0-9_]+|\$?[A-Za-z][A-Za-z0-9_]{0,19})`;
 const NUM = String.raw`([0-9]+(?:\.[0-9]+)?)`;
@@ -113,7 +115,17 @@ function tokenOf(raw: string) {
 export function parseSwapCommand(raw: string): SwapCommand | null {
   const base = parseSwapOnly(raw);
   if (!base) return null;
-  const then = THEN_SEND.exec(raw.replace(/\s+/g, " "));
+  const flat = raw.replace(/\s+/g, " ");
+  const thenAmount = THEN_SEND_AMOUNT.exec(flat);
+  if (thenAmount) {
+    const target = parseTarget(thenAmount[3]!);
+    if (target && Number(thenAmount[1]) > 0) {
+      const t = tokenOf(thenAmount[2]!);
+      base.sendTo = { ...target, amount: thenAmount[1]!, token: t.isCoinType ? t.token : t.token };
+    }
+    return base;
+  }
+  const then = THEN_SEND.exec(flat);
   if (then) {
     const target = parseTarget(then[1]!);
     if (target) base.sendTo = target;
