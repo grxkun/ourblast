@@ -139,11 +139,16 @@ function parseSwapOnly(raw: string): SwapCommand | null {
     .replace(/@ourblastbot\b/gi, " ")
     .replace(/\s+/g, " ")
     // "buy me blast 0x…::blast::BLAST" — drop a token name written before its address.
-    .replace(/\b(?!(?:me|of|some|the|a|an|buy|sell|all|my)\b)\$?[A-Za-z][A-Za-z0-9_]{0,19}\s+(0x[0-9a-fA-F]{1,64}::[A-Za-z0-9_]+::[A-Za-z0-9_]+)/g, "$1")
+    .replace(/\b(?!(?:me|of|some|the|a|an|buy|sell|all|my)\b)\$?[A-Za-z][A-Za-z0-9_]{0,19}\s+(0x[0-9a-fA-F]{1,64}::[A-Za-z0-9_]+::[A-Za-z0-9_]+)/gi, "$1")
+    // "on suipump" / "via bluefin": the route is picked automatically, so the venue is just noise.
+    .replace(/\s+(?:on|via|from|at|through)\s+(?:suipump|blast\.?fun|bluefin|aftermath|cetus|perpsplexity|the\s+launchpad|launchpad|dex)\b/gi, "")
     .trim();
   let m = BUY_A.exec(text);
   if (m) return { side: "buy", amount: m[1]!, ...tokenOf(m[2]!) };
   m = BUY_B.exec(text);
+  if (m) return { side: "buy", amount: m[2]!, ...tokenOf(m[1]!) };
+  // "buy 0x…::lads::LADS 0.1 sui" — amount straight after the token.
+  m = new RegExp(String.raw`\bbuy\s+(?:me\s+)?${FILLER}${TOKEN}\s+${NUM}\s*\$?sui\b`, "i").exec(text);
   if (m) return { side: "buy", amount: m[2]!, ...tokenOf(m[1]!) };
   m = SELL.exec(text);
   if (m) {
