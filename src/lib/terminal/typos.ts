@@ -5,20 +5,20 @@
  */
 
 const EXPLICIT: Record<string, string> = {
-  nmae: "name", naem: "name", nsme: "name", nane: "name", nam: "name", mame: "name",
-  tiker: "ticker", tikcer: "ticker", tickr: "ticker", ticket: "ticker", tickrr: "ticker", tkr: "ticker", ticke: "ticker",
+  nmae: "name", naem: "name", nsme: "name", nane: "name", mame: "name",
+  tiker: "ticker", tikcer: "ticker", tickr: "ticker", tickrr: "ticker", tkr: "ticker", ticke: "ticker",
   deply: "deploy", depoly: "deploy", dpeloy: "deploy", deplyo: "deploy", delpoy: "deploy", deplot: "deploy", dploy: "deploy", deploi: "deploy",
-  lauch: "launch", lanch: "launch", luanch: "launch", launh: "launch", laucnh: "launch", lunch: "launch",
+  lauch: "launch", lanch: "launch", luanch: "launch", launh: "launch", laucnh: "launch",
   craete: "create", creat: "create", ceate: "create",
-  fe: "fee", fess: "fees", fess_: "fees", feee: "fee", feez: "fees",
+  fe: "fee", fess: "fees", feee: "fee", feez: "fees",
   recevier: "receiver", reciever: "receiver", receiever: "receiver", recever: "receiver", reciver: "receiver",
-  webiste: "website", wesbite: "website", websit: "website", webste: "website", web: "website", site: "website",
-  telgram: "telegram", telegarm: "telegram", telegam: "telegram", tele: "telegram",
+  webiste: "website", wesbite: "website", websit: "website", webste: "website",
+  telgram: "telegram", telegarm: "telegram", telegam: "telegram",
   twiter: "twitter", twitr: "twitter",
   desciption: "description", descripton: "description", discription: "description", decription: "description",
   imgae: "image", imge: "image", iamge: "image",
   supplly: "supply", suply: "supply",
-  wirh: "with", wiht: "with", wth: "with", wit: "with",
+  wirh: "with", wiht: "with", wth: "with",
 };
 
 const KEYWORDS = [
@@ -28,19 +28,16 @@ const KEYWORDS = [
 
 function distance(a: string, b: string): number {
   if (Math.abs(a.length - b.length) > 1) return 2;
-  const prev = Array.from({ length: b.length + 1 }, (_, i) => i);
+  const d: number[][] = Array.from({ length: a.length + 1 }, (_, i) => Array.from({ length: b.length + 1 }, (_, j) => (i === 0 ? j : j === 0 ? i : 0)));
   for (let i = 1; i <= a.length; i += 1) {
-    let diag = prev[0]!;
-    prev[0] = i;
     for (let j = 1; j <= b.length; j += 1) {
-      const tmp = prev[j]!;
-      const swap =
-        i > 1 && j > 1 && a[i - 1] === b[j - 2] && a[i - 2] === b[j - 1] ? 0 : Infinity;
-      prev[j] = Math.min(prev[j]! + 1, prev[j - 1]! + 1, diag + (a[i - 1] === b[j - 1] ? 0 : 1), swap === 0 ? diag : Infinity);
-      diag = tmp;
+      const cost = a[i - 1] === b[j - 1] ? 0 : 1;
+      let best = Math.min(d[i - 1]![j]! + 1, d[i]![j - 1]! + 1, d[i - 1]![j - 1]! + cost);
+      if (i > 1 && j > 1 && a[i - 1] === b[j - 2] && a[i - 2] === b[j - 1]) best = Math.min(best, d[i - 2]![j - 2]! + 1);
+      d[i]![j] = best;
     }
   }
-  return prev[b.length]!;
+  return d[a.length]![b.length]!;
 }
 
 function fixWord(word: string): string {
