@@ -62,22 +62,21 @@ function TerminalPage() {
         </div>
       </div>
       <div className="mb-4 space-y-4">
-        <XLaunchQueue />
         <SocialSignIn />
+        {ready ? <OurBankCard /> : null}
+        {ready ? <Terminal tryCommand={tryCommand} /> : null}
+        <XLaunchQueue />
         {ready ? (
           <TerminalTutorial onTry={(command) => setTryCommand({ command, nonce: Date.now() })} />
         ) : null}
       </div>
-      {ready ? (
-        <Terminal tryCommand={tryCommand} />
-      ) : (
+      {ready ? null : (
         <p className="rounded-lg border border-border bg-card p-6 text-center text-sm text-muted-foreground">
           The conversational terminal opens once a launchpad integration goes live. Until then, X launch calls appear above.
         </p>
       )}
       {ready ? (
         <div className="mt-6 space-y-6">
-          <OurBankCard />
           <CreatorClaimCard />
           <FeeRoutingCard />
           <CreatorFeeDesignationCard />
