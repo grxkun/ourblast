@@ -8,6 +8,7 @@ import { normalizeStructTag, normalizeSuiAddress } from "@mysten/sui/utils";
 
 import { decryptConnectionKey } from "@/lib/connection-key.server";
 import { toAtomic, type SwapCommand } from "./bank";
+import { resolveLaunchpadBuy, buildLaunchpadBuySwap } from "./launchpad-buy.server";
 
 /**
  * OurBank swaps: "buy 5 SUI of 0x…" / "sell 50% $MOO" from X, routed through
@@ -122,8 +123,22 @@ export async function executeBankSwap(
   return { ok: true, digest: executed.digest, received, quoted: built.quoted, coinOut: outType, venue: built.venue };
 }
 
-/** Bluefin pool first, then Aftermath vs Cetus: first valid route wins. */
+/** Bonding-curve first (unbonded tokens), then Bluefin, then Aftermath vs Cetus. */
 async function pickSwapRoute(sender: string, inType: string, outType: string, amountIn: bigint): Promise<{ ok: true; built: BuiltSwap } | { ok: false; error: string }> {
+  // Unbonded launchpad tokens live on a bonding curve, not a DEX pool, so the
+  // aggregators have no route for them. Buy them straight from the launchpad.
+  if (inType === SUI) {
+    try {
+      const plan = await withTimeout(resolveLaunchpadBuy(outType), LAUNCHPAD_LOOKUP_MS, "Launchpad lookup");
+      if (plan) {
+        const built = await withTimeout(buildLaunchpadBuySwap(sender, plan, amountIn), BUILD_TIMEOUT_MS, "Launchpad build");
+        if (built) return { ok: true, built: { ...built, venue: built.venue as BuiltSwap["venue"] } };
+      }
+    } catch {
+      /* launchpad lookup/build failed — fall through to the DEX aggregators */
+    }
+  }
+
   let built: BuiltSwap;
   try {
     // First check the exact pair against Bluefin's own pool source. BLAST has
