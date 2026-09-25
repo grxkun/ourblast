@@ -26,6 +26,7 @@ import {
   importBankWallet,
   listMyTransfers,
   resetBankWallet,
+  runBankCommand,
   withdrawBankWallet,
   prepareTransfer,
   transferCoinChoices,
@@ -137,6 +138,7 @@ export function OurBankCard() {
       </p>
 
       {userId ? <BankWalletPanel userId={userId} /> : null}
+      {userId ? <SwapPanel userId={userId} /> : null}
       {userId ? <TradeWalletPanel userId={userId} /> : null}
 
       {!userId ? <p className="mt-3 text-sm text-muted-foreground">Sign in with X and connect your wallet to use OurBank.</p> : null}
