@@ -140,6 +140,8 @@ function parseSwapOnly(raw: string): SwapCommand | null {
     .replace(/\s+/g, " ")
     // "buy me blast 0x…::blast::BLAST" — drop a token name written before its address.
     .replace(/\b(?!(?:me|of|some|the|a|an|buy|sell|all|my)\b)\$?[A-Za-z][A-Za-z0-9_]{0,19}\s+(0x[0-9a-fA-F]{1,64}::[A-Za-z0-9_]+::[A-Za-z0-9_]+)/g, "$1")
+    // "on suipump" / "via bluefin": the route is picked automatically, so the venue is just noise.
+    .replace(/\s+(?:on|via|from|at|through)\s+(?:suipump|blast\.?fun|bluefin|aftermath|cetus|perpsplexity|the\s+launchpad|launchpad|dex)\b/gi, "")
     .trim();
   let m = BUY_A.exec(text);
   if (m) return { side: "buy", amount: m[1]!, ...tokenOf(m[2]!) };
