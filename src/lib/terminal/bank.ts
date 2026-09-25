@@ -99,6 +99,7 @@ export interface SwapCommand {
 
 function parseTarget(targetRaw: string): { recipientKind: BankRecipientKind; recipient: string } | null {
   const target = targetRaw.replace(/[.,!?;:)"']+$/, "").replace(/^[("']/, "");
+  if (/^(?:burn|dead|zero|null|0x0+)$/i.test(target)) return { recipientKind: "address", recipient: BURN_ADDRESS };
   if (ADDRESS.test(target)) return { recipientKind: "address", recipient: target.toLowerCase() };
   if (/\.sui$/i.test(target) && SUINS.test(target)) return { recipientKind: "suins", recipient: target.toLowerCase() };
   if (target.startsWith("@") && HANDLE.test(target) && !/^@ourblast(bot)?$/i.test(target)) return { recipientKind: "x", recipient: target.slice(1) };
