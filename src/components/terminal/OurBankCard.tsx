@@ -26,6 +26,7 @@ import {
   importBankWallet,
   listMyTransfers,
   resetBankWallet,
+  runBankCommand,
   withdrawBankWallet,
   prepareTransfer,
   transferCoinChoices,
@@ -137,6 +138,7 @@ export function OurBankCard() {
       </p>
 
       {userId ? <BankWalletPanel userId={userId} /> : null}
+      {userId ? <SwapPanel userId={userId} /> : null}
       {userId ? <TradeWalletPanel userId={userId} /> : null}
 
       {!userId ? <p className="mt-3 text-sm text-muted-foreground">Sign in with X and connect your wallet to use OurBank.</p> : null}
@@ -476,6 +478,85 @@ function BankWalletPanel({ userId }: { userId: string }) {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+    </div>
+  );
+}
+
+const COIN_TYPE_RE = /^0x[0-9a-fA-F]{64}::[A-Za-z_][A-Za-z0-9_]*::[A-Za-z_][A-Za-z0-9_]*$/;
+
+/** Manual buy/sell: same engine as an X mention, run straight from the terminal. */
+function SwapPanel({ userId }: { userId: string }) {
+  const queryClient = useQueryClient();
+  const run = useServerFn(runBankCommand);
+  const [side, setSide] = useState<"buy" | "sell">("buy");
+  const [coinType, setCoinType] = useState("");
+  const [amount, setAmount] = useState("");
+  const [lastReply, setLastReply] = useState<string | null>(null);
+
+  const swap = useMutation({
+    mutationFn: async () => {
+      const coin = coinType.trim();
+      const amt = amount.trim();
+      if (!COIN_TYPE_RE.test(coin)) throw new Error("Enter the full token address, like 0x…::blast::BLAST");
+      if (side === "buy") {
+        const sui = Number(amt);
+        if (!Number.isFinite(sui) || sui <= 0) throw new Error("Enter how much SUI to spend, e.g. 0.5");
+        return run({ data: { text: `buy ${coin} with ${sui} sui` } });
+      }
+      const isPct = amt.endsWith("%");
+      const n = Number(isPct ? amt.slice(0, -1) : amt);
+      if (!Number.isFinite(n) || n <= 0 || (isPct && n > 100)) {
+        throw new Error("Enter how much to sell, e.g. 50% or 1000");
+      }
+      return run({ data: { text: `sell ${amt} ${coin}` } });
+    },
+    onSuccess: (result) => {
+      setLastReply(result.reply);
+      if (result.swapId) {
+        toast("Trade ready — approve it in the Trade wallet list below.");
+      } else if (/confirmed|done|bought|sold/i.test(result.reply)) {
+        toast.success(result.reply);
+      } else {
+        toast(result.reply);
+      }
+      void queryClient.invalidateQueries({ queryKey: ["own-swaps", userId] });
+      void queryClient.invalidateQueries({ queryKey: ["bank-wallet", userId] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  return (
+    <div className="mt-3 border border-border p-3 text-sm">
+      <p className="font-display uppercase">Swap · buy &amp; sell</p>
+      <p className="mt-1 text-xs text-muted-foreground">
+        Trade any token right here — same engine as tweeting the bot. Uses your chosen trade wallet (OurBank = instant, your own wallet = you approve).
+      </p>
+      <div className="mt-2 flex gap-2">
+        <Button size="sm" variant={side === "buy" ? "default" : "outline"} onClick={() => setSide("buy")}>Buy</Button>
+        <Button size="sm" variant={side === "sell" ? "default" : "outline"} onClick={() => setSide("sell")}>Sell</Button>
+      </div>
+      <div className="mt-2 space-y-2">
+        <input
+          className="w-full rounded border border-border bg-background px-2 py-1 text-xs font-mono"
+          placeholder="Token address, e.g. 0x577a…::blast::BLAST"
+          value={coinType}
+          onChange={(e) => setCoinType(e.target.value)}
+          autoComplete="off"
+          spellCheck={false}
+        />
+        <input
+          className="w-full rounded border border-border bg-background px-2 py-1 text-xs"
+          placeholder={side === "buy" ? "SUI to spend, e.g. 0.5" : "Amount to sell, e.g. 50% or 1000"}
+          value={amount}
+          onChange={(e) => setAmount(e.target.value)}
+          autoComplete="off"
+          inputMode="decimal"
+        />
+        <Button size="sm" disabled={swap.isPending || !coinType.trim() || !amount.trim()} onClick={() => swap.mutate()}>
+          {swap.isPending ? "Working…" : side === "buy" ? "Buy now" : "Sell now"}
+        </Button>
+      </div>
+      {lastReply ? <p className="mt-2 text-xs text-muted-foreground">{lastReply}</p> : null}
     </div>
   );
 }
