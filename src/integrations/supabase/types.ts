@@ -2054,6 +2054,7 @@ export type Database = {
           notice: string | null
           ourblast_fee_percent: number
           perps_long: boolean | null
+          pool_object_id: string | null
           pool_url: string | null
           reply_post_id: string | null
           starting_cap_usd: number | null
@@ -2082,6 +2083,7 @@ export type Database = {
           notice?: string | null
           ourblast_fee_percent?: number
           perps_long?: boolean | null
+          pool_object_id?: string | null
           pool_url?: string | null
           reply_post_id?: string | null
           starting_cap_usd?: number | null
@@ -2110,6 +2112,7 @@ export type Database = {
           notice?: string | null
           ourblast_fee_percent?: number
           perps_long?: boolean | null
+          pool_object_id?: string | null
           pool_url?: string | null
           reply_post_id?: string | null
           starting_cap_usd?: number | null
