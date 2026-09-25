@@ -52,18 +52,21 @@ export async function handleFeeClaimMention(username: string, text: string): Pro
         v.symbol === row.symbol.toUpperCase(),
     );
     if (!vault) {
-      if (request.symbol) results.push(`$${row.symbol}: fees on ${row.launchpad} can't be claimed by the bot`);
+      results.push(`$${row.symbol}: fees on ${row.launchpad} can't be claimed by the bot yet`);
       continue;
     }
     if (vault.pendingSui <= 0) {
-      if (request.symbol) results.push(`$${row.symbol}: no fees waiting yet`);
+      results.push(`$${row.symbol}: no fees waiting yet`);
       continue;
     }
-    const outcome = await claimCreatorFeeVault(vault.curveId);
+    const outcome = await claimCreatorFeeVault(vault.curveId).catch((e) => ({
+      ok: false as const,
+      message: e instanceof Error ? e.message : "claim failed",
+    }));
     results.push(
       outcome.ok && outcome.digest
         ? `$${row.symbol}: ${outcome.claimedSui.toFixed(4)} SUI distributed ✅ suiscan.xyz/mainnet/tx/${outcome.digest}`
-        : `$${row.symbol}: ${outcome.message}`,
+        : `$${row.symbol}: claim failed — ${outcome.message}. Try again from the terminal.`,
     );
   }
 
