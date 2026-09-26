@@ -75,28 +75,34 @@ function readPayouts(fields: Record<string, unknown> | undefined): { recipient: 
     .filter((row) => row.recipient.startsWith("0x"));
 }
 
+/** Every Suipump CreatorCap the owner holds, across all Suipump package versions. */
+async function ownedCreatorCaps(owner: string): Promise<ObjectData[]> {
+  const caps: ObjectData[] = [];
+  let cursor: string | null = null;
+  for (let page = 0; page < 20; page++) {
+    const res: { data: { data: ObjectData | null }[]; nextCursor?: string | null; hasNextPage?: boolean } | null =
+      await rpc<{ data: { data: ObjectData | null }[]; nextCursor?: string | null; hasNextPage?: boolean }>(
+        "suix_getOwnedObjects",
+        [owner, { options: { showType: true, showContent: true } }, cursor, 50],
+      ).catch(() => null);
+    if (!res) break;
+    for (const entry of res.data ?? []) {
+      if (entry.data && /::bonding_curve::CreatorCap$/.test(entry.data.type ?? "")) caps.push(entry.data);
+    }
+    if (!res.hasNextPage || !res.nextCursor) break;
+    cursor = res.nextCursor;
+  }
+  return caps;
+}
+
+const packageOf = (type?: string) => (type ?? "").split("::")[0] ?? "";
+
 /** Every Suipump curve whose creator cap the bot wallet still holds. */
 export async function listCreatorFeeVaults(): Promise<CreatorFeeVault[]> {
-  const config = readSuipumpConfig();
   const keypair = await loadDeployer();
   const bot = keypair?.getPublicKey().toSuiAddress();
   if (!bot) return [];
-
-  const owned = await rpc<{
-    data: { data: ObjectData | null }[];
-  }>("suix_getOwnedObjects", [
-    bot,
-    {
-      filter: { StructType: `${config.packageId}::bonding_curve::CreatorCap` },
-      options: { showType: true, showContent: true },
-    },
-    null,
-    50,
-  ]).catch(() => ({ data: [] as { data: ObjectData | null }[] }));
-
-  const caps = (owned.data ?? [])
-    .map((entry) => entry.data)
-    .filter((entry): entry is ObjectData => !!entry);
+  const caps = await ownedCreatorCaps(bot);
 
   const vaults: CreatorFeeVault[] = [];
   for (const cap of caps) {
@@ -151,17 +157,8 @@ export async function claimCreatorFeeVault(curveId: string): Promise<ClaimVaultR
     return { ok: false, message: "There are no creator fees waiting for this token yet.", digest: null, claimedSui: 0 };
   }
 
-  const caps = await rpc<{ data: { data: ObjectData | null }[] }>("suix_getOwnedObjects", [
-    sender,
-    {
-      filter: { StructType: `${config.packageId}::bonding_curve::CreatorCap` },
-      options: { showType: true, showContent: true },
-    },
-    null,
-    50,
-  ]).catch(() => ({ data: [] as { data: ObjectData | null }[] }));
-  const cap = (caps.data ?? [])
-    .map((entry) => entry.data)
+  const caps = await ownedCreatorCaps(sender);
+  const cap = caps
     .find((entry) => entry && String(entry.content?.fields?.["curve_id"] ?? "") === curveId);
   if (!cap) {
     return {
@@ -186,7 +183,7 @@ export async function claimCreatorFeeVault(curveId: string): Promise<ClaimVaultR
   const tx = new Transaction();
   withGas(tx, sender, coins, gasPrice, CLAIM_GAS_BUDGET_MIST);
   tx.moveCall({
-    target: `${config.packageId}::bonding_curve::claim_creator_fees`,
+    target: `${packageOf(cap.type) || config.packageId}::bonding_curve::claim_creator_fees`,
     typeArguments: [coinType],
     arguments: [
       tx.objectRef({ objectId: cap.objectId, version: cap.version, digest: cap.digest }),

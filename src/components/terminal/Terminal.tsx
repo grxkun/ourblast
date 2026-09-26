@@ -87,7 +87,7 @@ export function Terminal({ tryCommand }: { tryCommand?: { command: string; nonce
       // Send / buy / sell (and "1"/"2" answers to a which-token question) run the same
       // OurBank logic as an X mention, with the wallet the user picked.
       const swap = parseSwapCommand(clean);
-      const isBank = Boolean(userId) && (swap || parseBankCommand(clean) || /^\s*#?[1-4]\s*$/.test(clean) || /^\s*(buy|sell|swap)\b/i.test(clean));
+      const isBank = Boolean(userId) && (swap || parseBankCommand(clean) || /^\s*#?[1-4]\s*$/.test(clean) || /^\s*(buy|sell|swap)\b/i.test(clean) || /\bfees?\b/i.test(clean));
       if (isBank) {
         const out = await bankCommand({ data: { text: clean } });
         let message = out.reply;

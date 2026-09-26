@@ -14,6 +14,20 @@ export function readFeeClaimRequest(text: string): { symbol: string | null } | n
   return { symbol: tag?.[1] ? tag[1].toUpperCase() : null };
 }
 
+/** Read-only: "check fees", "my fees", "fee $X", "how much fees". Never claims. */
+export function readFeeCheckRequest(text: string): { symbol: string | null } | null {
+  const bare = text.replace(/@[a-z0-9_]{1,15}/gi, " ").replace(/\s+/g, " ").trim();
+  if (/\bcla[io]?m/i.test(bare)) return null;
+  if (/\b(deploy|launch|send|buy|sell|swap)\b/i.test(bare)) return null;
+  const ask =
+    /\b(?:check|show|view|see|how\s+much|what(?:'s|\s+is|\s+are)?|balance|pending)\b[^.]*\bfees?\b/i.test(bare) ||
+    /^(?:my\s+)?(?:creator\s+)?fees?(?:\s+\$[a-z0-9]+)?\s*[?!.]*$/i.test(bare) ||
+    /^\$[a-z0-9]+\s+fees?\s*[?!.]*$/i.test(bare);
+  if (!ask) return null;
+  const tag = bare.match(/\$([a-z][a-z0-9]{0,15})\b/i);
+  return { symbol: tag?.[1] ? tag[1].toUpperCase() : null };
+}
+
 const same = (a?: string | null, b?: string | null) =>
   Boolean(a && b && a.replace(/^@/, "").toLowerCase() === b.replace(/^@/, "").toLowerCase());
 
@@ -72,4 +86,46 @@ export async function handleFeeClaimMention(username: string, text: string): Pro
 
   if (results.length === 0) return `@${username} none of your tokens have creator fees waiting right now.`;
   return `@${username} ${results.join(" · ")}`.slice(0, 280);
+}
+
+/** Replies with pending creator fees for the author's tokens. Sends no transaction. */
+export async function handleFeeCheckMention(username: string, text: string): Promise<string | null> {
+  const request = readFeeCheckRequest(text);
+  if (!request) return null;
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const { data: launches } = await supabaseAdmin
+    .from("x_launch_requests")
+    .select("symbol, token_address, launchpad, x_username, fee_receiver_x_username, status")
+    .eq("status", "DEPLOYED")
+    .order("created_at", { ascending: false })
+    .limit(500);
+  const mine = (launches ?? []).filter(
+    (row) => same(row.x_username, username) || same(row.fee_receiver_x_username, username),
+  );
+  if (mine.length === 0) return `@${username} no tokens launched from your X account yet, so no creator fees to show.`;
+  const targets = request.symbol ? mine.filter((row) => row.symbol.toUpperCase() === request.symbol) : mine;
+  if (targets.length === 0) return `@${username} $${request.symbol} wasn't launched from your account.`;
+
+  const { listCreatorFeeVaults } = await import("./creatorClaim.server");
+  const vaults = await listCreatorFeeVaults().catch(() => null);
+  if (!vaults) return `@${username} couldn't read fee balances from the chain right now. Try again shortly.`;
+
+  let total = 0;
+  const parts: string[] = [];
+  for (const row of targets) {
+    const vault = vaults.find(
+      (v) =>
+        (row.token_address && v.curveId.toLowerCase() === row.token_address.toLowerCase()) ||
+        v.symbol === row.symbol.toUpperCase(),
+    );
+    if (!vault) {
+      parts.push(`$${row.symbol}: not readable on ${row.launchpad}`);
+      continue;
+    }
+    total += vault.pendingSui;
+    parts.push(`$${row.symbol}: ${vault.pendingSui.toFixed(4)} SUI`);
+  }
+  const head = targets.length > 1 ? `${total.toFixed(4)} SUI waiting in total · ` : "";
+  const tail = total > 0 ? ` — reply "claim my fees" to release.` : "";
+  return `@${username} ${head}${parts.join(" · ")}${tail}`.slice(0, 280);
 }

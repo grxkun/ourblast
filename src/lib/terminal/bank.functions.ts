@@ -366,8 +366,10 @@ export const runBankCommand = createServerFn({ method: "POST" })
     const { ensureBankWallet } = await import("./bank-wallet.server");
     await ensureBankWallet(handle, context.userId);
     const postId = `terminal-${crypto.randomUUID()}`;
+    const { handleFeeCheckMention, handleFeeClaimMention } = await import("./xClaim.server");
+    const feeReply = (await handleFeeCheckMention(handle, data.text)) ?? (await handleFeeClaimMention(handle, data.text));
     const { handleBankMention } = await import("./bank.server");
-    const raw = (await handleBankMention(postId, handle, data.text)) ?? "";
+    const raw = feeReply ?? (await handleBankMention(postId, handle, data.text)) ?? "";
     const reply = raw.replace(new RegExp(`^@${handle}\\s+`, "i"), "").trim() ||
       "I couldn't read that. Try: send 1 SUI to @friend · buy 0.5 SUI of 0x…::coin::COIN · sell 50% 0x…::coin::COIN · buy and burn 1 SUI of 0x…::coin::COIN";
     const { supabaseAdmin: db } = await import("@/integrations/supabase/client.server");
