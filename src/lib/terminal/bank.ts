@@ -128,7 +128,7 @@ const BUY_B = new RegExp(String.raw`\bbuy\s+(?:me\s+)?${FILLER}${TOKEN}(?:\s+or\
 const SELL_AMT = String.raw`(all|everything|all\s+of\s+it|[0-9]+(?:\.[0-9]+)?%?)`;
 const SELL = new RegExp(String.raw`\b(?:sell|dump|jeet)\s+${SELL_AMT}\s+(?:of\s+)?(?:my\s+)?${TOKEN}(?:\s+(?:for|into)\s+\$?sui)?\b`, "i");
 // "sell $lads all" / "dump $lads 50%" — token first, amount last.
-const SELL_REV = new RegExp(String.raw`\b(?:sell|dump|jeet)\s+(?:my\s+)?${TOKEN}\s+${SELL_AMT}(?:\s+(?:for|into)\s+\$?sui)?\b`, "i");
+const SELL_REV = new RegExp(String.raw`\b(?:sell|dump|jeet)\s+(?:my\s+)?${TOKEN}\s+${SELL_AMT}(?:\s+(?:for|into)\s+\$?sui)?(?=\s|$|[^\w%])`, "i");
 
 /** Symbols we can resolve to a verified contract without asking. */
 const KNOWN_SYMBOLS: Record<string, string> = { BLAST: BLAST_BUILD.blastTokenType };
