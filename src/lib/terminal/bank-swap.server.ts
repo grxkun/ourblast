@@ -90,7 +90,6 @@ export async function executeBankSwap(
   amountIn: bigint,
 ): Promise<SwapResult> {
   const { gasCoins, referenceGasPrice, withGas, signAndExecute, rpc } = await import("./suipump-launch.server");
-  const { bankSigner } = await import("./bank-wallet.server");
   const signer = await bankSigner(wallet);
   const sender = signer.address;
   if (sender !== normalizeSuiAddress(wallet.address)) return { ok: false, error: "Bank wallet key mismatch." };
@@ -118,7 +117,7 @@ export async function executeBankSwap(
     return { ok: false, error: `Could not prepare the swap: ${(error as Error).message.slice(0, 100)}` };
   }
 
-  const executed = await signAndExecute(built.tx, keypair);
+  const executed = await signAndExecute(built.tx, signer);
   if (!executed.ok || !executed.digest) return { ok: false, error: executed.error ?? "Swap failed." };
 
   let received: bigint | null = null;
