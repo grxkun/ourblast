@@ -12,6 +12,7 @@ import { CreatorClaimCard } from "@/components/terminal/CreatorClaimCard";
 import { BotHealthCard } from "@/components/terminal/BotHealthCard";
 import { SwapTweetsCard } from "@/components/terminal/SwapTweetsCard";
 import { SwapAttemptsCard } from "@/components/terminal/SwapAttemptsCard";
+import { XBlacklistCard } from "@/components/terminal/XBlacklistCard";
 import { PlayerAvatar } from "@/components/blast/PlayerBadge";
 import { useBlast } from "@/components/blast/session";
 import { formatNumber, shortAddress, timeAgo } from "@/lib/blast";
@@ -297,6 +298,7 @@ function AdminPage() {
         </div>
       ) : tab === "launcher" ? (
         <div className="max-w-2xl">
+          <XBlacklistCard />
           <BotHealthCard />
           <SwapTweetsCard />
           <SwapAttemptsCard />
