@@ -41,7 +41,7 @@ export function AppShell({ children }: { children: ReactNode }) {
     <div className="theme-paper min-h-screen">
       <header className="sticky top-0 z-50 border-b border-border bg-background/80 backdrop-blur-xl">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3">
-          <Link to="/hub" className="flex items-center gap-2">
+          <Link to="/" className="flex items-center gap-2">
             <img
               src={helmet.url}
               alt="OURBLAST helmet mascot"
@@ -59,7 +59,9 @@ export function AppShell({ children }: { children: ReactNode }) {
               (item) =>
                 item.to !== "/how-to-play" &&
                 item.to !== "/profile" &&
-                item.to !== "/builders"
+                item.to !== "/builders" &&
+                item.to !== "/meme" &&
+                item.to !== "/roast"
             ).map((item) => (
               <Link
                 key={item.to}
@@ -108,7 +110,7 @@ export function AppShell({ children }: { children: ReactNode }) {
               item.to !== "/ecosystem" &&
               item.to !== "/leaderboard" &&
               item.to !== "/chat" &&
-              item.to !== "/profile"
+              item.to !== "/meme"
           ).map((item) => (
             <Link
               key={item.to}
