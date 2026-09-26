@@ -326,14 +326,15 @@ async function handleSwapMention(postId: string, username: string, text: string,
     return `@${username} to buy safely, paste the token's full contract address, e.g. buy 5 SUI of 0x…::coin::COIN`;
   }
   const mode = await tradeWalletFor(username);
-  let wallet: { address: string; secret_ciphertext: string; user_id?: string | null } | null;
+  type BankWalletRow = NonNullable<Awaited<ReturnType<typeof findBankWallet>>>;
+  let wallet: BankWalletRow | null;
   let ownerUserId: string | null = null;
   if (mode === "own") {
     // Own wallet: the bot only prepares the trade; the user signs it in the terminal.
     if (command.sendTo) return `@${username} "buy and send" only works with your OurBank wallet. Switch it in the terminal, or send separately after the trade.`;
     const linked = await walletForXHandle(username);
     if (!linked?.wallet) return `@${username} connect your Sui wallet at ${X_BOT_SITE}/terminal first, then tweet again.`;
-    wallet = { address: normalizeSuiAddress(linked.wallet), secret_ciphertext: "" };
+    wallet = { address: normalizeSuiAddress(linked.wallet), secret_ciphertext: null, signing_backend: "local", turnkey_key_id: null, turnkey_public_key: null, x_username: username.toLowerCase(), user_id: linked.userId };
     ownerUserId = linked.userId;
   } else {
     wallet = await findBankWallet(username);
