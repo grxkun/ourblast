@@ -9,24 +9,23 @@ import { WalletButton } from "@/components/blast/WalletButton";
 import { amIStaff } from "@/lib/admin.functions";
 
 const NAV = [
-  { to: "/", label: "$BLAST", icon: "💥" },
-  { to: "/hub", label: "Hub", icon: "🏠" },
+  { to: "/", label: "Terminal", icon: "⌨️" },
+  { to: "/launches", label: "Launches", icon: "🚀" },
   { to: "/arcade", label: "Arcade", icon: "🕹️" },
   { to: "/build", label: "Build", icon: "🏙️" },
-  { to: "/builders", label: "Builders", icon: "🏗️" },
-  { to: "/ecosystem", label: "Sui", icon: "◇" },
-  { to: "/how-to-play", label: "Guide", icon: "📖" },
+  { to: "/hub", label: "Hub", icon: "🏠" },
   { to: "/leaderboard", label: "Ranks", icon: "🏆" },
+  { to: "/chat", label: "Chat", icon: "💬" },
+  { to: "/ecosystem", label: "Sui", icon: "◇" },
   { to: "/meme", label: "Meme", icon: "😂" },
   { to: "/roast", label: "Roast", icon: "🔥" },
-  { to: "/chat", label: "Chat", icon: "💬" },
-  { to: "/terminal", label: "Terminal", icon: "⌨️" },
-  { to: "/launches", label: "Launches", icon: "🚀" },
+  { to: "/builders", label: "Builders", icon: "🏗️" },
+  { to: "/how-to-play", label: "Guide", icon: "📖" },
   { to: "/profile", label: "You", icon: "👾" },
 ] as const;
 
 export function AppShell({ children }: { children: ReactNode }) {
-  const pathname = useRouterState({ select: (state) => state.location.pathname });
+  useRouterState({ select: (state) => state.location.pathname });
   const { userId } = useBlast();
   const staffFn = useServerFn(amIStaff);
   const staff = useQuery({
@@ -37,8 +36,6 @@ export function AppShell({ children }: { children: ReactNode }) {
   });
   const isStaff = Boolean(staff.data?.staff);
 
-  // The $BLAST landing page brings its own header and footer.
-  if (pathname === "/") return <>{children}</>;
 
   return (
     <div className="theme-paper min-h-screen">

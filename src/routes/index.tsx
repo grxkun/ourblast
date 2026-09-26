@@ -1,35 +1,43 @@
 import { Link, createFileRoute } from "@tanstack/react-router";
+import { useQuery } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
+import { AtSign, ShieldCheck } from "lucide-react";
 
 import helmet from "@/assets/helmet.jpg.asset.json";
-import mascotStand from "@/assets/mascot-stand.jpg.asset.json";
 import mascotShock from "@/assets/mascot-shock.jpg.asset.json";
-import mascotCoin from "@/assets/mascot-coin.jpg.asset.json";
+import mascotStand from "@/assets/mascot-stand.jpg.asset.json";
 import launchReport from "@/assets/BLAST-launch-report.pdf.asset.json";
 import { Ticker } from "@/components/site/Ticker";
 import { CopyAddress } from "@/components/site/CopyAddress";
 import { VaultSizes } from "@/components/site/VaultSizes";
 import { BlastChart } from "@/components/site/BlastChart";
+import { Terminal } from "@/components/terminal/Terminal";
+import { OurBankCard } from "@/components/terminal/OurBankCard";
+import { SocialSignIn } from "@/components/terminal/SocialSignIn";
+import { XLaunchQueue } from "@/components/terminal/XLaunchQueue";
+import { resolveLaunchpad } from "@/lib/terminal/launchpad";
+import { getLauncherSettings } from "@/lib/terminal/xLauncher.functions";
 
 const CONTRACT = "0x577a8addf60a34d4c705914ad066a3b28c3fc40d365ed0d9dfc408f29b4725d3::blast::BLAST";
 const BUY_URL = "https://trade.bluefin.io/swap/SUI-0x577a8addf60a34d4c705914ad066a3b28c3fc40d365ed0d9dfc408f29b4725d3::blast::BLAST";
 const X_URL = "https://x.com/Blastdotv2";
 const TG_URL = "https://t.me/Blastnotfun_CTO";
+const BOT_URL = "https://x.com/Ourblastbot";
 const TREASURY = "0xd9ba2ba33cc6eb61302cec564126caae22fbbe10f564789c5e6e5eca0940372c";
 
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "$BLAST — Helmets On, Community Owned Coin on Blast.fun" },
+      { title: "OURBLAST — Sui Terminal, OurBank Wallet & $BLAST" },
       {
         name: "description",
         content:
-          "$BLAST is a community takeover coin on blast.fun. No dev, no roadmap, LP burned, zero tax. Grab a helmet and ride the chart.",
+          "Trade, send, launch and burn on Sui from a chat terminal or by mentioning @Ourblastbot on X. Home of the $BLAST community coin.",
       },
-      { property: "og:title", content: "$BLAST — Helmets On, Community Owned" },
+      { property: "og:title", content: "OURBLAST — Sui Terminal & OurBank Wallet" },
       {
         property: "og:description",
-        content:
-          "A community takeover coin on blast.fun. No dev, no roadmap, LP burned, zero tax. Helmets on.",
+        content: "Buy, sell, send, launch and burn on Sui by chat or X mention. Enclave-protected OurBank wallets.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
@@ -45,430 +53,111 @@ const STATS = [
   { label: "Dev wallet", value: "NONE", note: "The community holds the keys" },
 ];
 
-const STEPS = [
-  {
-    n: "01",
-    title: "Grab a Sui wallet",
-    body: "Slush or any Sui wallet works. Keep a little SUI in it for gas and swaps.",
-  },
-  {
-    n: "02",
-    title: "Open Bluefin",
-    body: "Paste the $BLAST address below, swap SUI for $BLAST, and confirm in your wallet.",
-  },
-  {
-    n: "03",
-    title: "Helmet on",
-    body: "You're in. Join the group chat and help decide what happens next.",
-  },
-];
+const GATEWAYS = [
+  { to: "/arcade", title: "Arcade", body: "Play for BLAST POINTS, ranks and daily challenges.", img: mascotShock.url },
+  { to: "/build", title: "Builder City", body: "Build your block on Blast Island in 3D.", img: mascotStand.url },
+  { to: "/hub", title: "Coin Hub", body: "Chat, memes, roasts and the community board.", img: helmet.url },
+] as const;
 
 function Home() {
+  const fetchSettings = useServerFn(getLauncherSettings);
+  const settings = useQuery({ queryKey: ["launcher-settings"], queryFn: () => fetchSettings({}), staleTime: 60_000 });
+  const ready = Boolean(resolveLaunchpad(settings.data?.defaultLaunchpad ?? "suipump").integrated);
+
   return (
-    <main className="theme-paper min-h-screen overflow-x-hidden bg-background text-foreground">
-      {/* nav */}
-      <header className="sticky top-0 z-50 border-b-[3px] border-border bg-background/90 backdrop-blur">
-        <div className="mx-auto grid max-w-6xl grid-cols-[minmax(0,1fr)_auto] items-center gap-3 px-4 py-3 sm:flex sm:justify-between sm:gap-4 sm:px-5">
-          <a href="#top" className="flex min-w-0 items-center gap-2 sm:gap-3">
-            <img
-              src={helmet.url}
-              alt="$BLAST pixel helmet mascot"
-              className="animate-zap size-10 shrink-0 rounded-lg border-[3px] border-border bg-card object-cover sm:size-11"
-            />
-            <span className="truncate font-display text-xl tracking-wide sm:text-2xl">$BLAST</span>
-          </a>
-          <nav className="hidden items-center gap-7 font-body text-sm font-medium sm:flex">
-            <a className="hover:text-primary" href="#chart">
-              Chart
-            </a>
-            <a className="hover:text-primary" href="#story">
-              The takeover
-            </a>
-            <a className="hover:text-primary" href="#launch-report">
-              Launch report
-            </a>
-            <a className="hover:text-primary" href="#numbers">
-              Numbers
-            </a>
-            <a className="hover:text-primary" href="#buy">
-              How to buy
-            </a>
-            <Link className="hover:text-primary" to="/hub">
-              Arcade
-            </Link>
-            <Link className="hover:text-primary" to="/build">
-              Build
-            </Link>
-          </nav>
-          <div className="flex shrink-0 items-center gap-2 sm:gap-3">
-            <a
-              href={X_URL}
-              target="_blank"
-              rel="noreferrer"
-              aria-label="X (Twitter)"
-              className="flex size-10 items-center justify-center rounded-lg border-[3px] border-border bg-card font-display text-base shadow-[4px_4px_0_0_var(--ink)] transition-transform hover:-translate-y-0.5 active:translate-y-0.5 sm:size-11"
-            >
-              X
-            </a>
-            <a
-              href={TG_URL}
-              target="_blank"
-              rel="noreferrer"
-              aria-label="Telegram"
-              className="flex size-10 items-center justify-center rounded-lg border-[3px] border-border bg-card font-display text-sm shadow-[4px_4px_0_0_var(--ink)] transition-transform hover:-translate-y-0.5 active:translate-y-0.5 sm:size-11"
-            >
-              TG
-            </a>
-            <a
-              href={BUY_URL}
-              target="_blank"
-              rel="noreferrer"
-              className="rounded-lg border-[3px] border-border bg-primary px-3 py-2 font-display text-base tracking-wide text-primary-foreground shadow-[4px_4px_0_0_var(--ink)] transition-transform hover:-translate-y-0.5 active:translate-y-0.5 sm:px-4 sm:text-lg"
-            >
-              BUY
-              <span className="hidden sm:inline"> $BLAST</span>
-            </a>
-          </div>
-        </div>
-
-        {/* compact link row for phones */}
-        <nav className="flex items-center gap-4 overflow-x-auto border-t-[3px] border-border px-4 py-2 font-body text-xs font-bold tracking-[0.14em] uppercase sm:hidden">
-          <a className="shrink-0" href="#chart">
-            Chart
-          </a>
-          <a className="shrink-0" href="#story">
-            Takeover
-          </a>
-          <a className="shrink-0" href="#launch-report">
-            Report
-          </a>
-          <a className="shrink-0" href="#numbers">
-            Numbers
-          </a>
-          <a className="shrink-0" href="#buy">
-            How to buy
-          </a>
-          <Link className="shrink-0 text-primary" to="/hub">
-            Arcade →
-          </Link>
-        </nav>
-      </header>
-
-
+    <div className="space-y-10">
       {/* hero */}
-      <section id="top" className="relative mx-auto max-w-6xl px-5 pt-14 pb-16 sm:pt-20">
-        <div className="grid items-center gap-12 lg:grid-cols-[1.1fr_1fr]">
-          <div className="animate-pop-in">
-            <span className="inline-flex items-center gap-2 rounded-full border-[3px] border-border bg-card px-4 py-1.5 font-body text-xs font-bold tracking-[0.18em] uppercase">
-              <span className="size-2.5 rounded-full bg-primary" />
-              Live on blast.fun
-            </span>
-
-            <h1 className="mt-7 font-display text-[clamp(3.4rem,11vw,7.5rem)] leading-[0.86] tracking-tight uppercase">
-              The dev left.
-              <br />
-              <span className="text-primary">We kept</span>
-              <br />
-              the helmet.
-            </h1>
-
-            <p className="mt-7 max-w-lg font-body text-lg leading-relaxed text-muted-foreground">
-              $BLAST is a community takeover on blast.fun, running on Sui. No team, no promises, no unlock schedule
-              — just a chart, a group chat, and a crowd that refused to let this one die.
-            </p>
-
-            <div className="mt-9 flex flex-wrap items-center gap-4">
-              <a
-                href={BUY_URL}
-                target="_blank"
-                rel="noreferrer"
-                className="rounded-xl border-[3px] border-border bg-primary px-8 py-4 font-display text-2xl tracking-wide text-primary-foreground shadow-[var(--shadow-sticker)] transition-transform hover:-translate-y-1 active:translate-y-0.5"
-              >
-                BUY ON BLUEFIN
-              </a>
-              <a
-                href="#story"
-                className="rounded-xl border-[3px] border-border bg-card px-8 py-4 font-display text-2xl tracking-wide shadow-[var(--shadow-sticker)] transition-transform hover:-translate-y-1 active:translate-y-0.5"
-              >
-                THE STORY
-              </a>
-            </div>
-          </div>
-
-          <div className="relative">
-            <img
-              src={mascotCoin.url}
-              alt="$BLAST mascot standing triumphantly on a giant red BLAST coin"
-              className="animate-bob mx-auto w-full max-w-md rounded-3xl border-[3px] border-border bg-card object-contain shadow-[var(--shadow-sticker-lg)]"
-            />
-            <div className="absolute -top-4 -left-2 rotate-[-8deg] rounded-lg border-[3px] border-border bg-card px-3 py-1.5 font-display text-lg tracking-wide shadow-[4px_4px_0_0_var(--ink)] sm:-left-6">
-              HELMETS ON
-            </div>
-          </div>
+      <section className="flex flex-wrap items-end justify-between gap-4 pt-2">
+        <div className="max-w-2xl">
+          <p className="font-body text-xs font-bold tracking-[0.2em] text-primary uppercase">Sui agent · OurBank · $BLAST</p>
+          <h1 className="mt-2 font-display text-[clamp(2.4rem,7vw,4.5rem)] leading-[0.9] uppercase">
+            Trade Sui <span className="text-primary">by chat.</span>
+          </h1>
+          <p className="mt-3 font-body text-base text-muted-foreground">
+            Buy, sell, send, launch and burn from the terminal below — or mention{" "}
+            <a href={BOT_URL} target="_blank" rel="noreferrer" className="font-semibold text-foreground underline">@Ourblastbot</a>{" "}
+            on X anytime.
+          </p>
+        </div>
+        <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+          <span className="flex items-center gap-1.5 rounded-full border border-border px-3 py-1.5"><ShieldCheck className="size-3.5" /> Enclave-protected wallets</span>
+          <a href={BOT_URL} target="_blank" rel="noreferrer" className="flex items-center gap-1.5 rounded-full border border-border px-3 py-1.5 hover:text-foreground"><AtSign className="size-3.5" /> 24/7 on X</a>
         </div>
       </section>
 
-      <Ticker />
+      <div className="space-y-4">
+        <SocialSignIn />
+        {ready ? <OurBankCard /> : null}
+        {ready ? <Terminal /> : (
+          <p className="rounded-lg border border-border bg-card p-6 text-center text-sm text-muted-foreground">
+            The conversational terminal opens once a launchpad integration goes live.
+          </p>
+        )}
+      </div>
 
-      <BlastChart />
+      <section>
+        <div className="mb-3 flex items-end justify-between">
+          <h2 className="font-display text-3xl uppercase">Live from @Ourblastbot</h2>
+          <Link to="/launches" className="font-body text-sm font-semibold text-primary">All launches →</Link>
+        </div>
+        <XLaunchQueue />
+      </section>
 
-      {/* launch report */}
-      <section id="launch-report" className="border-y-[3px] border-border bg-muted">
-        <div className="mx-auto grid max-w-6xl gap-8 px-5 py-16 sm:py-20 lg:grid-cols-[1fr_auto] lg:items-center">
+      {/* coin */}
+      <section id="coin" className="space-y-6">
+        <div className="flex flex-wrap items-end justify-between gap-4">
           <div>
-            <p className="font-body text-xs font-bold tracking-[0.22em] text-primary uppercase">
-              On-chain verification
-            </p>
-            <h2 className="mt-4 font-display text-[clamp(2.4rem,6vw,4.2rem)] leading-[0.9] uppercase">
-              BLAST Coin Launch Report
-            </h2>
-            <p className="mt-5 max-w-2xl font-body text-lg leading-relaxed text-muted-foreground">
-              Read the five-page report documenting BLAST’s launch date, blast.fun launch event,
-              coin identity, and latest protocol version using public Sui blockchain evidence.
+            <p className="font-body text-xs font-bold tracking-[0.2em] text-primary uppercase">The coin</p>
+            <h2 className="mt-1 font-display text-4xl uppercase">$BLAST — the dev left, we kept the helmet</h2>
+            <p className="mt-2 max-w-2xl font-body text-muted-foreground">
+              A community takeover on blast.fun. No team, no unlocks — LP burned, zero tax, decided in the open.
             </p>
           </div>
-          <a
-            href={launchReport.url}
-            target="_blank"
-            rel="noreferrer"
-            className="w-fit rounded-xl border-[3px] border-border bg-primary px-8 py-4 font-display text-2xl tracking-wide text-primary-foreground shadow-[var(--shadow-sticker)] transition-transform hover:-translate-y-1 active:translate-y-0.5"
-          >
-            VIEW THE REPORT
-          </a>
+          <div className="flex flex-wrap gap-2">
+            <a href={BUY_URL} target="_blank" rel="noreferrer" className="rounded-lg border-[3px] border-border bg-primary px-4 py-2 font-display text-lg text-primary-foreground shadow-[4px_4px_0_0_var(--ink)]">BUY $BLAST</a>
+            <a href={launchReport.url} target="_blank" rel="noreferrer" className="rounded-lg border-[3px] border-border bg-card px-4 py-2 font-display text-lg shadow-[4px_4px_0_0_var(--ink)]">LAUNCH REPORT</a>
+          </div>
+        </div>
+        <div className="overflow-hidden rounded-xl border border-border"><Ticker /></div>
+        <BlastChart />
+        <VaultSizes />
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {STATS.map((s) => (
+            <div key={s.label} className="ink-box p-5">
+              <p className="font-body text-xs font-bold tracking-[0.18em] text-muted-foreground uppercase">{s.label}</p>
+              <p className="mt-2 font-display text-2xl text-primary">{s.value}</p>
+              <p className="mt-2 font-body text-sm text-muted-foreground">{s.note}</p>
+            </div>
+          ))}
+        </div>
+        <div className="grid gap-4 md:grid-cols-2">
+          <div><p className="mb-2 font-body text-xs font-bold tracking-[0.18em] text-muted-foreground uppercase">Contract address</p><CopyAddress address={CONTRACT} label="contract address" /></div>
+          <div><p className="mb-2 font-body text-xs font-bold tracking-[0.18em] text-muted-foreground uppercase">Treasury</p><CopyAddress address={TREASURY} label="treasury address" /></div>
         </div>
       </section>
 
-      {/* arcade */}
-      <section id="arcade" className="mx-auto max-w-6xl px-5 py-20 sm:py-24">
-        <div className="grid items-center gap-10 rounded-3xl border-[3px] border-border bg-card p-7 shadow-[var(--shadow-sticker-lg)] sm:p-10 lg:grid-cols-[1.15fr_0.85fr]">
-          <div>
-            <span className="inline-flex items-center gap-2 rounded-full border-[3px] border-border bg-background px-4 py-1.5 font-body text-xs font-bold tracking-[0.18em] uppercase">
-              <span className="size-2.5 rounded-full bg-primary" />
-              New: OURBLAST Arcade
-            </span>
-            <h2 className="mt-6 font-display text-[clamp(2.4rem,6vw,4.2rem)] leading-[0.9]">
-              Play with your <span className="text-primary">helmet on</span>
-            </h2>
-            <p className="mt-5 max-w-xl font-body text-lg leading-relaxed text-muted-foreground">
-              Connect your Sui wallet, pay 1 SUI — 70% goes to the player prize pool — and play
-              for BLAST POINTS, leaderboard ranks and daily challenges. Chat, memes and the Blast
-              Roast live in there too.
-            </p>
-            <div className="mt-8 flex flex-wrap gap-4">
-              <Link
-                to="/hub"
-                className="rounded-xl border-[3px] border-border bg-primary px-8 py-4 font-display text-2xl tracking-wide text-primary-foreground shadow-[var(--shadow-sticker)] transition-transform hover:-translate-y-1 active:translate-y-0.5"
-              >
-                ENTER THE ARCADE
-              </Link>
-              <Link
-                to="/leaderboard"
-                className="rounded-xl border-[3px] border-border bg-background px-8 py-4 font-display text-2xl tracking-wide shadow-[var(--shadow-sticker)] transition-transform hover:-translate-y-1 active:translate-y-0.5"
-              >
-                LEADERBOARD
-              </Link>
-              <Link
-                to="/how-to-play"
-                className="rounded-xl border-[3px] border-border bg-card px-8 py-4 font-display text-2xl tracking-wide shadow-[var(--shadow-sticker)] transition-transform hover:-translate-y-1 active:translate-y-0.5"
-              >
-                HOW TO PLAY
-              </Link>
+      {/* gateways */}
+      <section className="grid gap-4 md:grid-cols-3">
+        {GATEWAYS.map((g) => (
+          <Link key={g.to} to={g.to} className="group flex items-center gap-4 rounded-2xl border-[3px] border-border bg-card p-5 shadow-[var(--shadow-sticker)] transition-transform hover:-translate-y-1">
+            <img src={g.img} alt="" className="size-16 shrink-0 rounded-xl border-2 border-border object-cover" />
+            <div>
+              <p className="font-display text-2xl uppercase">{g.title} →</p>
+              <p className="font-body text-sm text-muted-foreground">{g.body}</p>
             </div>
-            <p className="mt-5 font-body text-sm text-muted-foreground">
-              Every play fee goes to the treasury address published below. Nothing is held by a
-              team wallet.
-            </p>
-          </div>
-          <img
-            src={mascotShock.url}
-            alt="$BLAST mascot looking shocked at an arcade high score"
-            className="animate-bob mx-auto w-full max-w-xs rounded-3xl border-[3px] border-border bg-background object-contain shadow-[var(--shadow-sticker-lg)]"
-          />
-        </div>
+          </Link>
+        ))}
       </section>
 
-      {/* story */}
-      <section id="story" className="mx-auto max-w-6xl px-5 py-20 sm:py-28">
-        <div className="grid gap-12 lg:grid-cols-[0.9fr_1.1fr] lg:items-center">
-          <img
-            src={mascotShock.url}
-            alt="$BLAST mascot in shock as the chart moves"
-            className="mx-auto w-full max-w-sm rounded-3xl border-[3px] border-border bg-card object-contain shadow-[var(--shadow-sticker-lg)]"
-          />
-          <div>
-            <p className="font-body text-xs font-bold tracking-[0.22em] text-primary uppercase">
-              The takeover
-            </p>
-            <h2 className="mt-4 font-display text-[clamp(2.4rem,6vw,4.2rem)] leading-[0.9] tracking-tight uppercase">
-              Nobody was driving. So we all did.
-            </h2>
-            <div className="mt-7 space-y-5 font-body text-lg leading-relaxed text-muted-foreground">
-              <p>
-                The launch was an accident. A ticker, a helmet drawing, and a deployer who
-                disappeared before the first candle closed. What was left behind was a
-                contract nobody controlled.
-              </p>
-              <p>
-                So the holders took it. Liquidity burned, socials handed over, and every
-                decision from that point on made in the open — in the chat, by the people
-                actually holding the bag.
-              </p>
-            </div>
-            <div className="ink-box mt-8 p-6">
-              <p className="font-display text-2xl tracking-wide uppercase">
-                No team. No exit. Treasury tracked.
-              </p>
-              <p className="mt-2 font-body text-muted-foreground">
-                The only thing steering $BLAST is the crowd wearing the helmet.
-              </p>
-            </div>
-          </div>
+      <footer className="border-t border-border pt-6 pb-4 font-body text-sm text-muted-foreground">
+        <div className="flex flex-wrap items-center gap-4">
+          <a href={X_URL} target="_blank" rel="noreferrer" className="underline">X / Twitter</a>
+          <a href={TG_URL} target="_blank" rel="noreferrer" className="underline">Telegram</a>
+          <Link to="/terms" className="underline">Terms</Link>
+          <Link to="/privacy" className="underline">Privacy</Link>
         </div>
-      </section>
-
-      {/* numbers */}
-      <section id="numbers" className="border-y-[3px] border-border bg-muted">
-        <div className="mx-auto max-w-6xl px-5 py-20 sm:py-24">
-          <div className="flex flex-wrap items-end justify-between gap-4">
-            <h2 className="font-display text-[clamp(2.4rem,6vw,4rem)] leading-none tracking-tight uppercase">
-              The numbers
-            </h2>
-            <p className="font-body text-muted-foreground">Boring on purpose.</p>
-          </div>
-
-          <div className="mt-10">
-            <VaultSizes />
-          </div>
-
-
-          <div className="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
-            {STATS.map((s) => (
-              <div key={s.label} className="ink-box p-6">
-                <p className="font-body text-xs font-bold tracking-[0.18em] text-muted-foreground uppercase">
-                  {s.label}
-                </p>
-                <p className="mt-3 font-display text-3xl leading-none tracking-wide text-primary">
-                  {s.value}
-                </p>
-                <p className="mt-3 font-body text-sm text-muted-foreground">{s.note}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* how to buy */}
-      <section id="buy" className="mx-auto max-w-6xl px-5 py-20 sm:py-28">
-        <div className="grid gap-12 lg:grid-cols-[1.1fr_0.9fr] lg:items-center">
-          <div>
-            <p className="font-body text-xs font-bold tracking-[0.22em] text-primary uppercase">
-              How to buy
-            </p>
-            <h2 className="mt-4 font-display text-[clamp(2.4rem,6vw,4.2rem)] leading-[0.9] tracking-tight uppercase">
-              Three steps, one helmet
-            </h2>
-
-            <div className="mt-9 space-y-5">
-              {STEPS.map((s) => (
-                <div key={s.n} className="ink-box flex gap-5 p-6">
-                  <span className="font-display text-4xl leading-none text-primary">{s.n}</span>
-                  <div>
-                    <p className="font-display text-2xl tracking-wide uppercase">{s.title}</p>
-                    <p className="mt-1 font-body text-muted-foreground">{s.body}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            <div className="mt-8 space-y-4">
-              <div>
-                <p className="mb-3 font-body text-xs font-bold tracking-[0.18em] text-muted-foreground uppercase">
-                  Contract address
-                </p>
-                <CopyAddress address={CONTRACT} label="contract address" />
-              </div>
-              <div>
-                <p className="mb-3 font-body text-xs font-bold tracking-[0.18em] text-muted-foreground uppercase">
-                  Treasury
-                </p>
-                <CopyAddress address={TREASURY} label="treasury address" />
-              </div>
-            </div>
-          </div>
-
-          <img
-            src={mascotStand.url}
-            alt="$BLAST mascot standing confidently in a BLAST helmet"
-            className="animate-bob mx-auto w-full max-w-sm rounded-3xl border-[3px] border-border bg-card object-contain shadow-[var(--shadow-sticker-lg)]"
-          />
-        </div>
-      </section>
-
-      {/* footer */}
-      <footer className="border-t-[3px] border-border bg-secondary text-secondary-foreground">
-        <div className="mx-auto max-w-6xl px-5 py-16">
-          <div className="flex flex-wrap items-center justify-between gap-8">
-            <div className="flex items-center gap-4">
-              <img
-                src={helmet.url}
-                alt="$BLAST pixel helmet mascot"
-                className="size-14 rounded-lg border-[3px] border-border bg-card object-cover"
-              />
-              <div>
-                <p className="font-display text-3xl tracking-wide">$BLAST</p>
-                <p className="font-body text-sm text-secondary-foreground/70">
-                  A community takeover on blast.fun, built on Sui
-                </p>
-              </div>
-            </div>
-
-            <div className="flex flex-wrap items-center gap-3">
-              <a
-                href={X_URL}
-                target="_blank"
-                rel="noreferrer"
-                aria-label="X (Twitter)"
-                className="rounded-lg border-[3px] border-primary px-5 py-2.5 font-display text-lg tracking-wide transition-colors hover:bg-primary"
-              >
-                X / TWITTER
-              </a>
-              <a
-                href={TG_URL}
-                target="_blank"
-                rel="noreferrer"
-                aria-label="Telegram"
-                className="rounded-lg border-[3px] border-primary px-5 py-2.5 font-display text-lg tracking-wide transition-colors hover:bg-primary"
-              >
-                TELEGRAM
-              </a>
-              <a
-                href={BUY_URL}
-                target="_blank"
-                rel="noreferrer"
-                aria-label="Buy $BLAST on blast.fun"
-                className="rounded-lg border-[3px] border-border bg-primary px-5 py-2.5 font-display text-lg tracking-wide text-primary-foreground"
-              >
-                BUY $BLAST
-              </a>
-            </div>
-          </div>
-
-          <div className="mt-12 border-t border-secondary-foreground/20 pt-8">
-            <p className="font-body text-sm text-secondary-foreground/60">
-              $BLAST is a meme coin with no intrinsic value and no expectation of financial
-              return. Nothing here is financial advice. Do your own research.
-            </p>
-            <div className="mt-4 flex flex-wrap items-center gap-4 font-body text-sm">
-              <Link to="/terms" className="text-secondary-foreground/80 underline">
-                Terms of Service
-              </Link>
-              <Link to="/privacy" className="text-secondary-foreground/80 underline">
-                Privacy Policy
-              </Link>
-            </div>
-          </div>
-        </div>
+        <p className="mt-3 text-xs">$BLAST is a meme coin with no intrinsic value. Nothing here is financial advice.</p>
       </footer>
-    </main>
+    </div>
   );
 }
