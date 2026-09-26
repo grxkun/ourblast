@@ -290,7 +290,7 @@ export const listSwapAttemptsAdmin = createServerFn({ method: "GET" })
     return rows.map((r) => ({ ...r, chain: chain.get(r.id) ?? { state: "NO DIGEST", error: null } }));
   });
 
-const normX = (u: string) => u.trim().replace(/^@/, "").replace(/^https?:\/\/(www\.)?(x|twitter)\.com\//i, "").split(/[/?]/)[0].toLowerCase();
+const normX = (u: string) => u.trim().replace(/^@/, "").replace(/^https?:\/\/(www\.)?(x|twitter)\.com\//i, "").split(/[/?]/)[0]!.toLowerCase();
 
 export const listXBlacklist = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
