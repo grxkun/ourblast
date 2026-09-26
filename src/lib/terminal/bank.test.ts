@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { parseBankCommand, toAtomic } from "./bank";
+import { BLAST_BUILD } from "@/lib/blast-build.config";
 
 describe("parseBankCommand", () => {
   it("reads X handles", () => {
