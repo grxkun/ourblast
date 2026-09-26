@@ -2,11 +2,10 @@ import { Aftermath } from "aftermath-ts-sdk";
 import { AggregatorClient, Env } from "@cetusprotocol/aggregator-sdk";
 import { buildTx as buildBluefinTx, getQuote as getBluefinQuote } from "@bluefin-exchange/bluefin7k-aggregator-sdk";
 import { Transaction } from "@mysten/sui/transactions";
-import { Ed25519Keypair } from "@mysten/sui/keypairs/ed25519";
 import { SuiJsonRpcClient } from "@mysten/sui/jsonRpc";
 import { normalizeStructTag, normalizeSuiAddress } from "@mysten/sui/utils";
 
-import { decryptConnectionKey } from "@/lib/connection-key.server";
+import { bankSigner } from "./bank-wallet.server";
 import { toAtomic, type SwapCommand } from "./bank";
 import { resolveLaunchpadBuy, buildLaunchpadBuySwap } from "./launchpad-buy.server";
 
