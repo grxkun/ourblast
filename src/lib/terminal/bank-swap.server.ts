@@ -62,6 +62,16 @@ function formatUnits(value: bigint, decimals: number): string {
 }
 export { formatUnits };
 
+/**
+ * A coin reference is normally a full `0x…::module::TYPE` struct tag, but launch
+ * rows for Suipump store the bonding-curve object id (a bare 0x address) as the
+ * token address. normalizeStructTag would mangle/throw on those, so bare ids
+ * are normalized as addresses and resolved on-chain by resolveLaunchpadBuy.
+ */
+function normalizeCoinRef(value: string): string {
+  return value.includes("::") ? normalizeStructTag(value) : normalizeSuiAddress(value);
+}
+
 /** Amount of coin-in in smallest units for this command, given the wallet's balance. */
 export function swapAmountIn(command: SwapCommand, decimals: number, balance: bigint): bigint {
   if (command.side === "buy") return toAtomic(command.amount, 9);
@@ -83,8 +93,8 @@ export async function executeBankSwap(
   const keypair = Ed25519Keypair.fromSecretKey(decryptConnectionKey(wallet.secret_ciphertext));
   const sender = keypair.getPublicKey().toSuiAddress();
   if (sender !== normalizeSuiAddress(wallet.address)) return { ok: false, error: "Bank wallet key mismatch." };
-  const inType = normalizeStructTag(coinIn);
-  const outType = normalizeStructTag(coinOut);
+  const inType = normalizeCoinRef(coinIn);
+  const outType = normalizeCoinRef(coinOut);
   if (inType === outType) return { ok: false, error: "Nothing to swap." };
   if (amountIn <= 0n) return { ok: false, error: "Amount is too small." };
 
@@ -184,8 +194,8 @@ export async function prepareSwapForAddress(
 ): Promise<{ ok: true; bytes: string; quoted: bigint; venue: BuiltSwap["venue"] } | { ok: false; error: string }> {
   const { gasCoins, referenceGasPrice, withGas } = await import("./suipump-launch.server");
   const sender = normalizeSuiAddress(address);
-  const inType = normalizeStructTag(coinIn);
-  const outType = normalizeStructTag(coinOut);
+  const inType = normalizeCoinRef(coinIn);
+  const outType = normalizeCoinRef(coinOut);
   if (inType === outType) return { ok: false, error: "Nothing to swap." };
   if (amountIn <= 0n) return { ok: false, error: "Amount is too small." };
   const picked = await pickSwapRoute(sender, inType, outType, amountIn);

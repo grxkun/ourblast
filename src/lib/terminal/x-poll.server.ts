@@ -177,13 +177,15 @@ export async function runXMentionPoll(): Promise<{
         .eq("id", row.id);
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error ?? "");
-      // A deleted or hidden target tweet can never be replied to. Mark the row
-      // as done so it leaves the retry queue instead of blocking newer replies
+      // A deleted/hidden target, or one X says we may not reply to at all
+      // (protected author, blocked account, wrong target id — the 403
+      // "not-authorized-for-resource" body), can never succeed. Mark the row
+      // done so it leaves the retry queue instead of blocking newer replies
       // and burning the X rate limit on every poll.
-      if (/deleted or not visible/i.test(message)) {
+      if (/deleted or not visible|not-authorized|only reply to or quote/i.test(message)) {
         await supabaseAdmin
           .from("x_mentions")
-          .update({ posted: true, post_error: "Reply abandoned: the tweet was deleted or is not visible." })
+          .update({ posted: true, post_error: "Reply abandoned: X does not allow the bot to reply to this tweet." })
           .eq("id", row.id);
         continue;
       }

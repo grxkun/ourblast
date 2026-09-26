@@ -1,5 +1,5 @@
 import { Transaction } from "@mysten/sui/transactions";
-import { normalizeStructTag } from "@mysten/sui/utils";
+import { normalizeStructTag, normalizeSuiAddress } from "@mysten/sui/utils";
 
 import { findSuipumpToken } from "./suipump.server";
 import { rpc, sharedRef } from "./suipump-launch.server";
@@ -81,7 +81,8 @@ async function readSuipumpCurve(curveId: string): Promise<SuipumpCurveInfo | nul
  * matches so the caller falls back to the DEX aggregators.
  */
 export async function resolveLaunchpadBuy(coinOut: string): Promise<LaunchpadBuyPlan | null> {
-  const outType = normalizeStructTag(coinOut);
+  // Bare 0x ids are curve/pool object ids (Suipump launch rows), not struct tags.
+  const outType = coinOut.includes("::") ? normalizeStructTag(coinOut) : normalizeSuiAddress(coinOut);
 
   // Suipump by coin type (terminal / X mentions pass the full coin type).
   try {
