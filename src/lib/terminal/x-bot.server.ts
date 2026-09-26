@@ -30,6 +30,16 @@ export async function handleXMention(payload: XMentionPayload, source: "webhook"
     };
   }
 
+  // Blacklisted X accounts are ignored completely: no work, no reply.
+  {
+    const { supabaseAdmin: sb } = await import("@/integrations/supabase/client.server");
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: banned } = await (sb as any).from("x_blacklist").select("x_username").eq("x_username", username.toLowerCase()).maybeSingle();
+    if (banned) {
+      return { postId: payload.postId, username, text, intent: "unknown", status: "READY", reply: "", posted: false, replyPostId: null, postError: null };
+    }
+  }
+
   // One X post = one handled mention. The claim row is inserted BEFORE any work,
   // so polling, the search fallback, the webhook and manual ingest race on the
   // unique x_post_id constraint instead of on a check-then-act read: whoever

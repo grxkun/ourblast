@@ -289,3 +289,35 @@ export const listSwapAttemptsAdmin = createServerFn({ method: "GET" })
     }));
     return rows.map((r) => ({ ...r, chain: chain.get(r.id) ?? { state: "NO DIGEST", error: null } }));
   });
+
+const normX = (u: string) => u.trim().replace(/^@/, "").replace(/^https?:\/\/(www\.)?(x|twitter)\.com\//i, "").split(/[/?]/)[0]!.toLowerCase();
+
+export const listXBlacklist = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    await assertStaff(context);
+    const db = await admin();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data } = await (db as any).from("x_blacklist").select("x_username, reason, created_at").order("created_at", { ascending: false });
+    return (data ?? []) as { x_username: string; reason: string | null; created_at: string }[];
+  });
+
+export const setXBlacklisted = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) =>
+    z.object({ username: z.string().min(1).max(120), blocked: z.boolean(), reason: z.string().trim().max(160).optional().default("") }).parse(d),
+  )
+  .handler(async ({ data, context }) => {
+    const actor = await assertStaff(context);
+    const username = normX(data.username);
+    if (!/^[a-z0-9_]{1,15}$/.test(username)) throw new Error("Not a valid X username.");
+    const db = await admin();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const t = (db as any).from("x_blacklist");
+    const { error } = data.blocked
+      ? await t.upsert({ x_username: username, reason: data.reason || null, added_by: actor })
+      : await t.delete().eq("x_username", username);
+    if (error) throw new Error(error.message);
+    await logAction(actor, data.blocked ? "x_blacklist" : "x_unblacklist", { targetRef: `@${username}`, reason: data.reason });
+    return { ok: true };
+  });

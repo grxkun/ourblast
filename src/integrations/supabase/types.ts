@@ -2015,6 +2015,27 @@ export type Database = {
         }
         Relationships: []
       }
+      x_blacklist: {
+        Row: {
+          added_by: string | null
+          created_at: string
+          reason: string | null
+          x_username: string
+        }
+        Insert: {
+          added_by?: string | null
+          created_at?: string
+          reason?: string | null
+          x_username: string
+        }
+        Update: {
+          added_by?: string | null
+          created_at?: string
+          reason?: string | null
+          x_username?: string
+        }
+        Relationships: []
+      }
       x_bot_state: {
         Row: {
           bot_user_id: string | null
