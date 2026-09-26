@@ -385,7 +385,7 @@ function BankWalletPanel({ userId }: { userId: string }) {
                   </p>
                 ) : (
                   <p className="text-muted-foreground">
-                    The new wallet's key will be held by OurBlast. Only keep what you plan to send.
+                    The new wallet's key will live in Turnkey's secure enclave. Only keep what you plan to send.
                   </p>
                 )}
               </div>
