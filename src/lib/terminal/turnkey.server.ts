@@ -167,6 +167,25 @@ export async function signRawDigest(signWith: string, digest: Uint8Array): Promi
   return new Uint8Array(Buffer.from(sig.r + sig.s, "hex"));
 }
 
+/** Serialized Sui signature: scheme flag (0x00 = Ed25519) || 64-byte sig || 32-byte pubkey, base64. */
+export function assembleSuiSignature(signature: Uint8Array, publicKey: Uint8Array): string {
+  if (signature.length !== 64) throw new Error("Ed25519 signature must be 64 bytes.");
+  if (publicKey.length !== 32) throw new Error("Ed25519 public key must be 32 bytes.");
+  const serialized = new Uint8Array(1 + 64 + 32);
+  serialized[0] = 0;
+  serialized.set(signature, 1);
+  serialized.set(publicKey, 65);
+  return Buffer.from(serialized).toString("base64");
+}
+
+/** The message Sui wallets actually sign: intent bytes (0,0,0) prefix + tx bytes, blake2b-256. */
+export function suiIntentDigest(txBytes: Uint8Array): Uint8Array {
+  const intent = new Uint8Array(3 + txBytes.length);
+  intent.set([0, 0, 0]); // TransactionData, V0, Sui
+  intent.set(txBytes, 3);
+  return blake2b(intent, { dkLen: 32 });
+}
+
 /**
  * Signs Sui transaction bytes the way a wallet would: blake2b over the
  * intent-prefixed message, then the serialized signature flag || sig || pubkey.
@@ -176,16 +195,7 @@ export async function signSuiTransaction(
   publicKeyHex: string,
   txBytes: Uint8Array,
 ): Promise<string> {
-  const intent = new Uint8Array(3 + txBytes.length);
-  intent.set([0, 0, 0]); // TransactionData, V0, Sui
-  intent.set(txBytes, 3);
-  const digest = blake2b(intent, { dkLen: 32 });
-  const signature = await signRawDigest(signWith, digest);
+  const signature = await signRawDigest(signWith, suiIntentDigest(txBytes));
   const publicKey = Buffer.from(publicKeyHex.replace(/^0x/, ""), "hex");
-  if (publicKey.length !== 32) throw new Error("Turnkey public key is invalid.");
-  const serialized = new Uint8Array(1 + 64 + 32);
-  serialized[0] = 0; // Ed25519 scheme flag
-  serialized.set(signature, 1);
-  serialized.set(publicKey, 65);
-  return Buffer.from(serialized).toString("base64");
+  return assembleSuiSignature(signature, publicKey);
 }
