@@ -2,6 +2,8 @@
  * OurBank: "send 25 SUI to @alice" style commands arriving on X. Parsing only —
  * no network access, so it is safe in any bundle and easy to test.
  */
+import { BLAST_BUILD } from "@/lib/blast-build.config";
+
 export type BankRecipientKind = "x" | "suins" | "address";
 
 export interface BankCommand {
@@ -116,17 +118,28 @@ const THEN_SEND_AMOUNT = /\b(?:and|then|,)\s+(?:then\s+)?(?:send|transfer|give|f
 const TOKEN = String.raw`(0x[0-9a-fA-F]{1,64}(?:::[A-Za-z0-9_]+::[A-Za-z0-9_]+)?|\$?[A-Za-z][A-Za-z0-9_]{0,19})`;
 const NUM = String.raw`([0-9]+(?:\.[0-9]+)?)`;
 const FILLER = String.raw`(?:(?:a|an|the|some)\s+)?(?:(?:token|coin)\s+)?`;
-const BUY_A = new RegExp(String.raw`\bbuy\s+(?:me\s+)?${NUM}\s*\$?sui\s+(?:worth\s+)?(?:of\s+)?${FILLER}${TOKEN}`, "i");
+// "buy 0.2 sui of X" and, when "of"/"worth" makes the intent clear, "buy 0.2 of X".
+const BUY_A = new RegExp(
+  String.raw`\bbuy\s+(?:me\s+)?${NUM}\s*(?:\$?sui\s+(?:worth\s+)?(?:of\s+)?|(?:worth\s+)?of\s+)${FILLER}${TOKEN}`,
+  "i",
+);
 // "with" typos (wirh, wth, wit, w/) are common on phones; "sui" is optional since SUI is the only buy currency.
 const BUY_B = new RegExp(String.raw`\bbuy\s+(?:me\s+)?${FILLER}${TOKEN}(?:\s+or\s+[a-z0-9 ]{1,30}?)?\s+(?:with|wirh|wiht|wth|wit|w\/|for|using)\s+${NUM}(?:\s*\$?sui\b|(?![0-9.]))`, "i");
 const SELL = new RegExp(String.raw`\bsell\s+(all|[0-9]+(?:\.[0-9]+)?%?)\s+(?:of\s+)?(?:my\s+)?${TOKEN}(?:\s+(?:for|into)\s+\$?sui)?\b`, "i");
+
+/** Symbols we can resolve to a verified contract without asking. */
+const KNOWN_SYMBOLS: Record<string, string> = { BLAST: BLAST_BUILD.blastTokenType };
 
 function tokenOf(raw: string) {
   // Bare 0x ids (launchpad curve/pool objects) pass through untouched — they are
   // resolved on-chain later, never uppercased like a symbol.
   if (/^0x[0-9a-fA-F]{1,64}$/.test(raw)) return { token: raw.toLowerCase(), isCoinType: true };
   const isCoinType = COIN_TYPE.test(raw);
-  return { token: isCoinType ? raw : raw.replace(/^\$/, "").toUpperCase(), isCoinType };
+  if (isCoinType) return { token: raw, isCoinType: true };
+  const symbol = raw.replace(/^\$/, "").toUpperCase();
+  const known = KNOWN_SYMBOLS[symbol];
+  if (known) return { token: known, isCoinType: true };
+  return { token: symbol, isCoinType: false };
 }
 
 // "buy and burn 5 SUI of $X", "buy $X with 5 sui then burn it", "send it to the dead address".

@@ -449,11 +449,20 @@ async function handleSwapMention(postId: string, username: string, text: string,
 }
 
 /** Single entry for OurBank tweets: token choice replies, swaps, then transfers. */
+const TRADE_WORDS = /\b(?:buy|bought|sell|sold|swap|burn|trade)\b/i;
+
 export async function handleBankMention(postId: string, username: string, text: string): Promise<string | null> {
   const choice = await resolvePendingChoice(postId, username, text);
   if (choice !== null) return choice;
   if (parseSwapCommand(text)) return handleSwapMention(postId, username, text);
-  return createBankTransferFromMention(postId, username, text);
+  const transfer = await createBankTransferFromMention(postId, username, text);
+  if (transfer !== null) return transfer;
+  // A trade we couldn't read must never fall through to the generic "connect your
+  // wallet" agent reply — that wrongly suggests the user is signed out.
+  if (TRADE_WORDS.test(text)) {
+    return `@${username} I couldn't read that trade. Try: buy 0.2 sui of 0x…::coin::COIN · sell 50% 0x…::coin::COIN · buy and burn 1 sui of $BLAST`;
+  }
+  return null;
 }
 
 /**
