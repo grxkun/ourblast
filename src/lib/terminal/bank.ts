@@ -125,7 +125,10 @@ const BUY_A = new RegExp(
 );
 // "with" typos (wirh, wth, wit, w/) are common on phones; "sui" is optional since SUI is the only buy currency.
 const BUY_B = new RegExp(String.raw`\bbuy\s+(?:me\s+)?${FILLER}${TOKEN}(?:\s+or\s+[a-z0-9 ]{1,30}?)?\s+(?:with|wirh|wiht|wth|wit|w\/|for|using)\s+${NUM}(?:\s*\$?sui\b|(?![0-9.]))`, "i");
-const SELL = new RegExp(String.raw`\bsell\s+(all|[0-9]+(?:\.[0-9]+)?%?)\s+(?:of\s+)?(?:my\s+)?${TOKEN}(?:\s+(?:for|into)\s+\$?sui)?\b`, "i");
+const SELL_AMT = String.raw`(all|everything|all\s+of\s+it|[0-9]+(?:\.[0-9]+)?%?)`;
+const SELL = new RegExp(String.raw`\b(?:sell|dump|jeet)\s+${SELL_AMT}\s+(?:of\s+)?(?:my\s+)?${TOKEN}(?:\s+(?:for|into)\s+\$?sui)?\b`, "i");
+// "sell $lads all" / "dump $lads 50%" — token first, amount last.
+const SELL_REV = new RegExp(String.raw`\b(?:sell|dump|jeet)\s+(?:my\s+)?${TOKEN}\s+${SELL_AMT}(?:\s+(?:for|into)\s+\$?sui)?\b`, "i");
 
 /** Symbols we can resolve to a verified contract without asking. */
 const KNOWN_SYMBOLS: Record<string, string> = { BLAST: BLAST_BUILD.blastTokenType };
