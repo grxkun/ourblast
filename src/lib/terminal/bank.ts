@@ -111,7 +111,9 @@ function parseTarget(targetRaw: string): { recipientKind: BankRecipientKind; rec
 const THEN_SEND = /\b(?:and|then|,)\s+(?:then\s+)?(?:send|transfer|give|forward)\s+(?:it|them|all|everything|the\s+tokens?)?\s*to\s+(\S+)/i;
 const THEN_SEND_AMOUNT = /\b(?:and|then|,)\s+(?:then\s+)?(?:send|transfer|give|forward)\s+([0-9]+(?:\.[0-9]+)?)\s+(\$?[A-Za-z][A-Za-z0-9_]{0,19}|0x[0-9a-fA-F]{1,64}::[A-Za-z0-9_]+::[A-Za-z0-9_]+)\s+to\s+(\S+)/i;
 
-const TOKEN = String.raw`(0x[0-9a-fA-F]{1,64}::[A-Za-z0-9_]+::[A-Za-z0-9_]+|\$?[A-Za-z][A-Za-z0-9_]{0,19})`;
+// A token is a full coin type, a bare 0x object id (Suipump launch rows pass the
+// bonding-curve object id as the token address), or a plain/$ symbol.
+const TOKEN = String.raw`(0x[0-9a-fA-F]{1,64}(?:::[A-Za-z0-9_]+::[A-Za-z0-9_]+)?|\$?[A-Za-z][A-Za-z0-9_]{0,19})`;
 const NUM = String.raw`([0-9]+(?:\.[0-9]+)?)`;
 const FILLER = String.raw`(?:(?:a|an|the|some)\s+)?(?:(?:token|coin)\s+)?`;
 const BUY_A = new RegExp(String.raw`\bbuy\s+(?:me\s+)?${NUM}\s*\$?sui\s+(?:worth\s+)?(?:of\s+)?${FILLER}${TOKEN}`, "i");
@@ -120,6 +122,9 @@ const BUY_B = new RegExp(String.raw`\bbuy\s+(?:me\s+)?${FILLER}${TOKEN}(?:\s+or\
 const SELL = new RegExp(String.raw`\bsell\s+(all|[0-9]+(?:\.[0-9]+)?%?)\s+(?:of\s+)?(?:my\s+)?${TOKEN}(?:\s+(?:for|into)\s+\$?sui)?\b`, "i");
 
 function tokenOf(raw: string) {
+  // Bare 0x ids (launchpad curve/pool objects) pass through untouched — they are
+  // resolved on-chain later, never uppercased like a symbol.
+  if (/^0x[0-9a-fA-F]{1,64}$/.test(raw)) return { token: raw.toLowerCase(), isCoinType: true };
   const isCoinType = COIN_TYPE.test(raw);
   return { token: isCoinType ? raw : raw.replace(/^\$/, "").toUpperCase(), isCoinType };
 }
