@@ -1,6 +1,6 @@
 import { createPrivateKey, sign as nodeSign } from "node:crypto";
 
-import { blake2b } from "@noble/hashes/blake2b";
+import { blake2b } from "@noble/hashes/blake2.js";
 
 /**
  * Minimal Turnkey API client for OurBank wallets. Keys live inside Turnkey's
