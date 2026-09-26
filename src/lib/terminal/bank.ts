@@ -2,6 +2,8 @@
  * OurBank: "send 25 SUI to @alice" style commands arriving on X. Parsing only —
  * no network access, so it is safe in any bundle and easy to test.
  */
+import { BLAST_BUILD } from "@/lib/blast-build.config";
+
 export type BankRecipientKind = "x" | "suins" | "address";
 
 export interface BankCommand {
