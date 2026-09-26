@@ -196,10 +196,16 @@ function parseSwapOnly(raw: string): SwapCommand | null {
   // "buy 0x…::lads::LADS 0.1 sui" — amount straight after the token.
   m = new RegExp(String.raw`\bbuy\s+(?:me\s+)?${FILLER}${TOKEN}\s+${NUM}\s*\$?sui\b`, "i").exec(text);
   if (m) return { side: "buy", amount: m[2]!, ...tokenOf(m[1]!) };
-  m = SELL.exec(text) ?? SELL_REV.exec(text);
+  m = SELL.exec(text);
+  let rev = false;
+  if (!m) {
+    m = SELL_REV.exec(text);
+    rev = true;
+  }
   if (m) {
-    const amount = m[1]!.toLowerCase().replace(/\s+/g, " ") === "all of it" ? "all" : m[1]!.toLowerCase() === "everything" ? "all" : m[1]!.toLowerCase();
-    const t = tokenOf(m[2]!);
+    const rawAmount = (rev ? m[2]! : m[1]!).toLowerCase().replace(/\s+/g, " ");
+    const amount = rawAmount === "all of it" || rawAmount === "everything" ? "all" : rawAmount;
+    const t = tokenOf(rev ? m[1]! : m[2]!);
     if (!t.isCoinType && t.token === "SUI") return null;
     if (amount.endsWith("%") && !(Number(amount.slice(0, -1)) > 0 && Number(amount.slice(0, -1)) <= 100)) return null;
     if (amount !== "all" && !amount.endsWith("%") && !(Number(amount) > 0)) return null;
