@@ -84,14 +84,15 @@ export function swapAmountIn(command: SwapCommand, decimals: number, balance: bi
 }
 
 export async function executeBankSwap(
-  wallet: { address: string; secret_ciphertext: string },
+  wallet: Parameters<typeof bankSigner>[0],
   coinIn: string,
   coinOut: string,
   amountIn: bigint,
 ): Promise<SwapResult> {
   const { gasCoins, referenceGasPrice, withGas, signAndExecute, rpc } = await import("./suipump-launch.server");
-  const keypair = Ed25519Keypair.fromSecretKey(decryptConnectionKey(wallet.secret_ciphertext));
-  const sender = keypair.getPublicKey().toSuiAddress();
+  const { bankSigner } = await import("./bank-wallet.server");
+  const signer = await bankSigner(wallet);
+  const sender = signer.address;
   if (sender !== normalizeSuiAddress(wallet.address)) return { ok: false, error: "Bank wallet key mismatch." };
   const inType = normalizeCoinRef(coinIn);
   const outType = normalizeCoinRef(coinOut);
