@@ -125,7 +125,10 @@ const BUY_A = new RegExp(
 );
 // "with" typos (wirh, wth, wit, w/) are common on phones; "sui" is optional since SUI is the only buy currency.
 const BUY_B = new RegExp(String.raw`\bbuy\s+(?:me\s+)?${FILLER}${TOKEN}(?:\s+or\s+[a-z0-9 ]{1,30}?)?\s+(?:with|wirh|wiht|wth|wit|w\/|for|using)\s+${NUM}(?:\s*\$?sui\b|(?![0-9.]))`, "i");
-const SELL = new RegExp(String.raw`\bsell\s+(all|[0-9]+(?:\.[0-9]+)?%?)\s+(?:of\s+)?(?:my\s+)?${TOKEN}(?:\s+(?:for|into)\s+\$?sui)?\b`, "i");
+const SELL_AMT = String.raw`(all|everything|all\s+of\s+it|[0-9]+(?:\.[0-9]+)?%?)`;
+const SELL = new RegExp(String.raw`\b(?:sell|dump|jeet)\s+${SELL_AMT}\s+(?:of\s+)?(?:my\s+)?${TOKEN}(?:\s+(?:for|into)\s+\$?sui)?\b`, "i");
+// "sell $lads all" / "dump $lads 50%" — token first, amount last.
+const SELL_REV = new RegExp(String.raw`\b(?:sell|dump|jeet)\s+(?:my\s+)?${TOKEN}\s+${SELL_AMT}(?:\s+(?:for|into)\s+\$?sui)?(?=\s|$|[^\w%])`, "i");
 
 /** Symbols we can resolve to a verified contract without asking. */
 const KNOWN_SYMBOLS: Record<string, string> = { BLAST: BLAST_BUILD.blastTokenType };
@@ -194,9 +197,15 @@ function parseSwapOnly(raw: string): SwapCommand | null {
   m = new RegExp(String.raw`\bbuy\s+(?:me\s+)?${FILLER}${TOKEN}\s+${NUM}\s*\$?sui\b`, "i").exec(text);
   if (m) return { side: "buy", amount: m[2]!, ...tokenOf(m[1]!) };
   m = SELL.exec(text);
+  let rev = false;
+  if (!m) {
+    m = SELL_REV.exec(text);
+    rev = true;
+  }
   if (m) {
-    const amount = m[1]!.toLowerCase();
-    const t = tokenOf(m[2]!);
+    const rawAmount = (rev ? m[2]! : m[1]!).toLowerCase().replace(/\s+/g, " ");
+    const amount = rawAmount === "all of it" || rawAmount === "everything" ? "all" : rawAmount;
+    const t = tokenOf(rev ? m[1]! : m[2]!);
     if (!t.isCoinType && t.token === "SUI") return null;
     if (amount.endsWith("%") && !(Number(amount.slice(0, -1)) > 0 && Number(amount.slice(0, -1)) <= 100)) return null;
     if (amount !== "all" && !amount.endsWith("%") && !(Number(amount) > 0)) return null;

@@ -50,6 +50,15 @@ describe("parseSwapCommand", () => {
     expect(parseSwapCommand("sell 120% $moo")).toBeNull();
     expect(parseSwapCommand("send 5 SUI to @bob")).toBeNull();
   });
+  it("reads token-first sells and slang", () => {
+    expect(parseSwapCommand("@ourblastbot sell $lads all 😁")).toMatchObject({ side: "sell", amount: "all", token: "LADS" });
+    expect(parseSwapCommand("sell $lads 50%")).toMatchObject({ side: "sell", amount: "50%", token: "LADS" });
+    expect(parseSwapCommand(`sell ${CT} 1000`)).toMatchObject({ side: "sell", amount: "1000", isCoinType: true });
+    expect(parseSwapCommand("dump $lads everything")).toMatchObject({ side: "sell", amount: "all", token: "LADS" });
+    expect(parseSwapCommand("jeet $lads all of it")).toMatchObject({ side: "sell", amount: "all", token: "LADS" });
+    expect(parseSwapCommand("sell my $lads 100%")).toMatchObject({ side: "sell", amount: "100%", token: "LADS" });
+    expect(parseSwapCommand("sell $lads 150%")).toBeNull();
+  });
   it("reads choice replies", () => {
     const opts = [CT, "0x" + "cd".repeat(32) + "::moo::MOO"];
     expect(parseChoiceReply("@ourblastbot 2", opts)).toBe(opts[1]);
