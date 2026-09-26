@@ -304,10 +304,15 @@ async function waitForDigest(digest: string): Promise<boolean> {
   return false;
 }
 
+/** Anything that can sign Sui transaction bytes — a local keypair or a Turnkey enclave key. */
+export interface TxSigner {
+  signTransaction(bytes: Uint8Array): Promise<{ signature: string }>;
+}
+
 /** Simulates, then submits. A rejected simulation never reaches the network. */
 export async function signAndExecute(
   tx: Transaction,
-  keypair: Ed25519Keypair,
+  keypair: TxSigner,
 ): Promise<ExecutedTransaction> {
   let bytes: Uint8Array;
   try {
