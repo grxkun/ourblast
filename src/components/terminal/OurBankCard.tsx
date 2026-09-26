@@ -291,6 +291,11 @@ function BankWalletPanel({ userId }: { userId: string }) {
   return (
     <div className="mt-3 border border-primary/40 p-3 text-sm">
       <p className="font-display uppercase">Your OurBank wallet · instant sends</p>
+      {w.signingBackend === "turnkey" ? (
+        <p className="mt-1 inline-flex items-center gap-1 border border-primary/40 bg-primary/10 px-2 py-0.5 text-xs font-bold text-primary">
+          <ShieldCheck className="size-3.5" /> Turnkey enclave protected — key never stored here
+        </p>
+      ) : null}
       <p className="mt-1 break-all text-xs text-muted-foreground">
         Send coins (plus a little SUI for fees) to <span className="text-foreground">{w.address}</span>
       </p>
@@ -298,9 +303,11 @@ function BankWalletPanel({ userId }: { userId: string }) {
         <Button size="sm" variant="outline" onClick={() => { void navigator.clipboard.writeText(w.address); toast("Address copied"); }}>
           Copy address
         </Button>
-        <Button size="sm" variant="outline" onClick={() => { setShowBackup(true); setRevealedKey(null); setAcknowledged(false); }}>
-          Backup
-        </Button>
+        {w.signingBackend === "turnkey" ? null : (
+          <Button size="sm" variant="outline" onClick={() => { setShowBackup(true); setRevealedKey(null); setAcknowledged(false); }}>
+            Backup
+          </Button>
+        )}
         <Button size="sm" variant="outline" onClick={() => setShowImport((v) => !v)}>
           {showImport ? "Cancel" : "Import wallet"}
         </Button>
@@ -337,7 +344,11 @@ function BankWalletPanel({ userId }: { userId: string }) {
           </li>
         ))}
       </ul>
-      <p className="mt-2 text-xs text-muted-foreground">OurBlast holds this wallet's key for you. Import your own key if you'd rather keep custody. Only keep what you plan to send.</p>
+      <p className="mt-2 text-xs text-muted-foreground">
+        {w.signingBackend === "turnkey"
+          ? "This wallet's key lives inside Turnkey's hardware enclave — OurBlast never sees or stores it. Only keep what you plan to send."
+          : "OurBlast holds this wallet's key for you. Import your own key if you'd rather keep custody. Only keep what you plan to send."}
+      </p>
 
       <AlertDialog open={confirmAction !== null} onOpenChange={(open) => { if (!open) setConfirmAction(null); }}>
         <AlertDialogContent>
@@ -374,7 +385,7 @@ function BankWalletPanel({ userId }: { userId: string }) {
                   </p>
                 ) : (
                   <p className="text-muted-foreground">
-                    The new wallet's key will be held by OurBlast. Only keep what you plan to send.
+                    The new wallet's key will live in Turnkey's secure enclave. Only keep what you plan to send.
                   </p>
                 )}
               </div>

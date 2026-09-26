@@ -2,11 +2,10 @@ import { Aftermath } from "aftermath-ts-sdk";
 import { AggregatorClient, Env } from "@cetusprotocol/aggregator-sdk";
 import { buildTx as buildBluefinTx, getQuote as getBluefinQuote } from "@bluefin-exchange/bluefin7k-aggregator-sdk";
 import { Transaction } from "@mysten/sui/transactions";
-import { Ed25519Keypair } from "@mysten/sui/keypairs/ed25519";
 import { SuiJsonRpcClient } from "@mysten/sui/jsonRpc";
 import { normalizeStructTag, normalizeSuiAddress } from "@mysten/sui/utils";
 
-import { decryptConnectionKey } from "@/lib/connection-key.server";
+import { bankSigner } from "./bank-wallet.server";
 import { toAtomic, type SwapCommand } from "./bank";
 import { resolveLaunchpadBuy, buildLaunchpadBuySwap } from "./launchpad-buy.server";
 
@@ -84,14 +83,14 @@ export function swapAmountIn(command: SwapCommand, decimals: number, balance: bi
 }
 
 export async function executeBankSwap(
-  wallet: { address: string; secret_ciphertext: string },
+  wallet: Parameters<typeof bankSigner>[0],
   coinIn: string,
   coinOut: string,
   amountIn: bigint,
 ): Promise<SwapResult> {
   const { gasCoins, referenceGasPrice, withGas, signAndExecute, rpc } = await import("./suipump-launch.server");
-  const keypair = Ed25519Keypair.fromSecretKey(decryptConnectionKey(wallet.secret_ciphertext));
-  const sender = keypair.getPublicKey().toSuiAddress();
+  const signer = await bankSigner(wallet);
+  const sender = signer.address;
   if (sender !== normalizeSuiAddress(wallet.address)) return { ok: false, error: "Bank wallet key mismatch." };
   const inType = normalizeCoinRef(coinIn);
   const outType = normalizeCoinRef(coinOut);
@@ -117,7 +116,7 @@ export async function executeBankSwap(
     return { ok: false, error: `Could not prepare the swap: ${(error as Error).message.slice(0, 100)}` };
   }
 
-  const executed = await signAndExecute(built.tx, keypair);
+  const executed = await signAndExecute(built.tx, signer);
   if (!executed.ok || !executed.digest) return { ok: false, error: executed.error ?? "Swap failed." };
 
   let received: bigint | null = null;

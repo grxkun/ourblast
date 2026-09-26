@@ -165,7 +165,7 @@ export const getMyBankWallet = createServerFn({ method: "GET" })
         return { coinType: b.coinType, symbol: meta?.symbol ?? b.coinType.split("::").at(-1)!, amount: Number(b.balance) / 10 ** decimals };
       }),
     );
-    return { linked: true as const, address: wallet.address, handle, balances: out };
+    return { linked: true as const, address: wallet.address, handle, balances: out, signingBackend: wallet.signingBackend };
   });
 
 /** Moves everything of one coin from your OurBank wallet to your connected wallet. */
@@ -222,6 +222,9 @@ export const exportBankWalletKey = createServerFn({ method: "POST" })
     const { decryptConnectionKey } = await import("@/lib/connection-key.server");
     const wallet = await findBankWallet(handle);
     if (!wallet) throw new Error("No OurBank wallet yet.");
+    if (wallet.signing_backend === "turnkey" || !wallet.secret_ciphertext) {
+      throw new Error("This wallet is protected by a secure enclave — its key can't be exported. To use your own key, import a wallet instead.");
+    }
     const secretKey = decryptConnectionKey(wallet.secret_ciphertext);
     return { address: wallet.address, secretKey };
   });

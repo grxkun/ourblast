@@ -5,9 +5,10 @@ import { normalizeStructTag, normalizeSuiAddress } from "@mysten/sui/utils";
 import { decryptConnectionKey, encryptConnectionKey } from "@/lib/connection-key.server";
 
 /**
- * OurBank wallets: one bot-held Sui wallet per X account, like Bankrbot. The
- * signing key is generated here, encrypted at once and never returned to any
- * caller — only the address leaves the server. Tweets spend from it instantly.
+ * OurBank wallets: one bot-held Sui wallet per X account, like Bankrbot. New
+ * wallets are created inside Turnkey's hardware enclaves when Turnkey is
+ * configured — the key never exists in our database. Older wallets keep their
+ * AES-encrypted local key. Either way only the address ever leaves the server.
  */
 const SUI_TYPE = normalizeStructTag("0x2::sui::SUI");
 const GAS_BUDGET = 10_000_000n; // 0.01 SUI
@@ -18,8 +19,39 @@ async function admin() {
 async function chain() {
   return import("./suipump-launch.server");
 }
+async function turnkey() {
+  return import("./turnkey.server");
+}
 
-export interface BankWallet { address: string; x_username: string; user_id: string | null }
+export type SigningBackend = "local" | "turnkey";
+
+export interface BankWallet {
+  address: string;
+  x_username: string;
+  user_id: string | null;
+  signingBackend: SigningBackend;
+}
+
+interface BankWalletRow {
+  address: string;
+  x_username: string;
+  user_id: string | null;
+  secret_ciphertext: string | null;
+  signing_backend: string;
+  turnkey_key_id: string | null;
+  turnkey_public_key: string | null;
+}
+
+const WALLET_COLUMNS = "address, x_username, user_id, secret_ciphertext, signing_backend, turnkey_key_id, turnkey_public_key";
+
+function toWallet(row: BankWalletRow): BankWallet {
+  return {
+    address: row.address,
+    x_username: row.x_username,
+    user_id: row.user_id,
+    signingBackend: row.signing_backend === "turnkey" ? "turnkey" : "local",
+  };
+}
 
 /**
  * Replaces the wallet for an X handle with a user-supplied key (import) or a
@@ -38,35 +70,66 @@ export async function replaceBankWalletKey(
       throw new Error("Withdraw all funds from your current OurBank wallet first — replacing the key would lose them.");
     }
   }
-  const keypair = secretKey ? Ed25519Keypair.fromSecretKey(secretKey.trim()) : Ed25519Keypair.generate();
-  const address = keypair.getPublicKey().toSuiAddress();
-  const ciphertext = encryptConnectionKey(keypair.getSecretKey());
+
+  const tk = await turnkey();
+  let row: Omit<BankWalletRow, "x_username" | "user_id">;
+  if (tk.turnkeyConfigured()) {
+    const name = `ourbank-${handle.toLowerCase()}`;
+    const account = secretKey
+      ? await tk.importSuiPrivateKey(name, normalizeSecretKey(secretKey))
+      : await tk.createSuiWallet(name);
+    row = {
+      address: account.address,
+      secret_ciphertext: null,
+      signing_backend: "turnkey",
+      turnkey_key_id: account.walletId,
+      turnkey_public_key: account.publicKey,
+    };
+  } else {
+    const keypair = secretKey ? Ed25519Keypair.fromSecretKey(secretKey.trim()) : Ed25519Keypair.generate();
+    row = {
+      address: keypair.getPublicKey().toSuiAddress(),
+      secret_ciphertext: encryptConnectionKey(keypair.getSecretKey()),
+      signing_backend: "local",
+      turnkey_key_id: null,
+      turnkey_public_key: null,
+    };
+  }
+
   const db = await admin();
   if (existing) {
     const { error } = await db
       .from("bank_wallets")
-      .update({ address, secret_ciphertext: ciphertext, user_id: userId ?? existing.user_id })
+      .update({ ...row, user_id: userId ?? existing.user_id })
       .eq("x_username", handle.toLowerCase());
     if (error?.code === "23505") throw new Error("That wallet address is already linked to another account.");
     if (error) throw new Error(error.message);
   } else {
     const { error } = await db
       .from("bank_wallets")
-      .insert({ x_username: handle.toLowerCase(), user_id: userId, address, secret_ciphertext: ciphertext });
+      .insert({ x_username: handle.toLowerCase(), user_id: userId, ...row });
     if (error?.code === "23505") throw new Error("That wallet address is already linked to another account.");
     if (error) throw new Error(error.message);
   }
-  return { address, x_username: handle.toLowerCase(), user_id: userId ?? existing?.user_id ?? null };
+  return { address: row.address, x_username: handle.toLowerCase(), user_id: userId ?? existing?.user_id ?? null, signingBackend: row.signing_backend as SigningBackend };
 }
 
-export async function findBankWallet(handle: string): Promise<(BankWallet & { secret_ciphertext: string }) | null> {
+/** Accepts suiprivkey1… bech32 or raw hex; returns the 32-byte hex Turnkey expects. */
+function normalizeSecretKey(secretKey: string): string {
+  const keypair = Ed25519Keypair.fromSecretKey(secretKey.trim());
+  return Buffer.from(keypair.getSecretKey().startsWith("0x") ? keypair.getSecretKey().slice(2) : keypair.getSecretKey(), "hex")
+    .subarray(0, 32)
+    .toString("hex");
+}
+
+export async function findBankWallet(handle: string): Promise<BankWalletRow | null> {
   const db = await admin();
   const { data } = await db
     .from("bank_wallets")
-    .select("address, x_username, user_id, secret_ciphertext")
+    .select(WALLET_COLUMNS)
     .eq("x_username", handle.toLowerCase())
     .maybeSingle();
-  return data ?? null;
+  return (data as BankWalletRow | null) ?? null;
 }
 
 /** Existing wallet for this X handle, or a freshly generated one. */
@@ -77,20 +140,48 @@ export async function ensureBankWallet(handle: string, userId: string | null): P
       const db = await admin();
       await db.from("bank_wallets").update({ user_id: userId }).eq("x_username", handle.toLowerCase());
     }
-    return { address: existing.address, x_username: existing.x_username, user_id: existing.user_id ?? userId };
+    return { ...toWallet(existing), user_id: existing.user_id ?? userId };
   }
-  const keypair = Ed25519Keypair.generate();
-  const row = {
-    x_username: handle.toLowerCase(),
-    user_id: userId,
-    address: keypair.getPublicKey().toSuiAddress(),
-    secret_ciphertext: encryptConnectionKey(keypair.getSecretKey()),
-  };
+
+  const tk = await turnkey();
+  let row: Omit<BankWalletRow, "x_username" | "user_id">;
+  if (tk.turnkeyConfigured()) {
+    try {
+      const account = await tk.createSuiWallet(`ourbank-${handle.toLowerCase()}`);
+      row = {
+        address: account.address,
+        secret_ciphertext: null,
+        signing_backend: "turnkey",
+        turnkey_key_id: account.walletId,
+        turnkey_public_key: account.publicKey,
+      };
+    } catch {
+      // Turnkey outage must not block wallet creation — fall back to a local key.
+      const keypair = Ed25519Keypair.generate();
+      row = {
+        address: keypair.getPublicKey().toSuiAddress(),
+        secret_ciphertext: encryptConnectionKey(keypair.getSecretKey()),
+        signing_backend: "local",
+        turnkey_key_id: null,
+        turnkey_public_key: null,
+      };
+    }
+  } else {
+    const keypair = Ed25519Keypair.generate();
+    row = {
+      address: keypair.getPublicKey().toSuiAddress(),
+      secret_ciphertext: encryptConnectionKey(keypair.getSecretKey()),
+      signing_backend: "local",
+      turnkey_key_id: null,
+      turnkey_public_key: null,
+    };
+  }
+
   const db = await admin();
-  const { error } = await db.from("bank_wallets").insert(row);
+  const { error } = await db.from("bank_wallets").insert({ x_username: handle.toLowerCase(), user_id: userId, ...row });
   if (error?.code === "23505") return ensureBankWallet(handle, userId); // created concurrently
   if (error) throw new Error(error.message);
-  return { address: row.address, x_username: row.x_username, user_id: userId };
+  return { address: row.address, x_username: handle.toLowerCase(), user_id: userId, signingBackend: row.signing_backend as SigningBackend };
 }
 
 export async function bankBalances(address: string) {
@@ -99,19 +190,47 @@ export async function bankBalances(address: string) {
   return balances.filter((b) => BigInt(b.totalBalance) > 0n).map((b) => ({ coinType: normalizeStructTag(b.coinType), balance: BigInt(b.totalBalance) }));
 }
 
+/** A signer for a bank wallet, wherever its key lives. */
+export async function bankSigner(wallet: BankWalletRow) {
+  if (wallet.signing_backend === "turnkey") {
+    const tk = await turnkey();
+    if (!tk.turnkeyConfigured()) throw new Error("Turnkey is not configured.");
+    const signWith = wallet.turnkey_key_id ?? wallet.address;
+    const publicKey = wallet.turnkey_public_key;
+    if (!publicKey) throw new Error("Turnkey wallet is missing its public key.");
+    const address = normalizeSuiAddress(wallet.address);
+    return {
+      address,
+      backend: "turnkey" as const,
+      async signTransaction(bytes: Uint8Array) {
+        return { signature: await tk.signSuiTransaction(signWith, publicKey, bytes) };
+      },
+    };
+  }
+  if (!wallet.secret_ciphertext) throw new Error("Bank wallet has no signing key.");
+  const keypair = Ed25519Keypair.fromSecretKey(decryptConnectionKey(wallet.secret_ciphertext));
+  const address = keypair.getPublicKey().toSuiAddress();
+  if (address !== normalizeSuiAddress(wallet.address)) throw new Error("Bank wallet key mismatch.");
+  return { address, backend: "local" as const, signTransaction: (bytes: Uint8Array) => keypair.signTransaction(bytes) };
+}
+
 type Result = { ok: true; digest: string } | { ok: false; error: string };
 
 /** Sends `amount` of `coinType` (or everything, when amount is null) from a bank wallet. */
 export async function sendFromBankWallet(
-  wallet: { address: string; secret_ciphertext: string },
+  wallet: BankWalletRow,
   coinType: string,
   amount: bigint | null,
   recipient: string,
 ): Promise<Result> {
   const { gasCoins, referenceGasPrice, rpc, withGas, signAndExecute } = await chain();
-  const keypair = Ed25519Keypair.fromSecretKey(decryptConnectionKey(wallet.secret_ciphertext));
-  const sender = keypair.getPublicKey().toSuiAddress();
-  if (sender !== normalizeSuiAddress(wallet.address)) return { ok: false, error: "Bank wallet key mismatch." };
+  let signer: Awaited<ReturnType<typeof bankSigner>>;
+  try {
+    signer = await bankSigner(wallet);
+  } catch (e) {
+    return { ok: false, error: (e as Error).message };
+  }
+  const sender = signer.address;
   const to = normalizeSuiAddress(recipient);
   const type = normalizeStructTag(coinType);
 
@@ -137,7 +256,7 @@ export async function sendFromBankWallet(
     else tx.transferObjects([tx.splitCoins(primary!, [tx.pure.u64(amount)])[0]!], tx.pure.address(to));
   }
 
-  const executed = await signAndExecute(tx, keypair);
+  const executed = await signAndExecute(tx, signer);
   if (!executed.ok || !executed.digest) return { ok: false, error: executed.error ?? "Transaction failed." };
   return { ok: true, digest: executed.digest };
 }

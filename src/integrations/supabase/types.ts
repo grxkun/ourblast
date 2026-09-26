@@ -259,7 +259,10 @@ export type Database = {
           address: string
           created_at: string
           id: string
-          secret_ciphertext: string
+          secret_ciphertext: string | null
+          signing_backend: string
+          turnkey_key_id: string | null
+          turnkey_public_key: string | null
           updated_at: string
           user_id: string | null
           x_username: string
@@ -268,7 +271,10 @@ export type Database = {
           address: string
           created_at?: string
           id?: string
-          secret_ciphertext: string
+          secret_ciphertext?: string | null
+          signing_backend?: string
+          turnkey_key_id?: string | null
+          turnkey_public_key?: string | null
           updated_at?: string
           user_id?: string | null
           x_username: string
@@ -277,7 +283,10 @@ export type Database = {
           address?: string
           created_at?: string
           id?: string
-          secret_ciphertext?: string
+          secret_ciphertext?: string | null
+          signing_backend?: string
+          turnkey_key_id?: string | null
+          turnkey_public_key?: string | null
           updated_at?: string
           user_id?: string | null
           x_username?: string
