@@ -5,10 +5,10 @@ import { Suggestion } from "@/components/ai-elements/suggestion";
 const suggestions = [
   { icon: Zap, label: "Launch a token", command: "launch $DOG Sui Dog" },
   { icon: Search, label: "Check a token", command: "check $DOG" },
-  { icon: ChartNoAxesCombined, label: "Check bonding curve", command: "check bonding curve $DOG" },
+  { icon: ChartNoAxesCombined, label: "Claim fees", command: "claim my fees" },
   { icon: WalletCards, label: "View wallet", command: "wallet" },
-  { icon: Coins, label: "My launches", command: "show my launches" },
-  { icon: CircleDollarSign, label: "Trade", command: "buy 2 SUI of $DOG" },
+  { icon: Coins, label: "Buy & burn", command: "buy and burn 1 SUI of $BLAST" },
+  { icon: CircleDollarSign, label: "Buy $BLAST", command: "buy 0.1 SUI of $BLAST" },
 ] as const;
 
 export function CommandSuggestions({ onSelect }: { onSelect: (command: string) => void }) {
