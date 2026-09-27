@@ -352,6 +352,58 @@ const COMPOSITE_PREPARE_BUDGET = 1_500_000_000;
 const COMPOSITE_ACTIVATE_BUDGET = 1_500_000_000;
 const COMPOSITE_BUY_BUDGET = 1_500_000_000;
 
+/**
+ * composite_pool::activate runs both price feeds through the module's private
+ * `timely(&Clock, u64)` check, which aborts with code 6 when a feed's
+ * timestamp is more than two minutes away from the on-chain clock. Read from
+ * the module bytecode of
+ * 0x70798463adae26d663d67b152e6531a4eaf48b541d6d3db11d730663dab20e8a.
+ *
+ * Crypto feeds (BTC, ETH, SOL, SUI, XRP …) update every few seconds around the
+ * clock. Equity and commodity feeds (NVDA, TSLA, GOOGL, XAU …) stop publishing
+ * when their market closes, so activation is impossible then — which is exactly
+ * how the $GRAPHIC (NVDA) launch aborted after its coin was already published.
+ * Checking first means a closed market costs the launcher nothing.
+ */
+const COMPOSITE_FEED_MAX_AGE_MS = 120_000;
+
+async function feedTimestampMs(feedId: string): Promise<number | null> {
+  const result = await rpc<{
+    data?: { content?: { fields?: { feeds?: { fields?: { timestamp_ms?: string } }[] } } | null };
+  }>("sui_getObject", [feedId, { showContent: true }]).catch(() => ({ data: null }));
+  const stamp = result.data?.content?.fields?.feeds?.[0]?.fields?.timestamp_ms;
+  return stamp ? Number(stamp) : null;
+}
+
+/**
+ * Returns a launcher-facing reason when the market's feeds are too stale for
+ * composite_pool::activate to succeed, or null when both are fresh.
+ */
+async function staleFeedReason(market: PerpsMarket): Promise<string | null> {
+  const [baseMs, collateralMs] = await Promise.all([
+    feedTimestampMs(market.baseOracleId),
+    feedTimestampMs(market.collateralOracleId),
+  ]);
+  if (baseMs === null || collateralMs === null) {
+    return `Perpsplexity's ${market.label} price feed could not be read right now, so the leveraged position cannot be opened. Nothing was launched — please try again shortly.`;
+  }
+  const now = Date.now();
+  const stale = [
+    { label: market.label, age: Math.abs(now - baseMs) },
+    { label: "USDC", age: Math.abs(now - collateralMs) },
+  ].filter((feed) => feed.age > COMPOSITE_FEED_MAX_AGE_MS);
+  if (stale.length === 0) return null;
+  const worst = stale.reduce((a, b) => (b.age > a.age ? b : a));
+  const minutes = Math.round(worst.age / 60_000);
+  return (
+    `${market.label} cannot be launched right now: its ${worst.label} price feed last updated ` +
+    `${minutes < 1 ? "over a minute" : `about ${minutes} minute${minutes === 1 ? "" : "s"}`} ago, and Perpsplexity ` +
+    `only opens a leveraged position on a feed under two minutes old. Stock, index and metal markets stop ` +
+    `publishing prices when they close, so try again when that market is open. Round-the-clock crypto markets ` +
+    `such as BTC, ETH, SOL, SUI and XRP work at any hour. Nothing was launched and nothing was spent.`
+  );
+}
+
 /** Every object phase 2 needs, taken from the Prepared event of phase 1. */
 interface PreparedComposite {
   pool: string;
@@ -801,6 +853,14 @@ export async function launchOnPerpsplexity(input: PerpsLaunchInput): Promise<Per
     } catch (error) {
       return fail((error as Error).message);
     }
+  }
+
+  // Checked before anything is published or paid for: a closed market's price
+  // feed goes stale and activation would abort, leaving a coin behind that can
+  // never trade.
+  if (market) {
+    const staleReason = await staleFeedReason(market);
+    if (staleReason) return fail(staleReason);
   }
 
   let launchFeeMist: bigint;
