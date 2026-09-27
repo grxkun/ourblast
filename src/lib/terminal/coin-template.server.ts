@@ -178,7 +178,25 @@ export function patchCoinTemplate(template: Uint8Array, meta: CoinTemplateMetada
   return serializeModule({ prefix: parsed.prefix, tables, body });
 }
 
+const ADDRESS_IDENTIFIERS_KIND = 0x8;
+const ADDRESS_BYTES = 32;
+
+/**
+ * A module read back from chain carries its published package id in the first
+ * address slot. Sui only accepts a fresh publish when that self-address is all
+ * zeros, otherwise it aborts with PublishErrorNonZeroAddress. Zero it back.
+ */
+export function zeroSelfAddress(bytes: Uint8Array): Uint8Array {
+  const parsed = parseModule(bytes);
+  const table = parsed.tables.find((entry) => entry.kind === ADDRESS_IDENTIFIERS_KIND);
+  if (!table || table.length < ADDRESS_BYTES) return bytes;
+  const body = new Uint8Array(parsed.body);
+  body.fill(0, table.offset, table.offset + ADDRESS_BYTES);
+  return serializeModule({ ...parsed, body });
+}
+
 /** Fetches the public SuiPump coin template. */
+
 export async function fetchCoinTemplate(url: string): Promise<Uint8Array> {
   const response = await fetch(url, { headers: { accept: "application/octet-stream" } });
   if (!response.ok) throw new Error("The coin template could not be downloaded.");
