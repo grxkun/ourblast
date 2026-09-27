@@ -177,3 +177,58 @@ export function describePerpsPosition(args: {
       : "";
   return `⚡ ${label} ${args.long ? "LONG" : "SHORT"} ${leverageText}${cap}`;
 }
+
+// ---------------------------------------------------------------------------
+// Composite (market-backed) launches — a real leveraged position, e.g. NVDA 3L.
+//
+// Every constant below was read verbatim from live mainnet composite launches:
+//   prepare  G3h8YzA64pnBDJ2Y1CWuCQSJfNZDU3tKBqLrm7LbWvyF ($UNI, SUI 1.5x long)
+//            4AFUAA1MVnsVWUzU3SfKNc4Cfqah9wHLMz4vd31fYpDJ ($ADENIYI, SUI 3x long)
+//   activate BvJX1KU4G8Ahgz1Gj4daTUN2B5pTadTPab9LBa8YffWs
+// The only values that differ between those launches are the ticker/metadata
+// and the leverage (15000 vs 30000 bps), so everything else is a pad constant.
+// ---------------------------------------------------------------------------
+
+/** Aftermath clearing-house / account / registry package (perp side). */
+export const PERPSPLEXITY_AFTERMATH_REGISTRY_ID_FOR_COMPOSITE = PERPSPLEXITY_REGISTRY_ID;
+/** Meme units minted into a composite pool: 1e15, same as the spot curve. */
+export const PERPSPLEXITY_COMPOSITE_SUPPLY = PERPSPLEXITY_CURVE_SUPPLY;
+/** base_fee_bps passed to prepare_composite_registered on every live launch. */
+export const PERPSPLEXITY_COMPOSITE_BASE_FEE_BPS = 100n;
+/**
+ * The fifth trailing u64 of prepare_composite_registered. Constant (5000) on
+ * every live composite launch; the pad does not document its meaning, so it is
+ * copied verbatim rather than derived.
+ */
+export const PERPSPLEXITY_COMPOSITE_RESERVE_PARAM = 5000n;
+/**
+ * settings::new(u64,u64,u64,u64,u64,u64,u64,bool,bool) — identical on every
+ * live composite launch. The fifth value (4500) is the engine's lend_bps, which
+ * the engine::Created event confirms; the rest are pad fee/funding defaults.
+ */
+export const PERPSPLEXITY_COMPOSITE_SETTINGS_ARGS = [
+  8000n,
+  1000n,
+  1000n,
+  0n,
+  4500n,
+  0n,
+  0n,
+  false,
+  true,
+] as const;
+/** Default leverage when a post names a market but no multiplier: 3x. */
+export const PERPSPLEXITY_DEFAULT_LEVERAGE_BPS = 30_000;
+/** Leverage bounds the pad's own launches stay within: 1x–10x. */
+export const PERPSPLEXITY_MIN_LEVERAGE_BPS = 10_000;
+export const PERPSPLEXITY_MAX_LEVERAGE_BPS = 100_000;
+
+/** Validates a requested leverage in bps (10000 = 1x). */
+export function perpsLeverageBps(requested: number | null | undefined): number {
+  const bps = Math.round(requested && requested > 0 ? requested : PERPSPLEXITY_DEFAULT_LEVERAGE_BPS);
+  if (bps < PERPSPLEXITY_MIN_LEVERAGE_BPS || bps > PERPSPLEXITY_MAX_LEVERAGE_BPS) {
+    throw new Error("Leverage must be between 1x and 10x.");
+  }
+  return bps;
+}
+

@@ -452,20 +452,24 @@ export async function executeLaunchRequest(requestId: string): Promise<LaunchOut
     }
   } else if (pad.id === "perpsplexity") {
 
-    // Perpsplexity launches use its virtual pool (bonding curve): a raise-first
-    // curve quoted in USDC, seeded with 1 USDC. Fully backed composite pools need
-    // an underlying market engine plus a lending market and are not used here.
+    // Perpsplexity: when the post names an underlying market the launch is a
+    // genuine leveraged (composite) pool — e.g. NVDA 3L — backed by an
+    // Aftermath perp position. With no market it is the plain USDC curve.
     const { launchOnPerpsplexity } = await import("./perpsplexity-launch.server");
     const outcome = await launchOnPerpsplexity({
       symbol: request.symbol,
       name: request.name,
       description: withSocials(extractDescription(request.tweet_text ?? "") ?? request.tweet_text ?? ""),
       iconUrl: request.icon_url ?? "",
+      underlying: request.underlying ?? null,
+      long: request.perps_long ?? true,
+      leverageBps: request.leverage_bps ?? null,
       startingCapUsd: request.starting_cap_usd ? Number(request.starting_cap_usd) : null,
       // "first buy 25" in the tweet: the launcher's own opening buy on the new
-      // curve, paid in USDC from the launch wallet. Absent = no buy at all.
+      // pool, paid in USDC from the launch wallet. Absent = no buy at all.
       devBuyUsdc: request.dev_buy_usdc ? Number(request.dev_buy_usdc) : null,
     });
+
     if (outcome.status === "CONFIRMED" && outcome.coinType && outcome.poolId) {
       deployment = { tokenAddress: outcome.coinType, transactionDigest: outcome.digest ?? "" };
       perpsPoolId = outcome.poolId;

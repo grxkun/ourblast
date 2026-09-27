@@ -62,6 +62,11 @@ export function Terminal({ tryCommand }: { tryCommand?: { command: string; nonce
         launchpad: launch.launchpad,
         iconUrl: launch.image ?? null,
         startingCapUsd: launch.perps?.startingCapUsd ?? null,
+        // A named market makes this a leveraged position (e.g. NVDA 3L) instead
+        // of a plain curve — same behaviour as launching from a post.
+        underlying: launch.perps?.underlying ?? null,
+        long: launch.perps?.long ?? true,
+        leverageBps: launch.perps?.leverageBps ?? null,
         devBuyUsdc: launch.devBuy > 0 ? launch.devBuy : null,
       } });
       toast.dismiss(pending);

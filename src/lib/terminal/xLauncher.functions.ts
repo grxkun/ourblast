@@ -49,6 +49,9 @@ const terminalLaunchSchema = z.object({
   launchpad: z.string().min(2).max(40),
   iconUrl: z.string().max(500).nullable().default(null),
   startingCapUsd: z.number().positive().max(10_000_000).nullable().default(null),
+  underlying: z.string().max(40).nullable().default(null),
+  long: z.boolean().default(true),
+  leverageBps: z.number().int().min(10_000).max(100_000).nullable().default(null),
   devBuyUsdc: z.number().min(0).max(100_000).nullable().default(null),
 });
 
@@ -79,8 +82,13 @@ export const launchFromTerminal = createServerFn({ method: "POST" })
         symbol: data.symbol.toUpperCase(),
         name: data.name,
         launchpad: data.launchpad,
-        perps: data.startingCapUsd
-          ? { underlying: null, long: true, leverageBps: 10_000, startingCapUsd: data.startingCapUsd }
+        perps: data.startingCapUsd || data.underlying
+          ? {
+              underlying: data.underlying,
+              long: data.long,
+              leverageBps: data.leverageBps ?? 30_000,
+              startingCapUsd: data.startingCapUsd,
+            }
           : undefined,
         devBuyUsdc: data.devBuyUsdc ?? undefined,
       },
