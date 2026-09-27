@@ -855,6 +855,14 @@ export async function launchOnPerpsplexity(input: PerpsLaunchInput): Promise<Per
     }
   }
 
+  // Checked before anything is published or paid for: a closed market's price
+  // feed goes stale and activation would abort, leaving a coin behind that can
+  // never trade.
+  if (market) {
+    const staleReason = await staleFeedReason(market);
+    if (staleReason) return fail(staleReason);
+  }
+
   let launchFeeMist: bigint;
   try {
     launchFeeMist = await readLaunchFeeMist();
