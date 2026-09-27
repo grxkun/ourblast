@@ -135,4 +135,7 @@ export function patchMaelstromTemplate(
       return [...constant.token, ...encodeUleb(data.length), ...data];
     });
   });
+  // The template came from a published package, so clear its self-address.
+  return zeroSelfAddress(withConstants);
+
 }
