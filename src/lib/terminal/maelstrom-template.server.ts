@@ -10,7 +10,15 @@
  * plus the module and witness identifiers. Same edit the website makes with the
  * wasm template tool.
  */
-import { encodeString, encodeUleb, parseModule, readUleb, serializeModule } from "./coin-template.server";
+import {
+  encodeString,
+  encodeUleb,
+  parseModule,
+  readUleb,
+  serializeModule,
+  zeroSelfAddress,
+} from "./coin-template.server";
+
 
 const CONSTANTS_KIND = 0x6;
 const IDENTIFIERS_KIND = 0x7;
