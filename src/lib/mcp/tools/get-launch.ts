@@ -20,7 +20,7 @@ export default defineTool({
     let query = supabase
       .from("x_launch_requests")
       .select(
-        "id, x_post_id, x_username, symbol, name, launchpad, dev_buy, ourblast_fee_percent, status, notice, token_url, pool_url, tx_digest, reply_post_id, created_at",
+        "id, x_post_id, x_username, symbol, name, launchpad, dev_buy, ourblast_fee_percent, status, notice, token_url, pool_url, tx_digest, reply_post_id, tweet_text, created_at",
       )
       .order("created_at", { ascending: false })
       .limit(1);
@@ -30,12 +30,6 @@ export default defineTool({
     if (error) throw new ToolError(error.message);
     const row = data?.[0];
     if (!row) throw new ToolError("No launch call found for that ticker or post id.");
-
-    const { data: mention } = await supabase
-      .from("x_mentions")
-      .select("text")
-      .eq("x_post_id", row.x_post_id)
-      .limit(1);
 
     const launch = {
       id: row.id,
@@ -51,7 +45,7 @@ export default defineTool({
       tokenUrl: row.token_url,
       poolUrl: row.pool_url,
       requestedBy: row.x_username,
-      tweetText: mention?.[0]?.text ?? null,
+      tweetText: row.tweet_text ?? null,
       tweetUrl: `https://x.com/${row.x_username}/status/${row.x_post_id}`,
       botReplyUrl: row.reply_post_id ? `https://x.com/ourblastbot/status/${row.reply_post_id}` : null,
       createdAt: row.created_at,
