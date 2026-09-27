@@ -882,6 +882,30 @@ export async function launchOnPerpsplexity(input: PerpsLaunchInput): Promise<Per
   } catch (error) {
     return fail((error as Error).message, { coinType, packageId });
   }
+
+  // A leveraged (composite) pool takes its own two-phase path from here.
+  if (market) {
+    return launchCompositePool({
+      keypair,
+      sender,
+      names,
+      packageId,
+      coinType,
+      capRef,
+      name: input.name,
+      description,
+      iconUrl: input.iconUrl,
+      market,
+      long: input.long !== false,
+      leverageBps,
+      virtualQuote,
+      launchFeeMist,
+      devBuyUnits,
+      gasPrice,
+      freshGas,
+    });
+  }
+
   const [launchpadRef, configRef, clockRef, coinRegistryRef] = await Promise.all([
     sharedRef(PERPSPLEXITY_LAUNCHPAD_ID),
     sharedRef(PERPSPLEXITY_CONFIG_ID),
