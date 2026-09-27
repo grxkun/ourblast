@@ -6,8 +6,10 @@
 // leveraged position on an underlying Aftermath market: the pool's NAV is
 // backed by that position (market-backed memecoin, not a separate listing).
 
+// Latest on-chain version of the launchpad package (upgrade of the original
+// below). Read from live mainnet launches — the pad's own frontend calls this id.
 export const PERPSPLEXITY_PACKAGE_ID =
-  "0xa0338d2361534919001ae21265ec6c66f30f85797beb0e0644be51fc2ce93142";
+  "0x70798463adae26d663d67b152e6531a4eaf48b541d6d3db11d730663dab20e8a";
 /** Original (publish) package id — event types keep it, so match on this. */
 export const PERPSPLEXITY_ORIGINAL_PACKAGE_ID =
   "0x97fea95545c04dc73f8174c6195013b100a26e3fa978e7cf8b100a51dfaf8354";
