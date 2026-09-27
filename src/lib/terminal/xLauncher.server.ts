@@ -510,7 +510,7 @@ export async function executeLaunchRequest(requestId: string): Promise<LaunchOut
     .update({
       status: "DEPLOYED",
       token_address: deployment.tokenAddress,
-      pool_object_id: blastPoolObjectId,
+      pool_object_id: blastPoolObjectId ?? maelstromPoolId,
       token_url: tokenUrl,
       pool_url: poolUrl,
       tx_digest: deployment.transactionDigest,
