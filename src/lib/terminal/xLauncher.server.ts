@@ -525,7 +525,10 @@ export async function executeLaunchRequest(requestId: string): Promise<LaunchOut
   // they claim the parked share. Nobody has to ask for the link separately.
   // Perpsplexity routes creator fees through its own pool (pay_creator), so
   // there is no launch-time payee split to claim there.
-  const claimToken = isPerps ? null : await ensureFeeClaimLink(request.symbol, feeReceiverHandle(request));
+  // Maelstrom pays LP fees on chain to one recipient set at launch, so there is
+  // no OurBlast payee split to claim there either.
+  const claimToken = isPerps || isMaelstrom ? null : await ensureFeeClaimLink(request.symbol, feeReceiverHandle(request));
+
 
   await postDeployedReply(request, tokenUrl, poolUrl, claimToken, positionLine);
   return { status: "DEPLOYED", notice: null, tokenUrl, poolUrl };
