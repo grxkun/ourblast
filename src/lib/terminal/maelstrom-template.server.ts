@@ -121,7 +121,7 @@ export function patchMaelstromTemplate(
       .map((id) => (id === from.module ? meta.module : id === from.struct ? meta.struct : id))
       .flatMap(encodeString);
   });
-  return replaceTable(withIds, CONSTANTS_KIND, (body, start, end) => {
+  const withConstants = replaceTable(withIds, CONSTANTS_KIND, (body, start, end) => {
     const constants = readConstants(body, start, end);
     const textIndexes = constants.flatMap((constant, index) => (isTextConstant(constant) ? [index] : []));
     if (textIndexes.length !== 4) throw new Error("Coin template must have exactly four text constants.");
