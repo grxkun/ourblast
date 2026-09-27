@@ -75,10 +75,17 @@ export async function replaceBankWalletKey(
   const tk = await turnkey();
   let row: Omit<BankWalletRow, "x_username" | "user_id">;
   if (tk.turnkeyConfigured()) {
-    const name = `ourbank-${handle.toLowerCase()}`;
+    const name = `ourbank-${handle.toLowerCase()}-${Date.now()}`;
     const account = secretKey
       ? await tk.importSuiPrivateKey(name, normalizeSecretKey(secretKey))
       : await tk.createSuiWallet(name);
+    if (secretKey) {
+      // The imported wallet must be the exact wallet the user backed up.
+      const expected = normalizeSuiAddress(Ed25519Keypair.fromSecretKey(secretKey.trim()).getPublicKey().toSuiAddress());
+      if (normalizeSuiAddress(account.address) !== expected) {
+        throw new Error("Import failed: the secured wallet address did not match your key. Nothing was changed.");
+      }
+    }
     row = {
       address: account.address,
       secret_ciphertext: null,
