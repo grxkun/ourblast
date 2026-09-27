@@ -37,6 +37,18 @@ export const MAELSTROM_START_FDV_USD = 4_000;
 export const SUI_TYPE = "0x2::sui::SUI";
 export const SUI_DECIMALS = 9;
 
+/**
+ * Quote assets a Maelstrom pool may pair with (launchpad has open_quotes = true).
+ * Types and decimals verified with suix_getCoinMetadata on mainnet.
+ */
+export const MAELSTROM_QUOTES: Record<string, { type: string; decimals: number }> = {
+  SUI: { type: SUI_TYPE, decimals: 9 },
+  USDC: { type: "0xdba34672e30cb065b1f93e3ab55318768fd6fef66c15942c9f7cb846e2f900e7::usdc::USDC", decimals: 6 },
+  BLAST: { type: "0x577a8addf60a34d4c705914ad066a3b28c3fc40d365ed0d9dfc408f29b4725d3::blast::BLAST", decimals: 9 },
+  DEEP: { type: "0xdeeb7a4662eec9f2f3def03fb937a663dddaa2e215b8078a284d026b7946c270::deep::DEEP", decimals: 6 },
+  WAL: { type: "0x356a26eb9e012a68958082340d4c4116e7f55615cf27affcff209cf0ae544f59::wal::WAL", decimals: 9 },
+};
+
 /** Where collected LP fees go. The creator's own wallet is route 0. */
 export const MAELSTROM_FEE_ROUTES = { wallet: 0, buybackBurn: 1, holderRewards: 2 } as const;
 export type MaelstromFeeRoute = keyof typeof MAELSTROM_FEE_ROUTES;

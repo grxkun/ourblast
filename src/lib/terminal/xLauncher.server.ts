@@ -308,7 +308,7 @@ function launchConfigFor(row: LaunchRequestRow): LaunchConfiguration {
     image: row.icon_url,
     network: "sui",
     launchpad: pad.label,
-    pairToken: pad.pairTokens[0] ?? "SUI",
+    pairToken: resolvePairToken(pad, extractPairToken(row.tweet_text ?? "")),
     liquidity: pad.liquidity.default,
     // Developer buying stays off unless an operator switches it on.
     devBuy: row.dev_buy ? pad.liquidity.min : 0,
@@ -438,7 +438,8 @@ export async function executeLaunchRequest(requestId: string): Promise<LaunchOut
       // Maelstrom routes the pool's LP fees to one address: the launcher's own
       // wallet when we know it, otherwise the bot wallet holds them.
       feeRecipient: routing.launcherPaidOnChain ? routing.payees[3] ?? null : null,
-
+      // "paired with USDC" → a TOKEN/USDC Cetus pool; unsupported pairs fall back to SUI.
+      quote: resolvePairToken(pad, extractPairToken(request.tweet_text ?? "")),
     });
     if (outcome.status === "CONFIRMED" && outcome.coinType && outcome.poolId) {
       deployment = { tokenAddress: outcome.coinType, transactionDigest: outcome.digest ?? "" };
