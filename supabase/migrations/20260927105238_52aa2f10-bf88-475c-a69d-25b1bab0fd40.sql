@@ -1,0 +1,1 @@
+ALTER TABLE public.x_launch_requests ADD COLUMN IF NOT EXISTS dev_buy_usdc numeric;
