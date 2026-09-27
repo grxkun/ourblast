@@ -116,10 +116,9 @@ export async function replaceBankWalletKey(
 
 /** Accepts suiprivkey1… bech32 or raw hex; returns the 32-byte hex Turnkey expects. */
 function normalizeSecretKey(secretKey: string): string {
-  const keypair = Ed25519Keypair.fromSecretKey(secretKey.trim());
-  return Buffer.from(keypair.getSecretKey().startsWith("0x") ? keypair.getSecretKey().slice(2) : keypair.getSecretKey(), "hex")
-    .subarray(0, 32)
-    .toString("hex");
+  // getSecretKey() is bech32 ("suiprivkey1…"), never hex — decode it properly.
+  const { secretKey: raw } = decodeSuiPrivateKey(Ed25519Keypair.fromSecretKey(secretKey.trim()).getSecretKey());
+  return Buffer.from(raw).subarray(0, 32).toString("hex");
 }
 
 export async function findBankWallet(handle: string): Promise<BankWalletRow | null> {
