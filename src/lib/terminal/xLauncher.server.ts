@@ -367,6 +367,8 @@ export async function executeLaunchRequest(requestId: string): Promise<LaunchOut
   // Perpsplexity's own pool page, so the reply links the market, not a homepage.
   let perpsPoolId: string | null = null;
   let blastPoolObjectId: string | null = null;
+  let maelstromPoolId: string | null = null;
+
   const socials = extractSocials(request.tweet_text ?? "");
   const socialLine = [
     socials.website ? `Web: ${socials.website}` : "",
