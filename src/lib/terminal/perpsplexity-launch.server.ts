@@ -357,16 +357,21 @@ export async function launchOnPerpsplexity(input: PerpsLaunchInput): Promise<Per
       { coinType, packageId },
     );
   }
-  const needed = PERPSPLEXITY_CURVE_SEED_MIST + launchFeeMist + GAS_HEADROOM_MIST;
+  // Only the launch fee and gas come out of SUI now; the pool seed is USDC.
+  const needed = launchFeeMist + GAS_HEADROOM_MIST;
   const balance = await rpc<{ totalBalance?: string }>("suix_getBalance", [sender, "0x2::sui::SUI"])
     .then((result) => BigInt(result.totalBalance ?? "0"))
     .catch(() => 0n);
   if (balance > 0n && balance < needed) {
     return fail(
-      `The bot wallet needs about ${Number(needed) / 1_000_000_000} SUI for the 1 SUI pool seed, the ${Number(launchFeeMist) / 1_000_000_000} SUI launch fee and gas.`,
+      `The bot wallet needs about ${Number(needed) / 1_000_000_000} SUI for the ${Number(launchFeeMist) / 1_000_000_000} SUI launch fee and gas.`,
       { coinType, packageId },
     );
   }
+  // Fresh USDC coin references: the balance check above ran before the publish.
+  const seedSource = await quoteCoins(sender);
+  const seedPrimary = seedSource[0];
+  if (!seedPrimary) return fail("The bot wallet holds no USDC to seed the curve.", { coinType, packageId });
 
   const tx = new Transaction();
   withGas(tx, sender, launchGas, gasPrice, LAUNCH_BUDGET);
