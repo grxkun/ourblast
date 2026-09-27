@@ -486,12 +486,17 @@ export async function executeLaunchRequest(requestId: string): Promise<LaunchOut
 
   const isPerps = pad.id === "perpsplexity";
   const isMaelstrom = pad.id === "maelstrom";
-  const tokenUrl = isPerps || isMaelstrom
-    ? `https://suiscan.xyz/mainnet/coin/${deployment.tokenAddress}`
-    : tokenPageUrl(pad, deployment.tokenAddress);
+  // Maelstrom has its own token page, and its pools are Cetus pools that
+  // Dexscreener charts — so both links stay on the pad's own surfaces.
+  const { maelstromCoinUrl, dexscreenerPoolUrl } = await import("./maelstrom");
+  const tokenUrl = isMaelstrom
+    ? maelstromCoinUrl(deployment.tokenAddress)
+    : isPerps
+      ? `https://suiscan.xyz/mainnet/coin/${deployment.tokenAddress}`
+      : tokenPageUrl(pad, deployment.tokenAddress);
   const poolUrl = isMaelstrom
     ? maelstromPoolId
-      ? `https://suiscan.xyz/mainnet/object/${maelstromPoolId}`
+      ? dexscreenerPoolUrl(maelstromPoolId)
       : pad.site
     : isPerps
       ? perpsPoolId
