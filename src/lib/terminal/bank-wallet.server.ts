@@ -1,3 +1,4 @@
+import { decodeSuiPrivateKey } from "@mysten/sui/cryptography";
 import { Ed25519Keypair } from "@mysten/sui/keypairs/ed25519";
 import { Transaction } from "@mysten/sui/transactions";
 import { normalizeStructTag, normalizeSuiAddress } from "@mysten/sui/utils";
@@ -74,10 +75,17 @@ export async function replaceBankWalletKey(
   const tk = await turnkey();
   let row: Omit<BankWalletRow, "x_username" | "user_id">;
   if (tk.turnkeyConfigured()) {
-    const name = `ourbank-${handle.toLowerCase()}`;
+    const name = `ourbank-${handle.toLowerCase()}-${Date.now()}`;
     const account = secretKey
       ? await tk.importSuiPrivateKey(name, normalizeSecretKey(secretKey))
       : await tk.createSuiWallet(name);
+    if (secretKey) {
+      // The imported wallet must be the exact wallet the user backed up.
+      const expected = normalizeSuiAddress(Ed25519Keypair.fromSecretKey(secretKey.trim()).getPublicKey().toSuiAddress());
+      if (normalizeSuiAddress(account.address) !== expected) {
+        throw new Error("Import failed: the secured wallet address did not match your key. Nothing was changed.");
+      }
+    }
     row = {
       address: account.address,
       secret_ciphertext: null,
@@ -116,10 +124,9 @@ export async function replaceBankWalletKey(
 
 /** Accepts suiprivkey1… bech32 or raw hex; returns the 32-byte hex Turnkey expects. */
 function normalizeSecretKey(secretKey: string): string {
-  const keypair = Ed25519Keypair.fromSecretKey(secretKey.trim());
-  return Buffer.from(keypair.getSecretKey().startsWith("0x") ? keypair.getSecretKey().slice(2) : keypair.getSecretKey(), "hex")
-    .subarray(0, 32)
-    .toString("hex");
+  // getSecretKey() is bech32 ("suiprivkey1…"), never hex — decode it properly.
+  const { secretKey: raw } = decodeSuiPrivateKey(Ed25519Keypair.fromSecretKey(secretKey.trim()).getSecretKey());
+  return Buffer.from(raw).subarray(0, 32).toString("hex");
 }
 
 export async function findBankWallet(handle: string): Promise<BankWalletRow | null> {
