@@ -31,7 +31,7 @@ import {
   MAELSTROM_START_FDV_USD,
   MAELSTROM_TEMPLATE_NAMES,
   MAELSTROM_TEMPLATE_PACKAGE,
-  SUI_DECIMALS,
+
   SUI_TYPE,
   boundaryTickFor,
   buildLaunchMetadata,
