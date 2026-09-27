@@ -379,6 +379,18 @@ export async function executeLaunchRequest(requestId: string): Promise<LaunchOut
     socials.x ? `X: ${socials.x}` : "",
   ].filter(Boolean).join(" ");
   const withSocials = (d: string) => [socialLine, d].filter(Boolean).join(" | ");
+  const deployLink = request.x_username && request.x_post_id
+    ? `https://x.com/${request.x_username}/status/${request.x_post_id}` : "";
+  // Clean bio: the launcher's own "Desc:" or a generated summary, then the
+  // deploying X post and socials. Never the raw command tweet.
+  const richDescription = (padName: string) => {
+    const own = extractDescription(request.tweet_text ?? "");
+    const lev = request.leverage_bps ? `${Math.round(Number(request.leverage_bps) / 1000) / 10}x` : "3x";
+    const base = own || (request.underlying
+      ? `${request.name} ($${request.symbol}) is a ${lev} ${request.perps_long === false ? "SHORT" : "LONG"} ${String(request.underlying).toUpperCase()} leveraged composite token deployed on ${padName} via OurBlast.`
+      : `${request.name} ($${request.symbol}) deployed on ${padName} via OurBlast.`);
+    return [base, deployLink ? `Deploy: ${deployLink}` : "", socialLine].filter(Boolean).join(" | ");
+  };
   const routing = await feeRouting(request.x_username, {
     handle: request.fee_receiver_x_username,
     wallet: request.fee_receiver_wallet,
@@ -459,7 +471,7 @@ export async function executeLaunchRequest(requestId: string): Promise<LaunchOut
     const outcome = await launchOnPerpsplexity({
       symbol: request.symbol,
       name: request.name,
-      description: withSocials(extractDescription(request.tweet_text ?? "") ?? request.tweet_text ?? ""),
+      description: richDescription("Perpsplexity"),
       iconUrl: request.icon_url ?? "",
       underlying: request.underlying ?? null,
       long: request.perps_long ?? true,
