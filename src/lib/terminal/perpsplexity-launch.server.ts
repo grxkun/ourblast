@@ -256,6 +256,70 @@ function fail(error: string, extra: Partial<PerpsLaunchResult> = {}): PerpsLaunc
   };
 }
 
+/**
+ * The launcher's first buy on a live curve. Mirrors the pad's own buy
+ * transaction: split the USDC amount, call pool::buy, keep the Position.
+ */
+async function buyOnCurve(args: {
+  keypair: NonNullable<Awaited<ReturnType<typeof loadDeployer>>>;
+  sender: string;
+  coinType: string;
+  poolId: string;
+  amount: bigint;
+  gasPrice: number;
+  freshGas: () => Promise<Awaited<ReturnType<typeof gasCoins>>>;
+}): Promise<{ digest: string | null; error: string | null }> {
+  try {
+    const gas = await args.freshGas();
+    if (gas.length === 0) return { digest: null, error: "No SUI coin was left to pay gas for the first buy." };
+    const coins = await quoteCoins(args.sender);
+    const primary = coins[0];
+    if (!primary) return { digest: null, error: "The wallet held no USDC for the first buy." };
+    const [poolRef, configRef, clockRef] = await Promise.all([
+      sharedRef(args.poolId),
+      sharedRef(PERPSPLEXITY_CONFIG_ID),
+      sharedRef(CLOCK),
+    ]);
+    const tx = new Transaction();
+    withGas(tx, args.sender, gas, args.gasPrice, BUY_BUDGET);
+    const source = tx.objectRef({
+      objectId: primary.coinObjectId,
+      version: primary.version,
+      digest: primary.digest,
+    });
+    if (BigInt(primary.balance) < args.amount && coins.length > 1) {
+      tx.mergeCoins(
+        source,
+        coins
+          .slice(1)
+          .map((coin) => tx.objectRef({ objectId: coin.coinObjectId, version: coin.version, digest: coin.digest })),
+      );
+    }
+    const [payment] = tx.splitCoins(source, [tx.pure.u64(args.amount)]);
+    const position = tx.moveCall({
+      target: `${PERPSPLEXITY_PACKAGE_ID}::pool::buy`,
+      typeArguments: [args.coinType, PERPSPLEXITY_CURVE_QUOTE_TYPE],
+      arguments: [
+        tx.sharedObjectRef({ ...poolRef, mutable: true }),
+        tx.sharedObjectRef({ ...configRef, mutable: false }),
+        payment!,
+        // No slippage floor: this is the very first trade on a fresh curve.
+        tx.pure.u64(0),
+        tx.pure.u64(BigInt(Date.now() + 300_000)),
+        tx.sharedObjectRef({ ...clockRef, mutable: false }),
+      ],
+    });
+    tx.transferObjects([position], args.sender);
+    const run = await signAndExecute(tx, args.keypair);
+    if (!run.ok || !run.digest) return { digest: null, error: run.error ?? "The first buy failed." };
+    const receipt = await fetchReceipt(run.digest);
+    if (!receipt.ok) return { digest: run.digest, error: receipt.error ?? "The first buy failed on chain." };
+    return { digest: run.digest, error: null };
+  } catch (error) {
+    return { digest: null, error: (error as Error).message };
+  }
+}
+
 export async function launchOnPerpsplexity(input: PerpsLaunchInput): Promise<PerpsLaunchResult> {
   const keypair = await loadDeployer();
   if (!keypair) return fail("The bot launch wallet is not configured.");
