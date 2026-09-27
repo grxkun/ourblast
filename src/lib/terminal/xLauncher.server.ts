@@ -420,7 +420,29 @@ export async function executeLaunchRequest(requestId: string): Promise<LaunchOut
     } else {
       failure = outcome.error ?? "The Blast.fun launch did not confirm on chain.";
     }
+  } else if (pad.id === "maelstrom") {
+    // Maelstrom: one atomic call publishes nothing but the pool — the coin is
+    // published first, then the launchpad opens a Cetus pool, adds the whole
+    // float and locks the LP position forever.
+    const { launchOnMaelstrom } = await import("./maelstrom-launch.server");
+    const outcome = await launchOnMaelstrom({
+      symbol: request.symbol,
+      name: request.name,
+      description: extractDescription(request.tweet_text ?? "") ?? request.tweet_text ?? "",
+      iconUrl: request.icon_url ?? "",
+      website: socials.website,
+      xLink: socials.x ?? (request.x_username ? `https://x.com/${request.x_username}` : null),
+      telegram: socials.telegram,
+      feeRecipient: routing.payees[0] ?? null,
+    });
+    if (outcome.status === "CONFIRMED" && outcome.coinType && outcome.poolId) {
+      deployment = { tokenAddress: outcome.coinType, transactionDigest: outcome.digest ?? "" };
+      maelstromPoolId = outcome.poolId;
+    } else {
+      failure = outcome.error ?? "The Maelstrom launch did not confirm on chain.";
+    }
   } else if (pad.id === "perpsplexity") {
+
     // Perpsplexity launches use its virtual pool (bonding curve): a raise-first
     // curve quoted in SUI, seeded with 1 SUI. Fully backed composite pools need
     // an underlying market engine plus a lending market and are not used here.
