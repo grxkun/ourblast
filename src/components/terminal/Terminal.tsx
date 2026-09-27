@@ -16,6 +16,7 @@ import type { Json } from "@/integrations/supabase/types";
 import { runTerminalAgent } from "@/lib/terminal/agent";
 import { interpretCommand } from "@/lib/terminal/nlu.functions";
 import { runBankCommand } from "@/lib/terminal/bank.functions";
+import { launchFromTerminal } from "@/lib/terminal/xLauncher.functions";
 import { parseBankCommand, parseSwapCommand } from "@/lib/terminal/bank";
 import { useBankApprovals } from "./useBankApprovals";
 import type { LaunchConfiguration, TerminalEntry, TerminalIntentName, TerminalStatus } from "@/lib/terminal/types";
@@ -44,7 +45,35 @@ export function Terminal({ tryCommand }: { tryCommand?: { command: string; nonce
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const interpret = useServerFn(interpretCommand);
   const bankCommand = useServerFn(runBankCommand);
+  const launchNow = useServerFn(launchFromTerminal);
+  const [launching, setLaunching] = useState(false);
   const { approveSwap, approveTransfer } = useBankApprovals();
+
+  /** LAUNCH in the terminal: the backend runs the same pipeline as an X launch. */
+  const doLaunch = useCallback(async (launch: LaunchConfiguration) => {
+    if (launching) return;
+    setLaunching(true);
+    const pending = toast.loading(`Launching $${launch.symbol} on ${launch.launchpad}…`);
+    try {
+      const outcome = await launchNow({ data: {
+        symbol: launch.symbol,
+        name: launch.name,
+        description: launch.description ?? "",
+        launchpad: launch.launchpad,
+        iconUrl: launch.image ?? null,
+        startingCapUsd: launch.perps?.startingCapUsd ?? null,
+        devBuyUsdc: launch.devBuy > 0 ? launch.devBuy : null,
+      } });
+      toast.dismiss(pending);
+      if (outcome.status === "DEPLOYED") toast.success(`$${launch.symbol} is live.`, { description: outcome.tokenUrl ?? undefined });
+      else toast.error(outcome.notice ?? "The launch did not go through.");
+    } catch (error) {
+      toast.dismiss(pending);
+      toast.error(error instanceof Error ? error.message : "The launch did not go through.");
+    } finally {
+      setLaunching(false);
+    }
+  }, [launchNow, launching]);
 
   const cloudHistory = useQuery({
     queryKey: ["terminal-history", userId],
