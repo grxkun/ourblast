@@ -50,7 +50,7 @@ describe("maelstrom pool math", () => {
       startFdvInQuote: 4000 / 1.5,
       tickSpacing,
     });
-    expect(boundaryTick % tickSpacing).toBe(0);
+    expect(Math.abs(boundaryTick % tickSpacing)).toBe(0);
     const base = {
       coinIsA,
       supply: MAELSTROM_COIN_SUPPLY,
