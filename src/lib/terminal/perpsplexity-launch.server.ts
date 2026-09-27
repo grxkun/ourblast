@@ -763,9 +763,12 @@ async function launchCompositePool(args: {
       activateTx.sharedObjectRef({ ...refs.baseFeed, mutable: false }),
       activateTx.sharedObjectRef({ ...refs.collateralFeed, mutable: false }),
       // Same floor as the live $diana activation (tx 9suhyGmP…): 989,999 of the
-      // 1 USDC seed NAV (99%), with a roomier deadline so clock skew can't trip it.
+      // 1 USDC seed NAV (99%).
       activateTx.pure.u64(989_999n),
-      activateTx.pure.u64(BigInt(Date.now() + 600_000)),
+      // composite_pool::timely rejects a deadline more than 120s from the chain
+      // clock (abort 6) — the $diana activation that worked sat ~18s ahead, while
+      // our 300s and 600s deadlines both aborted. Stay well inside the window.
+      activateTx.pure.u64(BigInt(Date.now() + 60_000)),
       activateTx.sharedObjectRef({ ...refs.clock, mutable: false }),
     ],
   }) as TransactionArgument[];
