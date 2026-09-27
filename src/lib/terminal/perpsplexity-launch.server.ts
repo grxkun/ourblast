@@ -271,9 +271,26 @@ export async function launchOnPerpsplexity(input: PerpsLaunchInput): Promise<Per
 
   let virtualQuote: bigint;
   try {
-    virtualQuote = perpsCurveVirtualQuote(await startingCapMist(input.startingCapUsd));
+    virtualQuote = perpsCurveVirtualQuote(startingCapUnits(input.startingCapUsd));
   } catch (error) {
     return fail((error as Error).message);
+  }
+
+  // The curve is seeded in USDC, so the bot wallet must hold the 1 USDC seed
+  // plus whatever initial buy was requested.
+  const devBuyUnits =
+    input.devBuyUsdc && input.devBuyUsdc > 0
+      ? perpsQuoteUnits(input.devBuyUsdc.toFixed(PERPSPLEXITY_CURVE_QUOTE_DECIMALS))
+      : 0n;
+  const quoteNeeded = PERPSPLEXITY_CURVE_SEED_UNITS + devBuyUnits;
+  const quoteHeld = await quoteCoins(sender);
+  const quoteBalance = quoteHeld.reduce((total, coin) => total + BigInt(coin.balance), 0n);
+  if (quoteBalance < quoteNeeded) {
+    return fail(
+      `The bot wallet needs ${quoteAmountText(quoteNeeded)} USDC for the 1 USDC pool seed${
+        devBuyUnits > 0n ? ` and the ${quoteAmountText(devBuyUnits)} USDC first buy` : ""
+      }; it holds ${quoteAmountText(quoteBalance)} USDC.`,
+    );
   }
 
   const [gas, gasPrice] = await Promise.all([gasCoins(sender), referenceGasPrice().catch(() => 1000)]);
