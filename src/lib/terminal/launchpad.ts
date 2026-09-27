@@ -58,17 +58,20 @@ export const LAUNCHPADS: LaunchpadConfig[] = [
   {
     id: "maelstrom",
     label: "Maelstrom",
-    site: "https://maelstrom.sui.io",
+    site: "https://maelstromfun.xyz",
     network: "sui",
-    factoryPackage: null,
-    factoryObject: null,
-    version: null,
-    integrated: false,
-    supportsCustomPair: true,
-    pairTokens: ["SUI", "USDC", "BLAST", "DEEP", "WAL"],
-    liquidity: { min: 1, max: 25_000, default: 25 },
-    supply: { min: 1_000_000, max: 100_000_000_000, default: 1_000_000_000 },
+    // Mainnet launchpad package (factory and router in one) + its shared
+    // Launchpad object. Launches open a Cetus pool whose LP is locked forever.
+    factoryPackage: "0xed1d6717ba00f452822039f295989bbaef6c10ce34a29ac8f28ea6de2867d6c6",
+    factoryObject: "0x61a4aacb5b0beea23a6e3fb789b48a6f1b6f95b1c8a98b8d1bd5112b4666c5c4",
+    version: "launchpad-v2",
+    integrated: true,
+    supportsCustomPair: false,
+    pairTokens: ["SUI"],
+    liquidity: { min: 1, max: 25_000, default: 1 },
+    supply: { min: 1_000_000_000, max: 1_000_000_000, default: 1_000_000_000 },
   },
+
   {
     id: "ript",
     label: "RIPT",
