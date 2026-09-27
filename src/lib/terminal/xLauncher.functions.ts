@@ -82,8 +82,13 @@ export const launchFromTerminal = createServerFn({ method: "POST" })
         symbol: data.symbol.toUpperCase(),
         name: data.name,
         launchpad: data.launchpad,
-        perps: data.startingCapUsd
-          ? { underlying: null, long: true, leverageBps: 10_000, startingCapUsd: data.startingCapUsd }
+        perps: data.startingCapUsd || data.underlying
+          ? {
+              underlying: data.underlying,
+              long: data.long,
+              leverageBps: data.leverageBps ?? 30_000,
+              startingCapUsd: data.startingCapUsd,
+            }
           : undefined,
         devBuyUsdc: data.devBuyUsdc ?? undefined,
       },
