@@ -433,7 +433,10 @@ export async function executeLaunchRequest(requestId: string): Promise<LaunchOut
       website: socials.website,
       xLink: socials.x ?? (request.x_username ? `https://x.com/${request.x_username}` : null),
       telegram: socials.telegram,
-      feeRecipient: routing.payees[0] ?? null,
+      // Maelstrom routes the pool's LP fees to one address: the launcher's own
+      // wallet when we know it, otherwise the bot wallet holds them.
+      feeRecipient: routing.launcherPaidOnChain ? routing.payees[3] ?? null : null,
+
     });
     if (outcome.status === "CONFIRMED" && outcome.coinType && outcome.poolId) {
       deployment = { tokenAddress: outcome.coinType, transactionDigest: outcome.digest ?? "" };
