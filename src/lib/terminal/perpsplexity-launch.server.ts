@@ -762,10 +762,10 @@ async function launchCompositePool(args: {
       activateTx.sharedObjectRef({ ...refs.registry, mutable: false }),
       activateTx.sharedObjectRef({ ...refs.baseFeed, mutable: false }),
       activateTx.sharedObjectRef({ ...refs.collateralFeed, mutable: false }),
-      // No slippage floor on the pad's own seed, then the standard 5 minute
-      // deadline the pad uses for every engine call.
-      activateTx.pure.u64(0),
-      activateTx.pure.u64(BigInt(Date.now() + 300_000)),
+      // Same floor as the live $diana activation (tx 9suhyGmP…): 989,999 of the
+      // 1 USDC seed NAV (99%), with a roomier deadline so clock skew can't trip it.
+      activateTx.pure.u64(989_999n),
+      activateTx.pure.u64(BigInt(Date.now() + 600_000)),
       activateTx.sharedObjectRef({ ...refs.clock, mutable: false }),
     ],
   }) as TransactionArgument[];
