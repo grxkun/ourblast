@@ -1,15 +1,22 @@
 /**
- * OurBlast launch path for Perpsplexity (perpsplexity.app) composite pools.
+ * OurBlast launch path for Perpsplexity (perpsplexity.app) virtual pools.
  *
- * Reproduces the official frontend launch flow exactly, traced from the live
- * mainnet bundle (launch chunk + composite-deployments chunk):
+ * Reproduces the official spot/bonding-curve launch exactly, traced from live
+ * mainnet transactions (FLUFFY, MIZU, CAT — e.g.
+ * FCzPY9ofieeTPMKwteuVq7qaENvUsG1UjGCUgnNq2Nko):
  *   1. Publish the embedded coin template with patched identifiers (mirrors
  *      @mysten/move-bytecode-template update_identifiers, which needs wasm we
  *      cannot run in the Worker) + 0x2::package::make_immutable.
- *   2. settings::new + launchpad::prepare_composite_registered.
- *   3. Read the composite_pool::Prepared event, then engine::activate +
- *      composite_pool::activate + aftermath clearing_house::share.
- * Never fabricates a result: CONFIRMED only after Sui confirms each step.
+ *   2. One atomic transaction: <coin>::create → settings::spot → split the
+ *      1 SUI pool seed and the config's launch fee off the gas coin →
+ *      launchpad::launch_registered<COIN, SUI> → transfer the returned
+ *      PoolCap, LpPosition and change coin to the launch wallet.
+ *
+ * Fully backed / composite pools are deliberately NOT used: they require an
+ * Aftermath clearing house plus a Suilend market and kept failing at
+ * activation. A virtual pool is the raise-first curve, which is what a social
+ * launch needs. Never fabricates a result: CONFIRMED only after Sui confirms
+ * both steps and emits pool::PoolCreated.
  */
 
 import { Transaction, type TransactionArgument } from "@mysten/sui/transactions";
@@ -21,20 +28,17 @@ import {
   serializeModule,
 } from "@/lib/terminal/coin-template.server";
 import {
-  PERPSPLEXITY_AFTERMATH_PACKAGE_ID,
   PERPSPLEXITY_CONFIG_ID,
-  PERPSPLEXITY_ENGINE_PACKAGE_ID,
+  PERPSPLEXITY_CURVE_BASE_FEE_BPS,
+  PERPSPLEXITY_CURVE_DEFAULT_CAP_MIST,
+  PERPSPLEXITY_CURVE_HIBERNATION,
+  PERPSPLEXITY_CURVE_QUOTE_TYPE,
+  PERPSPLEXITY_CURVE_SEED_MIST,
+  PERPSPLEXITY_CURVE_SUPPLY,
   PERPSPLEXITY_LAUNCHPAD_ID,
-  PERPSPLEXITY_LENDING_MARKET_ID,
-  PERPSPLEXITY_LENDING_TYPE,
   PERPSPLEXITY_ORIGINAL_PACKAGE_ID,
   PERPSPLEXITY_PACKAGE_ID,
-  PERPSPLEXITY_QUOTE_DECIMALS,
-  PERPSPLEXITY_QUOTE_TYPE,
-  PERPSPLEXITY_REGISTRY_ID,
-  perpsQuoteUnits,
-  perpsVirtualQuote,
-  resolvePerpsMarket,
+  perpsCurveVirtualQuote,
 } from "@/lib/terminal/perpsplexity";
 import {
   gasCoins,
@@ -52,10 +56,12 @@ export interface PerpsLaunchInput {
   symbol: string;
   description: string;
   iconUrl: string;
-  underlying: string;
-  long: boolean;
-  leverageBps: number;
-  startingCapUsd: number | null;
+  /** Kept for callers; virtual curves carry no perp market of their own. */
+  underlying?: string | null;
+  long?: boolean;
+  leverageBps?: number;
+  /** Starting market cap in USD; converted to SUI at the live spot price. */
+  startingCapUsd?: number | null;
 }
 
 export interface PerpsLaunchResult {
@@ -89,27 +95,9 @@ const RESERVED_IDENTIFIERS = new Set([
   "package", "types", "witness",
 ]);
 const PUBLISH_BUDGET = 500_000_000;
-const PREPARE_BUDGET = 500_000_000;
-const ACTIVATE_BUDGET = 900_000_000;
-const ACTIVATE_DEADLINE_MS = 60_000;
-
-// Launch settings, matching the official launch form defaults (protocol chunk).
-const SETTINGS = {
-  synthBps: 7000,
-  hotBps: 2000,
-  lendBps: 1000,
-  marginBps: 0,
-  collateralLendBps: 2000,
-  maxTradeBps: 0,
-  hibernationFloorMicros: 0n,
-  hibernationEnabled: false,
-  pauseOnMarketClose: true,
-};
-const ENGINE_BUFFER_BPS = 1000;
-const REINVEST_BPS = 5000;
-// 1B tokens at 6 decimals — the value the official launch passes (1e15).
-const SUPPLY = 1_000_000_000n * 1_000_000n;
-const SEED_UNITS = 1_000_000n; // 1 USDC, the official form's minimum/default seed.
+const LAUNCH_BUDGET = 900_000_000;
+/** Headroom kept in the gas coin on top of the seed + launch fee. */
+const GAS_HEADROOM_MIST = 1_000_000_000n;
 
 function deriveNames(rawSymbol: string): { module: string; struct: string } {
   const symbol = rawSymbol.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 10);
@@ -163,20 +151,6 @@ export function patchTemplateIdentifiers(
   return Buffer.from(serializeModule(parsed)).toString("base64");
 }
 
-function settingsArgs(tx: Transaction): TransactionArgument[] {
-  return [
-    tx.pure.u64(SETTINGS.synthBps),
-    tx.pure.u64(SETTINGS.hotBps),
-    tx.pure.u64(SETTINGS.lendBps),
-    tx.pure.u64(SETTINGS.marginBps),
-    tx.pure.u64(SETTINGS.collateralLendBps),
-    tx.pure.u64(SETTINGS.maxTradeBps),
-    tx.pure.u64(SETTINGS.hibernationFloorMicros),
-    tx.pure.bool(SETTINGS.hibernationEnabled),
-    tx.pure.bool(SETTINGS.pauseOnMarketClose),
-  ];
-}
-
 async function objectRef(id: string, label: string): Promise<{ objectId: string; version: string; digest: string }> {
   for (let attempt = 0; attempt < 10; attempt += 1) {
     const result = await rpc<{ data?: { version?: string; digest?: string } | null }>(
@@ -191,104 +165,6 @@ async function objectRef(id: string, label: string): Promise<{ objectId: string;
   throw new Error(`${label} is not visible on chain yet.`);
 }
 
-async function usdcSeedCoin(tx: Transaction, owner: string, seedUnits: bigint): Promise<TransactionArgument> {
-  const result = await rpc<{
-    data: { coinObjectId: string; version: string; digest: string; balance: string }[];
-  }>("suix_getCoins", [owner, PERPSPLEXITY_QUOTE_TYPE, null, 50]);
-  const coins = (result.data ?? [])
-    .map((coin) => ({
-      objectId: coin.coinObjectId,
-      version: String(coin.version),
-      digest: coin.digest,
-      balance: BigInt(coin.balance),
-    }))
-    .sort((a, b) => (a.balance > b.balance ? -1 : 1));
-  const total = coins.reduce((sum, coin) => sum + coin.balance, 0n);
-  if (total < seedUnits) throw new Error("The bot wallet does not hold enough USDC for the launch seed.");
-  const big = coins.find((coin) => coin.balance >= seedUnits);
-  if (big) {
-    return tx.splitCoins(tx.objectRef({ objectId: big.objectId, version: big.version, digest: big.digest }), [seedUnits])[0]!;
-  }
-  const base = coins[0];
-  if (!base) throw new Error("The bot wallet holds no USDC.");
-  const baseRef = tx.objectRef({ objectId: base.objectId, version: base.version, digest: base.digest });
-  const rest = coins.slice(1);
-  if (rest.length > 0) {
-    tx.mergeCoins(
-      baseRef,
-      rest.map((coin) => tx.objectRef({ objectId: coin.objectId, version: coin.version, digest: coin.digest })),
-    );
-  }
-  return tx.splitCoins(baseRef, [seedUnits])[0]!;
-}
-
-interface SuiCoin {
-  objectId: string;
-  version: string;
-  digest: string;
-  balance: bigint;
-}
-
-async function suiCoins(owner: string): Promise<SuiCoin[]> {
-  const result = await rpc<{
-    data: { coinObjectId: string; version: string; digest: string; balance: string }[];
-  }>("suix_getCoins", [owner, "0x2::sui::SUI", null, 50]);
-  return (result.data ?? [])
-    .map((coin) => ({
-      objectId: coin.coinObjectId,
-      version: String(coin.version),
-      digest: coin.digest,
-      balance: BigInt(coin.balance),
-    }))
-    .sort((a, b) => (a.balance > b.balance ? -1 : 1));
-}
-
-/**
- * The launch capital is a fixed amount read from Perpsplexity's config (5 SUI
- * on mainnet). The reference create transaction pays it from a coin holding
- * exactly that amount — never by splitting the gas coin, because a gas payment
- * reserves its whole balance, which is what made our prepare ask for the
- * wallet's entire 33 SUI instead of 5. So: find (or mint, in its own small
- * transaction) a Coin<SUI> worth exactly the launch fee, and keep it out of the
- * gas payment. Leverage never touches this amount.
- */
-async function exactFeeCoin(
-  sender: string,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  keypair: any,
-  gasPrice: number,
-  amountMist: bigint,
-): Promise<{ fee: SuiCoin; gas: SuiCoin[] }> {
-  for (let attempt = 0; attempt < 3; attempt += 1) {
-    const coins = await suiCoins(sender);
-    if (coins.length === 0) {
-      throw new Error("The bot wallet holds no SUI coin. Send a few SUI to it with a normal transfer, then launch again.");
-    }
-    const exact = coins.find((coin) => coin.balance === amountMist);
-    const rest = exact ? coins.filter((coin) => coin.objectId !== exact.objectId) : [];
-    if (exact && rest.length > 0) return { fee: exact, gas: rest };
-
-    const source = coins.find((coin) => coin.balance > amountMist + 100_000_000n);
-    if (!source) {
-      throw new Error(
-        `The bot wallet needs at least ${Number(amountMist) / 1_000_000_000 + 0.1} SUI in one coin for the launch fee plus gas.`,
-      );
-    }
-    // Mint the exact-amount coin on its own; this transaction may safely split
-    // from its gas coin because nothing else in it reserves a balance.
-    const splitTx = new Transaction();
-    withGas(splitTx, sender, [{ ...source, type: "0x2::coin::Coin<0x2::sui::SUI>" }], gasPrice, 50_000_000);
-    const [piece] = splitTx.splitCoins(splitTx.gas, [amountMist]);
-    splitTx.transferObjects([piece!], sender);
-    const run = await signAndExecute(splitTx, keypair);
-    if (!run.ok || !run.digest) throw new Error(run.error ?? "Could not set aside the launch fee coin.");
-    const receipt = await fetchReceipt(run.digest);
-    if (!receipt.ok) throw new Error(receipt.error ?? "Could not set aside the launch fee coin.");
-    await new Promise((resolve) => setTimeout(resolve, 2000));
-  }
-  throw new Error("Could not set aside the exact launch fee coin.");
-}
-
 async function readLaunchFeeMist(): Promise<bigint> {
   const result = await rpc<{
     data?: { content?: { fields?: { params?: { fields?: { launch_fee_mist?: string } }; paused?: boolean } } | null };
@@ -297,6 +173,42 @@ async function readLaunchFeeMist(): Promise<bigint> {
   if (!fields) throw new Error("Could not read the Perpsplexity launch configuration.");
   if (fields.paused) throw new Error("Perpsplexity launches are paused right now.");
   return BigInt(fields.params?.fields?.launch_fee_mist ?? "0");
+}
+
+/** Live SUI spot price, used only to translate a requested USD cap into MIST. */
+async function suiUsdPrice(): Promise<number> {
+  try {
+    const res = await fetch("https://api.dexscreener.com/latest/dex/tokens/0x2::sui::SUI", {
+      headers: { accept: "application/json" },
+    });
+    const json = (await res.json()) as {
+      pairs?: { chainId?: string; priceUsd?: string; liquidity?: { usd?: number } }[];
+    };
+    let best = 0;
+    let deepest = 0;
+    for (const pair of json.pairs ?? []) {
+      if (pair.chainId !== "sui") continue;
+      const price = Number(pair.priceUsd ?? 0);
+      const liquidity = Number(pair.liquidity?.usd ?? 0);
+      if (price > 0 && liquidity >= deepest) {
+        deepest = liquidity;
+        best = price;
+      }
+    }
+    return best;
+  } catch {
+    return 0;
+  }
+}
+
+/** Starting market cap in MIST — from the requested USD cap when priceable. */
+async function startingCapMist(startingCapUsd: number | null | undefined): Promise<bigint> {
+  if (!startingCapUsd || startingCapUsd <= 0) return PERPSPLEXITY_CURVE_DEFAULT_CAP_MIST;
+  const price = await suiUsdPrice();
+  if (price <= 0) return PERPSPLEXITY_CURVE_DEFAULT_CAP_MIST;
+  const sui = startingCapUsd / price;
+  const mist = BigInt(Math.round(sui * 1_000_000_000));
+  return mist > PERPSPLEXITY_CURVE_SEED_MIST ? mist : PERPSPLEXITY_CURVE_DEFAULT_CAP_MIST;
 }
 
 interface TxReceipt {
@@ -343,10 +255,6 @@ function fail(error: string, extra: Partial<PerpsLaunchResult> = {}): PerpsLaunc
 }
 
 export async function launchOnPerpsplexity(input: PerpsLaunchInput): Promise<PerpsLaunchResult> {
-  const market = resolvePerpsMarket(input.underlying);
-  if (!market) {
-    return fail(`Unknown underlying "${input.underlying}". Perpsplexity supports markets like NVDA, TSLA, BTC, ETH, SOL.`);
-  }
   const keypair = await loadDeployer();
   if (!keypair) return fail("The bot launch wallet is not configured.");
   const sender = keypair.getPublicKey().toSuiAddress();
@@ -365,6 +273,13 @@ export async function launchOnPerpsplexity(input: PerpsLaunchInput): Promise<Per
     return fail((error as Error).message);
   }
 
+  let virtualQuote: bigint;
+  try {
+    virtualQuote = perpsCurveVirtualQuote(await startingCapMist(input.startingCapUsd));
+  } catch (error) {
+    return fail((error as Error).message);
+  }
+
   const [gas, gasPrice] = await Promise.all([gasCoins(sender), referenceGasPrice().catch(() => 1000)]);
   if (gas.length === 0) return fail("The bot wallet has no SUI for gas or the launch fee.");
   // Every transaction consumes and recreates the gas coin, so its version and
@@ -379,18 +294,8 @@ export async function launchOnPerpsplexity(input: PerpsLaunchInput): Promise<Per
     return [];
   };
 
-  const startingCapUnits = input.startingCapUsd && input.startingCapUsd > 0
-    ? perpsQuoteUnits(Math.round(input.startingCapUsd))
-    : 0n;
-  let virtualQuote = 0n;
-  try {
-    virtualQuote = perpsVirtualQuote(startingCapUnits, SEED_UNITS);
-  } catch (error) {
-    return fail((error as Error).message);
-  }
-
   const description =
-    input.description.trim() || `${input.name} — market-backed memecoin on Perpsplexity, launched via OurBlast.`;
+    input.description.trim() || `${input.name} — bonding-curve memecoin on Perpsplexity, launched via OurBlast.`;
 
   // Step 1 — publish the coin package (official flow: publish patched
   // template modules, then make the upgrade cap immutable).
@@ -416,275 +321,115 @@ export async function launchOnPerpsplexity(input: PerpsLaunchInput): Promise<Per
   const packageId = creatorCap.objectType.split("::")[0]!;
   const coinType = `${packageId}::${names.module}::${names.struct}`;
 
-  // Step 2 — prepare the composite pool (token + pool + leveraged position,
-  // one atomic call, exactly like the official form).
+  // Step 2 — the virtual pool launch: one atomic launch_registered call.
   let capRef: { objectId: string; version: string; digest: string };
   try {
     capRef = await objectRef(creatorCap.objectId, "The coin creator capability");
   } catch (error) {
     return fail((error as Error).message, { coinType, packageId });
   }
-  const [
-    registryRef,
-    marketRef,
-    lendingRef,
-    baseOracleRef,
-    collateralOracleRef,
-    launchpadRef,
-    configRef,
-    clockRef,
-    coinRegistryRef,
-  ] = await Promise.all([
-      sharedRef(PERPSPLEXITY_REGISTRY_ID),
-      sharedRef(market.marketId),
-      sharedRef(PERPSPLEXITY_LENDING_MARKET_ID),
-      sharedRef(market.baseOracleId),
-      sharedRef(market.collateralOracleId),
-      sharedRef(PERPSPLEXITY_LAUNCHPAD_ID),
-      sharedRef(PERPSPLEXITY_CONFIG_ID),
-      sharedRef(CLOCK),
-      // Sui's coin registry is a shared object with a real initial version; a
-      // hardcoded version 1 makes the whole launch unusable on chain.
-      sharedRef(COIN_REGISTRY),
-    ]);
-  // The launch capital is exactly the fee Perpsplexity's config publishes
-  // (5 SUI on mainnet, matching the reference create transaction: -5.000000000
-  // SUI capital + gas + 1 USDC). It is paid from a coin holding precisely that
-  // amount, kept out of the gas payment — splitting it from tx.gas reserved the
-  // gas coin's whole balance, which is why prepare asked for 33.3 SUI.
-  let feeCoin: SuiCoin | null = null;
-  let prepareGas: { objectId: string; version: string; digest: string; type: string }[] = [];
-  try {
-    if (launchFeeMist > 0n) {
-      const picked = await exactFeeCoin(sender, keypair, gasPrice, launchFeeMist);
-      feeCoin = picked.fee;
-      prepareGas = picked.gas.map((coin) => ({ ...coin, type: "0x2::coin::Coin<0x2::sui::SUI>" }));
-    } else {
-      prepareGas = await freshGas();
-    }
-  } catch (error) {
-    return fail((error as Error).message, { coinType, packageId });
-  }
-  if (prepareGas.length === 0) {
+  const [launchpadRef, configRef, clockRef, coinRegistryRef] = await Promise.all([
+    sharedRef(PERPSPLEXITY_LAUNCHPAD_ID),
+    sharedRef(PERPSPLEXITY_CONFIG_ID),
+    sharedRef(CLOCK),
+    // Sui's coin registry is a shared object with a real initial version; a
+    // hardcoded version 1 makes the whole launch unusable on chain.
+    sharedRef(COIN_REGISTRY),
+  ]);
+
+  const launchGas = await freshGas();
+  if (launchGas.length === 0) {
     return fail(
       "The bot wallet has no SUI coin left to pay gas. Send a few SUI to it with a normal transfer, then launch again.",
       { coinType, packageId },
     );
   }
-  const prepareTx = new Transaction();
-  withGas(prepareTx, sender, prepareGas, gasPrice, PREPARE_BUDGET);
-  const createResults = prepareTx.moveCall({
+  const needed = PERPSPLEXITY_CURVE_SEED_MIST + launchFeeMist + GAS_HEADROOM_MIST;
+  const available = launchGas.reduce((sum, coin) => sum + BigInt((coin as { balance?: string }).balance ?? 0), 0n);
+  if (available > 0n && available < needed) {
+    return fail(
+      `The bot wallet needs about ${Number(needed) / 1_000_000_000} SUI for the 1 SUI pool seed, the ${Number(launchFeeMist) / 1_000_000_000} SUI launch fee and gas.`,
+      { coinType, packageId },
+    );
+  }
+
+  const tx = new Transaction();
+  withGas(tx, sender, launchGas, gasPrice, LAUNCH_BUDGET);
+  const createResults = tx.moveCall({
     target: `${packageId}::${names.module}::create`,
     arguments: [
-      prepareTx.objectRef(capRef),
-      prepareTx.sharedObjectRef({ ...coinRegistryRef, mutable: true }),
-      prepareTx.pure.string(input.name.trim()),
-      prepareTx.pure.string(names.struct),
-      prepareTx.pure.string(description),
-      prepareTx.pure.string(input.iconUrl),
+      tx.objectRef(capRef),
+      tx.sharedObjectRef({ ...coinRegistryRef, mutable: true }),
+      tx.pure.string(input.name.trim()),
+      tx.pure.string(names.struct),
+      tx.pure.string(description),
+      tx.pure.string(input.iconUrl),
     ],
   }) as TransactionArgument[];
-  const metadata = createResults[0]!;
+  const initializer = createResults[0]!;
   const treasuryCap = createResults[1]!;
-  const settings = prepareTx.moveCall({
-    target: `${PERPSPLEXITY_PACKAGE_ID}::settings::new`,
-    arguments: settingsArgs(prepareTx),
-  });
-  let seed: TransactionArgument;
-  try {
-    seed = await usdcSeedCoin(prepareTx, sender, SEED_UNITS);
-  } catch (error) {
-    return fail((error as Error).message, { coinType, packageId });
-  }
-  // Exact-amount coin: passed whole, so nothing beyond the 5 SUI capital is
-  // ever reserved. Leverage never multiplies this amount.
-  const fee = feeCoin
-    ? prepareTx.objectRef({ objectId: feeCoin.objectId, version: feeCoin.version, digest: feeCoin.digest })
-    : prepareTx.moveCall({ target: "0x2::coin::zero", typeArguments: ["0x2::sui::SUI"] });
-  const prepareResults = prepareTx.moveCall({
-    target: `${PERPSPLEXITY_PACKAGE_ID}::launchpad::prepare_composite_registered`,
-    typeArguments: [coinType, PERPSPLEXITY_LENDING_TYPE, PERPSPLEXITY_QUOTE_TYPE],
+  const settings = tx.moveCall({
+    target: `${PERPSPLEXITY_PACKAGE_ID}::settings::spot`,
     arguments: [
-      prepareTx.sharedObjectRef({ ...launchpadRef, mutable: true }),
-      prepareTx.sharedObjectRef({ ...configRef, mutable: false }),
+      tx.pure.u64(PERPSPLEXITY_CURVE_BASE_FEE_BPS),
+      tx.pure.bool(PERPSPLEXITY_CURVE_HIBERNATION),
+    ],
+  });
+  // The official form splits both the 1 SUI pool seed and the launch fee off
+  // the gas coin, in that order.
+  const [seedCoin, feeCoin] = tx.splitCoins(tx.gas, [
+    tx.pure.u64(PERPSPLEXITY_CURVE_SEED_MIST),
+    tx.pure.u64(launchFeeMist),
+  ]);
+  const launchResults = tx.moveCall({
+    target: `${PERPSPLEXITY_PACKAGE_ID}::launchpad::launch_registered`,
+    typeArguments: [coinType, PERPSPLEXITY_CURVE_QUOTE_TYPE],
+    arguments: [
+      tx.sharedObjectRef({ ...launchpadRef, mutable: true }),
+      tx.sharedObjectRef({ ...configRef, mutable: false }),
       treasuryCap,
-      metadata,
-      prepareTx.sharedObjectRef({ ...registryRef, mutable: true }),
-      prepareTx.sharedObjectRef({ ...marketRef, mutable: false }),
-      prepareTx.sharedObjectRef({ ...lendingRef, mutable: false }),
-      prepareTx.sharedObjectRef({ ...baseOracleRef, mutable: false }),
-      prepareTx.sharedObjectRef({ ...collateralOracleRef, mutable: false }),
-      seed,
-      fee,
-      prepareTx.pure.u64(SUPPLY),
+      initializer,
+      seedCoin!,
+      feeCoin!,
+      tx.pure.u64(PERPSPLEXITY_CURVE_SUPPLY),
       settings,
-      prepareTx.pure.u64(ENGINE_BUFFER_BPS),
-      prepareTx.pure.bool(input.long),
-      prepareTx.pure.u64(input.leverageBps),
-      prepareTx.pure.u64(REINVEST_BPS),
-      prepareTx.pure.u64(virtualQuote),
-      prepareTx.sharedObjectRef({ ...clockRef, mutable: false }),
+      tx.pure.u64(virtualQuote),
+      tx.sharedObjectRef({ ...clockRef, mutable: false }),
     ],
   }) as TransactionArgument[];
-  prepareTx.transferObjects([prepareResults[0]!, prepareResults[1]!], sender);
-  const prepareRun = await signAndExecute(prepareTx, keypair);
-  if (!prepareRun.ok || !prepareRun.digest) {
-    return fail(prepareRun.error ?? "Pool preparation failed.", { digest: prepareRun.digest, coinType, packageId });
-  }
-  const prepareReceipt = await fetchReceipt(prepareRun.digest);
-  if (!prepareReceipt.ok) {
-    return fail(prepareReceipt.error ?? "Pool preparation failed on chain.", { digest: prepareRun.digest, coinType, packageId });
-  }
-  const preparedEvent = prepareReceipt.events.find(
-    (event) => event.type === `${PERPSPLEXITY_ORIGINAL_PACKAGE_ID}::composite_pool::Prepared`,
-  );
-  const prepared = {
-    pool: eventField(preparedEvent, "pool"),
-    engine: eventField(preparedEvent, "engine"),
-    engineVault: eventField(preparedEvent, "engine_vault"),
-    engineAccount: eventField(preparedEvent, "engine_account"),
-    engineSleeve: eventField(preparedEvent, "engine_sleeve"),
-    poolSleeve: eventField(preparedEvent, "pool_sleeve"),
-    reserve: eventField(preparedEvent, "reserve"),
-    reserveAccount: eventField(preparedEvent, "reserve_account"),
-    creator: eventField(preparedEvent, "creator"),
-  };
-  if (!prepared.pool || !prepared.engine || !prepared.engineVault || !prepared.engineAccount
-    || !prepared.engineSleeve || !prepared.poolSleeve || !prepared.reserve || !prepared.reserveAccount) {
-    return fail("The pool prepared but its on-chain receipt was missing.", { digest: prepareRun.digest, coinType, packageId });
-  }
-  if (prepared.creator && prepared.creator !== sender) {
-    return fail("The pool receipt named a different creator wallet.", { digest: prepareRun.digest, coinType, packageId });
-  }
-  const poolCap = prepareReceipt.created.find(
-    (change) => change.objectType === `${PERPSPLEXITY_ORIGINAL_PACKAGE_ID}::composite_pool::PoolCap`,
-  );
-  if (!poolCap) {
-    return fail("The pool capability did not reach the launch wallet.", { digest: prepareRun.digest, coinType, packageId });
-  }
+  tx.transferObjects([launchResults[0]!, launchResults[1]!, launchResults[2]!], sender);
 
-  // Step 3 — activate (official flow: a dry run reads the quoted NAV, then
-  // the real call uses it with the form's 1% slippage guard).
-  const poolId = prepared.pool;
-  const engineId = prepared.engine;
-  const deadlineMs = Date.now() + ACTIVATE_DEADLINE_MS;
-  const buildActivate = async (minimum: bigint): Promise<Transaction> => {
-    const [poolR, engineR, vaultR, accountR, sleeveR, poolSleeveR, reserveR, reserveAccountR, freshCap] =
-      await Promise.all([
-        sharedRef(poolId),
-        sharedRef(engineId),
-        sharedRef(prepared.engineVault!),
-        sharedRef(prepared.engineAccount!),
-        sharedRef(prepared.engineSleeve!),
-        sharedRef(prepared.poolSleeve!),
-        sharedRef(prepared.reserve!),
-        sharedRef(prepared.reserveAccount!),
-        objectRef(poolCap.objectId, "The pool capability"),
-      ]);
-    const tx = new Transaction();
-    withGas(tx, sender, await freshGas(), gasPrice, ACTIVATE_BUDGET);
-    tx.moveCall({
-      target: `${PERPSPLEXITY_ENGINE_PACKAGE_ID}::engine::activate`,
-      typeArguments: [PERPSPLEXITY_LENDING_TYPE, PERPSPLEXITY_QUOTE_TYPE],
-      arguments: [
-        tx.sharedObjectRef({ ...engineR, mutable: true }),
-        tx.sharedObjectRef({ ...vaultR, mutable: true }),
-        tx.sharedObjectRef({ ...accountR, mutable: true }),
-        tx.sharedObjectRef({ ...marketRef, mutable: true }),
-      ],
-    });
-    const activateResults = tx.moveCall({
-      target: `${PERPSPLEXITY_PACKAGE_ID}::composite_pool::activate`,
-      typeArguments: [coinType, PERPSPLEXITY_LENDING_TYPE, PERPSPLEXITY_QUOTE_TYPE],
-      arguments: [
-        tx.sharedObjectRef({ ...poolR, mutable: true }),
-        tx.sharedObjectRef({ ...configRef, mutable: false }),
-        tx.objectRef(freshCap),
-        tx.sharedObjectRef({ ...engineR, mutable: true }),
-        tx.sharedObjectRef({ ...vaultR, mutable: true }),
-        tx.sharedObjectRef({ ...accountR, mutable: true }),
-        tx.sharedObjectRef({ ...marketRef, mutable: true }),
-        tx.sharedObjectRef({ ...sleeveR, mutable: true }),
-        tx.sharedObjectRef({ ...lendingRef, mutable: true }),
-        tx.sharedObjectRef({ ...poolSleeveR, mutable: true }),
-        tx.sharedObjectRef({ ...reserveR, mutable: false }),
-        tx.sharedObjectRef({ ...reserveAccountR, mutable: true }),
-        tx.sharedObjectRef({ ...registryRef, mutable: false }),
-        tx.sharedObjectRef({ ...baseOracleRef, mutable: false }),
-        tx.sharedObjectRef({ ...collateralOracleRef, mutable: false }),
-        tx.pure.u64(minimum),
-        tx.pure.u64(BigInt(deadlineMs)),
-        tx.sharedObjectRef({ ...clockRef, mutable: false }),
-      ],
-    }) as TransactionArgument[];
-    tx.moveCall({
-      target: `${PERPSPLEXITY_AFTERMATH_PACKAGE_ID}::clearing_house::share`,
-      typeArguments: [PERPSPLEXITY_QUOTE_TYPE],
-      arguments: [activateResults[0]!],
-    });
-    tx.transferObjects([activateResults[1]!], sender);
-    return tx;
-  };
-
-  let minimum = 1n;
-  try {
-    const probeTx = await buildActivate(1n);
-    const probeBytes = await probeTx.build();
-    let inspected: { events?: { type?: string; parsedJson?: Record<string, unknown> }[] } | null = null;
-    for (const method of ["suix_devInspectTransactionBlock", "sui_devInspectTransactionBlock"]) {
-      try {
-        inspected = await rpc(method, [sender, Buffer.from(probeBytes).toString("base64"), null, null]);
-        break;
-      } catch {
-        inspected = null;
-      }
-    }
-    const created = (inspected?.events ?? []).find(
-      (event) => typeof event.type === "string"
-        && normalizeType(event.type) === `${PERPSPLEXITY_ORIGINAL_PACKAGE_ID}::composite_pool::Created`,
-    );
-    const nav = created?.parsedJson?.["quote_nav"];
-    if (typeof nav === "string" && /^\d+$/.test(nav)) minimum = (BigInt(nav) * 99n) / 100n;
-  } catch {
-    minimum = 1n;
+  const run = await signAndExecute(tx, keypair);
+  if (!run.ok || !run.digest) {
+    return fail(run.error ?? "The Perpsplexity curve launch failed.", { digest: run.digest, coinType, packageId });
   }
-
-  let activateTx: Transaction;
-  try {
-    activateTx = await buildActivate(minimum);
-  } catch (error) {
-    return fail((error as Error).message, { coinType, packageId, poolId, engineId });
-  }
-  const activateRun = await signAndExecute(activateTx, keypair);
-  if (!activateRun.ok || !activateRun.digest) {
-    return fail(activateRun.error ?? "Activation failed.", { digest: activateRun.digest, coinType, packageId, poolId, engineId });
-  }
-  const activateReceipt = await fetchReceipt(activateRun.digest);
-  if (!activateReceipt.ok) {
-    return fail(activateReceipt.error ?? "Activation failed on chain.", { digest: activateRun.digest, coinType, packageId, poolId, engineId });
-  }
-  const createdEvent = activateReceipt.events.find(
-    (event) => event.type === `${PERPSPLEXITY_ORIGINAL_PACKAGE_ID}::composite_pool::Created`
-      && eventField(event, "pool") === poolId,
-  );
-  if (!createdEvent) {
-    return fail("Activation finished without the pool's on-chain confirmation.", {
-      digest: activateRun.digest,
+  const receipt = await fetchReceipt(run.digest);
+  if (!receipt.ok) {
+    return fail(receipt.error ?? "The Perpsplexity curve launch failed on chain.", {
+      digest: run.digest,
       coinType,
       packageId,
-      poolId,
-      engineId,
+    });
+  }
+  const created = receipt.events.find(
+    (event) => event.type === `${PERPSPLEXITY_ORIGINAL_PACKAGE_ID}::pool::PoolCreated`,
+  );
+  const poolId = eventField(created, "pool");
+  if (!poolId) {
+    return fail("The launch finished without the pool's on-chain confirmation.", {
+      digest: run.digest,
+      coinType,
+      packageId,
     });
   }
 
   return {
     status: "CONFIRMED",
-    digest: activateRun.digest,
+    digest: run.digest,
     error: null,
     coinType,
     packageId,
     poolId,
-    engineId,
+    engineId: null,
   };
 }
-
