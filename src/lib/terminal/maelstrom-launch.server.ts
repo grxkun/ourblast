@@ -27,6 +27,7 @@ import {
   MAELSTROM_LAUNCHPAD_ID,
   MAELSTROM_ORIGINAL_PACKAGE_ID,
   MAELSTROM_PACKAGE_ID,
+  MAELSTROM_QUOTES,
   MAELSTROM_START_FDV_USD,
   MAELSTROM_TEMPLATE_NAMES,
   MAELSTROM_TEMPLATE_PACKAGE,
@@ -75,6 +76,8 @@ export interface MaelstromLaunchInput {
   telegram?: string | null;
   /** Where collected LP fees go; defaults to the launch wallet's own route. */
   feeRecipient?: string | null;
+  /** Quote symbol from MAELSTROM_QUOTES; defaults to SUI. */
+  quote?: string | null;
 }
 
 export interface MaelstromLaunchResult {
@@ -175,16 +178,22 @@ async function launchpadSettings(): Promise<{ launchFee: bigint; creatorFeeBps: 
 }
 
 /** Live SUI spot price, used only to translate the $4K opening cap into SUI. */
-async function suiUsdPrice(): Promise<number> {
+async function suiUsdPrice(coinType = SUI_TYPE): Promise<number> {
   try {
-    const res = await fetch("https://api.dexscreener.com/latest/dex/tokens/0x2::sui::SUI", {
+    const res = await fetch(`https://api.dexscreener.com/latest/dex/tokens/${coinType}`, {
       headers: { accept: "application/json" },
     });
-    const json = (await res.json()) as { pairs?: { chainId?: string; priceUsd?: string; liquidity?: { usd?: number } }[] };
+    const json = (await res.json()) as {
+      pairs?: { chainId?: string; priceUsd?: string; liquidity?: { usd?: number }; baseToken?: { address?: string } }[];
+    };
     let best = 0;
     let deepest = 0;
+    const tail = coinType.split("::").slice(1).join("::").toLowerCase();
     for (const pair of json.pairs ?? []) {
       if (pair.chainId !== "sui") continue;
+      // priceUsd is the base token's price: skip pairs where our coin is the quote.
+      const base = (pair.baseToken?.address ?? "").toLowerCase();
+      if (base && !base.endsWith(tail)) continue;
       const price = Number(pair.priceUsd ?? 0);
       const liquidity = Number(pair.liquidity?.usd ?? 0);
       if (price > 0 && liquidity >= deepest) {
@@ -230,9 +239,14 @@ export async function launchOnMaelstrom(input: MaelstromLaunchInput): Promise<Ma
     ? TICK_SPACING
     : (settings.tickSpacings[0] as number);
 
-  const suiPrice = await suiUsdPrice();
+  const quoteSymbol = (input.quote ?? "SUI").toUpperCase();
+  const quote = MAELSTROM_QUOTES[quoteSymbol];
+  if (!quote) return fail(`${quoteSymbol} is not a supported Maelstrom pair. Use SUI, USDC, BLAST, DEEP or WAL.`);
+  const quoteType = quote.type;
+  const isSuiQuote = quoteType === SUI_TYPE;
+  const suiPrice = quoteSymbol === "USDC" ? 1 : await suiUsdPrice(quoteType);
   if (suiPrice <= 0) {
-    return fail("No SUI price is available right now, so the opening valuation cannot be set. Try again shortly.");
+    return fail(`No ${quoteSymbol} price is available right now, so the opening valuation cannot be set. Try again shortly.`);
   }
 
   const gasPrice = await referenceGasPrice().catch(() => 1000);
@@ -281,11 +295,11 @@ export async function launchOnMaelstrom(input: MaelstromLaunchInput): Promise<Ma
   let seed: bigint;
   let boundaryTick: number;
   try {
-    coinIsA = coinSortsAsA(coinType, SUI_TYPE);
+    coinIsA = coinSortsAsA(coinType, quoteType);
     boundaryTick = boundaryTickFor({
       coinIsA,
       coinDecimals: MAELSTROM_COIN_DECIMALS,
-      quoteDecimals: SUI_DECIMALS,
+      quoteDecimals: quote.decimals,
       supply: Number(MAELSTROM_COIN_SUPPLY / 10n ** BigInt(MAELSTROM_COIN_DECIMALS)),
       startFdvInQuote: MAELSTROM_START_FDV_USD / suiPrice,
       tickSpacing,
@@ -305,7 +319,21 @@ export async function launchOnMaelstrom(input: MaelstromLaunchInput): Promise<Ma
     return fail(`Could not price the pool: ${(error as Error).message}`, { coinType, digest: publishRun.digest });
   }
 
-  const needed = seed + settings.launchFee + GAS_HEADROOM_MIST;
+  // Non-SUI pools are seeded from the bot wallet's own quote coins.
+  let quoteCoins: { coinObjectId: string; version: string; digest: string; balance: string }[] = [];
+  if (!isSuiQuote) {
+    quoteCoins = await rpc<{ data: typeof quoteCoins }>("suix_getCoins", [sender, quoteType, null, 50])
+      .then((r) => r.data ?? [])
+      .catch(() => []);
+    const held = quoteCoins.reduce((sum, c) => sum + BigInt(c.balance), 0n);
+    if (held < seed) {
+      return fail(
+        `The bot wallet needs a little ${quoteSymbol} (${Number(seed) / 10 ** quote.decimals}) to seed a ${symbol}/${quoteSymbol} pool.`,
+        { coinType, digest: publishRun.digest },
+      );
+    }
+  }
+  const needed = (isSuiQuote ? seed : 0n) + settings.launchFee + GAS_HEADROOM_MIST;
   const balance = await rpc<{ totalBalance?: string }>("suix_getBalance", [sender, SUI_TYPE])
     .then((result) => BigInt(result.totalBalance ?? "0"))
     .catch(() => 0n);
@@ -338,10 +366,20 @@ export async function launchOnMaelstrom(input: MaelstromLaunchInput): Promise<Ma
 
   const tx = new Transaction();
   withGas(tx, sender, launchGas, gasPrice, LAUNCH_BUDGET);
-  const [seedCoin, feeCoin] = tx.splitCoins(tx.gas, [tx.pure.u64(seed), tx.pure.u64(settings.launchFee)]);
+  let seedCoin;
+  let feeCoin;
+  if (isSuiQuote) {
+    [seedCoin, feeCoin] = tx.splitCoins(tx.gas, [tx.pure.u64(seed), tx.pure.u64(settings.launchFee)]);
+  } else {
+    const refs = quoteCoins.map((c) => tx.objectRef({ objectId: c.coinObjectId, version: String(c.version), digest: c.digest }));
+    const primary = refs[0]!;
+    if (refs.length > 1) tx.mergeCoins(primary, refs.slice(1));
+    [seedCoin] = tx.splitCoins(primary, [tx.pure.u64(seed)]);
+    [feeCoin] = tx.splitCoins(tx.gas, [tx.pure.u64(settings.launchFee)]);
+  }
   tx.moveCall({
     target: `${MAELSTROM_PACKAGE_ID}::launchpad::${coinIsA ? "launch_as_a" : "launch_as_b"}`,
-    typeArguments: [coinType, SUI_TYPE],
+    typeArguments: [coinType, quoteType],
     arguments: [
       tx.sharedObjectRef({ ...launchpadRef, mutable: true }),
       tx.sharedObjectRef({ ...cetusConfigRef, mutable: false }),

@@ -1,6 +1,6 @@
 import { BOT_WALLET_ADDRESS, DEFAULT_TREASURY_ADDRESS, FOUNDER_ADDRESS } from "@/lib/ourblast.config";
 import { CREATOR_FEE_SPLIT } from "./fees";
-import { poolPageUrl, resolveLaunchpad, tokenPageUrl } from "./launchpad";
+import { poolPageUrl, resolveLaunchpad, resolvePairToken, tokenPageUrl } from "./launchpad";
 import { launchpadAdapter } from "./launchpadAdapter";
 import {
   DEFAULT_LAUNCHER_SETTINGS,
@@ -10,7 +10,7 @@ import {
   type LaunchRequestStatus,
 } from "./xLauncher";
 import type { LaunchConfiguration } from "./types";
-import { extractDescription, extractSocials } from "./xLauncher";
+import { extractDescription, extractPairToken, extractSocials } from "./xLauncher";
 
 /**
  * Server side of the simple X launcher. Every state change lives here so the
