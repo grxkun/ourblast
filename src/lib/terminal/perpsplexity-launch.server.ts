@@ -786,6 +786,23 @@ export async function launchOnPerpsplexity(input: PerpsLaunchInput): Promise<Per
     return fail((error as Error).message);
   }
 
+  // A named underlying market means a genuine leveraged pool (e.g. NVDA 3L);
+  // without one the launch is the plain USDC bonding curve.
+  const market = resolvePerpsMarket(input.underlying);
+  if (input.underlying && input.underlying.trim() && !market) {
+    return fail(
+      `Perpsplexity has no market for "${input.underlying.trim()}". Pick one of its listed markets, or leave it out for a plain curve.`,
+    );
+  }
+  let leverageBps = 0;
+  if (market) {
+    try {
+      leverageBps = perpsLeverageBps(input.leverageBps);
+    } catch (error) {
+      return fail((error as Error).message);
+    }
+  }
+
   let launchFeeMist: bigint;
   try {
     launchFeeMist = await readLaunchFeeMist();
