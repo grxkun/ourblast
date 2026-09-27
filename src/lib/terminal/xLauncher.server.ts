@@ -367,6 +367,8 @@ export async function executeLaunchRequest(requestId: string): Promise<LaunchOut
   // Perpsplexity's own pool page, so the reply links the market, not a homepage.
   let perpsPoolId: string | null = null;
   let blastPoolObjectId: string | null = null;
+  let maelstromPoolId: string | null = null;
+
   const socials = extractSocials(request.tweet_text ?? "");
   const socialLine = [
     socials.website ? `Web: ${socials.website}` : "",
@@ -420,7 +422,32 @@ export async function executeLaunchRequest(requestId: string): Promise<LaunchOut
     } else {
       failure = outcome.error ?? "The Blast.fun launch did not confirm on chain.";
     }
+  } else if (pad.id === "maelstrom") {
+    // Maelstrom: one atomic call publishes nothing but the pool — the coin is
+    // published first, then the launchpad opens a Cetus pool, adds the whole
+    // float and locks the LP position forever.
+    const { launchOnMaelstrom } = await import("./maelstrom-launch.server");
+    const outcome = await launchOnMaelstrom({
+      symbol: request.symbol,
+      name: request.name,
+      description: extractDescription(request.tweet_text ?? "") ?? request.tweet_text ?? "",
+      iconUrl: request.icon_url ?? "",
+      website: socials.website,
+      xLink: socials.x ?? (request.x_username ? `https://x.com/${request.x_username}` : null),
+      telegram: socials.telegram,
+      // Maelstrom routes the pool's LP fees to one address: the launcher's own
+      // wallet when we know it, otherwise the bot wallet holds them.
+      feeRecipient: routing.launcherPaidOnChain ? routing.payees[3] ?? null : null,
+
+    });
+    if (outcome.status === "CONFIRMED" && outcome.coinType && outcome.poolId) {
+      deployment = { tokenAddress: outcome.coinType, transactionDigest: outcome.digest ?? "" };
+      maelstromPoolId = outcome.poolId;
+    } else {
+      failure = outcome.error ?? "The Maelstrom launch did not confirm on chain.";
+    }
   } else if (pad.id === "perpsplexity") {
+
     // Perpsplexity launches use its virtual pool (bonding curve): a raise-first
     // curve quoted in SUI, seeded with 1 SUI. Fully backed composite pools need
     // an underlying market engine plus a lending market and are not used here.
@@ -457,14 +484,20 @@ export async function executeLaunchRequest(requestId: string): Promise<LaunchOut
   }
 
   const isPerps = pad.id === "perpsplexity";
-  const tokenUrl = isPerps
+  const isMaelstrom = pad.id === "maelstrom";
+  const tokenUrl = isPerps || isMaelstrom
     ? `https://suiscan.xyz/mainnet/coin/${deployment.tokenAddress}`
     : tokenPageUrl(pad, deployment.tokenAddress);
-  const poolUrl = isPerps
-    ? perpsPoolId
-      ? `${pad.site}/pool/${perpsPoolId}`
+  const poolUrl = isMaelstrom
+    ? maelstromPoolId
+      ? `https://suiscan.xyz/mainnet/object/${maelstromPoolId}`
       : pad.site
-    : poolPageUrl(pad, deployment.tokenAddress);
+    : isPerps
+      ? perpsPoolId
+        ? `${pad.site}/pool/${perpsPoolId}`
+        : pad.site
+      : poolPageUrl(pad, deployment.tokenAddress);
+
   // This is only reported after the composite_pool::Created event confirms the
   // market-backed curve on chain.
   const positionLine = isPerps && request.underlying
@@ -477,7 +510,7 @@ export async function executeLaunchRequest(requestId: string): Promise<LaunchOut
     .update({
       status: "DEPLOYED",
       token_address: deployment.tokenAddress,
-      pool_object_id: blastPoolObjectId,
+      pool_object_id: blastPoolObjectId ?? maelstromPoolId,
       token_url: tokenUrl,
       pool_url: poolUrl,
       tx_digest: deployment.transactionDigest,
@@ -492,7 +525,10 @@ export async function executeLaunchRequest(requestId: string): Promise<LaunchOut
   // they claim the parked share. Nobody has to ask for the link separately.
   // Perpsplexity routes creator fees through its own pool (pay_creator), so
   // there is no launch-time payee split to claim there.
-  const claimToken = isPerps ? null : await ensureFeeClaimLink(request.symbol, feeReceiverHandle(request));
+  // Maelstrom pays LP fees on chain to one recipient set at launch, so there is
+  // no OurBlast payee split to claim there either.
+  const claimToken = isPerps || isMaelstrom ? null : await ensureFeeClaimLink(request.symbol, feeReceiverHandle(request));
+
 
   await postDeployedReply(request, tokenUrl, poolUrl, claimToken, positionLine);
   return { status: "DEPLOYED", notice: null, tokenUrl, poolUrl };

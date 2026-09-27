@@ -10,3 +10,4 @@
 <!-- LOVABLE:END -->
 
 - OurBank wallet keys can live in Turnkey enclaves (`signing_backend` on `bank_wallets`); all signing goes through `bankSigner()` in bank-wallet.server.ts — never read `secret_ciphertext` directly elsewhere. Why: key location must be swappable without touching trade/send logic.
+- Each launchpad gets its own `<pad>-launch.server.ts` executor plus a pure `<pad>.ts` constants/math module, routed from `xLauncher.server.ts` by `pad.id`. Why: pool mechanics differ per launchpad and must stay testable without chain access.
