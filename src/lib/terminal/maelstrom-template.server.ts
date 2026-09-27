@@ -10,7 +10,15 @@
  * plus the module and witness identifiers. Same edit the website makes with the
  * wasm template tool.
  */
-import { encodeString, encodeUleb, parseModule, readUleb, serializeModule } from "./coin-template.server";
+import {
+  encodeString,
+  encodeUleb,
+  parseModule,
+  readUleb,
+  serializeModule,
+  zeroSelfAddress,
+} from "./coin-template.server";
+
 
 const CONSTANTS_KIND = 0x6;
 const IDENTIFIERS_KIND = 0x7;
@@ -113,7 +121,7 @@ export function patchMaelstromTemplate(
       .map((id) => (id === from.module ? meta.module : id === from.struct ? meta.struct : id))
       .flatMap(encodeString);
   });
-  return replaceTable(withIds, CONSTANTS_KIND, (body, start, end) => {
+  const withConstants = replaceTable(withIds, CONSTANTS_KIND, (body, start, end) => {
     const constants = readConstants(body, start, end);
     const textIndexes = constants.flatMap((constant, index) => (isTextConstant(constant) ? [index] : []));
     if (textIndexes.length !== 4) throw new Error("Coin template must have exactly four text constants.");
@@ -127,4 +135,7 @@ export function patchMaelstromTemplate(
       return [...constant.token, ...encodeUleb(data.length), ...data];
     });
   });
+  // The template came from a published package, so clear its self-address.
+  return zeroSelfAddress(withConstants);
+
 }
