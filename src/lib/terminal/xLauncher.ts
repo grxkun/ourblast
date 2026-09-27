@@ -169,7 +169,8 @@ export function parseDeployTweet(tweetText: string, defaultPad = LAUNCHPAD.id): 
   const rawPadMatch = findPadMatch(rawText);
   // Same reason: "@adiniyi" must be read before mention stripping removes it.
   const feeReceiver = extractFeeReceiver(rawText) ?? undefined;
-  let text = stripPairPhrase(stripFeePhrases(normalizeCommandText(rawText)));
+  const devBuyUsdc = extractDevBuy(rawText) ?? undefined;
+  let text = stripDevBuyPhrase(stripPairPhrase(stripFeePhrases(normalizeCommandText(rawText))));
 
   const textPadMatch = findPadMatch(text);
   const padMatch = textPadMatch ?? rawPadMatch;
@@ -196,7 +197,7 @@ export function parseDeployTweet(tweetText: string, defaultPad = LAUNCHPAD.id): 
       .replace(/[\s.,!?;:-]+$/g, "")
       .trim();
     const name = rawName.length >= 2 ? rawName.slice(0, 64) : symbol;
-    return { symbol, name, launchpad: pad.id, perps, feeReceiver };
+    return { symbol, name, launchpad: pad.id, perps, feeReceiver, devBuyUsdc };
   }
 
   // Field-style tweets: "deploy a token on suipump / Name: THINKING CAT / ticker: $HMMM".
@@ -214,12 +215,12 @@ export function parseDeployTweet(tweetText: string, defaultPad = LAUNCHPAD.id): 
     // tweets without a cashtag still launch ("Name: Monerochan" → $MONEROCHAN).
     const derived = nameRaw.replace(/[^a-z0-9]/gi, "").toUpperCase().slice(0, 10);
     if (derived.length < 2) return null;
-    return { symbol: derived, name: nameRaw.slice(0, 64), launchpad: pad.id, perps, feeReceiver };
+    return { symbol: derived, name: nameRaw.slice(0, 64), launchpad: pad.id, perps, feeReceiver, devBuyUsdc };
   }
   const symbol = normalizeSymbol(cashtag[1]);
   if (!symbol) return null;
   const name = nameRaw.length >= 2 ? nameRaw.slice(0, 64) : symbol;
-  return { symbol, name, launchpad: pad.id, perps, feeReceiver };
+  return { symbol, name, launchpad: pad.id, perps, feeReceiver, devBuyUsdc };
 }
 
 export function padFor(settings: LauncherSettings, requested?: string | null): LaunchpadConfig {
