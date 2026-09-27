@@ -49,6 +49,19 @@ export const MAELSTROM_QUOTES: Record<string, { type: string; decimals: number }
   WAL: { type: "0x356a26eb9e012a68958082340d4c4116e7f55615cf27affcff209cf0ae544f59::wal::WAL", decimals: 9 },
 };
 
+/**
+ * Public token page on Maelstrom. Their own client builds it as
+ * `/coin/${encodeURIComponent(coinType)}` (read from the production bundle).
+ */
+export function maelstromCoinUrl(coinType: string): string {
+  return `https://maelstromfun.xyz/coin/${encodeURIComponent(coinType)}`;
+}
+
+/** Chart for a launched pool. Maelstrom pools are plain Cetus pools, which Dexscreener indexes by pool id. */
+export function dexscreenerPoolUrl(poolId: string): string {
+  return `https://dexscreener.com/sui/${poolId}`;
+}
+
 /** Where collected LP fees go. The creator's own wallet is route 0. */
 export const MAELSTROM_FEE_ROUTES = { wallet: 0, buybackBurn: 1, holderRewards: 2 } as const;
 export type MaelstromFeeRoute = keyof typeof MAELSTROM_FEE_ROUTES;
