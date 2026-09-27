@@ -62,8 +62,10 @@ export interface PerpsLaunchInput {
   underlying?: string | null;
   long?: boolean;
   leverageBps?: number;
-  /** Starting market cap in USD; converted to SUI at the live spot price. */
+  /** Starting market cap in USD; the curve is quoted in USDC, so 1:1. */
   startingCapUsd?: number | null;
+  /** The launcher's own first buy on the new curve, in USDC. 0/null = none. */
+  devBuyUsdc?: number | null;
 }
 
 export interface PerpsLaunchResult {
@@ -74,6 +76,10 @@ export interface PerpsLaunchResult {
   packageId: string | null;
   poolId: string | null;
   engineId: string | null;
+  /** Set when an initial buy was requested and went through. */
+  devBuyDigest?: string | null;
+  /** Set when the launch confirmed but the initial buy did not. */
+  devBuyError?: string | null;
 }
 
 /** Official coin template (sui 1.79.1), embedded verbatim in the frontend. */
