@@ -74,7 +74,7 @@ export interface PerpsLaunchInput {
   /** Kept for callers; virtual curves carry no perp market of their own. */
   underlying?: string | null;
   long?: boolean;
-  leverageBps?: number;
+  leverageBps?: number | null;
   /** Starting market cap in USD; the curve is quoted in USDC, so 1:1. */
   startingCapUsd?: number | null;
   /** The launcher's own first buy on the new curve, in USDC. 0/null = none. */
