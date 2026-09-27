@@ -44,13 +44,14 @@ export const LAUNCHPADS: LaunchpadConfig[] = [
     label: "Perpsplexity",
     site: "https://perpsplexity.app",
     network: "sui",
-    // Mainnet composite-pool deployment (perpsplexity.app official config).
+    // Mainnet launchpad package + shared Launchpad object (perpsplexity.app).
+    // OurBlast launches virtual pools (bonding curves) quoted in SUI.
     factoryPackage: "0xa0338d2361534919001ae21265ec6c66f30f85797beb0e0644be51fc2ce93142",
     factoryObject: "0x6131090639b7c4a5af741ae1163e480f0b2cf50e74823d7c2261b5a3a3d5a586",
-    version: "composite-mainnet-v13",
+    version: "virtual-pool-mainnet",
     integrated: true,
     supportsCustomPair: false,
-    pairTokens: ["USDC"],
+    pairTokens: ["SUI"],
     liquidity: { min: 1, max: 5_000, default: 1 },
     supply: { min: 1_000_000_000, max: 1_000_000_000, default: 1_000_000_000 },
   },

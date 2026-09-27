@@ -421,29 +421,22 @@ export async function executeLaunchRequest(requestId: string): Promise<LaunchOut
       failure = outcome.error ?? "The Blast.fun launch did not confirm on chain.";
     }
   } else if (pad.id === "perpsplexity") {
-    // Perpsplexity's raising launch is a composite pool: its bonding curve is
-    // coupled to an underlying market engine. A plain pool::Pool is not the
-    // product shown by Perpsplexity's market-backed launch form.
-    if (!request.underlying) {
-      failure = "Perpsplexity needs an underlying market, direction, and leverage (for example: XMR LONG 2x).";
+    // Perpsplexity launches use its virtual pool (bonding curve): a raise-first
+    // curve quoted in SUI, seeded with 1 SUI. Fully backed composite pools need
+    // an underlying market engine plus a lending market and are not used here.
+    const { launchOnPerpsplexity } = await import("./perpsplexity-launch.server");
+    const outcome = await launchOnPerpsplexity({
+      symbol: request.symbol,
+      name: request.name,
+      description: withSocials(extractDescription(request.tweet_text ?? "") ?? request.tweet_text ?? ""),
+      iconUrl: request.icon_url ?? "",
+      startingCapUsd: request.starting_cap_usd ? Number(request.starting_cap_usd) : null,
+    });
+    if (outcome.status === "CONFIRMED" && outcome.coinType && outcome.poolId) {
+      deployment = { tokenAddress: outcome.coinType, transactionDigest: outcome.digest ?? "" };
+      perpsPoolId = outcome.poolId;
     } else {
-      const { launchOnPerpsplexity } = await import("./perpsplexity-launch.server");
-      const outcome = await launchOnPerpsplexity({
-        symbol: request.symbol,
-        name: request.name,
-        description: withSocials(extractDescription(request.tweet_text ?? "") ?? request.tweet_text ?? ""),
-        iconUrl: request.icon_url ?? "",
-        underlying: request.underlying,
-        long: request.perps_long ?? true,
-        leverageBps: request.leverage_bps ?? 10_000,
-        startingCapUsd: request.starting_cap_usd ? Number(request.starting_cap_usd) : null,
-      });
-      if (outcome.status === "CONFIRMED" && outcome.coinType && outcome.poolId) {
-        deployment = { tokenAddress: outcome.coinType, transactionDigest: outcome.digest ?? "" };
-        perpsPoolId = outcome.poolId;
-      } else {
-        failure = outcome.error ?? "The Perpsplexity market-backed curve did not confirm on chain.";
-      }
+      failure = outcome.error ?? "The Perpsplexity curve did not confirm on chain.";
     }
   } else {
     const result = await launchpadAdapter.launchToken(launchConfigFor(request));

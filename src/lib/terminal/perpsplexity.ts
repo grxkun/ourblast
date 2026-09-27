@@ -32,6 +32,50 @@ export const PERPSPLEXITY_MEME_DECIMALS = 6n;
 export const PERPSPLEXITY_MEME_SUPPLY = 1_000_000_000n;
 export const PERPSPLEXITY_QUOTE_DECIMALS = 6;
 
+// ---------------------------------------------------------------------------
+// Virtual (bonding-curve) launches — the default, and the only path OurBlast
+// uses. Read verbatim from live mainnet launch_registered transactions
+// (FLUFFY, MIZU, CAT): quote is SUI, the pool seed is 1 SUI, supply is 1e15
+// meme units and the curve's virtual quote is the starting cap minus the seed.
+// Composite / market-backed pools are a separate product and are NOT used
+// here: they need an Aftermath clearing house plus a Suilend market and kept
+// failing at activation.
+// ---------------------------------------------------------------------------
+
+/** Curves are quoted in SUI, not USDC — matching every live spot launch. */
+export const PERPSPLEXITY_CURVE_QUOTE_TYPE = "0x2::sui::SUI";
+export const PERPSPLEXITY_CURVE_QUOTE_DECIMALS = 9;
+/** Pool seed the official form uses: exactly 1 SUI. */
+export const PERPSPLEXITY_CURVE_SEED_MIST = 1_000_000_000n;
+/** Default starting market cap in MIST (5,000 SUI), the production default. */
+export const PERPSPLEXITY_CURVE_DEFAULT_CAP_MIST = 5_000_000_000_000n;
+/** Meme units minted into the curve: 1B tokens at 6 decimals. */
+export const PERPSPLEXITY_CURVE_SUPPLY = 1_000_000_000n * 1_000_000n;
+/** settings::spot(base_fee_bps, hibernation_enabled) — the form's defaults. */
+export const PERPSPLEXITY_CURVE_BASE_FEE_BPS = 100;
+export const PERPSPLEXITY_CURVE_HIBERNATION = false;
+
+/** Parses a decimal SUI amount into MIST (9 decimals). */
+export function perpsMistUnits(amount: string | number): bigint {
+  const text = String(amount).trim();
+  if (!/^\d+(\.\d+)?$/.test(text)) throw new Error("Invalid amount.");
+  const [whole = "0", fraction = ""] = text.split(".");
+  const padded = (fraction + "000000000").slice(0, PERPSPLEXITY_CURVE_QUOTE_DECIMALS);
+  return BigInt(whole) * 1_000_000_000n + BigInt(padded);
+}
+
+/**
+ * Curve virtual quote in MIST: starting cap minus the seed, the same formula
+ * the official launch form applies (cap 5,000 SUI, seed 1 SUI → 4,999 SUI).
+ */
+export function perpsCurveVirtualQuote(startingCapMist: bigint): bigint {
+  const cap = startingCapMist > 0n ? startingCapMist : PERPSPLEXITY_CURVE_DEFAULT_CAP_MIST;
+  if (cap <= PERPSPLEXITY_CURVE_SEED_MIST) {
+    throw new Error("Starting market cap must be above the 1 SUI pool seed.");
+  }
+  return cap - PERPSPLEXITY_CURVE_SEED_MIST;
+}
+
 /** Parses a decimal USD amount into USDC base units (6 decimals). */
 export function perpsQuoteUnits(amount: string | number): bigint {
   const text = String(amount).trim();
