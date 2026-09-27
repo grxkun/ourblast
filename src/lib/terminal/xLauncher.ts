@@ -50,6 +50,23 @@ export interface DeployRequest {
   perps?: PerpsPositionRequest | undefined;
   /** Present when the tweet names a creator-fee receiver. */
   feeReceiver?: FeeReceiverRequest | undefined;
+  /** "first buy 25" — the launcher's own opening buy, in USDC. */
+  devBuyUsdc?: number | undefined;
+}
+
+/** "dev buy 25", "first buy $50", "initial buy: 10" — an opening buy in USDC. */
+const DEV_BUY_PHRASE =
+  /\b(?:dev|devs|developer|first|initial|opening|my)\s+buy\s*(?:of\s+|for\s+)?[:=]?\s*\$?(\d{1,6}(?:\.\d{1,6})?)\s*(?:usdc|usd|\$)?/i;
+
+/** The opening buy a tweet asks for, in USDC, or null. */
+export function extractDevBuy(text: string): number | null {
+  const raw = fixTypos(text).match(DEV_BUY_PHRASE)?.[1];
+  const amount = raw ? Number(raw) : NaN;
+  return Number.isFinite(amount) && amount > 0 ? amount : null;
+}
+
+function stripDevBuyPhrase(text: string): string {
+  return text.replace(new RegExp(DEV_BUY_PHRASE.source, "gi"), " ").replace(/\s{2,}/g, " ").trim();
 }
 
 /** "Set @adiniyi as fee receiver", "fee receiver: @x", "creator fees to 0x…". */
