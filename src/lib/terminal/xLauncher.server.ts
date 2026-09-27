@@ -1,6 +1,6 @@
 import { BOT_WALLET_ADDRESS, DEFAULT_TREASURY_ADDRESS, FOUNDER_ADDRESS } from "@/lib/ourblast.config";
 import { CREATOR_FEE_SPLIT } from "./fees";
-import { poolPageUrl, resolveLaunchpad, tokenPageUrl } from "./launchpad";
+import { poolPageUrl, resolveLaunchpad, resolvePairToken, tokenPageUrl } from "./launchpad";
 import { launchpadAdapter } from "./launchpadAdapter";
 import {
   DEFAULT_LAUNCHER_SETTINGS,
@@ -10,7 +10,7 @@ import {
   type LaunchRequestStatus,
 } from "./xLauncher";
 import type { LaunchConfiguration } from "./types";
-import { extractDescription, extractSocials } from "./xLauncher";
+import { extractDescription, extractPairToken, extractSocials } from "./xLauncher";
 
 /**
  * Server side of the simple X launcher. Every state change lives here so the
@@ -308,7 +308,7 @@ function launchConfigFor(row: LaunchRequestRow): LaunchConfiguration {
     image: row.icon_url,
     network: "sui",
     launchpad: pad.label,
-    pairToken: pad.pairTokens[0] ?? "SUI",
+    pairToken: resolvePairToken(pad, extractPairToken(row.tweet_text ?? "")),
     liquidity: pad.liquidity.default,
     // Developer buying stays off unless an operator switches it on.
     devBuy: row.dev_buy ? pad.liquidity.min : 0,
@@ -438,7 +438,8 @@ export async function executeLaunchRequest(requestId: string): Promise<LaunchOut
       // Maelstrom routes the pool's LP fees to one address: the launcher's own
       // wallet when we know it, otherwise the bot wallet holds them.
       feeRecipient: routing.launcherPaidOnChain ? routing.payees[3] ?? null : null,
-
+      // "paired with USDC" → a TOKEN/USDC Cetus pool; unsupported pairs fall back to SUI.
+      quote: resolvePairToken(pad, extractPairToken(request.tweet_text ?? "")),
     });
     if (outcome.status === "CONFIRMED" && outcome.coinType && outcome.poolId) {
       deployment = { tokenAddress: outcome.coinType, transactionDigest: outcome.digest ?? "" };

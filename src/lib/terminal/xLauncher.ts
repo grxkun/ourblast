@@ -86,6 +86,19 @@ function stripFeePhrases(text: string): string {
   return out.replace(/\s{2,}/g, " ").replace(/\s+([,.;:])/g, "$1").trim();
 }
 
+/** "paired with USDC", "pair $BLAST", "vs DEEP", "quote: WAL", "/USDC pair". */
+const PAIR_PHRASE =
+  /\b(?:paired\s+(?:with|against|to)|pair(?:ed)?(?:\s+(?:with|against|to|token))?|quote(?:\s+token)?|vs\.?|against)\s*[:=]?\s*\$?([a-z]{2,10})\b/i;
+
+/** The quote token a tweet asks for (uppercased), or null. Validation happens per pad. */
+export function extractPairToken(text: string): string | null {
+  return fixTypos(text).match(PAIR_PHRASE)?.[1]?.toUpperCase() ?? null;
+}
+
+function stripPairPhrase(text: string): string {
+  return text.replace(new RegExp(PAIR_PHRASE.source, "gi"), " ").replace(/\s{2,}/g, " ").trim();
+}
+
 /**
  * Any word after "on" is a launchpad candidate — fuzzy matching in
  * matchLaunchpad tolerates typos ("on Peropelxity" → Perpsplexity) and
@@ -139,7 +152,7 @@ export function parseDeployTweet(tweetText: string, defaultPad = LAUNCHPAD.id): 
   const rawPadMatch = findPadMatch(rawText);
   // Same reason: "@adiniyi" must be read before mention stripping removes it.
   const feeReceiver = extractFeeReceiver(rawText) ?? undefined;
-  let text = stripFeePhrases(normalizeCommandText(rawText));
+  let text = stripPairPhrase(stripFeePhrases(normalizeCommandText(rawText)));
 
   const textPadMatch = findPadMatch(text);
   const padMatch = textPadMatch ?? rawPadMatch;
