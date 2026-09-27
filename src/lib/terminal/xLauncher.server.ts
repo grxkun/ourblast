@@ -484,14 +484,20 @@ export async function executeLaunchRequest(requestId: string): Promise<LaunchOut
   }
 
   const isPerps = pad.id === "perpsplexity";
-  const tokenUrl = isPerps
+  const isMaelstrom = pad.id === "maelstrom";
+  const tokenUrl = isPerps || isMaelstrom
     ? `https://suiscan.xyz/mainnet/coin/${deployment.tokenAddress}`
     : tokenPageUrl(pad, deployment.tokenAddress);
-  const poolUrl = isPerps
-    ? perpsPoolId
-      ? `${pad.site}/pool/${perpsPoolId}`
+  const poolUrl = isMaelstrom
+    ? maelstromPoolId
+      ? `https://suiscan.xyz/mainnet/object/${maelstromPoolId}`
       : pad.site
-    : poolPageUrl(pad, deployment.tokenAddress);
+    : isPerps
+      ? perpsPoolId
+        ? `${pad.site}/pool/${perpsPoolId}`
+        : pad.site
+      : poolPageUrl(pad, deployment.tokenAddress);
+
   // This is only reported after the composite_pool::Created event confirms the
   // market-backed curve on chain.
   const positionLine = isPerps && request.underlying
