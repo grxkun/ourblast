@@ -6,8 +6,10 @@
 // leveraged position on an underlying Aftermath market: the pool's NAV is
 // backed by that position (market-backed memecoin, not a separate listing).
 
+// Latest on-chain version of the launchpad package (upgrade of the original
+// below). Read from live mainnet launches — the pad's own frontend calls this id.
 export const PERPSPLEXITY_PACKAGE_ID =
-  "0xa0338d2361534919001ae21265ec6c66f30f85797beb0e0644be51fc2ce93142";
+  "0x70798463adae26d663d67b152e6531a4eaf48b541d6d3db11d730663dab20e8a";
 /** Original (publish) package id — event types keep it, so match on this. */
 export const PERPSPLEXITY_ORIGINAL_PACKAGE_ID =
   "0x97fea95545c04dc73f8174c6195013b100a26e3fa978e7cf8b100a51dfaf8354";
@@ -42,38 +44,41 @@ export const PERPSPLEXITY_QUOTE_DECIMALS = 6;
 // failing at activation.
 // ---------------------------------------------------------------------------
 
-/** Curves are quoted in SUI, not USDC — matching every live spot launch. */
-export const PERPSPLEXITY_CURVE_QUOTE_TYPE = "0x2::sui::SUI";
-export const PERPSPLEXITY_CURVE_QUOTE_DECIMALS = 9;
-/** Pool seed the official form uses: exactly 1 SUI. */
-export const PERPSPLEXITY_CURVE_SEED_MIST = 1_000_000_000n;
-/** Default starting market cap in MIST (5,000 SUI), the production default. */
-export const PERPSPLEXITY_CURVE_DEFAULT_CAP_MIST = 5_000_000_000_000n;
+/**
+ * Curves are quoted in native USDC — the pad's own launch form default, and
+ * what the MONEROCHAN / BBW launches used on chain (quote_type usdc::USDC,
+ * quote_reserve 1000000 = 1 USDC seed, virtual quote 4,999 USDC for the
+ * 5,000 USDC starting cap).
+ */
+export const PERPSPLEXITY_CURVE_QUOTE_TYPE = PERPSPLEXITY_QUOTE_TYPE;
+export const PERPSPLEXITY_CURVE_QUOTE_SYMBOL = "USDC";
+export const PERPSPLEXITY_CURVE_QUOTE_DECIMALS = 6;
+/** Pool seed the official form uses: exactly 1 USDC (1,000,000 base units). */
+export const PERPSPLEXITY_CURVE_SEED_UNITS = 1_000_000n;
+/** Default starting market cap: 5,000 USDC, the production default. */
+export const PERPSPLEXITY_CURVE_DEFAULT_CAP_UNITS = 5_000_000_000n;
+export const PERPSPLEXITY_CURVE_DEFAULT_CAP_USD = 5_000;
 /** Meme units minted into the curve: 1B tokens at 6 decimals. */
 export const PERPSPLEXITY_CURVE_SUPPLY = 1_000_000_000n * 1_000_000n;
-/** settings::spot(base_fee_bps, hibernation_enabled) — the form's defaults. */
-export const PERPSPLEXITY_CURVE_BASE_FEE_BPS = 100;
+/**
+ * settings::spot(base_fee_bps, hibernation_enabled) — every live launch passes
+ * 0, which keeps the platform's own configured base fee.
+ */
+export const PERPSPLEXITY_CURVE_BASE_FEE_BPS = 0;
 export const PERPSPLEXITY_CURVE_HIBERNATION = false;
-
-/** Parses a decimal SUI amount into MIST (9 decimals). */
-export function perpsMistUnits(amount: string | number): bigint {
-  const text = String(amount).trim();
-  if (!/^\d+(\.\d+)?$/.test(text)) throw new Error("Invalid amount.");
-  const [whole = "0", fraction = ""] = text.split(".");
-  const padded = (fraction + "000000000").slice(0, PERPSPLEXITY_CURVE_QUOTE_DECIMALS);
-  return BigInt(whole) * 1_000_000_000n + BigInt(padded);
-}
+/** Initial creator buy presets offered in the terminal, in USDC. */
+export const PERPSPLEXITY_DEV_BUY_PRESETS = [0, 10, 25, 50, 100] as const;
 
 /**
- * Curve virtual quote in MIST: starting cap minus the seed, the same formula
- * the official launch form applies (cap 5,000 SUI, seed 1 SUI → 4,999 SUI).
+ * Curve virtual quote in USDC units: starting cap minus the 1 USDC seed — the
+ * same formula the official launch form applies (5,000 → 4,999 USDC).
  */
-export function perpsCurveVirtualQuote(startingCapMist: bigint): bigint {
-  const cap = startingCapMist > 0n ? startingCapMist : PERPSPLEXITY_CURVE_DEFAULT_CAP_MIST;
-  if (cap <= PERPSPLEXITY_CURVE_SEED_MIST) {
-    throw new Error("Starting market cap must be above the 1 SUI pool seed.");
+export function perpsCurveVirtualQuote(startingCapUnits: bigint): bigint {
+  const cap = startingCapUnits > 0n ? startingCapUnits : PERPSPLEXITY_CURVE_DEFAULT_CAP_UNITS;
+  if (cap <= PERPSPLEXITY_CURVE_SEED_UNITS) {
+    throw new Error("Starting market cap must be above the 1 USDC pool seed.");
   }
-  return cap - PERPSPLEXITY_CURVE_SEED_MIST;
+  return cap - PERPSPLEXITY_CURVE_SEED_UNITS;
 }
 
 /** Parses a decimal USD amount into USDC base units (6 decimals). */

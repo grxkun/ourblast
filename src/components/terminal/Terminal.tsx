@@ -16,6 +16,7 @@ import type { Json } from "@/integrations/supabase/types";
 import { runTerminalAgent } from "@/lib/terminal/agent";
 import { interpretCommand } from "@/lib/terminal/nlu.functions";
 import { runBankCommand } from "@/lib/terminal/bank.functions";
+import { launchFromTerminal } from "@/lib/terminal/xLauncher.functions";
 import { parseBankCommand, parseSwapCommand } from "@/lib/terminal/bank";
 import { useBankApprovals } from "./useBankApprovals";
 import type { LaunchConfiguration, TerminalEntry, TerminalIntentName, TerminalStatus } from "@/lib/terminal/types";
@@ -44,7 +45,35 @@ export function Terminal({ tryCommand }: { tryCommand?: { command: string; nonce
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const interpret = useServerFn(interpretCommand);
   const bankCommand = useServerFn(runBankCommand);
+  const launchNow = useServerFn(launchFromTerminal);
+  const [launching, setLaunching] = useState(false);
   const { approveSwap, approveTransfer } = useBankApprovals();
+
+  /** LAUNCH in the terminal: the backend runs the same pipeline as an X launch. */
+  const doLaunch = useCallback(async (launch: LaunchConfiguration) => {
+    if (launching) return;
+    setLaunching(true);
+    const pending = toast.loading(`Launching $${launch.symbol} on ${launch.launchpad}…`);
+    try {
+      const outcome = await launchNow({ data: {
+        symbol: launch.symbol,
+        name: launch.name,
+        description: launch.description ?? "",
+        launchpad: launch.launchpad,
+        iconUrl: launch.image ?? null,
+        startingCapUsd: launch.perps?.startingCapUsd ?? null,
+        devBuyUsdc: launch.devBuy > 0 ? launch.devBuy : null,
+      } });
+      toast.dismiss(pending);
+      if (outcome.status === "DEPLOYED") toast.success(`$${launch.symbol} is live.`, { description: outcome.tokenUrl ?? undefined });
+      else toast.error(outcome.notice ?? "The launch did not go through.");
+    } catch (error) {
+      toast.dismiss(pending);
+      toast.error(error instanceof Error ? error.message : "The launch did not go through.");
+    } finally {
+      setLaunching(false);
+    }
+  }, [launchNow, launching]);
 
   const cloudHistory = useQuery({
     queryKey: ["terminal-history", userId],
@@ -202,7 +231,7 @@ export function Terminal({ tryCommand }: { tryCommand?: { command: string; nonce
             {!history.length && !cloudHistory.isLoading ? <div className="flex min-h-[24rem] flex-col items-center justify-center text-center"><div className="terminal-agent-mark mb-5">OB<span>_</span></div><p className="font-display text-3xl uppercase">What do you want to do on Sui?</p><p className="mt-2 max-w-md text-sm text-muted-foreground">Describe the action. The terminal maps it to an allowlisted tool and shows the exact state before anything touches your wallet.</p><div className="mt-6"><CommandSuggestions onSelect={setDraft} /></div></div> : null}
             {history.map((entry) => {
               const launch = launchOverrides[entry.id] ?? entry.result.launch;
-              return <TerminalMessage key={entry.id} entry={entry} onCopy={() => void navigator.clipboard.writeText(entry.command)} onRerun={() => void run(entry.command)}>{launch ? <LaunchCard launch={launch} editing={editingId === entry.id} onEdit={() => setEditingId((value) => value === entry.id ? null : entry.id)} onChange={(next) => setLaunchOverrides((current) => ({ ...current, [entry.id]: next }))} onGenerate={() => toast("Image generation is coming soon / not connected.")} onLaunch={() => { if (!userId) void connect(); else toast(`${launch.launchpad} deployment is coming soon / not connected.`); }} /> : null}{["launchToken", "createToken", "buyToken", "sellToken"].includes(entry.intent) ? <TransactionCard status={entry.result.status} /> : null}</TerminalMessage>;
+              return <TerminalMessage key={entry.id} entry={entry} onCopy={() => void navigator.clipboard.writeText(entry.command)} onRerun={() => void run(entry.command)}>{launch ? <LaunchCard launch={launch} editing={editingId === entry.id} onEdit={() => setEditingId((value) => value === entry.id ? null : entry.id)} onChange={(next) => setLaunchOverrides((current) => ({ ...current, [entry.id]: next }))} onGenerate={() => toast("Image generation is coming soon / not connected.")} onLaunch={() => { if (!userId) { void connect(); return; } void doLaunch(launch); }} /> : null}{["launchToken", "createToken", "buyToken", "sellToken"].includes(entry.intent) ? <TransactionCard status={entry.result.status} /> : null}</TerminalMessage>;
             })}
             {processing ? <div className="flex items-center gap-2 text-sm"><span className="terminal-status-dot" /><Shimmer>Mapping intent to an approved tool…</Shimmer></div> : null}
           </ConversationContent>

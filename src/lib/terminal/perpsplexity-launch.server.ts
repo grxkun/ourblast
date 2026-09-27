@@ -30,15 +30,17 @@ import {
 import {
   PERPSPLEXITY_CONFIG_ID,
   PERPSPLEXITY_CURVE_BASE_FEE_BPS,
-  PERPSPLEXITY_CURVE_DEFAULT_CAP_MIST,
+  PERPSPLEXITY_CURVE_DEFAULT_CAP_UNITS,
   PERPSPLEXITY_CURVE_HIBERNATION,
+  PERPSPLEXITY_CURVE_QUOTE_DECIMALS,
   PERPSPLEXITY_CURVE_QUOTE_TYPE,
-  PERPSPLEXITY_CURVE_SEED_MIST,
+  PERPSPLEXITY_CURVE_SEED_UNITS,
   PERPSPLEXITY_CURVE_SUPPLY,
   PERPSPLEXITY_LAUNCHPAD_ID,
   PERPSPLEXITY_ORIGINAL_PACKAGE_ID,
   PERPSPLEXITY_PACKAGE_ID,
   perpsCurveVirtualQuote,
+  perpsQuoteUnits,
 } from "@/lib/terminal/perpsplexity";
 import {
   gasCoins,
@@ -60,8 +62,10 @@ export interface PerpsLaunchInput {
   underlying?: string | null;
   long?: boolean;
   leverageBps?: number;
-  /** Starting market cap in USD; converted to SUI at the live spot price. */
+  /** Starting market cap in USD; the curve is quoted in USDC, so 1:1. */
   startingCapUsd?: number | null;
+  /** The launcher's own first buy on the new curve, in USDC. 0/null = none. */
+  devBuyUsdc?: number | null;
 }
 
 export interface PerpsLaunchResult {
@@ -72,6 +76,10 @@ export interface PerpsLaunchResult {
   packageId: string | null;
   poolId: string | null;
   engineId: string | null;
+  /** Set when an initial buy was requested and went through. */
+  devBuyDigest?: string | null;
+  /** Set when the launch confirmed but the initial buy did not. */
+  devBuyError?: string | null;
 }
 
 /** Official coin template (sui 1.79.1), embedded verbatim in the frontend. */
@@ -96,6 +104,7 @@ const RESERVED_IDENTIFIERS = new Set([
 ]);
 const PUBLISH_BUDGET = 500_000_000;
 const LAUNCH_BUDGET = 900_000_000;
+const BUY_BUDGET = 300_000_000;
 /** Headroom kept in the gas coin on top of the seed + launch fee. */
 const GAS_HEADROOM_MIST = 1_000_000_000n;
 
@@ -175,41 +184,35 @@ async function readLaunchFeeMist(): Promise<bigint> {
   return BigInt(fields.params?.fields?.launch_fee_mist ?? "0");
 }
 
-/** Live SUI spot price, used only to translate a requested USD cap into MIST. */
-async function suiUsdPrice(): Promise<number> {
-  try {
-    const res = await fetch("https://api.dexscreener.com/latest/dex/tokens/0x2::sui::SUI", {
-      headers: { accept: "application/json" },
-    });
-    const json = (await res.json()) as {
-      pairs?: { chainId?: string; priceUsd?: string; liquidity?: { usd?: number } }[];
-    };
-    let best = 0;
-    let deepest = 0;
-    for (const pair of json.pairs ?? []) {
-      if (pair.chainId !== "sui") continue;
-      const price = Number(pair.priceUsd ?? 0);
-      const liquidity = Number(pair.liquidity?.usd ?? 0);
-      if (price > 0 && liquidity >= deepest) {
-        deepest = liquidity;
-        best = price;
-      }
-    }
-    return best;
-  } catch {
-    return 0;
-  }
+/**
+ * Starting market cap in USDC base units. The curve is quoted in USDC, so a
+ * requested USD cap is the cap — no price conversion is involved.
+ */
+function startingCapUnits(startingCapUsd: number | null | undefined): bigint {
+  if (!startingCapUsd || startingCapUsd <= 0) return PERPSPLEXITY_CURVE_DEFAULT_CAP_UNITS;
+  const units = perpsQuoteUnits(startingCapUsd.toFixed(PERPSPLEXITY_CURVE_QUOTE_DECIMALS));
+  return units > PERPSPLEXITY_CURVE_SEED_UNITS ? units : PERPSPLEXITY_CURVE_DEFAULT_CAP_UNITS;
 }
 
-/** Starting market cap in MIST — from the requested USD cap when priceable. */
-async function startingCapMist(startingCapUsd: number | null | undefined): Promise<bigint> {
-  if (!startingCapUsd || startingCapUsd <= 0) return PERPSPLEXITY_CURVE_DEFAULT_CAP_MIST;
-  const price = await suiUsdPrice();
-  if (price <= 0) return PERPSPLEXITY_CURVE_DEFAULT_CAP_MIST;
-  const sui = startingCapUsd / price;
-  const mist = BigInt(Math.round(sui * 1_000_000_000));
-  return mist > PERPSPLEXITY_CURVE_SEED_MIST ? mist : PERPSPLEXITY_CURVE_DEFAULT_CAP_MIST;
+interface OwnedCoin {
+  coinObjectId: string;
+  version: string;
+  digest: string;
+  balance: string;
 }
+
+/** The wallet's USDC coin objects, largest first. */
+async function quoteCoins(owner: string): Promise<OwnedCoin[]> {
+  const result = await rpc<{ data?: OwnedCoin[] }>("suix_getCoins", [
+    owner,
+    PERPSPLEXITY_CURVE_QUOTE_TYPE,
+    null,
+    50,
+  ]).catch(() => ({ data: [] as OwnedCoin[] }));
+  return (result.data ?? []).slice().sort((a, b) => (BigInt(b.balance) > BigInt(a.balance) ? 1 : -1));
+}
+
+const quoteAmountText = (units: bigint) => (Number(units) / 10 ** PERPSPLEXITY_CURVE_QUOTE_DECIMALS).toString();
 
 interface TxReceipt {
   ok: boolean;
@@ -254,6 +257,70 @@ function fail(error: string, extra: Partial<PerpsLaunchResult> = {}): PerpsLaunc
   };
 }
 
+/**
+ * The launcher's first buy on a live curve. Mirrors the pad's own buy
+ * transaction: split the USDC amount, call pool::buy, keep the Position.
+ */
+async function buyOnCurve(args: {
+  keypair: NonNullable<Awaited<ReturnType<typeof loadDeployer>>>;
+  sender: string;
+  coinType: string;
+  poolId: string;
+  amount: bigint;
+  gasPrice: number;
+  freshGas: () => Promise<Awaited<ReturnType<typeof gasCoins>>>;
+}): Promise<{ digest: string | null; error: string | null }> {
+  try {
+    const gas = await args.freshGas();
+    if (gas.length === 0) return { digest: null, error: "No SUI coin was left to pay gas for the first buy." };
+    const coins = await quoteCoins(args.sender);
+    const primary = coins[0];
+    if (!primary) return { digest: null, error: "The wallet held no USDC for the first buy." };
+    const [poolRef, configRef, clockRef] = await Promise.all([
+      sharedRef(args.poolId),
+      sharedRef(PERPSPLEXITY_CONFIG_ID),
+      sharedRef(CLOCK),
+    ]);
+    const tx = new Transaction();
+    withGas(tx, args.sender, gas, args.gasPrice, BUY_BUDGET);
+    const source = tx.objectRef({
+      objectId: primary.coinObjectId,
+      version: primary.version,
+      digest: primary.digest,
+    });
+    if (BigInt(primary.balance) < args.amount && coins.length > 1) {
+      tx.mergeCoins(
+        source,
+        coins
+          .slice(1)
+          .map((coin) => tx.objectRef({ objectId: coin.coinObjectId, version: coin.version, digest: coin.digest })),
+      );
+    }
+    const [payment] = tx.splitCoins(source, [tx.pure.u64(args.amount)]);
+    const position = tx.moveCall({
+      target: `${PERPSPLEXITY_PACKAGE_ID}::pool::buy`,
+      typeArguments: [args.coinType, PERPSPLEXITY_CURVE_QUOTE_TYPE],
+      arguments: [
+        tx.sharedObjectRef({ ...poolRef, mutable: true }),
+        tx.sharedObjectRef({ ...configRef, mutable: false }),
+        payment!,
+        // No slippage floor: this is the very first trade on a fresh curve.
+        tx.pure.u64(0),
+        tx.pure.u64(BigInt(Date.now() + 300_000)),
+        tx.sharedObjectRef({ ...clockRef, mutable: false }),
+      ],
+    });
+    tx.transferObjects([position], args.sender);
+    const run = await signAndExecute(tx, args.keypair);
+    if (!run.ok || !run.digest) return { digest: null, error: run.error ?? "The first buy failed." };
+    const receipt = await fetchReceipt(run.digest);
+    if (!receipt.ok) return { digest: run.digest, error: receipt.error ?? "The first buy failed on chain." };
+    return { digest: run.digest, error: null };
+  } catch (error) {
+    return { digest: null, error: (error as Error).message };
+  }
+}
+
 export async function launchOnPerpsplexity(input: PerpsLaunchInput): Promise<PerpsLaunchResult> {
   const keypair = await loadDeployer();
   if (!keypair) return fail("The bot launch wallet is not configured.");
@@ -275,9 +342,26 @@ export async function launchOnPerpsplexity(input: PerpsLaunchInput): Promise<Per
 
   let virtualQuote: bigint;
   try {
-    virtualQuote = perpsCurveVirtualQuote(await startingCapMist(input.startingCapUsd));
+    virtualQuote = perpsCurveVirtualQuote(startingCapUnits(input.startingCapUsd));
   } catch (error) {
     return fail((error as Error).message);
+  }
+
+  // The curve is seeded in USDC, so the bot wallet must hold the 1 USDC seed
+  // plus whatever initial buy was requested.
+  const devBuyUnits =
+    input.devBuyUsdc && input.devBuyUsdc > 0
+      ? perpsQuoteUnits(input.devBuyUsdc.toFixed(PERPSPLEXITY_CURVE_QUOTE_DECIMALS))
+      : 0n;
+  const quoteNeeded = PERPSPLEXITY_CURVE_SEED_UNITS + devBuyUnits;
+  const quoteHeld = await quoteCoins(sender);
+  const quoteBalance = quoteHeld.reduce((total, coin) => total + BigInt(coin.balance), 0n);
+  if (quoteBalance < quoteNeeded) {
+    return fail(
+      `The bot wallet needs ${quoteAmountText(quoteNeeded)} USDC for the 1 USDC pool seed${
+        devBuyUnits > 0n ? ` and the ${quoteAmountText(devBuyUnits)} USDC first buy` : ""
+      }; it holds ${quoteAmountText(quoteBalance)} USDC.`,
+    );
   }
 
   const [gas, gasPrice] = await Promise.all([gasCoins(sender), referenceGasPrice().catch(() => 1000)]);
@@ -344,16 +428,21 @@ export async function launchOnPerpsplexity(input: PerpsLaunchInput): Promise<Per
       { coinType, packageId },
     );
   }
-  const needed = PERPSPLEXITY_CURVE_SEED_MIST + launchFeeMist + GAS_HEADROOM_MIST;
+  // Only the launch fee and gas come out of SUI now; the pool seed is USDC.
+  const needed = launchFeeMist + GAS_HEADROOM_MIST;
   const balance = await rpc<{ totalBalance?: string }>("suix_getBalance", [sender, "0x2::sui::SUI"])
     .then((result) => BigInt(result.totalBalance ?? "0"))
     .catch(() => 0n);
   if (balance > 0n && balance < needed) {
     return fail(
-      `The bot wallet needs about ${Number(needed) / 1_000_000_000} SUI for the 1 SUI pool seed, the ${Number(launchFeeMist) / 1_000_000_000} SUI launch fee and gas.`,
+      `The bot wallet needs about ${Number(needed) / 1_000_000_000} SUI for the ${Number(launchFeeMist) / 1_000_000_000} SUI launch fee and gas.`,
       { coinType, packageId },
     );
   }
+  // Fresh USDC coin references: the balance check above ran before the publish.
+  const seedSource = await quoteCoins(sender);
+  const seedPrimary = seedSource[0];
+  if (!seedPrimary) return fail("The bot wallet holds no USDC to seed the curve.", { coinType, packageId });
 
   const tx = new Transaction();
   withGas(tx, sender, launchGas, gasPrice, LAUNCH_BUDGET);
@@ -377,12 +466,23 @@ export async function launchOnPerpsplexity(input: PerpsLaunchInput): Promise<Per
       tx.pure.bool(PERPSPLEXITY_CURVE_HIBERNATION),
     ],
   });
-  // The official form splits both the 1 SUI pool seed and the launch fee off
-  // the gas coin, in that order.
-  const [seedCoin, feeCoin] = tx.splitCoins(tx.gas, [
-    tx.pure.u64(PERPSPLEXITY_CURVE_SEED_MIST),
-    tx.pure.u64(launchFeeMist),
-  ]);
+  // The launch fee is paid in SUI off the gas coin; the 1 USDC pool seed is
+  // split off the wallet's own USDC, exactly as the official launch form does.
+  const [feeCoin] = tx.splitCoins(tx.gas, [tx.pure.u64(launchFeeMist)]);
+  const primaryQuote = tx.objectRef({
+    objectId: seedPrimary.coinObjectId,
+    version: seedPrimary.version,
+    digest: seedPrimary.digest,
+  });
+  if (BigInt(seedPrimary.balance) < PERPSPLEXITY_CURVE_SEED_UNITS && seedSource.length > 1) {
+    tx.mergeCoins(
+      primaryQuote,
+      seedSource
+        .slice(1)
+        .map((coin) => tx.objectRef({ objectId: coin.coinObjectId, version: coin.version, digest: coin.digest })),
+    );
+  }
+  const [seedCoin] = tx.splitCoins(primaryQuote, [tx.pure.u64(PERPSPLEXITY_CURVE_SEED_UNITS)]);
   const launchResults = tx.moveCall({
     target: `${PERPSPLEXITY_PACKAGE_ID}::launchpad::launch_registered`,
     typeArguments: [coinType, PERPSPLEXITY_CURVE_QUOTE_TYPE],
@@ -425,6 +525,27 @@ export async function launchOnPerpsplexity(input: PerpsLaunchInput): Promise<Per
     });
   }
 
+  // Step 3 — the creator's own first buy, when one was requested. The pool is
+  // only shared by the launch call, so this is a follow-up transaction against
+  // the confirmed pool: pool::buy<COIN, USDC>(pool, config, coin, min_out,
+  // deadline_ms, clock) → Position, kept by the launch wallet. A failure here
+  // never invalidates the launch; the curve is already live.
+  let devBuyDigest: string | null = null;
+  let devBuyError: string | null = null;
+  if (devBuyUnits > 0n) {
+    const outcome = await buyOnCurve({
+      keypair,
+      sender,
+      coinType,
+      poolId,
+      amount: devBuyUnits,
+      gasPrice,
+      freshGas,
+    });
+    devBuyDigest = outcome.digest;
+    devBuyError = outcome.error;
+  }
+
   return {
     status: "CONFIRMED",
     digest: run.digest,
@@ -433,5 +554,7 @@ export async function launchOnPerpsplexity(input: PerpsLaunchInput): Promise<Per
     packageId,
     poolId,
     engineId: null,
+    devBuyDigest,
+    devBuyError,
   };
 }

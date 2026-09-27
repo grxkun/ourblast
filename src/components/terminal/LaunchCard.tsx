@@ -18,7 +18,7 @@ import { X_BOT_HANDLE } from "@/lib/terminal/x-bot";
 import { LAUNCHPADS, resolveLaunchpad } from "@/lib/terminal/launchpad";
 import { normalizeLaunchConfig } from "@/lib/terminal/launchSettings";
 import { describeFeePayout, normalizeXUsername, shortFeePayout, type FeePayoutMode } from "@/lib/terminal/feePayout";
-import { describePerpsPosition } from "@/lib/terminal/perpsplexity";
+import { describePerpsPosition, PERPSPLEXITY_CURVE_DEFAULT_CAP_USD, PERPSPLEXITY_DEV_BUY_PRESETS } from "@/lib/terminal/perpsplexity";
 import type { LaunchConfiguration } from "@/lib/terminal/types";
 
 export function LaunchCard({ launch, editing, onEdit, onChange, onLaunch, onGenerate }: {
@@ -92,8 +92,17 @@ export function LaunchCard({ launch, editing, onEdit, onChange, onLaunch, onGene
                 </select>
               </label>
               <label className="text-xs font-bold uppercase text-muted-foreground">Leverage (x)<Input inputMode="numeric" value={String(launch.perps.leverageBps / 10_000)} onChange={(event) => { const x = Math.max(1, Math.min(20, Number(event.target.value.replace(/[^0-9]/g, "")) || 1)); draft({ ...launch, perps: { ...launch.perps!, leverageBps: x * 10_000 } }); }} onBlur={settle} className="mt-1" /></label>
-              <label className="text-xs font-bold uppercase text-muted-foreground">Initial MC ($)<Input inputMode="decimal" value={launch.perps.startingCapUsd ? String(launch.perps.startingCapUsd) : ""} onChange={(event) => draft({ ...launch, perps: { ...launch.perps!, startingCapUsd: Number(event.target.value.replace(/[^0-9.]/g, "")) || null } })} onBlur={settle} className="mt-1" /></label>
+              <label className="text-xs font-bold uppercase text-muted-foreground">Initial MC ($)<Input inputMode="decimal" value={launch.perps.startingCapUsd ? String(launch.perps.startingCapUsd) : ""} placeholder={String(PERPSPLEXITY_CURVE_DEFAULT_CAP_USD)} onChange={(event) => draft({ ...launch, perps: { ...launch.perps!, startingCapUsd: Number(event.target.value.replace(/[^0-9.]/g, "")) || null } })} onBlur={settle} className="mt-1" /></label>
             </div>
+            <div className="flex flex-wrap items-center gap-2 border-t border-primary/30 pt-2">
+              <span className="text-xs font-bold uppercase text-muted-foreground">First buy (USDC)</span>
+              {PERPSPLEXITY_DEV_BUY_PRESETS.map((amount) => (
+                <Button key={amount} type="button" size="sm" variant={launch.devBuy === amount ? "default" : "outline"} onClick={() => apply({ ...launch, devBuy: amount })}>
+                  {amount === 0 ? "None" : `$${amount}`}
+                </Button>
+              ))}
+            </div>
+            <p className="text-[0.65rem] text-muted-foreground">Curve is quoted in USDC and seeded with 1 USDC. Default opening market cap is ${PERPSPLEXITY_CURVE_DEFAULT_CAP_USD.toLocaleString()}.</p>
           </div>
         ) : null}
         <div className="flex flex-wrap items-center gap-2">

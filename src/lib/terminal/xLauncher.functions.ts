@@ -41,3 +41,54 @@ export const launchXRequest = createServerFn({ method: "POST" })
     const { executeLaunchRequest } = await import("./xLauncher.server");
     return executeLaunchRequest(data.requestId);
   });
+
+const terminalLaunchSchema = z.object({
+  symbol: z.string().min(1).max(10),
+  name: z.string().min(1).max(64),
+  description: z.string().max(500).default(""),
+  launchpad: z.string().min(2).max(40),
+  iconUrl: z.string().max(500).nullable().default(null),
+  startingCapUsd: z.number().positive().max(10_000_000).nullable().default(null),
+  devBuyUsdc: z.number().min(0).max(100_000).nullable().default(null),
+});
+
+/**
+ * LAUNCH from the terminal. It reuses exactly the X launch pipeline: a launch
+ * request row, then the same executor — so one press can only ever produce one
+ * launch, and the result is reported from the confirmed chain state.
+ */
+export const launchFromTerminal = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => terminalLaunchSchema.parse(input))
+  .handler(async ({ data, context }) => {
+    const { createLaunchRequest, executeLaunchRequest } = await import("./xLauncher.server");
+    const { data: account } = await context.supabase
+      .from("x_accounts")
+      .select("username")
+      .eq("user_id", context.userId)
+      .maybeSingle();
+    const username = (account as { username?: string } | null)?.username ?? "terminal";
+    // A stable id per user + token + minute: a double press re-uses the same
+    // request row instead of launching the token twice.
+    const bucket = new Date().toISOString().slice(0, 16).replace(/[-:T]/g, "");
+    const postId = `terminal-${context.userId}-${data.symbol.toUpperCase()}-${bucket}`;
+    const row = await createLaunchRequest(
+      postId,
+      username,
+      {
+        symbol: data.symbol.toUpperCase(),
+        name: data.name,
+        launchpad: data.launchpad,
+        perps: data.startingCapUsd
+          ? { underlying: null, long: true, leverageBps: 10_000, startingCapUsd: data.startingCapUsd }
+          : undefined,
+        devBuyUsdc: data.devBuyUsdc ?? undefined,
+      },
+      data.iconUrl,
+      data.description,
+    );
+    if (row.status === "DEPLOYED") {
+      return { status: "DEPLOYED" as const, notice: "That token was already launched.", tokenUrl: row.token_url, poolUrl: row.pool_url };
+    }
+    return executeLaunchRequest(row.id);
+  });

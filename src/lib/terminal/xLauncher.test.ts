@@ -352,3 +352,33 @@ describe("fee receiver in the tweet", () => {
     expect(parseDeployTweet("deploy $DOG Sui Dog")?.feeReceiver).toBeUndefined();
   });
 });
+
+describe("opening buy parsing", () => {
+  it("reads a first buy amount and keeps it out of the token name", async () => {
+    const { parseDeployTweet } = await import("./xLauncher");
+    const request = parseDeployTweet("deploy $DOG Sui Dog on perpsplexity, first buy $25");
+    expect(request?.symbol).toBe("DOG");
+    expect(request?.name).toBe("Sui Dog");
+    expect(request?.devBuyUsdc).toBe(25);
+  });
+
+  it("accepts dev buy and initial buy wording", async () => {
+    const { extractDevBuy } = await import("./xLauncher");
+    expect(extractDevBuy("dev buy 10 usdc")).toBe(10);
+    expect(extractDevBuy("initial buy: 50")).toBe(50);
+    expect(extractDevBuy("deploy $DOG Sui Dog")).toBeNull();
+    expect(extractDevBuy("first buy 0")).toBeNull();
+  });
+});
+
+describe("perpsplexity curve sizing", () => {
+  it("leaves the seed out of the virtual quote and defaults to the 5,000 USDC cap", async () => {
+    const { perpsCurveVirtualQuote, PERPSPLEXITY_CURVE_DEFAULT_CAP_UNITS, PERPSPLEXITY_CURVE_SEED_UNITS } =
+      await import("./perpsplexity");
+    expect(perpsCurveVirtualQuote(PERPSPLEXITY_CURVE_DEFAULT_CAP_UNITS)).toBe(
+      PERPSPLEXITY_CURVE_DEFAULT_CAP_UNITS - PERPSPLEXITY_CURVE_SEED_UNITS,
+    );
+    expect(perpsCurveVirtualQuote(0n)).toBe(4_999_000_000n);
+    expect(() => perpsCurveVirtualQuote(500_000n)).toThrow();
+  });
+});

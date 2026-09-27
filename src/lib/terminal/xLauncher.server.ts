@@ -44,6 +44,8 @@ export interface LaunchRequestRow {
   perps_long: boolean | null;
   leverage_bps: number | null;
   starting_cap_usd: number | null;
+  /** Perpsplexity only: the launcher's opening buy in USDC (null = none). */
+  dev_buy_usdc: number | null;
   created_at: string;
 }
 
@@ -285,6 +287,7 @@ export async function createLaunchRequest(
       perps_long: request.perps ? request.perps.long : null,
       leverage_bps: request.perps?.leverageBps ?? null,
       starting_cap_usd: request.perps?.startingCapUsd ?? null,
+      dev_buy_usdc: request.devBuyUsdc ?? null,
       status: "PENDING",
       notice: pad.integrated ? null : INTEGRATION_PENDING,
     })
@@ -450,7 +453,7 @@ export async function executeLaunchRequest(requestId: string): Promise<LaunchOut
   } else if (pad.id === "perpsplexity") {
 
     // Perpsplexity launches use its virtual pool (bonding curve): a raise-first
-    // curve quoted in SUI, seeded with 1 SUI. Fully backed composite pools need
+    // curve quoted in USDC, seeded with 1 USDC. Fully backed composite pools need
     // an underlying market engine plus a lending market and are not used here.
     const { launchOnPerpsplexity } = await import("./perpsplexity-launch.server");
     const outcome = await launchOnPerpsplexity({
@@ -459,6 +462,9 @@ export async function executeLaunchRequest(requestId: string): Promise<LaunchOut
       description: withSocials(extractDescription(request.tweet_text ?? "") ?? request.tweet_text ?? ""),
       iconUrl: request.icon_url ?? "",
       startingCapUsd: request.starting_cap_usd ? Number(request.starting_cap_usd) : null,
+      // "first buy 25" in the tweet: the launcher's own opening buy on the new
+      // curve, paid in USDC from the launch wallet. Absent = no buy at all.
+      devBuyUsdc: request.dev_buy_usdc ? Number(request.dev_buy_usdc) : null,
     });
     if (outcome.status === "CONFIRMED" && outcome.coinType && outcome.poolId) {
       deployment = { tokenAddress: outcome.coinType, transactionDigest: outcome.digest ?? "" };
