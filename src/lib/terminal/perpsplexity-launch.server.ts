@@ -483,5 +483,7 @@ export async function launchOnPerpsplexity(input: PerpsLaunchInput): Promise<Per
     packageId,
     poolId,
     engineId: null,
+    devBuyDigest,
+    devBuyError,
   };
 }
