@@ -395,12 +395,23 @@ export async function launchOnPerpsplexity(input: PerpsLaunchInput): Promise<Per
       tx.pure.bool(PERPSPLEXITY_CURVE_HIBERNATION),
     ],
   });
-  // The official form splits both the 1 SUI pool seed and the launch fee off
-  // the gas coin, in that order.
-  const [seedCoin, feeCoin] = tx.splitCoins(tx.gas, [
-    tx.pure.u64(PERPSPLEXITY_CURVE_SEED_MIST),
-    tx.pure.u64(launchFeeMist),
-  ]);
+  // The launch fee is paid in SUI off the gas coin; the 1 USDC pool seed is
+  // split off the wallet's own USDC, exactly as the official launch form does.
+  const [feeCoin] = tx.splitCoins(tx.gas, [tx.pure.u64(launchFeeMist)]);
+  const primaryQuote = tx.objectRef({
+    objectId: seedPrimary.coinObjectId,
+    version: seedPrimary.version,
+    digest: seedPrimary.digest,
+  });
+  if (BigInt(seedPrimary.balance) < PERPSPLEXITY_CURVE_SEED_UNITS && seedSource.length > 1) {
+    tx.mergeCoins(
+      primaryQuote,
+      seedSource
+        .slice(1)
+        .map((coin) => tx.objectRef({ objectId: coin.coinObjectId, version: coin.version, digest: coin.digest })),
+    );
+  }
+  const [seedCoin] = tx.splitCoins(primaryQuote, [tx.pure.u64(PERPSPLEXITY_CURVE_SEED_UNITS)]);
   const launchResults = tx.moveCall({
     target: `${PERPSPLEXITY_PACKAGE_ID}::launchpad::launch_registered`,
     typeArguments: [coinType, PERPSPLEXITY_CURVE_QUOTE_TYPE],
