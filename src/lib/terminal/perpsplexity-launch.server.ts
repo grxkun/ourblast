@@ -345,8 +345,10 @@ export async function launchOnPerpsplexity(input: PerpsLaunchInput): Promise<Per
     );
   }
   const needed = PERPSPLEXITY_CURVE_SEED_MIST + launchFeeMist + GAS_HEADROOM_MIST;
-  const available = launchGas.reduce((sum, coin) => sum + BigInt((coin as { balance?: string }).balance ?? 0), 0n);
-  if (available > 0n && available < needed) {
+  const balance = await rpc<{ totalBalance?: string }>("suix_getBalance", [sender, "0x2::sui::SUI"])
+    .then((result) => BigInt(result.totalBalance ?? "0"))
+    .catch(() => 0n);
+  if (balance > 0n && balance < needed) {
     return fail(
       `The bot wallet needs about ${Number(needed) / 1_000_000_000} SUI for the 1 SUI pool seed, the ${Number(launchFeeMist) / 1_000_000_000} SUI launch fee and gas.`,
       { coinType, packageId },
