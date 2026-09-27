@@ -104,6 +104,7 @@ const RESERVED_IDENTIFIERS = new Set([
 ]);
 const PUBLISH_BUDGET = 500_000_000;
 const LAUNCH_BUDGET = 900_000_000;
+const BUY_BUDGET = 300_000_000;
 /** Headroom kept in the gas coin on top of the seed + launch fee. */
 const GAS_HEADROOM_MIST = 1_000_000_000n;
 
