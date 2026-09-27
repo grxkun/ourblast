@@ -137,7 +137,9 @@ export function BlastProvider({ children }: { children: React.ReactNode }) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("profiles")
-        .select("*")
+        .select(
+          "id, wallet_address, auth_provider, display_name, avatar_url, nickname, avatar_seed, points, games_played, best_score, streak, is_banned, muted_until, created_at",
+        )
         .eq("id", userId!)
         .maybeSingle();
       if (error) throw error;
