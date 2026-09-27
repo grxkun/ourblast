@@ -177,41 +177,35 @@ async function readLaunchFeeMist(): Promise<bigint> {
   return BigInt(fields.params?.fields?.launch_fee_mist ?? "0");
 }
 
-/** Live SUI spot price, used only to translate a requested USD cap into MIST. */
-async function suiUsdPrice(): Promise<number> {
-  try {
-    const res = await fetch("https://api.dexscreener.com/latest/dex/tokens/0x2::sui::SUI", {
-      headers: { accept: "application/json" },
-    });
-    const json = (await res.json()) as {
-      pairs?: { chainId?: string; priceUsd?: string; liquidity?: { usd?: number } }[];
-    };
-    let best = 0;
-    let deepest = 0;
-    for (const pair of json.pairs ?? []) {
-      if (pair.chainId !== "sui") continue;
-      const price = Number(pair.priceUsd ?? 0);
-      const liquidity = Number(pair.liquidity?.usd ?? 0);
-      if (price > 0 && liquidity >= deepest) {
-        deepest = liquidity;
-        best = price;
-      }
-    }
-    return best;
-  } catch {
-    return 0;
-  }
+/**
+ * Starting market cap in USDC base units. The curve is quoted in USDC, so a
+ * requested USD cap is the cap — no price conversion is involved.
+ */
+function startingCapUnits(startingCapUsd: number | null | undefined): bigint {
+  if (!startingCapUsd || startingCapUsd <= 0) return PERPSPLEXITY_CURVE_DEFAULT_CAP_UNITS;
+  const units = perpsQuoteUnits(startingCapUsd.toFixed(PERPSPLEXITY_CURVE_QUOTE_DECIMALS));
+  return units > PERPSPLEXITY_CURVE_SEED_UNITS ? units : PERPSPLEXITY_CURVE_DEFAULT_CAP_UNITS;
 }
 
-/** Starting market cap in MIST — from the requested USD cap when priceable. */
-async function startingCapMist(startingCapUsd: number | null | undefined): Promise<bigint> {
-  if (!startingCapUsd || startingCapUsd <= 0) return PERPSPLEXITY_CURVE_DEFAULT_CAP_MIST;
-  const price = await suiUsdPrice();
-  if (price <= 0) return PERPSPLEXITY_CURVE_DEFAULT_CAP_MIST;
-  const sui = startingCapUsd / price;
-  const mist = BigInt(Math.round(sui * 1_000_000_000));
-  return mist > PERPSPLEXITY_CURVE_SEED_MIST ? mist : PERPSPLEXITY_CURVE_DEFAULT_CAP_MIST;
+interface OwnedCoin {
+  coinObjectId: string;
+  version: string;
+  digest: string;
+  balance: string;
 }
+
+/** The wallet's USDC coin objects, largest first. */
+async function quoteCoins(owner: string): Promise<OwnedCoin[]> {
+  const result = await rpc<{ data?: OwnedCoin[] }>("suix_getCoins", [
+    owner,
+    PERPSPLEXITY_CURVE_QUOTE_TYPE,
+    null,
+    50,
+  ]).catch(() => ({ data: [] as OwnedCoin[] }));
+  return (result.data ?? []).slice().sort((a, b) => (BigInt(b.balance) > BigInt(a.balance) ? 1 : -1));
+}
+
+const quoteAmountText = (units: bigint) => (Number(units) / 10 ** PERPSPLEXITY_CURVE_QUOTE_DECIMALS).toString();
 
 interface TxReceipt {
   ok: boolean;
