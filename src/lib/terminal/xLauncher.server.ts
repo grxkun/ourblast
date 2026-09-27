@@ -453,7 +453,7 @@ export async function executeLaunchRequest(requestId: string): Promise<LaunchOut
   } else if (pad.id === "perpsplexity") {
 
     // Perpsplexity launches use its virtual pool (bonding curve): a raise-first
-    // curve quoted in SUI, seeded with 1 SUI. Fully backed composite pools need
+    // curve quoted in USDC, seeded with 1 USDC. Fully backed composite pools need
     // an underlying market engine plus a lending market and are not used here.
     const { launchOnPerpsplexity } = await import("./perpsplexity-launch.server");
     const outcome = await launchOnPerpsplexity({
