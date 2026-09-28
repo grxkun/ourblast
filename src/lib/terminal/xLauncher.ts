@@ -285,3 +285,15 @@ export function extractSocials(tweetText: string): TokenSocials {
 export function imageFieldInText(text: string): string | null {
   return clean(fixTypos(text).match(/\b(?:image|img|pic|picture|logo|icon)\s*[:=-]\s*(https?:\/\/\S+)/i)?.[1]);
 }
+
+/** OURBLAST artwork used when a launch call brings no picture of its own. */
+export const DEFAULT_TOKEN_ICON_URL = "https://ourblast.xyz/icon-192.png";
+
+/**
+ * The picture that goes into the coin's on-chain metadata. A launch without any
+ * artwork would otherwise publish an empty icon, which explorers show as blank.
+ */
+export function tokenIconUrl(icon?: string | null): string {
+  return icon?.trim() || DEFAULT_TOKEN_ICON_URL;
+}
+

@@ -42,6 +42,7 @@ import {
   previewLaunch,
 } from "./maelstrom";
 import { patchMaelstromTemplate } from "./maelstrom-template.server";
+import { tokenIconUrl } from "./xLauncher";
 import {
   gasCoins,
   loadDeployer,
@@ -262,7 +263,7 @@ export async function launchOnMaelstrom(input: MaelstromLaunchInput): Promise<Ma
       name,
       description:
         input.description.trim().slice(0, 280) || `${name} — launched on Maelstrom via OurBlast.`,
-      iconUrl: input.iconUrl.trim().slice(0, 300),
+      iconUrl: tokenIconUrl(input.iconUrl).slice(0, 300),
     });
   } catch (error) {
     return fail(`Could not prepare the coin: ${(error as Error).message}`);
