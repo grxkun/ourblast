@@ -91,7 +91,7 @@ export function LaunchCard({ launch, editing, onEdit, onChange, onLaunch, onGene
                   <option value="short">SHORT</option>
                 </select>
               </label>
-              <label className="text-xs font-bold uppercase text-muted-foreground">Leverage (x)<Input inputMode="numeric" value={String(launch.perps.leverageBps / 10_000)} onChange={(event) => { const x = Math.max(1, Math.min(20, Number(event.target.value.replace(/[^0-9]/g, "")) || 1)); draft({ ...launch, perps: { ...launch.perps!, leverageBps: x * 10_000 } }); }} onBlur={settle} className="mt-1" /></label>
+              <label className="text-xs font-bold uppercase text-muted-foreground">Leverage (x)<Input inputMode="numeric" value={String(launch.perps.leverageBps / 10_000)} onChange={(event) => { const x = Math.max(1, Math.min(10, Number(event.target.value.replace(/[^0-9]/g, "")) || 1)); draft({ ...launch, perps: { ...launch.perps!, leverageBps: x * 10_000 } }); }} onBlur={settle} className="mt-1" /></label>
               <label className="text-xs font-bold uppercase text-muted-foreground">Initial MC ($)<Input inputMode="decimal" value={launch.perps.startingCapUsd ? String(launch.perps.startingCapUsd) : ""} placeholder={String(PERPSPLEXITY_CURVE_DEFAULT_CAP_USD)} onChange={(event) => draft({ ...launch, perps: { ...launch.perps!, startingCapUsd: Number(event.target.value.replace(/[^0-9.]/g, "")) || null } })} onBlur={settle} className="mt-1" /></label>
             </div>
             <div className="flex flex-wrap items-center gap-2 border-t border-primary/30 pt-2">
