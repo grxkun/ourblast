@@ -10,7 +10,7 @@ import {
   type LaunchRequestStatus,
 } from "./xLauncher";
 import type { LaunchConfiguration } from "./types";
-import { extractDescription, extractPairToken, extractSocials } from "./xLauncher";
+import { extractDescription, extractPairToken, extractSocials, tokenIconUrl } from "./xLauncher";
 
 /**
  * Server side of the simple X launcher. Every state change lives here so the
@@ -406,7 +406,7 @@ export async function executeLaunchRequest(requestId: string): Promise<LaunchOut
       name: request.name,
       description: withSocials(extractDescription(request.tweet_text ?? "") ?? ""),
       // The picture from the tweet becomes the coin's image metadata.
-      iconUrl: request.icon_url ?? null,
+      iconUrl: tokenIconUrl(request.icon_url),
       // The caller's X link goes into the coin's public info.
       callerXLink: request.x_username ? `https://x.com/${request.x_username}` : null,
       // The caller's original tweet is quoted in the coin's public info.
@@ -427,7 +427,7 @@ export async function executeLaunchRequest(requestId: string): Promise<LaunchOut
       symbol: request.symbol,
       name: request.name,
       description: extractDescription(request.tweet_text ?? "") ?? request.tweet_text ?? "",
-      iconUrl: request.icon_url ?? "",
+      iconUrl: tokenIconUrl(request.icon_url),
       xLink: socials.x ?? (request.x_username ? `https://x.com/${request.x_username}` : null),
       website: socials.website,
       telegram: socials.telegram,
@@ -447,7 +447,7 @@ export async function executeLaunchRequest(requestId: string): Promise<LaunchOut
       symbol: request.symbol,
       name: request.name,
       description: extractDescription(request.tweet_text ?? "") ?? request.tweet_text ?? "",
-      iconUrl: request.icon_url ?? "",
+      iconUrl: tokenIconUrl(request.icon_url),
       website: socials.website,
       xLink: socials.x ?? (request.x_username ? `https://x.com/${request.x_username}` : null),
       telegram: socials.telegram,
@@ -473,7 +473,7 @@ export async function executeLaunchRequest(requestId: string): Promise<LaunchOut
       symbol: request.symbol,
       name: request.name,
       description: richDescription("Perpsplexity"),
-      iconUrl: request.icon_url ?? "",
+      iconUrl: tokenIconUrl(request.icon_url),
       underlying: request.underlying ?? null,
       long: request.perps_long ?? true,
       leverageBps: request.leverage_bps ?? null,
