@@ -84,8 +84,8 @@ export const launchFromTerminal = createServerFn({ method: "POST" })
     // The executor reads the LP pair and description from the stored text, the
     // same way it does for a post, so the card's choices are written in that form.
     const storedText = [
-      data.description ? `Desc: ${data.description}` : "",
       data.pairToken ? `paired with $${data.pairToken.toUpperCase()}` : "",
+      data.description ? `Desc: ${data.description}` : "",
     ].filter(Boolean).join("\n");
     const row = await createLaunchRequest(
       postId,
