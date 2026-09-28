@@ -55,6 +55,7 @@ import {
 } from "./suipump-launch.server";
 
 const CLOCK = "0x6";
+const COIN_REGISTRY = "0xc";
 const PUBLISH_BUDGET = 300_000_000;
 const LAUNCH_BUDGET = 900_000_000;
 /** Gas headroom kept on top of the seed and the launch fee. */
@@ -217,6 +218,41 @@ async function freshGas(sender: string) {
   return [];
 }
 
+/**
+ * Publishing the current coin_registry template leaves Currency<T> as a
+ * receiving object owned by the registry. Finalize it before launching so
+ * indexers (and Maelstrom's coin page) can resolve its public metadata.
+ */
+async function finalizeCurrencyRegistration(
+  coinType: string,
+  currency: { objectId: string; version: string; digest: string },
+  sender: string,
+  keypair: Awaited<ReturnType<typeof loadDeployer>>,
+  gasPrice: number,
+): Promise<{ ok: boolean; error: string | null; digest: string | null }> {
+  if (!keypair) return { ok: false, error: "The bot launch wallet is not configured.", digest: null };
+  const [registryRef, registrationGas] = await Promise.all([sharedRef(COIN_REGISTRY), freshGas(sender)]);
+  if (registrationGas.length === 0) {
+    return { ok: false, error: "The bot wallet has no SUI coin left to register the token metadata.", digest: null };
+  }
+  const tx = new Transaction();
+  withGas(tx, sender, registrationGas, gasPrice, PUBLISH_BUDGET);
+  tx.moveCall({
+    target: "0x2::coin_registry::finalize_registration",
+    typeArguments: [coinType],
+    arguments: [
+      tx.sharedObjectRef({ ...registryRef, mutable: true }),
+      tx.receivingRef(currency),
+    ],
+  });
+  const run = await signAndExecute(tx, keypair);
+  if (!run.ok || !run.digest) return run;
+  const registrationReceipt = await receipt(run.digest);
+  return registrationReceipt.ok
+    ? { ok: true, error: null, digest: run.digest }
+    : { ok: false, error: registrationReceipt.error ?? "Token metadata registration failed on chain.", digest: run.digest };
+}
+
 export async function launchOnMaelstrom(input: MaelstromLaunchInput): Promise<MaelstromLaunchResult> {
   const symbol = input.symbol.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 10);
   if (!/^[A-Z][A-Z0-9]{1,9}$/.test(symbol)) {
@@ -289,6 +325,19 @@ export async function launchOnMaelstrom(input: MaelstromLaunchInput): Promise<Ma
   if (!supplyCoin) return fail("The coin published but its supply did not appear in the launch wallet.");
   const coinType = normalizeType(supplyCoin.objectType.replace(/^0x2::coin::Coin<(.+)>$/, "$1"));
   const packageId = coinType.split("::")[0]!;
+  const currency = publishReceipt.created.find(
+    (change) => change.objectType === `0x2::coin_registry::Currency<${coinType}>`,
+  );
+  if (!currency) {
+    return fail("The coin published but its metadata registration did not appear.", { coinType, digest: publishRun.digest });
+  }
+  const registration = await finalizeCurrencyRegistration(coinType, currency, sender, keypair, gasPrice);
+  if (!registration.ok) {
+    return fail(registration.error ?? "The token metadata could not be registered.", {
+      coinType,
+      digest: registration.digest ?? publishRun.digest,
+    });
+  }
 
   // Step 2 — the launch: Cetus pool, liquidity, lock, all in one Move call.
   let coinIsA: boolean;
