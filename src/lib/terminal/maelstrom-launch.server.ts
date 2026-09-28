@@ -42,6 +42,7 @@ import {
   previewLaunch,
 } from "./maelstrom";
 import { patchMaelstromTemplate } from "./maelstrom-template.server";
+import { tokenIconUrl } from "./xLauncher";
 import {
   gasCoins,
   loadDeployer,
