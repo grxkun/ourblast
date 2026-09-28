@@ -12,3 +12,4 @@
 - OurBank wallet keys can live in Turnkey enclaves (`signing_backend` on `bank_wallets`); all signing goes through `bankSigner()` in bank-wallet.server.ts — never read `secret_ciphertext` directly elsewhere. Why: key location must be swappable without touching trade/send logic.
 - Each launchpad gets its own `<pad>-launch.server.ts` executor plus a pure `<pad>.ts` constants/math module, routed from `xLauncher.server.ts` by `pad.id`. Why: pool mechanics differ per launchpad and must stay testable without chain access.
 - Terminal LAUNCH goes through `launchFromTerminal` → `createLaunchRequest` + `executeLaunchRequest`, the same pipeline as X mentions, with a per-user/token/minute request id. Why: one launch path means one set of idempotency and confirmation rules.
+- Maelstrom coin publishes must finalize `Currency<T>` into the Sui coin registry before pool creation. Why: indexers otherwise show `???` and `UNVERIFIED COIN` despite valid pending metadata.
