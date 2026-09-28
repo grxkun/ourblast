@@ -379,7 +379,8 @@ export async function executeLaunchRequest(requestId: string): Promise<LaunchOut
     socials.x ? `X: ${socials.x}` : "",
   ].filter(Boolean).join(" ");
   const withSocials = (d: string) => [socialLine, d].filter(Boolean).join(" | ");
-  const deployLink = request.x_username && request.x_post_id
+  // Only real X posts get a deploy link; terminal launches have no tweet.
+  const deployLink = request.x_username && request.x_post_id && /^\d+$/.test(request.x_post_id)
     ? `https://x.com/${request.x_username}/status/${request.x_post_id}` : "";
   // Clean bio: the launcher's own "Desc:" or a generated summary, then the
   // deploying X post and socials. Never the raw command tweet.

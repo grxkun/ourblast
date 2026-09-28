@@ -53,6 +53,9 @@ const terminalLaunchSchema = z.object({
   long: z.boolean().default(true),
   leverageBps: z.number().int().min(10_000).max(100_000).nullable().default(null),
   devBuyUsdc: z.number().min(0).max(100_000).nullable().default(null),
+  pairToken: z.string().regex(/^[A-Za-z0-9]{2,10}$/).nullable().default(null),
+  feeWallet: z.string().regex(/^0x[a-fA-F0-9]{40,64}$/).nullable().default(null),
+  feeX: z.string().regex(/^@?[A-Za-z0-9_]{1,15}$/).nullable().default(null),
 });
 
 /**
@@ -75,6 +78,15 @@ export const launchFromTerminal = createServerFn({ method: "POST" })
     // request row instead of launching the token twice.
     const bucket = new Date().toISOString().slice(0, 16).replace(/[-:T]/g, "");
     const postId = `terminal-${context.userId}-${data.symbol.toUpperCase()}-${bucket}`;
+    const feeReceiver = data.feeWallet
+      ? { wallet: data.feeWallet }
+      : data.feeX ? { handle: data.feeX.replace(/^@/, "") } : undefined;
+    // The executor reads the LP pair and description from the stored text, the
+    // same way it does for a post, so the card's choices are written in that form.
+    const storedText = [
+      data.description ? `Desc: ${data.description}` : "",
+      data.pairToken ? `paired with $${data.pairToken.toUpperCase()}` : "",
+    ].filter(Boolean).join("\n");
     const row = await createLaunchRequest(
       postId,
       username,
@@ -91,9 +103,10 @@ export const launchFromTerminal = createServerFn({ method: "POST" })
             }
           : undefined,
         devBuyUsdc: data.devBuyUsdc ?? undefined,
+        feeReceiver,
       },
       data.iconUrl,
-      data.description,
+      storedText || null,
     );
     if (row.status === "DEPLOYED") {
       return { status: "DEPLOYED" as const, notice: "That token was already launched.", tokenUrl: row.token_url, poolUrl: row.pool_url };
