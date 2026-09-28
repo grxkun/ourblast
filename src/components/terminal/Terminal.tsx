@@ -68,6 +68,9 @@ export function Terminal({ tryCommand }: { tryCommand?: { command: string; nonce
         long: launch.perps?.long ?? true,
         leverageBps: launch.perps?.leverageBps ?? null,
         devBuyUsdc: launch.devBuy > 0 ? launch.devBuy : null,
+        pairToken: launch.pairToken ?? null,
+        feeWallet: launch.feePayout?.mode === "wallet" ? launch.feePayout.wallet : null,
+        feeX: launch.feePayout?.mode === "x" ? launch.feePayout.xUsername : null,
       } });
       toast.dismiss(pending);
       if (outcome.status === "DEPLOYED") toast.success(`$${launch.symbol} is live.`, { description: outcome.tokenUrl ?? undefined });
