@@ -40,6 +40,7 @@ export function Terminal({ tryCommand }: { tryCommand?: { command: string; nonce
   const [anonymousHistory, setAnonymousHistory] = useState<TerminalEntry[]>(sessionHistory);
   const [draft, setDraft] = useState("");
   const [processing, setProcessing] = useState(false);
+  const [pending, setPending] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [launchOverrides, setLaunchOverrides] = useState<Record<string, LaunchConfiguration>>({});
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -108,17 +109,19 @@ export function Terminal({ tryCommand }: { tryCommand?: { command: string; nonce
 
   const saveEntry = useCallback(async (entry: TerminalEntry) => {
     if (!userId) { setAnonymousHistory((current) => [...current, entry].slice(-100)); return; }
+    // Show the answer immediately; the cloud copy syncs in the background.
+    queryClient.setQueryData<TerminalEntry[]>(["terminal-history", userId], (old) => [...(old ?? []), entry]);
     const launch = entry.result.launch ? { ...entry.result.launch, image: null, imageName: undefined } : undefined;
     const result = { ...(entry.result.data ? { data: entry.result.data } : {}), ...(launch ? { launch } : {}) };
-    const { error } = await supabase.from("terminal_history").insert({ user_id: userId, command: entry.command, intent: entry.intent, response: entry.result.message, status: entry.result.status, result: result as Json });
-    if (error) throw error;
-    await queryClient.invalidateQueries({ queryKey: ["terminal-history", userId] });
+    void supabase.from("terminal_history").insert({ id: entry.id, user_id: userId, command: entry.command, intent: entry.intent, response: entry.result.message, status: entry.result.status, result: result as Json })
+      .then(({ error }) => { if (error) toast.error("Terminal history was not saved", { description: error.message }); });
   }, [queryClient, userId]);
 
   const run = useCallback(async (command: string, image?: { url: string; filename?: string }) => {
     const clean = command.trim().slice(0, 500);
     if (!clean || processing) return;
     setProcessing(true);
+    setPending(clean);
     try {
       const context = { walletConnected: Boolean(userId), walletAddress: profile?.wallet_address ?? null, source: "terminal" as const };
       // Send / buy / sell (and "1"/"2" answers to a which-token question) run the same
@@ -158,7 +161,7 @@ export function Terminal({ tryCommand }: { tryCommand?: { command: string; nonce
       await saveEntry(entry);
     } catch (error) {
       toast.error("Terminal history was not saved", { description: error instanceof Error ? error.message : "Try again." });
-    } finally { setProcessing(false); }
+    } finally { setProcessing(false); setPending(null); }
   }, [interpret, processing, profile?.wallet_address, saveEntry, userId, bankCommand, approveSwap, approveTransfer, queryClient]);
 
   const handleSubmit = async (message: PromptInputMessage) => {
@@ -241,7 +244,7 @@ export function Terminal({ tryCommand }: { tryCommand?: { command: string; nonce
               const launch = launchOverrides[entry.id] ?? entry.result.launch;
               return <TerminalMessage key={entry.id} entry={entry} onCopy={() => void navigator.clipboard.writeText(entry.command)} onRerun={() => void run(entry.command)}>{launch ? <LaunchCard launch={launch} editing={editingId === entry.id} onEdit={() => setEditingId((value) => value === entry.id ? null : entry.id)} onChange={(next) => setLaunchOverrides((current) => ({ ...current, [entry.id]: next }))} onGenerate={() => toast("Image generation is coming soon / not connected.")} onLaunch={() => { if (!userId) { void connect(); return; } void doLaunch(launch); }} /> : null}{["launchToken", "createToken", "buyToken", "sellToken"].includes(entry.intent) ? <TransactionCard status={entry.result.status} /> : null}</TerminalMessage>;
             })}
-            {processing ? <div className="flex items-center gap-2 text-sm"><span className="terminal-status-dot" /><Shimmer>Mapping intent to an approved tool…</Shimmer></div> : null}
+            {processing ? <div className="space-y-3">{pending ? <div className="ml-auto w-fit max-w-full rounded-lg border border-border bg-card px-3 py-2 font-mono text-sm">&gt; {pending}</div> : null}<div className="flex items-center gap-2 text-sm"><span className="terminal-status-dot" /><Shimmer>Working on it…</Shimmer></div></div> : null}
           </ConversationContent>
           <ConversationScrollButton />
         </Conversation>
