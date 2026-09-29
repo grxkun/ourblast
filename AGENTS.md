@@ -14,3 +14,4 @@
 - Terminal LAUNCH goes through `launchFromTerminal` → `createLaunchRequest` + `executeLaunchRequest`, the same pipeline as X mentions, with a per-user/token/minute request id. Why: one launch path means one set of idempotency and confirmation rules.
 - Maelstrom coin publishes must finalize `Currency<T>` into the Sui coin registry before pool creation. Why: indexers otherwise show `???` and `UNVERIFIED COIN` despite valid pending metadata.
 - Perpsplexity composite first buys use `cash_prices` → `buy_cash`, signed and received by the creator wallet; never use low-level `composite_pool::buy`. Why: the public cash path is the live trading flow and avoids the clearing-house `active()` abort.
+- `composite_pool::buy_cash` takes the pool's own sleeve/reserve/reserve-account trio, never the engine's sleeve/vault/account. Why: the engine objects abort in `basket::check_cash`.
