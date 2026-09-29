@@ -28,7 +28,7 @@ vi.mock("@/lib/terminal/suipump-launch.server", () => ({
   referenceGasPrice: async () => 1000,
   loadDeployer: async () => ({ address: BOT, signTransaction: async () => ({ signature: "bot" }) }),
   gasCoins: async (owner: string) => [
-    { objectId: `0x9a50${owner.slice(6)}`, version: "1", digest: "22222222222222222222222222222222" },
+    { objectId: `0x9a50${owner.slice(6)}`, version: "1", digest: "11111111111111111111111111111111" },
   ],
   withGas: (tx: Transaction, sender: string, gas: { objectId: string; version: string; digest: string }[]) => {
     tx.setSender(sender);
@@ -109,7 +109,7 @@ describe("first buy funding", () => {
       amount: 100_000n,
       gasPrice: 1000,
       freshGas: async () => [
-        { objectId: `0x${"a".repeat(64)}`, version: "1", digest: "22222222222222222222222222222222" },
+        { objectId: `0x${"a".repeat(64)}`, version: "1", digest: "11111111111111111111111111111111" },
       ],
     });
 
