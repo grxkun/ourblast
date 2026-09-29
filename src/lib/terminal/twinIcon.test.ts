@@ -13,7 +13,7 @@ class Q implements PromiseLike<any> {
   insert(v: Row) { this.wk = "insert"; this.wv = v; return this; }
   upsert(v: Row) { return this.insert(v); }
   update(v: Row) { this.wk = "update"; this.wv = v; return this; }
-  run() {
+  run(): any {
     const v = this.wv;
     if (this.wk === "insert" && v) {
       if (this.t === "launcher_settings") { tables[this.t] = [v]; return { data: v, error: null }; }
@@ -25,9 +25,9 @@ class Q implements PromiseLike<any> {
     if (this.wk === "update" && v) { const m = this.rows.filter(this.m); for (const r of m) Object.assign(r, v); return { data: m, error: null }; }
     return { data: this.rows.filter(this.m), error: null };
   }
-  maybeSingle() { if (this.wk) { const r = this.run(); const d = Array.isArray(r.data) ? (r.data[0] ?? null) : r.data; return Promise.resolve({data:d,error:null}); } return Promise.resolve({ data: this.rows.find(this.m) ?? null, error: null }); }
-  single() { return this.maybeSingle(); }
-  then(a?: any, b?: any) { return Promise.resolve(this.run()).then(a,b); }
+  maybeSingle(): Promise<any> { if (this.wk) { const r = this.run(); const d = Array.isArray(r.data) ? (r.data[0] ?? null) : r.data; return Promise.resolve({data:d,error:null}); } return Promise.resolve({ data: this.rows.find(this.m) ?? null, error: null }); }
+  single(): Promise<any> { return this.maybeSingle(); }
+  then<T1 = any, T2 = never>(a?: any, b?: any): PromiseLike<T1 | T2> { return Promise.resolve(this.run()).then(a, b) as PromiseLike<T1 | T2>; }
 }
 vi.mock("@/integrations/supabase/client.server", () => ({ supabaseAdmin: { from: (t: string) => new Q(t) } }));
 
