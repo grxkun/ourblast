@@ -6,7 +6,6 @@ import { AtSign, ShieldCheck } from "lucide-react";
 import helmet from "@/assets/helmet.jpg.asset.json";
 import mascotShock from "@/assets/mascot-shock.jpg.asset.json";
 import mascotStand from "@/assets/mascot-stand.jpg.asset.json";
-import launchReport from "@/assets/BLAST-launch-report.pdf.asset.json";
 import { Ticker } from "@/components/site/Ticker";
 import { CopyAddress } from "@/components/site/CopyAddress";
 import { VaultSizes } from "@/components/site/VaultSizes";
@@ -115,7 +114,6 @@ function Home() {
           </div>
           <div className="flex flex-wrap gap-2">
             <a href={BUY_URL} target="_blank" rel="noreferrer" className="rounded-lg border-[3px] border-border bg-primary px-4 py-2 font-display text-lg text-primary-foreground shadow-[4px_4px_0_0_var(--ink)]">BUY $BLAST</a>
-            <a href={launchReport.url} target="_blank" rel="noreferrer" className="rounded-lg border-[3px] border-border bg-card px-4 py-2 font-display text-lg shadow-[4px_4px_0_0_var(--ink)]">LAUNCH REPORT</a>
           </div>
         </div>
         <div className="overflow-hidden rounded-xl border border-border"><Ticker /></div>
