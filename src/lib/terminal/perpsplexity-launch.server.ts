@@ -488,12 +488,13 @@ async function compositeRefs(prepared: PreparedComposite, market: PerpsMarket) {
 }
 
 /**
- * The launcher's first buy on a live composite pool. Same object list as the
+ * The creator's first buy on a live composite pool. Same object list as the
  * pad's own buy: composite_pool::buy returns the clearing house plus the
- * position, so the clearing house is re-shared and the position kept.
+ * position, so the clearing house is re-shared and the position kept by the
+ * creator. `sender` is the creator's wallet, never the bot's.
  */
 async function buyOnCompositePool(args: {
-  keypair: NonNullable<Awaited<ReturnType<typeof loadDeployer>>>;
+  keypair: TxSigner;
   sender: string;
   coinType: string;
   prepared: PreparedComposite;
