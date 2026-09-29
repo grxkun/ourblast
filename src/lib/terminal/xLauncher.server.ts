@@ -320,6 +320,30 @@ function launchConfigFor(row: LaunchRequestRow): LaunchConfiguration {
   };
 }
 
+/**
+ * The wallet that funds and receives a first ("dev") buy: the creator's own
+ * OurBank wallet, resolved from the X handle that asked for the launch. The
+ * bot's operating wallet is never used for it — it only covers gas, the
+ * launchpad fee and the pool seed. Returns null when the creator has no
+ * wallet, in which case the launch happens without a first buy.
+ */
+async function creatorDevBuyer(
+  row: LaunchRequestRow,
+): Promise<{ address: string; signer: { signTransaction(bytes: Uint8Array): Promise<{ signature: string }> } } | null> {
+  const handle = row.x_username?.trim();
+  if (!handle) return null;
+  try {
+    const { findBankWallet, bankSigner } = await import("./bank-wallet.server");
+    const wallet = await findBankWallet(handle);
+    if (!wallet) return null;
+    const signer = await bankSigner(wallet);
+    return { address: signer.address, signer };
+  } catch {
+    return null;
+  }
+}
+
+
 export interface LaunchOutcome {
   status: LaunchRequestStatus;
   notice: string | null;
