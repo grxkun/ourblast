@@ -249,7 +249,7 @@ describe("first buy funding", () => {
     const tx = new Transaction();
     // The creator sends (they hold the pool cap and the USDC); the bot pays gas.
     withSponsoredGas(tx, CREATOR, BOT, [
-      { objectId: `0x${"9".repeat(64)}`, version: "1", digest: "11111111111111111111111111111111" },
+      { objectId: `0x${"9".repeat(64)}`, version: "1", digest: "11111111111111111111111111111111", type: "0x2::coin::Coin<0x2::sui::SUI>" },
     ], 1000, 1_500_000_000);
     appendCompositeBuy(tx, {
       coinType: `0x${"c".repeat(64)}::sam3l::SAM3L`,
