@@ -285,11 +285,13 @@ function fail(error: string, extra: Partial<PerpsLaunchResult> = {}): PerpsLaunc
 }
 
 /**
- * The launcher's first buy on a live curve. Mirrors the pad's own buy
+ * The creator's first buy on a live curve. Mirrors the pad's own buy
  * transaction: split the USDC amount, call pool::buy, keep the Position.
+ * `sender` is the creator's own wallet — it pays the USDC and the gas, and it
+ * receives the position. The bot wallet is never the buyer.
  */
 async function buyOnCurve(args: {
-  keypair: NonNullable<Awaited<ReturnType<typeof loadDeployer>>>;
+  keypair: TxSigner;
   sender: string;
   coinType: string;
   poolId: string;
