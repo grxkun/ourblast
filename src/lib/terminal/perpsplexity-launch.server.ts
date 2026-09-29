@@ -545,12 +545,13 @@ async function compositeRefs(prepared: PreparedComposite, market: PerpsMarket) {
 }
 
 /**
- * The creator's first buy on a live composite pool. Same object list as the
- * pad's own buy: composite_pool::buy returns the clearing house plus the
- * position, so the clearing house is re-shared and the position kept by the
- * creator. `sender` is the creator's wallet, never the bot's.
+ * The creator's first buy on a live composite pool. The public trading path is
+ * cash_prices -> buy_cash; composite_pool::buy is a low-level margin path that
+ * aborts in the clearing house's private active() check. `sender` is always the
+ * creator's wallet, so both the USDC payment and the resulting Position<T>
+ * remain completely separate from the bot wallet.
  */
-async function buyOnCompositePool(args: {
+export async function buyOnCompositePool(args: {
   keypair: TxSigner;
   sender: string;
   coinType: string;
@@ -583,37 +584,40 @@ async function buyOnCompositePool(args: {
       );
     }
     const [payment] = tx.splitCoins(source, [tx.pure.u64(args.amount)]);
-    const results = tx.moveCall({
-      target: `${PERPSPLEXITY_PACKAGE_ID}::composite_pool::buy`,
+    const typeArguments = [args.coinType, PERPSPLEXITY_LENDING_TYPE, PERPSPLEXITY_CURVE_QUOTE_TYPE];
+    const [cashPrices] = tx.moveCall({
+      target: `${PERPSPLEXITY_PACKAGE_ID}::composite_pool::cash_prices`,
+      typeArguments,
+      arguments: [
+        tx.sharedObjectRef({ ...refs.pool, mutable: false }),
+        tx.sharedObjectRef({ ...refs.engine, mutable: false }),
+        tx.sharedObjectRef({ ...refs.engineVault, mutable: false }),
+        tx.sharedObjectRef({ ...refs.clearingHouse, mutable: false }),
+        tx.sharedObjectRef({ ...refs.collateralFeed, mutable: false }),
+        tx.sharedObjectRef({ ...refs.clock, mutable: false }),
+      ],
+    }) as TransactionArgument[];
+    const [position] = tx.moveCall({
+      target: `${PERPSPLEXITY_PACKAGE_ID}::composite_pool::buy_cash`,
       typeArguments: [args.coinType, PERPSPLEXITY_LENDING_TYPE, PERPSPLEXITY_CURVE_QUOTE_TYPE],
       arguments: [
         tx.sharedObjectRef({ ...refs.pool, mutable: true }),
         tx.sharedObjectRef({ ...refs.config, mutable: false }),
-        tx.sharedObjectRef({ ...refs.engine, mutable: true }),
-        tx.sharedObjectRef({ ...refs.engineVault, mutable: false }),
-        tx.sharedObjectRef({ ...refs.engineAccount, mutable: true }),
-        tx.sharedObjectRef({ ...refs.clearingHouse, mutable: true }),
         tx.sharedObjectRef({ ...refs.engineSleeve, mutable: true }),
+        tx.sharedObjectRef({ ...refs.engineVault, mutable: false }),
+        tx.sharedObjectRef({ ...refs.engineAccount, mutable: false }),
         tx.sharedObjectRef({ ...refs.lendingMarket, mutable: true }),
-        tx.sharedObjectRef({ ...refs.poolSleeve, mutable: true }),
-        tx.sharedObjectRef({ ...refs.reserve, mutable: false }),
-        tx.sharedObjectRef({ ...refs.reserveAccount, mutable: true }),
-        tx.sharedObjectRef({ ...refs.registry, mutable: false }),
-        tx.sharedObjectRef({ ...refs.baseFeed, mutable: false }),
-        tx.sharedObjectRef({ ...refs.collateralFeed, mutable: false }),
         payment!,
-        // No slippage floor: first trade on a brand new pool.
+        cashPrices!,
+        // No minimum output: this is the creator's optional first trade on its
+        // newly confirmed pool, matching the successful dev-inspected flow.
         tx.pure.u64(0),
-        tx.pure.u64(BigInt(Date.now() + 300_000)),
+        // Stay inside Perpsplexity's two-minute timely() window.
+        tx.pure.u64(BigInt(Date.now() + 60_000)),
         tx.sharedObjectRef({ ...refs.clock, mutable: false }),
       ],
     }) as TransactionArgument[];
-    tx.moveCall({
-      target: `${PERPSPLEXITY_AFTERMATH_PACKAGE_ID}::clearing_house::share`,
-      typeArguments: [PERPSPLEXITY_CURVE_QUOTE_TYPE],
-      arguments: [results[0]!],
-    });
-    tx.transferObjects([results[1]!], args.sender);
+    tx.transferObjects([position!], args.sender);
     const run = await signAndExecute(tx, args.keypair);
     if (!run.ok || !run.digest) return { digest: null, error: run.error ?? "The first buy failed." };
     const receipt = await fetchReceipt(run.digest);
