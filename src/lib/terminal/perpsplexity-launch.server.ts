@@ -830,7 +830,15 @@ async function launchCompositePool(args: {
   }
 
   // ---- Phase 2: engine::activate + composite_pool::activate + share ------
-  const activateGas = await args.freshGas();
+  //
+  // Snipers subscribe to composite_pool::Created and land a buy_cash within a
+  // second of activation. The only way to be ahead of them is to leave no
+  // window at all: when a first buy is planned, the creator's purchase is
+  // appended to this very transaction, so the pool becomes tradable and the
+  // creator is filled inside one atomic block. That makes the creator the
+  // transaction sender (they own the PoolCap and the USDC), with the bot wallet
+  // sponsoring the gas so the creator still pays only USDC.
+  let activateGas = await args.freshGas();
   if (activateGas.length === 0) {
     return fail("The bot wallet has no SUI coin left to activate the leveraged position.", {
       digest: prepareRun.digest,
@@ -840,54 +848,95 @@ async function launchCompositePool(args: {
     });
   }
   const refs = await compositeRefs(prepared, market);
-  const activateTx = new Transaction();
-  withGas(activateTx, sender, activateGas, args.gasPrice, COMPOSITE_ACTIVATE_BUDGET);
-  const engineRef = activateTx.sharedObjectRef({ ...refs.engine, mutable: true });
-  const engineVaultRef = activateTx.sharedObjectRef({ ...refs.engineVault, mutable: true });
-  const engineAccountRef = activateTx.sharedObjectRef({ ...refs.engineAccount, mutable: true });
-  const clearingHouseArg = activateTx.sharedObjectRef({ ...refs.clearingHouse, mutable: true });
-  activateTx.moveCall({
-    target: `${PERPSPLEXITY_ENGINE_PACKAGE_ID}::engine::activate`,
-    typeArguments: [PERPSPLEXITY_LENDING_TYPE, PERPSPLEXITY_CURVE_QUOTE_TYPE],
-    arguments: [engineRef, engineVaultRef, engineAccountRef, clearingHouseArg],
-  });
-  const activateResults = activateTx.moveCall({
-    target: `${PERPSPLEXITY_PACKAGE_ID}::composite_pool::activate`,
-    typeArguments: [coinType, PERPSPLEXITY_LENDING_TYPE, PERPSPLEXITY_CURVE_QUOTE_TYPE],
-    arguments: [
-      activateTx.sharedObjectRef({ ...refs.pool, mutable: true }),
-      activateTx.sharedObjectRef({ ...refs.config, mutable: false }),
-      activateTx.objectRef(prepared.poolCap),
-      engineRef,
-      engineVaultRef,
-      engineAccountRef,
-      clearingHouseArg,
-      activateTx.sharedObjectRef({ ...refs.engineSleeve, mutable: true }),
-      activateTx.sharedObjectRef({ ...refs.lendingMarket, mutable: true }),
-      activateTx.sharedObjectRef({ ...refs.poolSleeve, mutable: true }),
-      activateTx.sharedObjectRef({ ...refs.reserve, mutable: false }),
-      activateTx.sharedObjectRef({ ...refs.reserveAccount, mutable: true }),
-      activateTx.sharedObjectRef({ ...refs.registry, mutable: false }),
-      activateTx.sharedObjectRef({ ...refs.baseFeed, mutable: false }),
-      activateTx.sharedObjectRef({ ...refs.collateralFeed, mutable: false }),
-      // Same floor as the live $diana activation (tx 9suhyGmP…): 989,999 of the
-      // 1 USDC seed NAV (99%).
-      activateTx.pure.u64(989_999n),
-      // composite_pool::timely rejects a deadline more than 120s from the chain
-      // clock (abort 6) — the $diana activation that worked sat ~18s ahead, while
-      // our 300s and 600s deadlines both aborted. Stay well inside the window.
-      activateTx.pure.u64(BigInt(Date.now() + 60_000)),
-      activateTx.sharedObjectRef({ ...refs.clock, mutable: false }),
-    ],
-  }) as TransactionArgument[];
-  activateTx.moveCall({
-    target: `${PERPSPLEXITY_AFTERMATH_PACKAGE_ID}::clearing_house::share`,
-    typeArguments: [PERPSPLEXITY_CURVE_QUOTE_TYPE],
-    arguments: [activateResults[0]!],
-  });
-  activateTx.transferObjects([activateResults[1]!], sender);
+  let buyerCoins: OwnedCoin[] = [];
+  let bundleBuy = false;
+  if (atomicBuyer) {
+    buyerCoins = await quoteCoins(atomicBuyer.address);
+    bundleBuy = buyerCoins.length > 0;
+  }
 
-  const activateRun = await signAndExecute(activateTx, args.keypair);
+  const buildActivate = (includeBuy: boolean) => {
+    const activateTx = new Transaction();
+    if (atomicBuyer) {
+      withSponsoredGas(
+        activateTx,
+        atomicBuyer.address,
+        sender,
+        activateGas,
+        args.gasPrice,
+        COMPOSITE_ACTIVATE_BUDGET,
+      );
+    } else {
+      withGas(activateTx, sender, activateGas, args.gasPrice, COMPOSITE_ACTIVATE_BUDGET);
+    }
+    const engineRef = activateTx.sharedObjectRef({ ...refs.engine, mutable: true });
+    const engineVaultRef = activateTx.sharedObjectRef({ ...refs.engineVault, mutable: true });
+    const engineAccountRef = activateTx.sharedObjectRef({ ...refs.engineAccount, mutable: true });
+    const clearingHouseArg = activateTx.sharedObjectRef({ ...refs.clearingHouse, mutable: true });
+    activateTx.moveCall({
+      target: `${PERPSPLEXITY_ENGINE_PACKAGE_ID}::engine::activate`,
+      typeArguments: [PERPSPLEXITY_LENDING_TYPE, PERPSPLEXITY_CURVE_QUOTE_TYPE],
+      arguments: [engineRef, engineVaultRef, engineAccountRef, clearingHouseArg],
+    });
+    const activateResults = activateTx.moveCall({
+      target: `${PERPSPLEXITY_PACKAGE_ID}::composite_pool::activate`,
+      typeArguments: [coinType, PERPSPLEXITY_LENDING_TYPE, PERPSPLEXITY_CURVE_QUOTE_TYPE],
+      arguments: [
+        activateTx.sharedObjectRef({ ...refs.pool, mutable: true }),
+        activateTx.sharedObjectRef({ ...refs.config, mutable: false }),
+        activateTx.objectRef(prepared.poolCap),
+        engineRef,
+        engineVaultRef,
+        engineAccountRef,
+        clearingHouseArg,
+        activateTx.sharedObjectRef({ ...refs.engineSleeve, mutable: true }),
+        activateTx.sharedObjectRef({ ...refs.lendingMarket, mutable: true }),
+        activateTx.sharedObjectRef({ ...refs.poolSleeve, mutable: true }),
+        activateTx.sharedObjectRef({ ...refs.reserve, mutable: false }),
+        activateTx.sharedObjectRef({ ...refs.reserveAccount, mutable: true }),
+        activateTx.sharedObjectRef({ ...refs.registry, mutable: false }),
+        activateTx.sharedObjectRef({ ...refs.baseFeed, mutable: false }),
+        activateTx.sharedObjectRef({ ...refs.collateralFeed, mutable: false }),
+        // Same floor as the live $diana activation (tx 9suhyGmP…): 989,999 of the
+        // 1 USDC seed NAV (99%).
+        activateTx.pure.u64(989_999n),
+        // composite_pool::timely rejects a deadline more than 120s from the chain
+        // clock (abort 6) — the $diana activation that worked sat ~18s ahead, while
+        // our 300s and 600s deadlines both aborted. Stay well inside the window.
+        activateTx.pure.u64(BigInt(Date.now() + 60_000)),
+        activateTx.sharedObjectRef({ ...refs.clock, mutable: false }),
+      ],
+    }) as TransactionArgument[];
+    activateTx.moveCall({
+      target: `${PERPSPLEXITY_AFTERMATH_PACKAGE_ID}::clearing_house::share`,
+      typeArguments: [PERPSPLEXITY_CURVE_QUOTE_TYPE],
+      arguments: [activateResults[0]!],
+    });
+    // The LP position always stays with the launch wallet, never the sender.
+    activateTx.transferObjects([activateResults[1]!], sender);
+    if (includeBuy && atomicBuyer) {
+      appendCompositeBuy(activateTx, {
+        coinType,
+        refs,
+        buyer: atomicBuyer.address,
+        coins: buyerCoins,
+        amount: args.devBuy.units,
+      });
+    }
+    return activateTx;
+  };
+
+  const activateSigner = atomicBuyer ? atomicBuyer.signer : args.keypair;
+  const activateSponsor = atomicBuyer ? args.keypair : null;
+  let bundledBuy = bundleBuy;
+  let activateRun = await signAndExecute(buildActivate(bundledBuy), activateSigner, activateSponsor);
+  if (bundledBuy && (!activateRun.ok || !activateRun.digest)) {
+    // The bundled buy is best effort: rather than lose the launch, activate on
+    // its own and retry the buy afterwards.
+    bundledBuy = false;
+    activateGas = await args.freshGas();
+    activateRun = await signAndExecute(buildActivate(false), activateSigner, activateSponsor);
+  }
   if (!activateRun.ok || !activateRun.digest) {
     return fail(
       `The leveraged position could not be opened: ${activateRun.error ?? "activation failed"}. The pool is prepared but not trading.`,
@@ -905,11 +954,14 @@ async function launchCompositePool(args: {
     );
   }
 
-  // ---- Optional first buy, as its own transaction, paid by the creator ----
+  // ---- The first buy: bundled above, or retried on the now-live pool -------
   let devBuyDigest: string | null = null;
   let devBuyError: string | null = args.devBuy.skip;
   const compositeBuyer = args.devBuy.buyer;
-  if (args.devBuy.units > 0n && compositeBuyer) {
+  if (bundledBuy) {
+    devBuyDigest = activateRun.digest;
+    devBuyError = null;
+  } else if (args.devBuy.units > 0n && compositeBuyer) {
     const outcome = await buyOnCompositePool({
       keypair: compositeBuyer.signer,
       sender: compositeBuyer.address,
