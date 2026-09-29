@@ -415,15 +415,7 @@ export async function executeLaunchRequest(requestId: string): Promise<LaunchOut
   // same launch call may have carried it. Never mint with fallback artwork when
   // one of the twins has the tweet's image.
   if (!request.icon_url) {
-    const { data: twins } = await client
-      .from("x_launch_requests")
-      .select("icon_url")
-      .eq("x_username", request.x_username)
-      .eq("symbol", request.symbol)
-      .not("icon_url", "is", null)
-      .order("created_at", { ascending: false })
-      .limit(1);
-    const borrowed = (twins?.[0]?.icon_url as string | undefined) ?? null;
+    const borrowed = await findTwinIcon(client, request.x_username, request.symbol);
     if (borrowed) {
       request.icon_url = borrowed;
       await client.from("x_launch_requests").update({ icon_url: borrowed }).eq("id", request.id);
