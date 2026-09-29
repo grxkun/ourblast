@@ -17,7 +17,7 @@ const rpcCalls: { method: string; params: unknown[] }[] = [];
 const signed: { sender: string | null | undefined; signerAddress: string; tx: Transaction }[] = [];
 
 const fakeCoin = (owner: string, balance: bigint) => ({
-  coinObjectId: `0xc0in${owner.slice(2, 6)}`,
+  coinObjectId: `0xc01n${owner.slice(6)}`,
   version: "1",
   digest: "11111111111111111111111111111111",
   balance: balance.toString(),
@@ -28,7 +28,7 @@ vi.mock("@/lib/terminal/suipump-launch.server", () => ({
   referenceGasPrice: async () => 1000,
   loadDeployer: async () => ({ address: BOT, signTransaction: async () => ({ signature: "bot" }) }),
   gasCoins: async (owner: string) => [
-    { objectId: `0xgas${owner.slice(2, 6)}`, version: "1", digest: "22222222222222222222222222222222" },
+    { objectId: `0x9a50${owner.slice(6)}`, version: "1", digest: "22222222222222222222222222222222" },
   ],
   withGas: (tx: Transaction, sender: string, gas: { objectId: string; version: string; digest: string }[]) => {
     tx.setSender(sender);
@@ -104,11 +104,13 @@ describe("first buy funding", () => {
     const result = await buyOnCurve({
       keypair: creatorSigner,
       sender: CREATOR,
-      coinType: "0xabc::test::TEST",
-      poolId: "0xpool",
+      coinType: `0x${"c".repeat(64)}::test::TEST`,
+      poolId: `0x${"b".repeat(64)}`,
       amount: 100_000n,
       gasPrice: 1000,
-      freshGas: async () => [{ objectId: "0xgas", version: "1", digest: "22222222222222222222222222222222" }],
+      freshGas: async () => [
+        { objectId: `0x${"a".repeat(64)}`, version: "1", digest: "22222222222222222222222222222222" },
+      ],
     });
 
     expect(result.error).toBeNull();
