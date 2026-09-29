@@ -242,6 +242,30 @@ export async function readDeployRequest(text: string): Promise<DeployRequest | n
 }
 
 /**
+ * The picture found on any other post of the same launch call by the same
+ * account. Twin posts are common (the poller and the webhook each see one), and
+ * only one of them may carry the readable photo.
+ */
+async function findTwinIcon(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  client: any,
+  username: string,
+  symbol: string,
+): Promise<string | null> {
+  const { data } = await client
+    .from("x_launch_requests")
+    .select("icon_url, created_at")
+    .eq("x_username", username)
+    .eq("symbol", symbol);
+  const rows = (data ?? []) as Array<{ icon_url: string | null; created_at?: string }>;
+  const withIcon = rows
+    .filter((row) => Boolean(row.icon_url?.trim()))
+    .sort((a, b) => String(b.created_at ?? "").localeCompare(String(a.created_at ?? "")));
+  return withIcon[0]?.icon_url ?? null;
+}
+
+
+/**
  * One X post = one launch request. The unique post id in the table is the whole
  * duplicate protection: a repeated mention resolves to the existing row.
  */
