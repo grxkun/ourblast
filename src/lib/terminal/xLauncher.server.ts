@@ -550,7 +550,7 @@ export async function executeLaunchRequest(requestId: string): Promise<LaunchOut
       token_url: tokenUrl,
       pool_url: poolUrl,
       tx_digest: deployment.transactionDigest,
-      notice: null,
+      notice: devBuyNotice,
       updated_at: new Date().toISOString(),
     })
     .eq("id", request.id);
