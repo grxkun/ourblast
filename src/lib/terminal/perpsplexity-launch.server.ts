@@ -762,9 +762,13 @@ async function launchCompositePool(args: {
       tx.sharedObjectRef({ ...clockRef, mutable: false }),
     ],
   }) as TransactionArgument[];
-  // The PoolCap and the SUI change go back to the launch wallet; the cap is
-  // required again by phase 2, so it must be owned, never burned.
-  tx.transferObjects([prepareResults[0]!, prepareResults[1]!], sender);
+  // The cap is required again by phase 2, so it must be owned, never burned —
+  // and owned by whoever sends phase 2. With a first buy planned that is the
+  // creator, because activation and the buy then ride in one transaction that
+  // spends the creator's USDC. The SUI change always returns to the bot wallet.
+  const atomicBuyer = args.devBuy.units > 0n ? args.devBuy.buyer : null;
+  tx.transferObjects([prepareResults[0]!], atomicBuyer ? atomicBuyer.address : sender);
+  tx.transferObjects([prepareResults[1]!], sender);
 
   const prepareRun = await signAndExecute(tx, args.keypair);
   if (!prepareRun.ok || !prepareRun.digest) {
