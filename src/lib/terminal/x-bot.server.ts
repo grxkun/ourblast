@@ -216,8 +216,11 @@ async function processClaimedMention(
     }
   }
 
-  const reply = composeXReply(result).slice(0, 600);
-  const credentials = source === "simulation" ? null : readXCredentials();
+  // Casual tags ("@ourblastbot lol") are not commands: stay silent on X. The
+  // mention is still recorded; an empty reply_text also keeps the retry loop away.
+  const silent = intent.name === "unknown";
+  const reply = silent ? "" : composeXReply(result).slice(0, 600);
+  const credentials = source === "simulation" || silent ? null : readXCredentials();
 
   let replyPostId: string | null = null;
   let postError: string | null = null;
