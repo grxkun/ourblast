@@ -478,9 +478,13 @@ export async function executeLaunchRequest(requestId: string): Promise<LaunchOut
       long: request.perps_long ?? true,
       leverageBps: request.leverage_bps ?? null,
       startingCapUsd: request.starting_cap_usd ? Number(request.starting_cap_usd) : null,
-      // "first buy 25" in the tweet: the launcher's own opening buy on the new
-      // pool, paid in USDC from the launch wallet. Absent = no buy at all.
+      // "first buy 25" in the tweet: the creator's own opening buy on the new
+      // pool. Absent = no buy at all.
       devBuyUsdc: request.dev_buy_usdc ? Number(request.dev_buy_usdc) : null,
+      // The first buy is funded by, and delivered to, the creator's own OurBank
+      // wallet — never the bot's operating wallet. No wallet, or an underfunded
+      // one, means the buy is skipped and only the launch goes through.
+      devBuyer: await creatorDevBuyer(request),
     });
 
     if (outcome.status === "CONFIRMED" && outcome.coinType && outcome.poolId) {
