@@ -461,6 +461,10 @@ export async function handleBankMention(postId: string, username: string, text: 
   // A trade we couldn't read must never fall through to the generic "connect your
   // wallet" agent reply — that wrongly suggests the user is signed out.
   if (TRADE_WORDS.test(text)) {
+    // A launch call is not a trade: "Dev buy: 0.1" inside "launch on Perpsplexity"
+    // must reach the launcher, not be answered as an unreadable swap.
+    const { readDeployRequest } = await import("./xLauncher.server");
+    if (await readDeployRequest(text)) return null;
     return `@${username} I couldn't read that trade. Try: buy 0.2 sui of 0x…::coin::COIN · sell 50% 0x…::coin::COIN · buy and burn 1 sui of $BLAST`;
   }
   return null;
