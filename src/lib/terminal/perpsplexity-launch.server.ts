@@ -1040,9 +1040,10 @@ export async function launchOnPerpsplexity(input: PerpsLaunchInput): Promise<Per
       leverageBps,
       virtualQuote,
       launchFeeMist,
-      devBuyUnits,
+      devBuy,
       gasPrice,
       freshGas,
+      freshGasFor,
     });
   }
 
