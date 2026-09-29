@@ -147,18 +147,34 @@ async function processClaimedMention(
   if (deploy) {
     // The picture on the tweet is the token image. Attached photo first; a plain
     // image link in the text is the fallback (t.co links point at the tweet, not a file).
+    // Webhook ingestion carries no attachment objects either, so always read the
+    // tweet's media directly when nothing resolved — never launch blind.
     let iconUrl = payload.imageUrl ?? imageFieldInText(text) ?? imageUrlInText(text);
-    if (!iconUrl && source === "poll") {
+    if (!iconUrl) {
       const credentials = readXCredentials();
       if (credentials) iconUrl = await fetchTweetImage(credentials, payload.postId);
     }
     const row = await createLaunchRequest(payload.postId, username, deploy, iconUrl, text);
 
+    // A photo was attached but could not be read: park the request instead of
+    // minting a coin with the fallback artwork.
+    const mediaMissing = !iconUrl && /pic\.twitter\.com\//i.test(text);
+    if (mediaMissing && row.status === "PENDING") {
+      await supabaseAdmin
+        .from("x_launch_requests")
+        .update({
+          status: "UNAVAILABLE",
+          notice: "The attached image could not be read; re-post the launch with the picture attached.",
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", row.id);
+    }
+
     // Automatic launching: when the operator has switched it on, fire the launch
     // straight away. The outcome only ever reports DEPLOYED after the chain
     // confirms; failures are recorded on the request, never faked.
     const settings = await readLauncherSettings();
-    if (settings.autoLaunchEnabled && row.status !== "DEPLOYED") {
+    if (!mediaMissing && settings.autoLaunchEnabled && row.status !== "DEPLOYED") {
       try {
         await executeLaunchRequest(row.id);
       } catch (error) {
