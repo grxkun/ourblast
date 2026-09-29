@@ -150,6 +150,8 @@ export const PERPSPLEXITY_MARKETS: PerpsMarket[] = [
   { marketId: "0x59c1c2bf2ed158b14e283d4d4801a68a6038387e8f103d2b2279a55f1d53b8d3", baseOracleId: "0x5c9c65112aa9c4e966c0be30243b9c5ab71bbe5b82a5c64ba77ddbfd8eea7c7e", collateralOracleId: "0x96ea92a33842446845c38992f5de53971471156e26b269c19a1f5864109ada03", symbol: "XRPUSD", label: "XRP" },
   { marketId: "0x435987c9e1b8f61a4cdfa220751b3324ebf5a7bfd1250b25c79412a71a20392f", baseOracleId: "0xce55ed56a18c3ac518c2c4defb80a0e885421078fae680ebe44c58743b2a67f4", collateralOracleId: "0x96ea92a33842446845c38992f5de53971471156e26b269c19a1f5864109ada03", symbol: "ZECUSD", label: "ZEC" },
   { marketId: "0xdd29105a713ea821f4237ae8dd36c29b6ad022234996c2323ccf2f6d12fd5e2b", baseOracleId: "0x5bcca680d7a3cd6ef3a94ca2a20e1a500e8576e380eb5f1bcca0fdb72899386a", collateralOracleId: "0x96ea92a33842446845c38992f5de53971471156e26b269c19a1f5864109ada03", symbol: "NEARUSD", label: "NEAR" },
+  { marketId: "0x1165344c489ab4a4220b82b14fe5ab7c830bff20d8c6eb48d280664715053293", baseOracleId: "0xaf39a1eca5705b4290b84a85fd8016c5df0bfa5a8c325b6e132850f18fb81e91", collateralOracleId: "0x96ea92a33842446845c38992f5de53971471156e26b269c19a1f5864109ada03", symbol: "BYDUSD", label: "BYD" },
+  { marketId: "0xdc49c2af835c965733ae6e30d47c2ab36d27b3d5eb019e7f77f3972b332558e8", baseOracleId: "0x0d297ac073675d7cf1aa90ed0bfc07f775095852f07aaa7aaabaccf58cbf982b", collateralOracleId: "0x96ea92a33842446845c38992f5de53971471156e26b269c19a1f5864109ada03", symbol: "US100USD", label: "US100" },
 ];
 
 /** Accepts "NVDA", "$NVDA", "nvda", "NVDAUSD" — returns the market or null. */
