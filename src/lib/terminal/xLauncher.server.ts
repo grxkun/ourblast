@@ -262,12 +262,43 @@ export async function createLaunchRequest(
     feeWallet = await resolveRecipient("suins", request.feeReceiver.suins);
   }
 
+  // Twin posts of the same launch call: whichever ingestion read the picture
+  // wins, so the coin never publishes with fallback artwork when one of the
+  // twins carried the real image.
+  const twinIcon = async (): Promise<string | null> => {
+    const { data: twins } = await client
+      .from("x_launch_requests")
+      .select("icon_url")
+      .eq("x_username", username.replace(/^@/, "").slice(0, 40))
+      .eq("symbol", request.symbol)
+      .not("icon_url", "is", null)
+      .order("created_at", { ascending: false })
+      .limit(1);
+    return (twins?.[0]?.icon_url as string | undefined) ?? null;
+  };
+
   const { data: existing } = await client
     .from("x_launch_requests")
     .select("*")
     .eq("x_post_id", postId)
     .maybeSingle();
-  if (existing) return existing as LaunchRequestRow;
+  if (existing) {
+    const row = existing as LaunchRequestRow;
+    if (!row.icon_url) {
+      const borrowed = iconUrl?.trim() || (await twinIcon());
+      if (borrowed) {
+        const { data: updated } = await client
+          .from("x_launch_requests")
+          .update({ icon_url: borrowed.slice(0, 500), updated_at: new Date().toISOString() })
+          .eq("id", row.id)
+          .select("*")
+          .maybeSingle();
+        if (updated) return updated as LaunchRequestRow;
+      }
+    }
+    return row;
+  }
+
 
   const { data, error } = await client
     .from("x_launch_requests")
