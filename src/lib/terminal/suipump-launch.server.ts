@@ -344,6 +344,8 @@ export async function signAndExecute(
   }
 
   const { signature } = await keypair.signTransaction(bytes);
+  const signatures = [signature];
+  if (sponsor) signatures.push((await sponsor.signTransaction(bytes)).signature);
   if (process.env['OB_TX_DUMP']) {
     const fs = await import("node:fs/promises");
     await fs.writeFile(process.env['OB_TX_DUMP']!, JSON.stringify({ txBase64, signature })).catch(() => undefined);
