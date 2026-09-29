@@ -320,6 +320,30 @@ function launchConfigFor(row: LaunchRequestRow): LaunchConfiguration {
   };
 }
 
+/**
+ * The wallet that funds and receives a first ("dev") buy: the creator's own
+ * OurBank wallet, resolved from the X handle that asked for the launch. The
+ * bot's operating wallet is never used for it — it only covers gas, the
+ * launchpad fee and the pool seed. Returns null when the creator has no
+ * wallet, in which case the launch happens without a first buy.
+ */
+async function creatorDevBuyer(
+  row: LaunchRequestRow,
+): Promise<{ address: string; signer: { signTransaction(bytes: Uint8Array): Promise<{ signature: string }> } } | null> {
+  const handle = row.x_username?.trim();
+  if (!handle) return null;
+  try {
+    const { findBankWallet, bankSigner } = await import("./bank-wallet.server");
+    const wallet = await findBankWallet(handle);
+    if (!wallet) return null;
+    const signer = await bankSigner(wallet);
+    return { address: signer.address, signer };
+  } catch {
+    return null;
+  }
+}
+
+
 export interface LaunchOutcome {
   status: LaunchRequestStatus;
   notice: string | null;
@@ -371,6 +395,8 @@ export async function executeLaunchRequest(requestId: string): Promise<LaunchOut
   let perpsPoolId: string | null = null;
   let blastPoolObjectId: string | null = null;
   let maelstromPoolId: string | null = null;
+  // Set when the launch confirmed but the creator's first buy did not happen.
+  let devBuyNotice: string | null = null;
 
   const socials = extractSocials(request.tweet_text ?? "");
   const socialLine = [
@@ -478,14 +504,19 @@ export async function executeLaunchRequest(requestId: string): Promise<LaunchOut
       long: request.perps_long ?? true,
       leverageBps: request.leverage_bps ?? null,
       startingCapUsd: request.starting_cap_usd ? Number(request.starting_cap_usd) : null,
-      // "first buy 25" in the tweet: the launcher's own opening buy on the new
-      // pool, paid in USDC from the launch wallet. Absent = no buy at all.
+      // "first buy 25" in the tweet: the creator's own opening buy on the new
+      // pool. Absent = no buy at all.
       devBuyUsdc: request.dev_buy_usdc ? Number(request.dev_buy_usdc) : null,
+      // The first buy is funded by, and delivered to, the creator's own OurBank
+      // wallet — never the bot's operating wallet. No wallet, or an underfunded
+      // one, means the buy is skipped and only the launch goes through.
+      devBuyer: await creatorDevBuyer(request),
     });
 
     if (outcome.status === "CONFIRMED" && outcome.coinType && outcome.poolId) {
       deployment = { tokenAddress: outcome.coinType, transactionDigest: outcome.digest ?? "" };
       perpsPoolId = outcome.poolId;
+      devBuyNotice = outcome.devBuyError ?? null;
     } else {
       failure = outcome.error ?? "The Perpsplexity curve did not confirm on chain.";
     }
@@ -543,7 +574,7 @@ export async function executeLaunchRequest(requestId: string): Promise<LaunchOut
       token_url: tokenUrl,
       pool_url: poolUrl,
       tx_digest: deployment.transactionDigest,
-      notice: null,
+      notice: devBuyNotice,
       updated_at: new Date().toISOString(),
     })
     .eq("id", request.id);
@@ -560,7 +591,7 @@ export async function executeLaunchRequest(requestId: string): Promise<LaunchOut
 
 
   await postDeployedReply(request, tokenUrl, poolUrl, claimToken, positionLine);
-  return { status: "DEPLOYED", notice: null, tokenUrl, poolUrl };
+  return { status: "DEPLOYED", notice: devBuyNotice, tokenUrl, poolUrl };
 }
 
 /**

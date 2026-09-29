@@ -56,6 +56,7 @@ import {
 } from "@/lib/terminal/perpsplexity";
 
 import {
+  type TxSigner,
   gasCoins,
   loadDeployer,
   normalizeType,
@@ -79,6 +80,19 @@ export interface PerpsLaunchInput {
   startingCapUsd?: number | null;
   /** The launcher's own first buy on the new curve, in USDC. 0/null = none. */
   devBuyUsdc?: number | null;
+  /**
+   * The creator's own wallet, which funds and receives the first buy. The bot
+   * wallet only ever pays gas, the launch fee and the 1 USDC pool seed — a
+   * dev buy is never taken out of it. No buyer = the dev buy is skipped.
+   */
+  devBuyer?: { address: string; signer: TxSigner } | null;
+}
+
+/** Who pays for and receives the first buy, or why there won't be one. */
+interface DevBuyPlan {
+  units: bigint;
+  buyer: { address: string; signer: TxSigner } | null;
+  skip: string | null;
 }
 
 export interface PerpsLaunchResult {
@@ -227,6 +241,63 @@ async function quoteCoins(owner: string): Promise<OwnedCoin[]> {
 
 const quoteAmountText = (units: bigint) => (Number(units) / 10 ** PERPSPLEXITY_CURVE_QUOTE_DECIMALS).toString();
 
+/** SUI the creator's own wallet needs to cover gas on its first buy. */
+const DEV_BUY_GAS_MIST = 400_000_000n; // 0.4 SUI, covers the curve buy budget
+const DEV_BUY_GAS_MIST_COMPOSITE = 1_600_000_000n; // 1.6 SUI for a composite buy
+
+/**
+ * Decides whether a first buy can happen and who pays. The bot wallet is never
+ * the payer: without a funded creator wallet the buy is skipped and the launch
+ * goes ahead untouched.
+ */
+async function planDevBuy(input: PerpsLaunchInput): Promise<DevBuyPlan> {
+  const units =
+    input.devBuyUsdc && input.devBuyUsdc > 0
+      ? perpsQuoteUnits(input.devBuyUsdc.toFixed(PERPSPLEXITY_CURVE_QUOTE_DECIMALS))
+      : 0n;
+  if (units === 0n) return { units: 0n, buyer: null, skip: null };
+
+  const buyer = input.devBuyer ?? null;
+  if (!buyer) {
+    return {
+      units: 0n,
+      buyer: null,
+      skip:
+        `First buy skipped: it is paid from the creator's own OurBank wallet, and no wallet was available. ` +
+        `The launch itself went ahead.`,
+    };
+  }
+
+  const held = await quoteCoins(buyer.address);
+  const balance = held.reduce((total, coin) => total + BigInt(coin.balance), 0n);
+  if (balance < units) {
+    return {
+      units: 0n,
+      buyer: null,
+      skip:
+        `First buy skipped: your OurBank wallet holds ${quoteAmountText(balance)} USDC, ` +
+        `and the ${quoteAmountText(units)} USDC buy is paid from it. Top it up and buy on the pool.`,
+    };
+  }
+
+  const needGas = input.underlying?.trim() ? DEV_BUY_GAS_MIST_COMPOSITE : DEV_BUY_GAS_MIST;
+  const suiBalance = await rpc<{ totalBalance?: string }>("suix_getBalance", [buyer.address, "0x2::sui::SUI"])
+    .then((result) => BigInt(result.totalBalance ?? "0"))
+    .catch(() => 0n);
+  if (suiBalance < needGas) {
+    return {
+      units: 0n,
+      buyer: null,
+      skip:
+        `First buy skipped: your OurBank wallet needs about ${Number(needGas) / 1_000_000_000} SUI for network ` +
+        `fees on the buy and holds ${Number(suiBalance) / 1_000_000_000} SUI. The launch itself went ahead.`,
+    };
+  }
+
+  return { units, buyer, skip: null };
+}
+
+
 interface TxReceipt {
   ok: boolean;
   error: string | null;
@@ -271,11 +342,13 @@ function fail(error: string, extra: Partial<PerpsLaunchResult> = {}): PerpsLaunc
 }
 
 /**
- * The launcher's first buy on a live curve. Mirrors the pad's own buy
+ * The creator's first buy on a live curve. Mirrors the pad's own buy
  * transaction: split the USDC amount, call pool::buy, keep the Position.
+ * `sender` is the creator's own wallet — it pays the USDC and the gas, and it
+ * receives the position. The bot wallet is never the buyer.
  */
 async function buyOnCurve(args: {
-  keypair: NonNullable<Awaited<ReturnType<typeof loadDeployer>>>;
+  keypair: TxSigner;
   sender: string;
   coinType: string;
   poolId: string;
@@ -472,12 +545,13 @@ async function compositeRefs(prepared: PreparedComposite, market: PerpsMarket) {
 }
 
 /**
- * The launcher's first buy on a live composite pool. Same object list as the
+ * The creator's first buy on a live composite pool. Same object list as the
  * pad's own buy: composite_pool::buy returns the clearing house plus the
- * position, so the clearing house is re-shared and the position kept.
+ * position, so the clearing house is re-shared and the position kept by the
+ * creator. `sender` is the creator's wallet, never the bot's.
  */
 async function buyOnCompositePool(args: {
-  keypair: NonNullable<Awaited<ReturnType<typeof loadDeployer>>>;
+  keypair: TxSigner;
   sender: string;
   coinType: string;
   prepared: PreparedComposite;
@@ -569,9 +643,10 @@ async function launchCompositePool(args: {
   leverageBps: number;
   virtualQuote: bigint;
   launchFeeMist: bigint;
-  devBuyUnits: bigint;
+  devBuy: DevBuyPlan;
   gasPrice: number;
   freshGas: () => Promise<Awaited<ReturnType<typeof gasCoins>>>;
+  freshGasFor: (address: string) => Promise<Awaited<ReturnType<typeof gasCoins>>>;
 }): Promise<PerpsLaunchResult> {
   const { coinType, packageId, market, sender } = args;
 
@@ -797,19 +872,20 @@ async function launchCompositePool(args: {
     );
   }
 
-  // ---- Optional first buy, as its own transaction ------------------------
+  // ---- Optional first buy, as its own transaction, paid by the creator ----
   let devBuyDigest: string | null = null;
-  let devBuyError: string | null = null;
-  if (args.devBuyUnits > 0n) {
+  let devBuyError: string | null = args.devBuy.skip;
+  const compositeBuyer = args.devBuy.buyer;
+  if (args.devBuy.units > 0n && compositeBuyer) {
     const outcome = await buyOnCompositePool({
-      keypair: args.keypair,
-      sender,
+      keypair: compositeBuyer.signer,
+      sender: compositeBuyer.address,
       coinType,
       prepared,
       market,
-      amount: args.devBuyUnits,
+      amount: args.devBuy.units,
       gasPrice: args.gasPrice,
-      freshGas: args.freshGas,
+      freshGas: () => args.freshGasFor(compositeBuyer.address),
     });
     devBuyDigest = outcome.digest;
     devBuyError = outcome.error;
@@ -880,20 +956,15 @@ export async function launchOnPerpsplexity(input: PerpsLaunchInput): Promise<Per
     return fail((error as Error).message);
   }
 
-  // The curve is seeded in USDC, so the bot wallet must hold the 1 USDC seed
-  // plus whatever initial buy was requested.
-  const devBuyUnits =
-    input.devBuyUsdc && input.devBuyUsdc > 0
-      ? perpsQuoteUnits(input.devBuyUsdc.toFixed(PERPSPLEXITY_CURVE_QUOTE_DECIMALS))
-      : 0n;
-  const quoteNeeded = PERPSPLEXITY_CURVE_SEED_UNITS + devBuyUnits;
+  // The curve is seeded in USDC. The bot wallet only ever covers the 1 USDC
+  // pool seed — the first buy is funded by the creator's own wallet, so a
+  // stranger's "dev buy 500" can never drain the bot.
   const quoteHeld = await quoteCoins(sender);
   const quoteBalance = quoteHeld.reduce((total, coin) => total + BigInt(coin.balance), 0n);
-  if (quoteBalance < quoteNeeded) {
+  if (quoteBalance < PERPSPLEXITY_CURVE_SEED_UNITS) {
     return fail(
-      `The bot wallet needs ${quoteAmountText(quoteNeeded)} USDC for the 1 USDC pool seed${
-        devBuyUnits > 0n ? ` and the ${quoteAmountText(devBuyUnits)} USDC first buy` : ""
-      }; it holds ${quoteAmountText(quoteBalance)} USDC.`,
+      `The bot wallet needs ${quoteAmountText(PERPSPLEXITY_CURVE_SEED_UNITS)} USDC for the pool seed; ` +
+        `it holds ${quoteAmountText(quoteBalance)} USDC.`,
     );
   }
 
@@ -902,14 +973,20 @@ export async function launchOnPerpsplexity(input: PerpsLaunchInput): Promise<Per
   // Every transaction consumes and recreates the gas coin, so its version and
   // digest change. Reusing a stale reference makes the node reject the next
   // transaction, so each step re-reads the wallet's current coins.
-  const freshGas = async (): Promise<typeof gas> => {
+  const freshGasFor = async (address: string): Promise<typeof gas> => {
     for (let attempt = 0; attempt < 8; attempt += 1) {
-      const coins = await gasCoins(sender).catch(() => []);
+      const coins = await gasCoins(address).catch(() => []);
       if (coins.length > 0) return coins;
       await new Promise((resolve) => setTimeout(resolve, 1500));
     }
     return [];
   };
+  const freshGas = () => freshGasFor(sender);
+
+  // Who pays for the first buy: the creator, out of their own OurBank wallet.
+  // Anything that would put it on the bot instead turns into a skip notice, and
+  // the launch itself carries on regardless.
+  const devBuy = await planDevBuy(input);
 
   const description =
     input.description.trim() || `${input.name} — bonding-curve memecoin on Perpsplexity, launched via OurBlast.`;
@@ -963,9 +1040,10 @@ export async function launchOnPerpsplexity(input: PerpsLaunchInput): Promise<Per
       leverageBps,
       virtualQuote,
       launchFeeMist,
-      devBuyUnits,
+      devBuy,
       gasPrice,
       freshGas,
+      freshGasFor,
     });
   }
 
@@ -1085,19 +1163,20 @@ export async function launchOnPerpsplexity(input: PerpsLaunchInput): Promise<Per
   // Step 3 — the creator's own first buy, when one was requested. The pool is
   // only shared by the launch call, so this is a follow-up transaction against
   // the confirmed pool: pool::buy<COIN, USDC>(pool, config, coin, min_out,
-  // deadline_ms, clock) → Position, kept by the launch wallet. A failure here
-  // never invalidates the launch; the curve is already live.
+  // deadline_ms, clock) → Position, paid for by and kept by the creator's own
+  // wallet. A failure here never invalidates the launch; the curve is live.
   let devBuyDigest: string | null = null;
-  let devBuyError: string | null = null;
-  if (devBuyUnits > 0n) {
+  let devBuyError: string | null = devBuy.skip;
+  const curveBuyer = devBuy.buyer;
+  if (devBuy.units > 0n && curveBuyer) {
     const outcome = await buyOnCurve({
-      keypair,
-      sender,
+      keypair: curveBuyer.signer,
+      sender: curveBuyer.address,
       coinType,
       poolId,
-      amount: devBuyUnits,
+      amount: devBuy.units,
       gasPrice,
-      freshGas,
+      freshGas: () => freshGasFor(curveBuyer.address),
     });
     devBuyDigest = outcome.digest;
     devBuyError = outcome.error;
