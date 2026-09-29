@@ -815,19 +815,20 @@ async function launchCompositePool(args: {
     );
   }
 
-  // ---- Optional first buy, as its own transaction ------------------------
+  // ---- Optional first buy, as its own transaction, paid by the creator ----
   let devBuyDigest: string | null = null;
-  let devBuyError: string | null = null;
-  if (args.devBuyUnits > 0n) {
+  let devBuyError: string | null = args.devBuy.skip;
+  const compositeBuyer = args.devBuy.buyer;
+  if (args.devBuy.units > 0n && compositeBuyer) {
     const outcome = await buyOnCompositePool({
-      keypair: args.keypair,
-      sender,
+      keypair: compositeBuyer.signer,
+      sender: compositeBuyer.address,
       coinType,
       prepared,
       market,
-      amount: args.devBuyUnits,
+      amount: args.devBuy.units,
       gasPrice: args.gasPrice,
-      freshGas: args.freshGas,
+      freshGas: () => args.freshGasFor(compositeBuyer.address),
     });
     devBuyDigest = outcome.digest;
     devBuyError = outcome.error;
