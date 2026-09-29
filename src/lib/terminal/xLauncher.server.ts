@@ -405,6 +405,8 @@ export async function executeLaunchRequest(requestId: string): Promise<LaunchOut
     socials.x ? `X: ${socials.x}` : "",
   ].filter(Boolean).join(" ");
   const withSocials = (d: string) => [socialLine, d].filter(Boolean).join(" | ");
+  // Terminal launches store internal notes (e.g. "paired with $SUI"), never a tweet.
+  const isTerminalLaunch = String(request.x_post_id ?? "").startsWith("terminal-");
   // Only real X posts get a deploy link; terminal launches have no tweet.
   const deployLink = request.x_username && request.x_post_id && /^\d+$/.test(request.x_post_id)
     ? `https://x.com/${request.x_username}/status/${request.x_post_id}` : "";
@@ -437,7 +439,7 @@ export async function executeLaunchRequest(requestId: string): Promise<LaunchOut
       callerXLink: request.x_username ? `https://x.com/${request.x_username}` : null,
       // The caller's original tweet is quoted in the coin's public info.
       // When the caller wrote their own "Desc:", that is the coin's info instead.
-      callerTweetText: extractDescription(request.tweet_text ?? "") || socialLine ? null : request.tweet_text ?? null,
+      callerTweetText: extractDescription(request.tweet_text ?? "") || socialLine || isTerminalLaunch ? null : request.tweet_text ?? null,
       payees: routing.payees,
       shareBps: routing.shareBps,
     });
@@ -452,7 +454,7 @@ export async function executeLaunchRequest(requestId: string): Promise<LaunchOut
     const outcome = await launchOnBlastfun({
       symbol: request.symbol,
       name: request.name,
-      description: extractDescription(request.tweet_text ?? "") ?? request.tweet_text ?? "",
+      description: extractDescription(request.tweet_text ?? "") ?? (isTerminalLaunch ? "" : request.tweet_text ?? ""),
       iconUrl: tokenIconUrl(request.icon_url),
       xLink: socials.x ?? (request.x_username ? `https://x.com/${request.x_username}` : null),
       website: socials.website,
@@ -472,7 +474,7 @@ export async function executeLaunchRequest(requestId: string): Promise<LaunchOut
     const outcome = await launchOnMaelstrom({
       symbol: request.symbol,
       name: request.name,
-      description: extractDescription(request.tweet_text ?? "") ?? request.tweet_text ?? "",
+      description: extractDescription(request.tweet_text ?? "") ?? (isTerminalLaunch ? "" : request.tweet_text ?? ""),
       iconUrl: tokenIconUrl(request.icon_url),
       website: socials.website,
       xLink: socials.x ?? (request.x_username ? `https://x.com/${request.x_username}` : null),
