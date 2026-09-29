@@ -65,7 +65,6 @@ import {
   sharedRef,
   signAndExecute,
   withGas,
-  withSponsoredGas,
 } from "@/lib/terminal/suipump-launch.server";
 
 export interface PerpsLaunchInput {
