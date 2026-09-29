@@ -321,19 +321,26 @@ export const MessageBranchPage = ({
 
 export type MessageResponseProps = ComponentProps<typeof Streamdown>;
 
-const streamdownPlugins = { cjk, code, math, mermaid };
+// Shiki's code highlighter loads a WASM engine the server runtime can't
+// resolve, so code highlighting is only enabled after hydration.
+const serverPlugins = { cjk, math, mermaid };
+const clientPlugins = { cjk, code, math, mermaid };
 
 export const MessageResponse = memo(
-  ({ className, ...props }: MessageResponseProps) => (
+  ({ className, ...props }: MessageResponseProps) => {
+    const [hydrated, setHydrated] = useState(false);
+    useEffect(() => setHydrated(true), []);
+    return (
     <Streamdown
       className={cn(
         "size-full [&>*:first-child]:mt-0 [&>*:last-child]:mb-0",
         className
       )}
-      plugins={streamdownPlugins}
+      plugins={hydrated ? clientPlugins : serverPlugins}
       {...props}
     />
-  ),
+    );
+  },
   (prevProps, nextProps) =>
     prevProps.children === nextProps.children &&
     nextProps.isAnimating === prevProps.isAnimating
