@@ -195,6 +195,20 @@ describe("first buy funding", () => {
     expect(calls).not.toContain("buy");
     expect(calls).not.toContain("share");
     expect(commands.some((command) => "TransferObjects" in command)).toBe(true);
+    // buy_cash takes the pool's own sleeve, reserve and reserve account. The
+    // engine sleeve/vault/account trio aborts in basket::check_cash on chain.
+    const buyCash = commands.find(
+      (command) => "MoveCall" in command && (command as { MoveCall: { function: string } }).MoveCall.function === "buy_cash",
+    ) as { MoveCall: { arguments: unknown[] } } | undefined;
+    const inputs = signed[0]?.tx.getData().inputs ?? [];
+    const objectAt = (index: number) => {
+      const arg = buyCash?.MoveCall.arguments[index] as { Input?: number } | undefined;
+      const input = arg?.Input === undefined ? undefined : (inputs[arg.Input] as { Object?: { SharedObject?: { objectId: string; mutable: boolean } } });
+      return input?.Object?.SharedObject;
+    };
+    expect(objectAt(2)).toMatchObject({ objectId: `0x${"6".repeat(64)}`, mutable: true });
+    expect(objectAt(3)?.objectId).toBe(`0x${"7".repeat(64)}`);
+    expect(objectAt(4)?.objectId).toBe(`0x${"8".repeat(64)}`);
     expect(rpcCalls.filter((call) => call.params[0] === BOT)).toHaveLength(0);
   });
 
