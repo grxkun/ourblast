@@ -1163,19 +1163,20 @@ export async function launchOnPerpsplexity(input: PerpsLaunchInput): Promise<Per
   // Step 3 — the creator's own first buy, when one was requested. The pool is
   // only shared by the launch call, so this is a follow-up transaction against
   // the confirmed pool: pool::buy<COIN, USDC>(pool, config, coin, min_out,
-  // deadline_ms, clock) → Position, kept by the launch wallet. A failure here
-  // never invalidates the launch; the curve is already live.
+  // deadline_ms, clock) → Position, paid for by and kept by the creator's own
+  // wallet. A failure here never invalidates the launch; the curve is live.
   let devBuyDigest: string | null = null;
-  let devBuyError: string | null = null;
-  if (devBuyUnits > 0n) {
+  let devBuyError: string | null = devBuy.skip;
+  const curveBuyer = devBuy.buyer;
+  if (devBuy.units > 0n && curveBuyer) {
     const outcome = await buyOnCurve({
-      keypair,
-      sender,
+      keypair: curveBuyer.signer,
+      sender: curveBuyer.address,
       coinType,
       poolId,
-      amount: devBuyUnits,
+      amount: devBuy.units,
       gasPrice,
-      freshGas,
+      freshGas: () => freshGasFor(curveBuyer.address),
     });
     devBuyDigest = outcome.digest;
     devBuyError = outcome.error;
