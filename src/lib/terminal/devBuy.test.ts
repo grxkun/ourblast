@@ -9,7 +9,6 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const BOT = "0x489e7b801fa43b8ba11038733e3909d3cdd6db3c21bd0e80dc9704f77c148f7d";
 const CREATOR = "0x1111111111111111111111111111111111111111111111111111111111111111";
-const QUOTE = "0xdba34672e30cb065b1f93e3ab55318768fd6fef66c15942c9f7cb846e2f900e7::usdc::USDC";
 
 /** owner → { usdc base units, sui mist } */
 const balances = new Map<string, { usdc: bigint; sui: bigint }>();
@@ -204,5 +203,3 @@ describe("launch tweets that mention a dev buy", () => {
     expect(parsed?.perps?.underlying).toBe("SAMSUNG");
   });
 });
-
-void QUOTE;
