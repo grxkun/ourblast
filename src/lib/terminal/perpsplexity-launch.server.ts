@@ -586,9 +586,10 @@ async function launchCompositePool(args: {
   leverageBps: number;
   virtualQuote: bigint;
   launchFeeMist: bigint;
-  devBuyUnits: bigint;
+  devBuy: DevBuyPlan;
   gasPrice: number;
   freshGas: () => Promise<Awaited<ReturnType<typeof gasCoins>>>;
+  freshGasFor: (address: string) => Promise<Awaited<ReturnType<typeof gasCoins>>>;
 }): Promise<PerpsLaunchResult> {
   const { coinType, packageId, market, sender } = args;
 
