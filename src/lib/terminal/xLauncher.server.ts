@@ -567,7 +567,7 @@ export async function executeLaunchRequest(requestId: string): Promise<LaunchOut
 
 
   await postDeployedReply(request, tokenUrl, poolUrl, claimToken, positionLine);
-  return { status: "DEPLOYED", notice: null, tokenUrl, poolUrl };
+  return { status: "DEPLOYED", notice: devBuyNotice, tokenUrl, poolUrl };
 }
 
 /**
