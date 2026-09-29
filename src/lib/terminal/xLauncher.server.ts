@@ -299,6 +299,7 @@ export async function createLaunchRequest(
     return row;
   }
 
+  const resolvedIcon = iconUrl?.trim() || (await twinIcon());
 
   const { data, error } = await client
     .from("x_launch_requests")
@@ -310,7 +311,7 @@ export async function createLaunchRequest(
       launchpad: pad.id,
       dev_buy: settings.devBuyEnabled,
       ourblast_fee_percent: settings.ourblastFeePercent,
-      icon_url: iconUrl?.slice(0, 500) ?? null,
+      icon_url: resolvedIcon?.slice(0, 500) ?? null,
       tweet_text: tweetText?.slice(0, 1000) ?? null,
       fee_receiver_x_username: request.feeReceiver?.handle ?? null,
       fee_receiver_wallet: feeWallet,
