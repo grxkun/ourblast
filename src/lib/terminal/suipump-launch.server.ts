@@ -529,6 +529,31 @@ export function withGas(tx: Transaction, sender: string, coins: OwnedObject[], g
   );
 }
 
+/**
+ * Sponsored gas: `sender` owns the objects the transaction touches, while
+ * `sponsor` owns the gas coins and pays the fee. Both must sign the built bytes
+ * (see signAndExecute's `sponsor` argument).
+ */
+export function withSponsoredGas(
+  tx: Transaction,
+  sender: string,
+  sponsor: string,
+  sponsorCoins: OwnedObject[],
+  gasPrice: number,
+  budget: number,
+): void {
+  tx.setSender(sender);
+  tx.setGasOwner(sponsor);
+  tx.setGasPrice(gasPrice);
+  tx.setGasBudget(budget);
+  tx.setGasPayment(
+    sponsorCoins
+      .slice(0, 8)
+      .map((coin) => ({ objectId: coin.objectId, version: coin.version, digest: coin.digest })),
+  );
+}
+
+
 interface IssuedTicket {
   ticketId: string;
   coinType: string | null;
