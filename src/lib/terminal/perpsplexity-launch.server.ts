@@ -89,7 +89,7 @@ export interface PerpsLaunchInput {
 }
 
 /** Who pays for and receives the first buy, or why there won't be one. */
-interface DevBuyPlan {
+export interface DevBuyPlan {
   units: bigint;
   buyer: { address: string; signer: TxSigner } | null;
   skip: string | null;
@@ -250,7 +250,7 @@ const DEV_BUY_GAS_MIST_COMPOSITE = 1_600_000_000n; // 1.6 SUI for a composite bu
  * the payer: without a funded creator wallet the buy is skipped and the launch
  * goes ahead untouched.
  */
-async function planDevBuy(input: PerpsLaunchInput): Promise<DevBuyPlan> {
+export async function planDevBuy(input: PerpsLaunchInput): Promise<DevBuyPlan> {
   const units =
     input.devBuyUsdc && input.devBuyUsdc > 0
       ? perpsQuoteUnits(input.devBuyUsdc.toFixed(PERPSPLEXITY_CURVE_QUOTE_DECIMALS))
@@ -347,7 +347,7 @@ function fail(error: string, extra: Partial<PerpsLaunchResult> = {}): PerpsLaunc
  * `sender` is the creator's own wallet — it pays the USDC and the gas, and it
  * receives the position. The bot wallet is never the buyer.
  */
-async function buyOnCurve(args: {
+export async function buyOnCurve(args: {
   keypair: TxSigner;
   sender: string;
   coinType: string;
