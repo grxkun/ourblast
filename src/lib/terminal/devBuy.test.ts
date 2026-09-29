@@ -144,6 +144,60 @@ describe("first buy funding", () => {
     expect(rpcCalls.filter((call) => call.params[0] === BOT)).toHaveLength(0);
   });
 
+  it("uses the live composite cash purchase path and delivers its position to the creator", async () => {
+    balances.set(CREATOR, { usdc: 10_000_000n, sui: 2_000_000_000n });
+    const { buyOnCompositePool } = await launch();
+    const result = await buyOnCompositePool({
+      keypair: creatorSigner,
+      sender: CREATOR,
+      coinType: `0x${"c".repeat(64)}::sam3l::SAM3L`,
+      prepared: {
+        pool: `0x${"1".repeat(64)}`,
+        engine: `0x${"2".repeat(64)}`,
+        engineAccount: `0x${"3".repeat(64)}`,
+        engineSleeve: `0x${"4".repeat(64)}`,
+        engineVault: `0x${"5".repeat(64)}`,
+        poolSleeve: `0x${"6".repeat(64)}`,
+        reserve: `0x${"7".repeat(64)}`,
+        reserveAccount: `0x${"8".repeat(64)}`,
+        poolCap: {
+          objectId: `0x${"9".repeat(64)}`,
+          version: "1",
+          digest: "11111111111111111111111111111111",
+        },
+      },
+      market: {
+        marketId: `0x${"a".repeat(64)}`,
+        baseOracleId: `0x${"b".repeat(64)}`,
+        collateralOracleId: `0x${"d".repeat(64)}`,
+        symbol: "SAMSUNGUSD",
+        label: "SAMSUNG",
+      },
+      amount: 100_000n,
+      gasPrice: 1000,
+      freshGas: async () => [{
+        objectId: `0x${"e".repeat(64)}`,
+        version: "1",
+        digest: "11111111111111111111111111111111",
+        type: "0x2::coin::Coin<0x2::sui::SUI>",
+      }],
+    });
+
+    expect(result).toEqual({ digest: "DEVBUYDIGEST", error: null });
+    expect(signed).toHaveLength(1);
+    expect(signed[0]?.sender).toBe(CREATOR);
+    expect(signed[0]?.signerAddress).toBe(CREATOR);
+    const commands = signed[0]?.tx.getData().commands ?? [];
+    const calls = commands
+      .filter((command) => "MoveCall" in command)
+      .map((command) => (command as { MoveCall: { function: string } }).MoveCall.function);
+    expect(calls).toEqual(["cash_prices", "buy_cash"]);
+    expect(calls).not.toContain("buy");
+    expect(calls).not.toContain("share");
+    expect(commands.some((command) => "TransferObjects" in command)).toBe(true);
+    expect(rpcCalls.filter((call) => call.params[0] === BOT)).toHaveLength(0);
+  });
+
   it("skips the buy and still launches when the creator has no USDC", async () => {
     balances.set(CREATOR, { usdc: 0n, sui: 2_000_000_000n });
     const { planDevBuy } = await launch();
