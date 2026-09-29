@@ -108,7 +108,12 @@ describe("first buy funding", () => {
       amount: 100_000n,
       gasPrice: 1000,
       freshGas: async () => [
-        { objectId: `0x${"a".repeat(64)}`, version: "1", digest: "11111111111111111111111111111111" },
+        {
+          objectId: `0x${"a".repeat(64)}`,
+          version: "1",
+          digest: "11111111111111111111111111111111",
+          type: "0x2::coin::Coin<0x2::sui::SUI>",
+        },
       ],
     });
 
