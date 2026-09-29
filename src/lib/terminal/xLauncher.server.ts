@@ -492,6 +492,7 @@ export async function executeLaunchRequest(requestId: string): Promise<LaunchOut
     if (outcome.status === "CONFIRMED" && outcome.coinType && outcome.poolId) {
       deployment = { tokenAddress: outcome.coinType, transactionDigest: outcome.digest ?? "" };
       perpsPoolId = outcome.poolId;
+      devBuyNotice = outcome.devBuyError ?? null;
     } else {
       failure = outcome.error ?? "The Perpsplexity curve did not confirm on chain.";
     }
