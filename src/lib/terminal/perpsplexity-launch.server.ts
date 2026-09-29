@@ -241,6 +241,63 @@ async function quoteCoins(owner: string): Promise<OwnedCoin[]> {
 
 const quoteAmountText = (units: bigint) => (Number(units) / 10 ** PERPSPLEXITY_CURVE_QUOTE_DECIMALS).toString();
 
+/** SUI the creator's own wallet needs to cover gas on its first buy. */
+const DEV_BUY_GAS_MIST = 400_000_000n; // 0.4 SUI, covers the curve buy budget
+const DEV_BUY_GAS_MIST_COMPOSITE = 1_600_000_000n; // 1.6 SUI for a composite buy
+
+/**
+ * Decides whether a first buy can happen and who pays. The bot wallet is never
+ * the payer: without a funded creator wallet the buy is skipped and the launch
+ * goes ahead untouched.
+ */
+async function planDevBuy(input: PerpsLaunchInput): Promise<DevBuyPlan> {
+  const units =
+    input.devBuyUsdc && input.devBuyUsdc > 0
+      ? perpsQuoteUnits(input.devBuyUsdc.toFixed(PERPSPLEXITY_CURVE_QUOTE_DECIMALS))
+      : 0n;
+  if (units === 0n) return { units: 0n, buyer: null, skip: null };
+
+  const buyer = input.devBuyer ?? null;
+  if (!buyer) {
+    return {
+      units: 0n,
+      buyer: null,
+      skip:
+        `First buy skipped: it is paid from the creator's own OurBank wallet, and no wallet was available. ` +
+        `The launch itself went ahead.`,
+    };
+  }
+
+  const held = await quoteCoins(buyer.address);
+  const balance = held.reduce((total, coin) => total + BigInt(coin.balance), 0n);
+  if (balance < units) {
+    return {
+      units: 0n,
+      buyer: null,
+      skip:
+        `First buy skipped: your OurBank wallet holds ${quoteAmountText(balance)} USDC, ` +
+        `and the ${quoteAmountText(units)} USDC buy is paid from it. Top it up and buy on the pool.`,
+    };
+  }
+
+  const needGas = input.underlying?.trim() ? DEV_BUY_GAS_MIST_COMPOSITE : DEV_BUY_GAS_MIST;
+  const suiBalance = await rpc<{ totalBalance?: string }>("suix_getBalance", [buyer.address, "0x2::sui::SUI"])
+    .then((result) => BigInt(result.totalBalance ?? "0"))
+    .catch(() => 0n);
+  if (suiBalance < needGas) {
+    return {
+      units: 0n,
+      buyer: null,
+      skip:
+        `First buy skipped: your OurBank wallet needs about ${Number(needGas) / 1_000_000_000} SUI for network ` +
+        `fees on the buy and holds ${Number(suiBalance) / 1_000_000_000} SUI. The launch itself went ahead.`,
+    };
+  }
+
+  return { units, buyer, skip: null };
+}
+
+
 interface TxReceipt {
   ok: boolean;
   error: string | null;
