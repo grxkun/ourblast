@@ -371,6 +371,8 @@ export async function executeLaunchRequest(requestId: string): Promise<LaunchOut
   let perpsPoolId: string | null = null;
   let blastPoolObjectId: string | null = null;
   let maelstromPoolId: string | null = null;
+  // Set when the launch confirmed but the creator's first buy did not happen.
+  let devBuyNotice: string | null = null;
 
   const socials = extractSocials(request.tweet_text ?? "");
   const socialLine = [
