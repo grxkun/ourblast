@@ -603,9 +603,12 @@ export async function buyOnCompositePool(args: {
       arguments: [
         tx.sharedObjectRef({ ...refs.pool, mutable: true }),
         tx.sharedObjectRef({ ...refs.config, mutable: false }),
-        tx.sharedObjectRef({ ...refs.engineSleeve, mutable: true }),
-        tx.sharedObjectRef({ ...refs.engineVault, mutable: false }),
-        tx.sharedObjectRef({ ...refs.engineAccount, mutable: false }),
+        // The pool's own sleeve, reserve and reserve account — not the engine's.
+        // The engine pair aborts in basket::check_cash; these match every live
+        // buy_cash trade on chain.
+        tx.sharedObjectRef({ ...refs.poolSleeve, mutable: true }),
+        tx.sharedObjectRef({ ...refs.reserve, mutable: false }),
+        tx.sharedObjectRef({ ...refs.reserveAccount, mutable: false }),
         tx.sharedObjectRef({ ...refs.lendingMarket, mutable: true }),
         payment!,
         cashPrices!,
