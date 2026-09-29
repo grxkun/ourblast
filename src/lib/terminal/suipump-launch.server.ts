@@ -365,7 +365,7 @@ export async function signAndExecute(
         jsonrpc: "2.0",
         id: 1,
         method: "sui_executeTransactionBlock",
-        params: [txBase64, [signature], { showEffects: true }, "WaitForEffectsCert"],
+        params: [txBase64, signatures, { showEffects: true }, "WaitForEffectsCert"],
       }),
       signal: AbortSignal.timeout(SUBMIT_TIMEOUT_MS),
     })
@@ -424,7 +424,7 @@ export async function signAndExecute(
     } | null;
   }>(
     `mutation($tx:Base64!,$sigs:[String!]!){executeTransaction(transactionDataBcs:$tx,signatures:$sigs){effects{digest status executionError{message} objectChanges(first:50){nodes{idCreated address outputState{asMoveObject{contents{type{repr}}}}}}}}}`,
-    { tx: txBase64, sigs: [signature] },
+    { tx: txBase64, sigs: signatures },
   ).catch((error: Error) => {
     console.error("suipump execute failed", error.message);
     console.error("failed tx data", JSON.stringify(tx.getData(), (_key, value) =>
@@ -442,7 +442,7 @@ export async function signAndExecute(
     }
     const viaRpc = await rpc<{ digest?: string; effects?: { status?: { status?: string; error?: string } } }>(
       "sui_executeTransactionBlock",
-      [txBase64, [signature], { showEffects: true }, "WaitForEffectsCert"],
+      [txBase64, signatures, { showEffects: true }, "WaitForEffectsCert"],
     ).catch((error: Error) => {
       console.error("mirror execute failed", error.message);
       return null;
