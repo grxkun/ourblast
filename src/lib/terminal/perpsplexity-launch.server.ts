@@ -899,20 +899,15 @@ export async function launchOnPerpsplexity(input: PerpsLaunchInput): Promise<Per
     return fail((error as Error).message);
   }
 
-  // The curve is seeded in USDC, so the bot wallet must hold the 1 USDC seed
-  // plus whatever initial buy was requested.
-  const devBuyUnits =
-    input.devBuyUsdc && input.devBuyUsdc > 0
-      ? perpsQuoteUnits(input.devBuyUsdc.toFixed(PERPSPLEXITY_CURVE_QUOTE_DECIMALS))
-      : 0n;
-  const quoteNeeded = PERPSPLEXITY_CURVE_SEED_UNITS + devBuyUnits;
+  // The curve is seeded in USDC. The bot wallet only ever covers the 1 USDC
+  // pool seed — the first buy is funded by the creator's own wallet, so a
+  // stranger's "dev buy 500" can never drain the bot.
   const quoteHeld = await quoteCoins(sender);
   const quoteBalance = quoteHeld.reduce((total, coin) => total + BigInt(coin.balance), 0n);
-  if (quoteBalance < quoteNeeded) {
+  if (quoteBalance < PERPSPLEXITY_CURVE_SEED_UNITS) {
     return fail(
-      `The bot wallet needs ${quoteAmountText(quoteNeeded)} USDC for the 1 USDC pool seed${
-        devBuyUnits > 0n ? ` and the ${quoteAmountText(devBuyUnits)} USDC first buy` : ""
-      }; it holds ${quoteAmountText(quoteBalance)} USDC.`,
+      `The bot wallet needs ${quoteAmountText(PERPSPLEXITY_CURVE_SEED_UNITS)} USDC for the pool seed; ` +
+        `it holds ${quoteAmountText(quoteBalance)} USDC.`,
     );
   }
 
@@ -921,14 +916,20 @@ export async function launchOnPerpsplexity(input: PerpsLaunchInput): Promise<Per
   // Every transaction consumes and recreates the gas coin, so its version and
   // digest change. Reusing a stale reference makes the node reject the next
   // transaction, so each step re-reads the wallet's current coins.
-  const freshGas = async (): Promise<typeof gas> => {
+  const freshGasFor = async (address: string): Promise<typeof gas> => {
     for (let attempt = 0; attempt < 8; attempt += 1) {
-      const coins = await gasCoins(sender).catch(() => []);
+      const coins = await gasCoins(address).catch(() => []);
       if (coins.length > 0) return coins;
       await new Promise((resolve) => setTimeout(resolve, 1500));
     }
     return [];
   };
+  const freshGas = () => freshGasFor(sender);
+
+  // Who pays for the first buy: the creator, out of their own OurBank wallet.
+  // Anything that would put it on the bot instead turns into a skip notice, and
+  // the launch itself carries on regardless.
+  const devBuy = await planDevBuy(input);
 
   const description =
     input.description.trim() || `${input.name} — bonding-curve memecoin on Perpsplexity, launched via OurBlast.`;
