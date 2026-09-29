@@ -17,7 +17,7 @@ const rpcCalls: { method: string; params: unknown[] }[] = [];
 const signed: { sender: string | null | undefined; signerAddress: string; tx: Transaction }[] = [];
 
 const fakeCoin = (owner: string, balance: bigint) => ({
-  coinObjectId: `0xc01n${owner.slice(6)}`,
+  coinObjectId: `0xc01d${owner.slice(6)}`,
   version: "1",
   digest: "11111111111111111111111111111111",
   balance: balance.toString(),
