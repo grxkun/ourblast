@@ -309,10 +309,15 @@ export interface TxSigner {
   signTransaction(bytes: Uint8Array): Promise<{ signature: string }>;
 }
 
-/** Simulates, then submits. A rejected simulation never reaches the network. */
+/**
+ * Simulates, then submits. A rejected simulation never reaches the network.
+ * `sponsor` is the gas owner's signer for a sponsored transaction: Sui requires
+ * both the sender's and the gas owner's signature over the same bytes.
+ */
 export async function signAndExecute(
   tx: Transaction,
   keypair: TxSigner,
+  sponsor?: TxSigner | null,
 ): Promise<ExecutedTransaction> {
   let bytes: Uint8Array;
   try {
