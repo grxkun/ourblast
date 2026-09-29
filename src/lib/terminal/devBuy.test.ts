@@ -207,4 +207,14 @@ describe("launch tweets that mention a dev buy", () => {
     expect(parsed?.devBuyUsdc).toBe(0.1);
     expect(parsed?.perps?.underlying).toBe("SAMSUNG");
   });
+
+  it("does not let a 'sui' tag after the amount bleed into the token name", async () => {
+    const { parseDeployTweet } = await import("@/lib/terminal/xLauncher");
+    const parsed = parseDeployTweet(
+      "@Ourblastbot launch on Perpsplexity Ticker: $TEST Name: test Underlying: SAMSUNG Position: Long Leverage: 3x Dev buy: 0.1 sui",
+    );
+    expect(parsed?.symbol).toBe("TEST");
+    expect(parsed?.name.toLowerCase()).toBe("test");
+    expect(parsed?.devBuyUsdc).toBe(0.1);
+  });
 });
