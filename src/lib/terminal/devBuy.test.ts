@@ -128,7 +128,14 @@ describe("first buy funding", () => {
     // The purchased position goes to the creator.
     const transfer = data.commands.find((command) => "TransferObjects" in command);
     expect(transfer).toBeTruthy();
-    expect(JSON.stringify(transfer)).toContain(CREATOR.slice(2, 20));
+    const recipientInput = data.inputs[
+      (transfer as { TransferObjects: { address: { Input: number } } }).TransferObjects.address.Input
+    ];
+    const recipientBytes = Buffer.from(
+      (recipientInput as { Pure: { bytes: string } }).Pure.bytes,
+      "base64",
+    ).toString("hex");
+    expect(`0x${recipientBytes}`).toBe(CREATOR);
     // The bot's balances were never even read for this buy.
     expect(rpcCalls.filter((call) => call.params[0] === BOT)).toHaveLength(0);
   });
