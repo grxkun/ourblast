@@ -56,7 +56,7 @@ export interface DeployRequest {
 
 /** "dev buy 25", "first buy $50", "initial buy: 10" — an opening buy in USDC. */
 const DEV_BUY_PHRASE =
-  /\b(?:dev|devs|developer|first|initial|opening|my)\s+buy\s*(?:of\s+|for\s+)?[:=]?\s*\$?(\d{1,6}(?:\.\d{1,6})?)\s*(?:usdc|usd|\$)?/i;
+  /\b(?:dev|devs|developer|first|initial|opening|my)\s+buy\s*(?:of\s+|for\s+)?[:=]?\s*\$?(\d{1,6}(?:\.\d{1,6})?)\s*(?:usdc|usd|sui|\$)?/i;
 
 /** The opening buy a tweet asks for, in USDC, or null. */
 export function extractDevBuy(text: string): number | null {
