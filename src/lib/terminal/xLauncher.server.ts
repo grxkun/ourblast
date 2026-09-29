@@ -242,6 +242,30 @@ export async function readDeployRequest(text: string): Promise<DeployRequest | n
 }
 
 /**
+ * The picture found on any other post of the same launch call by the same
+ * account. Twin posts are common (the poller and the webhook each see one), and
+ * only one of them may carry the readable photo.
+ */
+async function findTwinIcon(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  client: any,
+  username: string,
+  symbol: string,
+): Promise<string | null> {
+  const { data } = await client
+    .from("x_launch_requests")
+    .select("icon_url, created_at")
+    .eq("x_username", username)
+    .eq("symbol", symbol);
+  const rows = (data ?? []) as Array<{ icon_url: string | null; created_at?: string }>;
+  const withIcon = rows
+    .filter((row) => Boolean(row.icon_url?.trim()))
+    .sort((a, b) => String(b.created_at ?? "").localeCompare(String(a.created_at ?? "")));
+  return withIcon[0]?.icon_url ?? null;
+}
+
+
+/**
  * One X post = one launch request. The unique post id in the table is the whole
  * duplicate protection: a repeated mention resolves to the existing row.
  */
@@ -262,12 +286,35 @@ export async function createLaunchRequest(
     feeWallet = await resolveRecipient("suins", request.feeReceiver.suins);
   }
 
+  // Twin posts of the same launch call: whichever ingestion read the picture
+  // wins, so the coin never publishes with fallback artwork when one of the
+  // twins carried the real image.
+  const twinIcon = async (): Promise<string | null> =>
+    findTwinIcon(client, username.replace(/^@/, "").slice(0, 40), request.symbol);
+
   const { data: existing } = await client
     .from("x_launch_requests")
     .select("*")
     .eq("x_post_id", postId)
     .maybeSingle();
-  if (existing) return existing as LaunchRequestRow;
+  if (existing) {
+    const row = existing as LaunchRequestRow;
+    if (!row.icon_url) {
+      const borrowed = iconUrl?.trim() || (await twinIcon());
+      if (borrowed) {
+        const { data: updated } = await client
+          .from("x_launch_requests")
+          .update({ icon_url: borrowed.slice(0, 500), updated_at: new Date().toISOString() })
+          .eq("id", row.id)
+          .select("*")
+          .maybeSingle();
+        if (updated) return updated as LaunchRequestRow;
+      }
+    }
+    return row;
+  }
+
+  const resolvedIcon = iconUrl?.trim() || (await twinIcon());
 
   const { data, error } = await client
     .from("x_launch_requests")
@@ -279,7 +326,7 @@ export async function createLaunchRequest(
       launchpad: pad.id,
       dev_buy: settings.devBuyEnabled,
       ourblast_fee_percent: settings.ourblastFeePercent,
-      icon_url: iconUrl?.slice(0, 500) ?? null,
+      icon_url: resolvedIcon?.slice(0, 500) ?? null,
       tweet_text: tweetText?.slice(0, 1000) ?? null,
       fee_receiver_x_username: request.feeReceiver?.handle ?? null,
       fee_receiver_wallet: feeWallet,
@@ -386,6 +433,17 @@ export async function executeLaunchRequest(requestId: string): Promise<LaunchOut
       tokenUrl: current?.token_url ?? null,
       poolUrl: current?.pool_url ?? null,
     };
+  }
+
+  // Last chance to pick up the real picture: an earlier or later post of the
+  // same launch call may have carried it. Never mint with fallback artwork when
+  // one of the twins has the tweet's image.
+  if (!request.icon_url) {
+    const borrowed = await findTwinIcon(client, request.x_username, request.symbol);
+    if (borrowed) {
+      request.icon_url = borrowed;
+      await client.from("x_launch_requests").update({ icon_url: borrowed }).eq("id", request.id);
+    }
   }
 
   const pad = resolveLaunchpad(request.launchpad);
