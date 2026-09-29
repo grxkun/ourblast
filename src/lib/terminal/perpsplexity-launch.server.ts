@@ -56,6 +56,7 @@ import {
 } from "@/lib/terminal/perpsplexity";
 
 import {
+  type TxSigner,
   gasCoins,
   loadDeployer,
   normalizeType,
@@ -79,6 +80,19 @@ export interface PerpsLaunchInput {
   startingCapUsd?: number | null;
   /** The launcher's own first buy on the new curve, in USDC. 0/null = none. */
   devBuyUsdc?: number | null;
+  /**
+   * The creator's own wallet, which funds and receives the first buy. The bot
+   * wallet only ever pays gas, the launch fee and the 1 USDC pool seed — a
+   * dev buy is never taken out of it. No buyer = the dev buy is skipped.
+   */
+  devBuyer?: { address: string; signer: TxSigner } | null;
+}
+
+/** Who pays for and receives the first buy, or why there won't be one. */
+interface DevBuyPlan {
+  units: bigint;
+  buyer: { address: string; signer: TxSigner } | null;
+  skip: string | null;
 }
 
 export interface PerpsLaunchResult {
