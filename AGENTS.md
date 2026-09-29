@@ -15,3 +15,4 @@
 - Maelstrom coin publishes must finalize `Currency<T>` into the Sui coin registry before pool creation. Why: indexers otherwise show `???` and `UNVERIFIED COIN` despite valid pending metadata.
 - Perpsplexity composite first buys use `cash_prices` → `buy_cash`, signed and received by the creator wallet; never use low-level `composite_pool::buy`. Why: the public cash path is the live trading flow and avoids the clearing-house `active()` abort.
 - `composite_pool::buy_cash` takes the pool's own sleeve/reserve/reserve-account trio, never the engine's sleeve/vault/account. Why: the engine objects abort in `basket::check_cash`.
+- A planned composite first buy rides inside the activation transaction: the PoolCap goes to the creator in phase 1, the creator sends phase 2, and the bot sponsors its gas (`withSponsoredGas` + second signature in `signAndExecute`). Why: snipers buy within a second of `composite_pool::Created`, and only one atomic block leaves them no window.

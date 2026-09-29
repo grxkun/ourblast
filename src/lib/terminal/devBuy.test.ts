@@ -35,6 +35,18 @@ vi.mock("@/lib/terminal/suipump-launch.server", () => ({
     tx.setGasBudget(1_000_000_000);
     tx.setGasPrice(1000);
   },
+  withSponsoredGas: (
+    tx: Transaction,
+    sender: string,
+    sponsor: string,
+    gas: { objectId: string; version: string; digest: string }[],
+  ) => {
+    tx.setSender(sender);
+    tx.setGasOwner(sponsor);
+    tx.setGasPayment(gas);
+    tx.setGasBudget(1_000_000_000);
+    tx.setGasPrice(1000);
+  },
   sharedRef: async (id: string) => ({ objectId: id, initialSharedVersion: "1" }),
   signAndExecute: async (tx: Transaction, signer: { address: string }) => {
     signed.push({ sender: tx.getData().sender, signerAddress: signer.address, tx });
@@ -210,6 +222,53 @@ describe("first buy funding", () => {
     expect(objectAt(3)?.objectId).toBe(`0x${"7".repeat(64)}`);
     expect(objectAt(4)?.objectId).toBe(`0x${"8".repeat(64)}`);
     expect(rpcCalls.filter((call) => call.params[0] === BOT)).toHaveLength(0);
+  });
+
+  it("can ride inside the activation transaction, creator-sent and bot-sponsored", async () => {
+    balances.set(CREATOR, { usdc: 10_000_000n, sui: 2_000_000_000n });
+    const { appendCompositeBuy } = await launch();
+    const { withSponsoredGas } = await import("@/lib/terminal/suipump-launch.server");
+    const refs = {
+      pool: { objectId: `0x${"1".repeat(64)}`, initialSharedVersion: "1" },
+      config: { objectId: `0x${"c".repeat(64)}`, initialSharedVersion: "1" },
+      engine: { objectId: `0x${"2".repeat(64)}`, initialSharedVersion: "1" },
+      engineAccount: { objectId: `0x${"3".repeat(64)}`, initialSharedVersion: "1" },
+      engineSleeve: { objectId: `0x${"4".repeat(64)}`, initialSharedVersion: "1" },
+      engineVault: { objectId: `0x${"5".repeat(64)}`, initialSharedVersion: "1" },
+      poolSleeve: { objectId: `0x${"6".repeat(64)}`, initialSharedVersion: "1" },
+      reserve: { objectId: `0x${"7".repeat(64)}`, initialSharedVersion: "1" },
+      reserveAccount: { objectId: `0x${"8".repeat(64)}`, initialSharedVersion: "1" },
+      lendingMarket: { objectId: `0x${"a".repeat(64)}`, initialSharedVersion: "1" },
+      clearingHouse: { objectId: `0x${"b".repeat(64)}`, initialSharedVersion: "1" },
+      registry: { objectId: `0x${"d".repeat(64)}`, initialSharedVersion: "1" },
+      baseFeed: { objectId: `0x${"e".repeat(64)}`, initialSharedVersion: "1" },
+      collateralFeed: { objectId: `0x${"f".repeat(64)}`, initialSharedVersion: "1" },
+      clock: { objectId: "0x6", initialSharedVersion: "1" },
+    } as never;
+
+    const tx = new Transaction();
+    // The creator sends (they hold the pool cap and the USDC); the bot pays gas.
+    withSponsoredGas(tx, CREATOR, BOT, [
+      { objectId: `0x${"9".repeat(64)}`, version: "1", digest: "11111111111111111111111111111111", type: "0x2::coin::Coin<0x2::sui::SUI>" },
+    ], 1000, 1_500_000_000);
+    appendCompositeBuy(tx, {
+      coinType: `0x${"c".repeat(64)}::sam3l::SAM3L`,
+      refs,
+      buyer: CREATOR,
+      coins: [fakeCoin(CREATOR, 10_000_000n)],
+      amount: 100_000n,
+    });
+
+    const data = tx.getData();
+    expect(data.sender).toBe(CREATOR);
+    // Gas comes from the bot, so the creator only ever spends USDC.
+    expect(data.gasData.owner).toBe(BOT);
+    const calls = data.commands
+      .filter((command) => "MoveCall" in command)
+      .map((command) => (command as { MoveCall: { function: string } }).MoveCall.function);
+    // The buy sits in the same block as activation, leaving snipers no window.
+    expect(calls).toEqual(["cash_prices", "buy_cash"]);
+    expect(JSON.stringify(data.inputs)).toContain(fakeCoin(CREATOR, 10_000_000n).coinObjectId);
   });
 
   it("skips the buy and still launches when the creator has no USDC", async () => {

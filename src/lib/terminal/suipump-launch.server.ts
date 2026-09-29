@@ -309,10 +309,15 @@ export interface TxSigner {
   signTransaction(bytes: Uint8Array): Promise<{ signature: string }>;
 }
 
-/** Simulates, then submits. A rejected simulation never reaches the network. */
+/**
+ * Simulates, then submits. A rejected simulation never reaches the network.
+ * `sponsor` is the gas owner's signer for a sponsored transaction: Sui requires
+ * both the sender's and the gas owner's signature over the same bytes.
+ */
 export async function signAndExecute(
   tx: Transaction,
   keypair: TxSigner,
+  sponsor?: TxSigner | null,
 ): Promise<ExecutedTransaction> {
   let bytes: Uint8Array;
   try {
@@ -339,6 +344,8 @@ export async function signAndExecute(
   }
 
   const { signature } = await keypair.signTransaction(bytes);
+  const signatures = [signature];
+  if (sponsor) signatures.push((await sponsor.signTransaction(bytes)).signature);
   if (process.env['OB_TX_DUMP']) {
     const fs = await import("node:fs/promises");
     await fs.writeFile(process.env['OB_TX_DUMP']!, JSON.stringify({ txBase64, signature })).catch(() => undefined);
@@ -358,7 +365,7 @@ export async function signAndExecute(
         jsonrpc: "2.0",
         id: 1,
         method: "sui_executeTransactionBlock",
-        params: [txBase64, [signature], { showEffects: true }, "WaitForEffectsCert"],
+        params: [txBase64, signatures, { showEffects: true }, "WaitForEffectsCert"],
       }),
       signal: AbortSignal.timeout(SUBMIT_TIMEOUT_MS),
     })
@@ -417,7 +424,7 @@ export async function signAndExecute(
     } | null;
   }>(
     `mutation($tx:Base64!,$sigs:[String!]!){executeTransaction(transactionDataBcs:$tx,signatures:$sigs){effects{digest status executionError{message} objectChanges(first:50){nodes{idCreated address outputState{asMoveObject{contents{type{repr}}}}}}}}}`,
-    { tx: txBase64, sigs: [signature] },
+    { tx: txBase64, sigs: signatures },
   ).catch((error: Error) => {
     console.error("suipump execute failed", error.message);
     console.error("failed tx data", JSON.stringify(tx.getData(), (_key, value) =>
@@ -435,7 +442,7 @@ export async function signAndExecute(
     }
     const viaRpc = await rpc<{ digest?: string; effects?: { status?: { status?: string; error?: string } } }>(
       "sui_executeTransactionBlock",
-      [txBase64, [signature], { showEffects: true }, "WaitForEffectsCert"],
+      [txBase64, signatures, { showEffects: true }, "WaitForEffectsCert"],
     ).catch((error: Error) => {
       console.error("mirror execute failed", error.message);
       return null;
@@ -521,6 +528,31 @@ export function withGas(tx: Transaction, sender: string, coins: OwnedObject[], g
     coins.slice(0, 8).map((coin) => ({ objectId: coin.objectId, version: coin.version, digest: coin.digest })),
   );
 }
+
+/**
+ * Sponsored gas: `sender` owns the objects the transaction touches, while
+ * `sponsor` owns the gas coins and pays the fee. Both must sign the built bytes
+ * (see signAndExecute's `sponsor` argument).
+ */
+export function withSponsoredGas(
+  tx: Transaction,
+  sender: string,
+  sponsor: string,
+  sponsorCoins: OwnedObject[],
+  gasPrice: number,
+  budget: number,
+): void {
+  tx.setSender(sender);
+  tx.setGasOwner(sponsor);
+  tx.setGasPrice(gasPrice);
+  tx.setGasBudget(budget);
+  tx.setGasPayment(
+    sponsorCoins
+      .slice(0, 8)
+      .map((coin) => ({ objectId: coin.objectId, version: coin.version, digest: coin.digest })),
+  );
+}
+
 
 interface IssuedTicket {
   ticketId: string;
