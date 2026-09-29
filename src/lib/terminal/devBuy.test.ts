@@ -14,7 +14,7 @@ const QUOTE = "0xdba34672e30cb065b1f93e3ab55318768fd6fef66c15942c9f7cb846e2f900e
 /** owner → { usdc base units, sui mist } */
 const balances = new Map<string, { usdc: bigint; sui: bigint }>();
 const rpcCalls: { method: string; params: unknown[] }[] = [];
-const signed: { sender: string | null | undefined; signerAddress: string; bytes: Uint8Array }[] = [];
+const signed: { sender: string | null | undefined; signerAddress: string; tx: Transaction }[] = [];
 
 const fakeCoin = (owner: string, balance: bigint) => ({
   coinObjectId: `0xc0in${owner.slice(2, 6)}`,
@@ -30,15 +30,15 @@ vi.mock("@/lib/terminal/suipump-launch.server", () => ({
   gasCoins: async (owner: string) => [
     { objectId: `0xgas${owner.slice(2, 6)}`, version: "1", digest: "22222222222222222222222222222222" },
   ],
-  withGas: (tx: Transaction, sender: string) => {
+  withGas: (tx: Transaction, sender: string, gas: { objectId: string; version: string; digest: string }[]) => {
     tx.setSender(sender);
+    tx.setGasPayment(gas);
     tx.setGasBudget(1_000_000_000);
     tx.setGasPrice(1000);
   },
   sharedRef: async (id: string) => ({ objectId: id, initialSharedVersion: "1" }),
   signAndExecute: async (tx: Transaction, signer: { address: string }) => {
-    const bytes = await tx.build();
-    signed.push({ sender: tx.getData().sender, signerAddress: signer.address, bytes });
+    signed.push({ sender: tx.getData().sender, signerAddress: signer.address, tx });
     return { ok: true, digest: "DEVBUYDIGEST", error: null };
   },
   rpc: async (method: string, params: unknown[]) => {
@@ -118,7 +118,7 @@ describe("first buy funding", () => {
     expect(signed[0]!.signerAddress).toBe(CREATOR);
     expect(signed[0]!.sender).toBe(CREATOR);
 
-    const data = Transaction.from(signed[0]!.bytes).getData();
+    const data = signed[0]!.tx.getData();
     // The USDC spent is a creator-owned coin, never a bot coin.
     const spent = JSON.stringify(data.inputs);
     expect(spent).toContain(fakeCoin(CREATOR, 10_000_000n).coinObjectId);
