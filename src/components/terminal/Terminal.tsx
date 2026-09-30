@@ -14,7 +14,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { supabase } from "@/integrations/supabase/client";
 import type { Json } from "@/integrations/supabase/types";
 import { runTerminalAgent } from "@/lib/terminal/agent";
-import { interpretCommand } from "@/lib/terminal/nlu.functions";
+import { chatCommand, interpretCommand } from "@/lib/terminal/nlu.functions";
 import { runBankCommand } from "@/lib/terminal/bank.functions";
 import { launchFromTerminal } from "@/lib/terminal/xLauncher.functions";
 import { parseBankCommand, parseSwapCommand } from "@/lib/terminal/bank";
@@ -45,6 +45,7 @@ export function Terminal({ tryCommand }: { tryCommand?: { command: string; nonce
   const [launchOverrides, setLaunchOverrides] = useState<Record<string, LaunchConfiguration>>({});
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const interpret = useServerFn(interpretCommand);
+  const chat = useServerFn(chatCommand);
   const bankCommand = useServerFn(runBankCommand);
   const launchNow = useServerFn(launchFromTerminal);
   const [launching, setLaunching] = useState(false);
@@ -154,6 +155,11 @@ export function Terminal({ tryCommand }: { tryCommand?: { command: string; nonce
           const retry = await runTerminalAgent(rewritten, context);
           if (retry.intent.name !== "unknown") response = { ...retry, command: clean };
         }
+      }
+      // Still not a command? Chat back in character instead of the dead-end fallback line.
+      if (response.intent.name === "unknown") {
+        const { reply } = await chat({ data: { text: clean } });
+        if (reply) response = { ...response, command: clean, result: { tool: "unknown", status: "READY", message: reply } };
       }
       if (response.result.launch && image) response.result.launch = { ...response.result.launch, image: image.url, ...(image.filename ? { imageName: image.filename } : {}) };
       const entry: TerminalEntry = { id: makeId(), command: response.command, intent: response.intent.name, result: response.result, createdAt: new Date().toISOString() };
