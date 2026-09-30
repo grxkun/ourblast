@@ -928,15 +928,45 @@ export async function activateComposite(args: {
     if (!escrow) devBuyError = `First buy skipped: ${moved.error}`;
   }
 
+  /**
+   * Hand the escrowed first-buy USDC back to the creator. Returns null on
+   * success, or an error message when the refund could not be sent — the
+   * caller must surface that message so the money is never silently stranded
+   * in the bot wallet.
+   */
+  const refundEscrow = async (): Promise<string | null> => {
+    if (!buyer || !escrow) return null;
+    const refundGas = await args.freshGas();
+    if (refundGas.length === 0) {
+      return "The bot wallet has no SUI coin left to return the first-buy USDC.";
+    }
+    const refundTx = new Transaction();
+    withGas(refundTx, sender, refundGas, args.gasPrice, COMPOSITE_BUY_BUDGET);
+    refundTx.transferObjects(
+      [refundTx.objectRef({ objectId: escrow.coinObjectId, version: escrow.version, digest: escrow.digest })],
+      buyer.address,
+    );
+    const refund = await signAndExecute(refundTx, args.keypair);
+    if (!refund.ok || !refund.digest) {
+      return `The first-buy USDC could not be returned to the creator: ${refund.error ?? "transfer failed"}.`;
+    }
+    await fetchReceipt(refund.digest);
+    return null;
+  };
+
   const refs = await compositeRefs(prepared, market);
   let activateGas = await args.freshGas();
   if (activateGas.length === 0) {
-    return fail("The bot wallet has no SUI coin left to activate the leveraged position.", {
-      digest: args.prepareDigest,
-      coinType,
-      packageId,
-      poolId,
-    });
+    const refundError = await refundEscrow();
+    return fail(
+      `The bot wallet has no SUI coin left to activate the leveraged position.${refundError ? ` ${refundError}` : escrow ? " The first-buy USDC was returned to the creator." : ""}`,
+      {
+        digest: args.prepareDigest,
+        coinType,
+        packageId,
+        poolId,
+      },
+    );
   }
 
   const buildActivate = (includeBuy: boolean) => {
@@ -1007,8 +1037,9 @@ export async function activateComposite(args: {
     activateRun = await signAndExecute(buildActivate(false), args.keypair);
   }
   if (!activateRun.ok || !activateRun.digest) {
+    const refundError = await refundEscrow();
     return fail(
-      `The leveraged position could not be opened: ${activateRun.error ?? "activation failed"}. The pool is prepared but not trading.`,
+      `The leveraged position could not be opened: ${activateRun.error ?? "activation failed"}. The pool is prepared but not trading.${refundError ? ` ${refundError}` : escrow ? " The first-buy USDC was returned to the creator." : ""}`,
       { digest: args.prepareDigest, coinType, packageId, poolId },
     );
   }
@@ -1017,8 +1048,9 @@ export async function activateComposite(args: {
     (event) => event.type === `${PERPSPLEXITY_ORIGINAL_PACKAGE_ID}::composite_pool::Created`,
   );
   if (!activateReceipt.ok || !createdEvent) {
+    const refundError = await refundEscrow();
     return fail(
-      `The leveraged position could not be opened: ${activateReceipt.error ?? "activation was not confirmed"}. The pool is prepared but not trading.`,
+      `The leveraged position could not be opened: ${activateReceipt.error ?? "activation was not confirmed"}. The pool is prepared but not trading.${refundError ? ` ${refundError}` : escrow ? " The first-buy USDC was returned to the creator." : ""}`,
       { digest: activateRun.digest, coinType, packageId, poolId },
     );
   }
@@ -1029,27 +1061,25 @@ export async function activateComposite(args: {
     devBuyError = null;
   } else if (buyer && escrow) {
     // Bundle failed: hand the creator's USDC back, then buy from their wallet.
-    const refundGas = await args.freshGas();
-    const refundTx = new Transaction();
-    withGas(refundTx, sender, refundGas, args.gasPrice, COMPOSITE_BUY_BUDGET);
-    refundTx.transferObjects(
-      [refundTx.objectRef({ objectId: escrow.coinObjectId, version: escrow.version, digest: escrow.digest })],
-      buyer.address,
-    );
-    const refund = await signAndExecute(refundTx, args.keypair);
-    if (refund.ok && refund.digest) await fetchReceipt(refund.digest);
-    const outcome = await buyOnCompositePool({
-      keypair: buyer.signer,
-      sender: buyer.address,
-      coinType,
-      prepared,
-      market,
-      amount: args.devBuy.units,
-      gasPrice: args.gasPrice,
-      freshGas: () => args.freshGasFor(buyer.address),
-    });
-    devBuyDigest = outcome.digest;
-    devBuyError = outcome.error;
+    // Only buy from the creator's wallet once their escrowed USDC is confirmed
+    // back with them — otherwise the same money would be spent twice.
+    const refundError = await refundEscrow();
+    if (refundError) {
+      devBuyError = `First buy skipped: ${refundError}`;
+    } else {
+      const outcome = await buyOnCompositePool({
+        keypair: buyer.signer,
+        sender: buyer.address,
+        coinType,
+        prepared,
+        market,
+        amount: args.devBuy.units,
+        gasPrice: args.gasPrice,
+        freshGas: () => args.freshGasFor(buyer.address),
+      });
+      devBuyDigest = outcome.digest;
+      devBuyError = outcome.error;
+    }
   }
 
   return {
