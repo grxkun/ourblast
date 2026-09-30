@@ -99,6 +99,64 @@ export async function interpretFreeText(text: string): Promise<string | null> {
   }
 }
 
+const CHAT_SYSTEM = `You are OURBLAST, the friendly Sui launch assistant inside the OURBLAST terminal. The user typed something that is not an executable command.
+
+Reply in character with ONE short message (under 300 characters):
+- Answer greetings and small talk warmly and briefly, then point at what you can do.
+- Answer questions about the terminal, launches, Perpsplexity, OurBank, or fees with a direct, correct explanation.
+- If they seem to want an action, tell them the exact command to type.
+
+What you can do:
+- launch $TICKER Token Name on suipump (pads: suipump, blastfun, maelstrom, perpsplexity)
+- launch on perpsplexity, $TICKER, Token Name, UNDERLYING, Long 3x, dev buy 5 USDC (markets: NVDA, SAMSUNG, BYD, US100 and more)
+- buy 1 sui of $TICKER / sell 50% of $TICKER
+- send 5 SUI to @handle
+- check $TICKER / check fees on $TICKER / claim my fees on $TICKER
+- wallet / portfolio / my launches
+
+Rules:
+- Plain text only, no markdown, no hashtags, at most one $ticker.
+- Never claim anything happened on-chain, never invent prices, tickers or links.
+- Never promise a launch; only the user's confirmed command launches.`;
+
+/**
+ * Conversational reply for terminal messages that are not commands at all.
+ * Returns a short in-character answer, or null when the model is unavailable.
+ */
+export async function chatFreeText(text: string): Promise<string | null> {
+  const apiKey = process.env["LOVABLE_API_KEY"];
+  const clean = text.trim().slice(0, 500);
+  if (!apiKey || clean.length < 2) return null;
+
+  try {
+    const response = await fetch(GATEWAY, {
+      method: "POST",
+      headers: { authorization: `Bearer ${apiKey}`, "content-type": "application/json" },
+      body: JSON.stringify({
+        model: MODEL,
+        temperature: 0.6,
+        max_tokens: 300,
+        messages: [
+          { role: "system", content: CHAT_SYSTEM },
+          { role: "user", content: clean },
+        ],
+      }),
+    });
+    if (!response.ok) {
+      console.error(`Terminal chat failed [${response.status}]: ${(await response.text()).slice(0, 300)}`);
+      return null;
+    }
+    const payload = (await response.json()) as { choices?: Array<{ message?: { content?: string } }> };
+    const raw = (payload.choices?.[0]?.message?.content ?? "").replace(/\s+/g, " ").trim();
+    const candidate = raw.replace(/^[`"'*\s]+|[`"'*\s]+$/g, "");
+    if (!candidate) return null;
+    return candidate.slice(0, 400);
+  } catch (error) {
+    console.error(`Terminal chat error: ${error instanceof Error ? error.message : "unknown"}`);
+    return null;
+  }
+}
+
 /**
  * Friendly guidance for a mention the parser could not read. Returns a short
  * tweet telling the user the exact command to post, or null when the mention is
