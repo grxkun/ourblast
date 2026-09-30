@@ -91,7 +91,9 @@ export async function handleFeeClaimMention(username: string, text: string): Pro
   }
 
   if (results.length === 0) return `@${username} none of your tokens have creator fees waiting right now.`;
-  return `@${username} ${results.join(" · ")}`.slice(0, 280);
+  const note = request.redirectAsked ? " Fees always pay the recipient locked in at launch." : "";
+  return `@${username} ${results.join(" · ")}${note}`.slice(0, 280);
+
 }
 
 /** Replies with pending creator fees for the author's tokens. Sends no transaction. */
