@@ -232,11 +232,27 @@ async function processClaimedMention(
     }
   }
 
-  // Casual tags ("@ourblastbot lol") are not commands: stay silent on X. The
-  // mention is still recorded; an empty reply_text also keeps the retry loop away.
-  const silent = intent.name === "unknown";
-  const reply = silent ? "" : composeXReply(result).slice(0, 600);
+  // Still unreadable. Casual tags ("@ourblastbot lol") stay silent, but a mention
+  // that clearly tries to command the bot gets the exact syntax it was reaching
+  // for — first from the deterministic near-miss catcher, then from the model.
+  let guidance: string | null = null;
+  if (intent.name === "unknown" && source !== "simulation") {
+    const { nearMissGuidance } = await import("./x-guidance");
+    guidance = nearMissGuidance(text);
+    if (!guidance) {
+      const { guideFreeText } = await import("./nlu.server");
+      guidance = await guideFreeText(text);
+    }
+    if (guidance) {
+      const { enforceSingleCashtag } = await import("./x-bot");
+      guidance = enforceSingleCashtag(guidance).slice(0, 280);
+    }
+  }
+
+  const silent = intent.name === "unknown" && !guidance;
+  const reply = silent ? "" : guidance ?? composeXReply(result).slice(0, 600);
   const credentials = source === "simulation" || silent ? null : readXCredentials();
+
 
   let replyPostId: string | null = null;
   let postError: string | null = null;
