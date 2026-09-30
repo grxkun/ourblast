@@ -339,7 +339,7 @@ describe("first buy funding", () => {
     // The creator's 0.1 USDC already sits in the bot wallet (escrow path).
     const escrowCoin = fakeCoin(BOT, 100_000n);
     const result = await activateComposite({
-      keypair: { address: BOT, signTransaction: async () => ({ signature: "bot" }) },
+      keypair: { address: BOT, signTransaction: async () => ({ signature: "bot" }) } as never,
       sender: BOT,
       coinType: `0x${"c".repeat(64)}::test::TEST`,
       packageId: `0x${"d".repeat(64)}`,
