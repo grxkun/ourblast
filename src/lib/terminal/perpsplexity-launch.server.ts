@@ -928,6 +928,32 @@ export async function activateComposite(args: {
     if (!escrow) devBuyError = `First buy skipped: ${moved.error}`;
   }
 
+  /**
+   * Hand the escrowed first-buy USDC back to the creator. Returns null on
+   * success, or an error message when the refund could not be sent — the
+   * caller must surface that message so the money is never silently stranded
+   * in the bot wallet.
+   */
+  const refundEscrow = async (): Promise<string | null> => {
+    if (!buyer || !escrow) return null;
+    const refundGas = await args.freshGas();
+    if (refundGas.length === 0) {
+      return "The bot wallet has no SUI coin left to return the first-buy USDC.";
+    }
+    const refundTx = new Transaction();
+    withGas(refundTx, sender, refundGas, args.gasPrice, COMPOSITE_BUY_BUDGET);
+    refundTx.transferObjects(
+      [refundTx.objectRef({ objectId: escrow.coinObjectId, version: escrow.version, digest: escrow.digest })],
+      buyer.address,
+    );
+    const refund = await signAndExecute(refundTx, args.keypair);
+    if (!refund.ok || !refund.digest) {
+      return `The first-buy USDC could not be returned to the creator: ${refund.error ?? "transfer failed"}.`;
+    }
+    await fetchReceipt(refund.digest);
+    return null;
+  };
+
   const refs = await compositeRefs(prepared, market);
   let activateGas = await args.freshGas();
   if (activateGas.length === 0) {
