@@ -89,6 +89,7 @@ beforeEach(() => {
   rpcCalls.length = 0;
   signed.length = 0;
   balances.clear();
+  mockActivationFails = false;
   // The bot is well funded; a first buy must still never come out of it.
   balances.set(BOT, { usdc: 21_440_000n, sui: 50_900_000_000n });
 });
