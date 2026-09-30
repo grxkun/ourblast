@@ -1061,27 +1061,25 @@ export async function activateComposite(args: {
     devBuyError = null;
   } else if (buyer && escrow) {
     // Bundle failed: hand the creator's USDC back, then buy from their wallet.
-    const refundGas = await args.freshGas();
-    const refundTx = new Transaction();
-    withGas(refundTx, sender, refundGas, args.gasPrice, COMPOSITE_BUY_BUDGET);
-    refundTx.transferObjects(
-      [refundTx.objectRef({ objectId: escrow.coinObjectId, version: escrow.version, digest: escrow.digest })],
-      buyer.address,
-    );
-    const refund = await signAndExecute(refundTx, args.keypair);
-    if (refund.ok && refund.digest) await fetchReceipt(refund.digest);
-    const outcome = await buyOnCompositePool({
-      keypair: buyer.signer,
-      sender: buyer.address,
-      coinType,
-      prepared,
-      market,
-      amount: args.devBuy.units,
-      gasPrice: args.gasPrice,
-      freshGas: () => args.freshGasFor(buyer.address),
-    });
-    devBuyDigest = outcome.digest;
-    devBuyError = outcome.error;
+    // Only buy from the creator's wallet once their escrowed USDC is confirmed
+    // back with them — otherwise the same money would be spent twice.
+    const refundError = await refundEscrow();
+    if (refundError) {
+      devBuyError = `First buy skipped: ${refundError}`;
+    } else {
+      const outcome = await buyOnCompositePool({
+        keypair: buyer.signer,
+        sender: buyer.address,
+        coinType,
+        prepared,
+        market,
+        amount: args.devBuy.units,
+        gasPrice: args.gasPrice,
+        freshGas: () => args.freshGasFor(buyer.address),
+      });
+      devBuyDigest = outcome.digest;
+      devBuyError = outcome.error;
+    }
   }
 
   return {
