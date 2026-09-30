@@ -6,13 +6,19 @@
  */
 
 const CLAIM_PATTERN = /\bcla[io]?m\w*\b[^$]*?\bfees?\b|\bcla[io]?m\w*\b\s+\$[a-z0-9]+/i;
+/** "claim my fees and send it to X" is still a claim — the payout destination is fixed on chain. */
+const CLAIM_FEES_PATTERN = /\bcla[io]?m\w*\b[^$]*?\bfees?\b/i;
 
-export function readFeeClaimRequest(text: string): { symbol: string | null } | null {
+export function readFeeClaimRequest(text: string): { symbol: string | null; redirectAsked: boolean } | null {
   if (!CLAIM_PATTERN.test(text)) return null;
-  if (/\b(deploy|launch|send|buy|sell)\b/i.test(text)) return null;
+  const claimsFees = CLAIM_FEES_PATTERN.test(text);
+  if (/\b(deploy|launch|buy|sell)\b/i.test(text)) return null;
+  const transfer = /\b(send|transfer|withdraw)\b/i.test(text);
+  if (transfer && !claimsFees) return null;
   const tag = text.match(/\$([a-z][a-z0-9]{0,15})\b/i);
-  return { symbol: tag?.[1] ? tag[1].toUpperCase() : null };
+  return { symbol: tag?.[1] ? tag[1].toUpperCase() : null, redirectAsked: transfer };
 }
+
 
 /** Read-only: "check fees", "my fees", "fee $X", "how much fees". Never claims. */
 export function readFeeCheckRequest(text: string): { symbol: string | null } | null {
@@ -85,7 +91,9 @@ export async function handleFeeClaimMention(username: string, text: string): Pro
   }
 
   if (results.length === 0) return `@${username} none of your tokens have creator fees waiting right now.`;
-  return `@${username} ${results.join(" · ")}`.slice(0, 280);
+  const note = request.redirectAsked ? " Fees always pay the recipient locked in at launch." : "";
+  return `@${username} ${results.join(" · ")}${note}`.slice(0, 280);
+
 }
 
 /** Replies with pending creator fees for the author's tokens. Sends no transaction. */
