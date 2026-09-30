@@ -12,3 +12,14 @@ export const interpretCommand = createServerFn({ method: "POST" })
     const { interpretFreeText } = await import("./nlu.server");
     return { command: await interpretFreeText(data.text) };
   });
+
+/**
+ * Conversational fallback for terminal messages that are not commands at all.
+ * Public on purpose: it only returns text — it never touches wallets or chain.
+ */
+export const chatCommand = createServerFn({ method: "POST" })
+  .inputValidator((input: unknown) => z.object({ text: z.string().trim().min(1).max(500) }).parse(input))
+  .handler(async ({ data }) => {
+    const { chatFreeText } = await import("./nlu.server");
+    return { reply: await chatFreeText(data.text) };
+  });
