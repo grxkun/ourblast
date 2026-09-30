@@ -14,6 +14,7 @@ const CREATOR = "0x1111111111111111111111111111111111111111111111111111111111111
 const balances = new Map<string, { usdc: bigint; sui: bigint }>();
 const rpcCalls: { method: string; params: unknown[] }[] = [];
 const signed: { sender: string | null | undefined; signerAddress: string; tx: Transaction }[] = [];
+let mockActivationFails = false;
 
 const fakeCoin = (owner: string, balance: bigint) => ({
   coinObjectId: `0xc01d${owner.slice(6)}`,
@@ -50,6 +51,13 @@ vi.mock("@/lib/terminal/suipump-launch.server", () => ({
   sharedRef: async (id: string) => ({ objectId: id, initialSharedVersion: "1" }),
   signAndExecute: async (tx: Transaction, signer: { address: string }) => {
     signed.push({ sender: tx.getData().sender, signerAddress: signer.address, tx });
+    if (mockActivationFails) {
+      const calls = tx
+        .getData()
+        .commands.filter((command) => "MoveCall" in command)
+        .map((command) => (command as { MoveCall: { function: string } }).MoveCall.function);
+      if (calls.includes("activate")) return { ok: false, digest: null, error: "activation failed" };
+    }
     return { ok: true, digest: "DEVBUYDIGEST", error: null };
   },
   rpc: async (method: string, params: unknown[]) => {
