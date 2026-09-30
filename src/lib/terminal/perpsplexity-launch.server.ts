@@ -957,12 +957,16 @@ export async function activateComposite(args: {
   const refs = await compositeRefs(prepared, market);
   let activateGas = await args.freshGas();
   if (activateGas.length === 0) {
-    return fail("The bot wallet has no SUI coin left to activate the leveraged position.", {
-      digest: args.prepareDigest,
-      coinType,
-      packageId,
-      poolId,
-    });
+    const refundError = await refundEscrow();
+    return fail(
+      `The bot wallet has no SUI coin left to activate the leveraged position.${refundError ? ` ${refundError}` : escrow ? " The first-buy USDC was returned to the creator." : ""}`,
+      {
+        digest: args.prepareDigest,
+        coinType,
+        packageId,
+        poolId,
+      },
+    );
   }
 
   const buildActivate = (includeBuy: boolean) => {
@@ -1033,8 +1037,9 @@ export async function activateComposite(args: {
     activateRun = await signAndExecute(buildActivate(false), args.keypair);
   }
   if (!activateRun.ok || !activateRun.digest) {
+    const refundError = await refundEscrow();
     return fail(
-      `The leveraged position could not be opened: ${activateRun.error ?? "activation failed"}. The pool is prepared but not trading.`,
+      `The leveraged position could not be opened: ${activateRun.error ?? "activation failed"}. The pool is prepared but not trading.${refundError ? ` ${refundError}` : escrow ? " The first-buy USDC was returned to the creator." : ""}`,
       { digest: args.prepareDigest, coinType, packageId, poolId },
     );
   }
@@ -1043,8 +1048,9 @@ export async function activateComposite(args: {
     (event) => event.type === `${PERPSPLEXITY_ORIGINAL_PACKAGE_ID}::composite_pool::Created`,
   );
   if (!activateReceipt.ok || !createdEvent) {
+    const refundError = await refundEscrow();
     return fail(
-      `The leveraged position could not be opened: ${activateReceipt.error ?? "activation was not confirmed"}. The pool is prepared but not trading.`,
+      `The leveraged position could not be opened: ${activateReceipt.error ?? "activation was not confirmed"}. The pool is prepared but not trading.${refundError ? ` ${refundError}` : escrow ? " The first-buy USDC was returned to the creator." : ""}`,
       { digest: activateRun.digest, coinType, packageId, poolId },
     );
   }
