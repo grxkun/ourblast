@@ -8,3 +8,17 @@ test("check", () => {
   expect(readFeeCheckRequest("claim my fees")).toBeNull();
   expect(readFeeClaimRequest("claim my fees")).not.toBeNull();
 });
+
+test("claim accepts send/transfer phrasing but not bank transfers", () => {
+  expect(readFeeClaimRequest("@Ourblastbot Claim my fees and send it to Mjbdran.sui")).toEqual({
+    symbol: null,
+    redirectAsked: true,
+  });
+  expect(readFeeClaimRequest("@Ourblastbot claim fees $HOLMOT and transfer to me")).toEqual({
+    symbol: "HOLMOT",
+    redirectAsked: true,
+  });
+  expect(readFeeClaimRequest("@Ourblastbot send 1 SUI to 0xabc")).toBeNull();
+  expect(readFeeClaimRequest("@Ourblastbot buy me $HOLMOT with 1 SUI")).toBeNull();
+});
+
