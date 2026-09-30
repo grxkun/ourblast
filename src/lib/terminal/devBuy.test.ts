@@ -331,6 +331,82 @@ describe("first buy funding", () => {
     expect(signed).toHaveLength(0);
     expect(rpcCalls.filter((call) => call.params[0] === BOT)).toHaveLength(0);
   });
+
+  it("refunds the escrowed first-buy USDC to the creator when activation fails", async () => {
+    balances.set(CREATOR, { usdc: 10_000_000n, sui: 2_000_000_000n });
+    mockActivationFails = true;
+    const { activateComposite } = await launch();
+    // The creator's 0.1 USDC already sits in the bot wallet (escrow path).
+    const escrowCoin = fakeCoin(BOT, 100_000n);
+    const result = await activateComposite({
+      keypair: { address: BOT, signTransaction: async () => ({ signature: "bot" }) },
+      sender: BOT,
+      coinType: `0x${"c".repeat(64)}::test::TEST`,
+      packageId: `0x${"d".repeat(64)}`,
+      prepared: {
+        pool: `0x${"1".repeat(64)}`,
+        engine: `0x${"2".repeat(64)}`,
+        engineAccount: `0x${"3".repeat(64)}`,
+        engineSleeve: `0x${"4".repeat(64)}`,
+        engineVault: `0x${"5".repeat(64)}`,
+        poolSleeve: `0x${"6".repeat(64)}`,
+        reserve: `0x${"7".repeat(64)}`,
+        reserveAccount: `0x${"8".repeat(64)}`,
+        poolCap: {
+          objectId: `0x${"9".repeat(64)}`,
+          version: "1",
+          digest: "11111111111111111111111111111111",
+        },
+      } as never,
+      market: {
+        marketId: `0x${"a".repeat(64)}`,
+        baseOracleId: `0x${"b".repeat(64)}`,
+        collateralOracleId: `0x${"d".repeat(64)}`,
+        symbol: "SAMSUNGUSD",
+        label: "SAMSUNG",
+      } as never,
+      devBuy: { units: 100_000n, buyer: { address: CREATOR, signer: creatorSigner }, skip: null } as never,
+      gasPrice: 1000,
+      freshGas: async () => [
+        {
+          objectId: `0x${"e".repeat(64)}`,
+          version: "1",
+          digest: "11111111111111111111111111111111",
+          type: "0x2::coin::Coin<0x2::sui::SUI>",
+        },
+      ],
+      freshGasFor: async () => [
+        {
+          objectId: `0x${"f".repeat(64)}`,
+          version: "1",
+          digest: "11111111111111111111111111111111",
+          type: "0x2::coin::Coin<0x2::sui::SUI>",
+        },
+      ],
+      prepareDigest: "PREPDIGEST",
+      escrowCoin,
+    });
+
+    expect(result.status).toBe("FAILED");
+    expect(result.error).toContain("returned to the creator");
+    // A bot-signed transfer handed the exact escrowed coin back to the creator.
+    const refund = signed.find((entry) =>
+      entry.tx.getData().commands.some((command) => "TransferObjects" in command),
+    );
+    expect(refund).toBeTruthy();
+    expect(refund!.signerAddress).toBe(BOT);
+    const data = refund!.tx.getData();
+    expect(JSON.stringify(data.inputs)).toContain(escrowCoin.coinObjectId);
+    const transfer = data.commands.find((command) => "TransferObjects" in command);
+    const recipientInput = data.inputs[
+      (transfer as { TransferObjects: { address: { Input: number } } }).TransferObjects.address.Input
+    ];
+    const recipientBytes = Buffer.from(
+      (recipientInput as { Pure: { bytes: string } }).Pure.bytes,
+      "base64",
+    ).toString("hex");
+    expect(`0x${recipientBytes}`).toBe(CREATOR);
+  });
 });
 
 describe("launch tweets that mention a dev buy", () => {
