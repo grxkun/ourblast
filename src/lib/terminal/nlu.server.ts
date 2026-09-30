@@ -98,3 +98,44 @@ export async function interpretFreeText(text: string): Promise<string | null> {
     return null;
   }
 }
+
+/**
+ * Friendly guidance for a mention the parser could not read. Returns a short
+ * tweet telling the user the exact command to post, or null when the mention is
+ * casual chatter or spam (the bot then stays silent, as before).
+ *
+ * It never executes anything and never reports on-chain results.
+ */
+export async function guideFreeText(text: string): Promise<string | null> {
+  const apiKey = process.env["LOVABLE_API_KEY"];
+  const clean = text.trim().slice(0, 500);
+  if (!apiKey || clean.length < 3) return null;
+
+  try {
+    const response = await fetch(GATEWAY, {
+      method: "POST",
+      headers: { authorization: `Bearer ${apiKey}`, "content-type": "application/json" },
+      body: JSON.stringify({
+        model: MODEL,
+        temperature: 0.3,
+        max_tokens: 300,
+        messages: [
+          { role: "system", content: GUIDE_SYSTEM },
+          { role: "user", content: clean },
+        ],
+      }),
+    });
+    if (!response.ok) {
+      console.error(`X guidance failed [${response.status}]: ${(await response.text()).slice(0, 300)}`);
+      return null;
+    }
+    const payload = (await response.json()) as { choices?: Array<{ message?: { content?: string } }> };
+    const raw = (payload.choices?.[0]?.message?.content ?? "").replace(/\s+/g, " ").trim();
+    const candidate = raw.replace(/^[`"'*\s]+|[`"'*\s]+$/g, "");
+    if (!candidate || /^none\.?$/i.test(candidate)) return null;
+    return candidate.slice(0, 275);
+  } catch (error) {
+    console.error(`X guidance error: ${error instanceof Error ? error.message : "unknown"}`);
+    return null;
+  }
+}
