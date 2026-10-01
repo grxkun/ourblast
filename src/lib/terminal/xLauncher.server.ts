@@ -447,6 +447,24 @@ export async function executeLaunchRequest(requestId: string): Promise<LaunchOut
   }
 
   const pad = resolveLaunchpad(request.launchpad);
+
+  // Anti-spam: a launch called in from X costs 1 SUI, taken from the caller's
+  // own OurBank wallet and paid to the @ourblastbot wallet before any launchpad
+  // call happens. Perpsplexity's 5 SUI on-chain launchpad fee, fronted by the
+  // bot, is collected with it. Terminal launches are not charged here.
+  if (/^\d+$/.test(String(request.x_post_id ?? ""))) {
+    const { collectLaunchFee } = await import("./launchFee.server");
+    const fee = await collectLaunchFee(request.x_username, pad.id);
+    if (!fee.ok) {
+      await client
+        .from("x_launch_requests")
+        .update({ status: "UNAVAILABLE", notice: fee.notice, updated_at: new Date().toISOString() })
+        .eq("id", request.id);
+      await postNoticeReply(request, fee.notice);
+      return { status: "UNAVAILABLE", notice: fee.notice, tokenUrl: null, poolUrl: null };
+    }
+  }
+
   let deployment: { tokenAddress: string; transactionDigest: string } | undefined;
   let failure: string | null = null;
   // Perpsplexity's own pool page, so the reply links the market, not a homepage.
