@@ -577,6 +577,25 @@ export async function executeLaunchRequest(requestId: string): Promise<LaunchOut
     } else {
       failure = outcome.error ?? "The Maelstrom launch did not confirm on chain.";
     }
+  } else if (pad.id === "popular") {
+    // POPULAR: publish the coin, register it, open the bonding curve, then hand
+    // the curve's creator role (and its creator fees) to the launcher's wallet.
+    const { launchOnPopular } = await import("./popular-launch.server");
+    const outcome = await launchOnPopular({
+      symbol: request.symbol,
+      name: request.name,
+      description: extractDescription(request.tweet_text ?? "") ?? (isTerminalLaunch ? "" : request.tweet_text ?? ""),
+      iconUrl: tokenIconUrl(request.icon_url),
+      website: socials.website,
+      xLink: socials.x ?? (request.x_username ? `https://x.com/${request.x_username}` : null),
+      telegram: socials.telegram,
+      creatorWallet: routing.launcherPaidOnChain ? routing.payees[routing.payees.length - 1] ?? null : null,
+    });
+    if (outcome.status === "CONFIRMED" && outcome.coinType) {
+      deployment = { tokenAddress: outcome.coinType, transactionDigest: outcome.digest ?? "" };
+    } else {
+      failure = outcome.error ?? "The POPULAR launch did not confirm on chain.";
+    }
   } else if (pad.id === "perpsplexity") {
 
     // Perpsplexity: when the post names an underlying market the launch is a
