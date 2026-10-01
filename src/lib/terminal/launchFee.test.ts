@@ -36,4 +36,9 @@ describe("X launch fee", () => {
     expect(formatSui(1_000_000_000n)).toBe("1");
     expect(formatSui(1_234_500_000n)).toBe("1.2345");
   });
+
+  it("points terminal callers at the terminal wallet card, not their X account", () => {
+    expect(noWalletNotice(true)).toContain("OurBank card in the terminal");
+    expect(noWalletNotice(false)).toContain("linked to your X account");
+  });
 });
