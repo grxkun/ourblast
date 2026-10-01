@@ -190,13 +190,28 @@ export function LaunchCard({ launch, editing, onEdit, onChange, onLaunch, onGene
         </dl>
         <div className="border border-border p-3">
           <p className="font-display text-sm uppercase">Fees · {LAUNCH_FEE_SUI === 0 ? "0 launch fee" : `${LAUNCH_FEE_SUI} SUI launch fee`}</p>
-          <ul className="mt-2 space-y-1 text-xs text-muted-foreground">
-            {CREATOR_FEE_ROUTES.map((route) => (
-              <li key={route.label} className="flex items-center justify-between gap-3">
-                <span>{route.label}</span>
-                <span className="font-bold text-foreground">{Math.round(route.share * 100)}%</span>
-              </li>
-            ))}
+          <p className="mt-1 text-[0.65rem] uppercase text-muted-foreground">Pre-launch preview · written on-chain at launch</p>
+          <ul className="mt-2 space-y-2 text-xs text-muted-foreground">
+            {CREATOR_FEE_ROUTES.map((route) => {
+              const address = route.address
+                ?? (launch.feePayout.mode === "wallet" && /^0x[0-9a-fA-F]{64}$/.test(launch.feePayout.wallet ?? "")
+                  ? launch.feePayout.wallet!
+                  : null);
+              const fallback = launch.feePayout.mode === "x" && launch.feePayout.xUsername
+                ? `@${launch.feePayout.xUsername}'s OurBank wallet`
+                : "Your OurBank wallet";
+              return (
+                <li key={route.label} className="min-w-0">
+                  <div className="flex items-center justify-between gap-3">
+                    <span>{route.label}</span>
+                    <span className="font-bold text-foreground">{Math.round(route.share * 100)}% · {Math.round(route.share * 10_000)} bps</span>
+                  </div>
+                  <p className="mt-0.5 break-all font-mono text-[0.65rem] text-foreground/80" title={address ?? fallback}>
+                    {address ?? fallback}
+                  </p>
+                </li>
+              );
+            })}
           </ul>
           <p className="mt-2 text-[0.65rem] text-muted-foreground">Of the creator fee the launchpad pays on trading volume. Your {LAUNCHER_PERCENT}%: {LAUNCHER_SHARE_USES}.</p>
           <p className="mt-1 text-[0.65rem] text-muted-foreground">{GAS_NOTE_TERMINAL} Same for launch calls from {X_BOT_HANDLE} on X.</p>
