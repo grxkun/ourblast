@@ -160,17 +160,6 @@ async function pollJob(jobId: string): Promise<RiptJob> {
   return last;
 }
 
-async function ownedRef(objectId: string) {
-  for (let attempt = 0; attempt < 8; attempt += 1) {
-    const r = await rpc<{ data?: { objectId: string; version: string; digest: string } }>("sui_getObject", [objectId, {}]).catch(
-      () => null,
-    );
-    if (r?.data?.digest) return { objectId: r.data.objectId, version: String(r.data.version), digest: r.data.digest };
-    await sleep(1500);
-  }
-  return null;
-}
-
 export async function launchOnRipt(input: RiptLaunchInput): Promise<RiptLaunchResult> {
   const symbol = input.symbol.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 10);
   if (!/^[A-Z][A-Z0-9]{1,9}$/.test(symbol)) return fail("Ticker must be 2–10 letters/digits starting with a letter.");
@@ -259,7 +248,19 @@ export async function launchOnRipt(input: RiptLaunchInput): Promise<RiptLaunchRe
   }
   const coinType = normalizeType(job.coinType);
 
-  // Step 4 — open the Bluefin pool.
+  return deployRiptLp(keypair, sender, gasPrice, coinType, job.pendingLaunchId, feeRecipient, requestDigest);
+}
+
+/** Step 4 — open the Bluefin pool. Exported so a paid, published request can be resumed. */
+export async function deployRiptLp(
+  keypair: NonNullable<Awaited<ReturnType<typeof loadDeployer>>>,
+  sender: string,
+  gasPrice: number,
+  coinType: string,
+  pendingLaunchId: string,
+  feeRecipient: string,
+  requestDigest: string,
+): Promise<RiptLaunchResult> {
   const currencyId = riptCurrencyId(coinType);
   const [cfgRef, currencyRef, clockRef, bluefinRef, distributorRef, pendingRef, deployGas] = await Promise.all([
     sharedRef(RIPT_CONFIG),
@@ -267,7 +268,7 @@ export async function launchOnRipt(input: RiptLaunchInput): Promise<RiptLaunchRe
     sharedRef(CLOCK),
     sharedRef(BLUEFIN_GLOBAL_CONFIG),
     sharedRef(RIPT_DISTRIBUTOR_CONFIG),
-    ownedRef(job.pendingLaunchId),
+    sharedRef(pendingLaunchId).catch(() => null),
     freshGas(sender),
   ]);
   if (!currencyRef) return fail("RIPT published the coin but its registry entry is not visible yet.", { requestDigest, coinType });
@@ -284,7 +285,7 @@ export async function launchOnRipt(input: RiptLaunchInput): Promise<RiptLaunchRe
     typeArguments: [coinType, SUI],
     arguments: [
       tx.sharedObjectRef({ ...cfgRef, mutable: true }),
-      tx.objectRef(pendingRef),
+      tx.sharedObjectRef({ ...pendingRef, mutable: true }),
       tx.sharedObjectRef({ ...currencyRef, mutable: true }),
       tx.sharedObjectRef({ ...clockRef, mutable: false }),
       tx.sharedObjectRef({ ...bluefinRef, mutable: true }),
