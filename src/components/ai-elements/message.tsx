@@ -13,7 +13,6 @@ import {
 } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import { cjk } from "@streamdown/cjk";
-import { code } from "@streamdown/code";
 import { math } from "@streamdown/math";
 import { mermaid } from "@streamdown/mermaid";
 import type { UIMessage } from "ai";
@@ -323,20 +322,28 @@ export type MessageResponseProps = ComponentProps<typeof Streamdown>;
 
 // Shiki's code highlighter loads a WASM engine the server runtime can't
 // resolve, so code highlighting is only enabled after hydration.
+// It is imported on demand in the browser so it never enters the server bundle.
 const serverPlugins = { cjk, math, mermaid };
-const clientPlugins = { cjk, code, math, mermaid };
+type Plugins = typeof serverPlugins & { code?: unknown };
+let clientPluginsPromise: Promise<Plugins> | null = null;
+const loadClientPlugins = () =>
+  (clientPluginsPromise ??= import("@streamdown/code").then((m) => ({ ...serverPlugins, code: m.code })));
 
 export const MessageResponse = memo(
   ({ className, ...props }: MessageResponseProps) => {
-    const [hydrated, setHydrated] = useState(false);
-    useEffect(() => setHydrated(true), []);
+    const [plugins, setPlugins] = useState<Plugins>(serverPlugins);
+    useEffect(() => {
+      let live = true;
+      void loadClientPlugins().then((p) => live && setPlugins(p)).catch(() => {});
+      return () => { live = false; };
+    }, []);
     return (
     <Streamdown
       className={cn(
         "size-full [&>*:first-child]:mt-0 [&>*:last-child]:mb-0",
         className
       )}
-      plugins={hydrated ? clientPlugins : serverPlugins}
+      plugins={plugins as MessageResponseProps["plugins"]}
       {...props}
     />
     );
