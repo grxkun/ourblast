@@ -281,8 +281,19 @@ export async function deployRiptLp(
   pendingLaunchId: string,
   feeRecipient: string,
   requestDigest: string,
+  /** Creator-escrowed SUI coin for the first buy; null = no buy. */
+  buyCoin: OwnedSuiCoin | null = null,
+  /** Creator wallet that funded the buy (receives the bought tokens). */
+  devBuyer: DevBuySigner | null = null,
+  devBuyError: string | null = null,
 ): Promise<RiptLaunchResult> {
   const currencyId = riptCurrencyId(coinType);
+  /** Returns the escrowed buy coin to the creator; appends the outcome to the error. */
+  const refundEscrow = async (error: string, extra: Partial<RiptLaunchResult> = {}): Promise<RiptLaunchResult> => {
+    if (!buyCoin || !devBuyer) return fail(error, extra);
+    const refundError = await refundCreatorSui({ keypair, bot: sender, coin: buyCoin, to: devBuyer.address, gasPrice });
+    return fail(`${error} ${refundError ?? "The first-buy SUI was returned to the creator."}`, extra);
+  };
   const [cfgRef, currencyRef, clockRef, bluefinRef, distributorRef, pendingRef, deployGas] = await Promise.all([
     sharedRef(RIPT_CONFIG),
     sharedRef(currencyId).catch(() => null),
