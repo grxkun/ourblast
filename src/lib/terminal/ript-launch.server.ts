@@ -303,15 +303,18 @@ export async function deployRiptLp(
     sharedRef(pendingLaunchId).catch(() => null),
     freshGas(sender),
   ]);
-  if (!currencyRef) return fail("RIPT published the coin but its registry entry is not visible yet.", { requestDigest, coinType });
-  if (!pendingRef) return fail("RIPT's pending launch object is not visible yet.", { requestDigest, coinType });
-  if (deployGas.length === 0) return fail("The bot wallet has no SUI coin left to pay gas.", { requestDigest, coinType });
+  if (!currencyRef) return refundEscrow("RIPT published the coin but its registry entry is not visible yet.", { requestDigest, coinType });
+  if (!pendingRef) return refundEscrow("RIPT's pending launch object is not visible yet.", { requestDigest, coinType });
+  if (deployGas.length === 0) return refundEscrow("The bot wallet has no SUI coin left to pay gas.", { requestDigest, coinType });
 
   const tx = new Transaction();
   withGas(tx, sender, deployGas, gasPrice, DEPLOY_BUDGET);
   const policy = tx.moveCall({ target: `${RIPT_DISTRIBUTOR_PACKAGE}::distributor::policy_to_fee_recipient` });
   const quoteZero = tx.moveCall({ target: "0x2::coin::zero", typeArguments: [SUI] });
-  const buyZero = tx.moveCall({ target: "0x2::coin::zero", typeArguments: [SUI] }); // no dev buy
+  // The creator's escrowed coin is the first buy; an empty coin when none.
+  const buyArg = buyCoin
+    ? tx.objectRef({ objectId: buyCoin.coinObjectId, version: buyCoin.version, digest: buyCoin.digest })
+    : tx.moveCall({ target: "0x2::coin::zero", typeArguments: [SUI] });
   tx.moveCall({
     target: `${RIPT_PACKAGE}::launch::deploy_lp`,
     typeArguments: [coinType, SUI],
