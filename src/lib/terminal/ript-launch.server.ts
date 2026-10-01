@@ -17,6 +17,7 @@ import { Transaction } from "@mysten/sui/transactions";
 import { bcs } from "@mysten/sui/bcs";
 import { deriveObjectID } from "@mysten/sui/utils";
 
+import { deliverBoughtCoin, escrowCreatorSui, refundCreatorSui, type DevBuySigner, type OwnedSuiCoin } from "./devbuy-sui.server";
 import { tokenIconUrl } from "./xLauncher";
 import { gasCoins, loadDeployer, normalizeType, referenceGasPrice, rpc, sharedRef, signAndExecute, withGas } from "./suipump-launch.server";
 
@@ -43,6 +44,10 @@ export interface RiptLaunchInput {
   telegram?: string | null;
   /** Wallet that receives the pool's creator fees; null keeps them with the bot. */
   creatorWallet?: string | null;
+  /** Creator's opening buy in SUI (null/0 = none). Funded by devBuyer, never the bot. */
+  devBuySui?: number | null;
+  /** The creator's OurBank wallet: funds and receives the first buy. */
+  devBuyer?: DevBuySigner | null;
 }
 
 export interface RiptLaunchResult {
@@ -53,6 +58,8 @@ export interface RiptLaunchResult {
   coinType: string | null;
   poolId: string | null;
   feeRecipient: string | null;
+  /** Set when the launch succeeded but the first buy did not go through. */
+  devBuyError: string | null;
 }
 
 interface RiptJob {
