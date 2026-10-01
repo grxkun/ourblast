@@ -305,10 +305,11 @@ export async function deployRiptLp(
   ]);
   if (!currencyRef) return refundEscrow("RIPT published the coin but its registry entry is not visible yet.", { requestDigest, coinType });
   if (!pendingRef) return refundEscrow("RIPT's pending launch object is not visible yet.", { requestDigest, coinType });
-  if (deployGas.length === 0) return refundEscrow("The bot wallet has no SUI coin left to pay gas.", { requestDigest, coinType });
+  const deployGasSafe = deployGas.filter((g) => g.objectId !== buyCoin?.coinObjectId);
+  if (deployGasSafe.length === 0) return refundEscrow("The bot wallet has no SUI coin left to pay gas.", { requestDigest, coinType });
 
   const tx = new Transaction();
-  withGas(tx, sender, deployGas, gasPrice, DEPLOY_BUDGET);
+  withGas(tx, sender, deployGasSafe, gasPrice, DEPLOY_BUDGET);
   const policy = tx.moveCall({ target: `${RIPT_DISTRIBUTOR_PACKAGE}::distributor::policy_to_fee_recipient` });
   const quoteZero = tx.moveCall({ target: "0x2::coin::zero", typeArguments: [SUI] });
   // The creator's escrowed coin is the first buy; an empty coin when none.

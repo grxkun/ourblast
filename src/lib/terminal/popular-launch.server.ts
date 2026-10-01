@@ -309,7 +309,11 @@ export async function launchOnPopular(input: PopularLaunchInput): Promise<Popula
     sharedRef(RANDOM),
     sharedRef(CLOCK),
     freshGas(sender),
-  ]);
+  ]).then((r) => {
+    // The escrowed first-buy coin is merged into the fee coin; never also use it as gas.
+    r[6] = r[6].filter((g) => g.objectId !== escrow?.coinObjectId);
+    return r;
+  });
   if (launchGas.length === 0) return refundEscrow("The bot wallet has no SUI coin left to pay gas.", { coinType });
 
   const tx = new Transaction();
