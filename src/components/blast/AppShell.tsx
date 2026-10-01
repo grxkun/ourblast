@@ -112,7 +112,9 @@ export function AppShell({ children }: { children: ReactNode }) {
               item.to !== "/ecosystem" &&
               item.to !== "/leaderboard" &&
               item.to !== "/chat" &&
+              item.to !== "/docs" &&
               item.to !== "/meme"
+
           ).map((item) => (
             <Link
               key={item.to}
