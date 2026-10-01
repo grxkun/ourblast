@@ -369,5 +369,12 @@ export async function launchOnPopular(input: PopularLaunchInput): Promise<Popula
     }
   }
 
-  return { status: "CONFIRMED", error: null, digest: run.digest, coinType, curveId, creatorTransferred };
+  // The bought tokens land in the bot wallet (it sent the launch); hand them
+  // to the creator who funded the buy.
+  if (escrow && input.devBuyer) {
+    const deliverError = await deliverBoughtCoin({ keypair, bot: sender, coinType, to: input.devBuyer.address, gasPrice });
+    if (deliverError) devBuyError = `First buy executed but ${deliverError}`;
+  }
+
+  return { status: "CONFIRMED", error: null, digest: run.digest, coinType, curveId, creatorTransferred, devBuyError };
 }
