@@ -457,7 +457,9 @@ export async function executeLaunchRequest(requestId: string): Promise<LaunchOut
   const terminalUserId = postId.startsWith("terminal-")
     ? (postId.match(/^terminal-([0-9a-fA-F-]{36})-/)?.[1] ?? null)
     : null;
-  if (/^\d+$/.test(postId) || postId.startsWith("terminal-")) {
+  let collectedFee: { payerAddress: string; amountMist: bigint } | null = null;
+  // Pads that are not connected yet never reach the chain, so they are never charged.
+  if (pad.integrated && (/^\d+$/.test(postId) || postId.startsWith("terminal-"))) {
     const { collectLaunchFee } = await import("./launchFee.server");
     const fee = await collectLaunchFee({ handle: request.x_username, userId: terminalUserId }, pad.id);
     if (!fee.ok) {
@@ -468,6 +470,7 @@ export async function executeLaunchRequest(requestId: string): Promise<LaunchOut
       await postNoticeReply(request, fee.notice);
       return { status: "UNAVAILABLE", notice: fee.notice, tokenUrl: null, poolUrl: null };
     }
+    collectedFee = { payerAddress: fee.payerAddress, amountMist: fee.amountMist };
   }
 
   let deployment: { tokenAddress: string; transactionDigest: string } | undefined;
@@ -613,7 +616,18 @@ export async function executeLaunchRequest(requestId: string): Promise<LaunchOut
 
   if (!deployment?.tokenAddress) {
     // Nothing on chain happened: park the request, say so plainly, keep it launchable later.
-    const notice = failure ?? INTEGRATION_PENDING;
+    let notice = failure ?? INTEGRATION_PENDING;
+    // The launch fee is only kept for launches that reach the chain; a failed
+    // launch returns it so retries never charge twice.
+    if (collectedFee) {
+      const { refundLaunchFee } = await import("./launchFee.server");
+      const refund = await refundLaunchFee(collectedFee.payerAddress, collectedFee.amountMist);
+      const { formatSui } = await import("./launchFee");
+      notice = refund.ok
+        ? `${notice} Your ${formatSui(collectedFee.amountMist)} SUI launch fee was returned.`
+        : `${notice} Launch fee refund failed (${refund.error}); contact support.`;
+      if (!refund.ok) console.error("launch fee refund failed", request.id, refund.error);
+    }
     await client
       .from("x_launch_requests")
       .update({ status: "UNAVAILABLE", notice, updated_at: new Date().toISOString() })
