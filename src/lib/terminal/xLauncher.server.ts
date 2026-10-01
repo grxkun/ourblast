@@ -705,7 +705,7 @@ export async function executeLaunchRequest(requestId: string): Promise<LaunchOut
   // there is no launch-time payee split to claim there.
   // Maelstrom pays LP fees on chain to one recipient set at launch, so there is
   // no OurBlast payee split to claim there either.
-  const claimToken = isPerps || isMaelstrom ? null : await ensureFeeClaimLink(request.symbol, feeReceiverHandle(request));
+  const claimToken = isPerps || isMaelstrom || pad.id === "popular" ? null : await ensureFeeClaimLink(request.symbol, feeReceiverHandle(request));
 
 
   await postDeployedReply(request, tokenUrl, poolUrl, claimToken, positionLine);
