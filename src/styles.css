@@ -119,7 +119,9 @@
   html {
     color-scheme: dark;
     scroll-behavior: smooth;
+    overflow-x: hidden;
   }
+
 
   body {
     @apply bg-background text-foreground font-body antialiased;
