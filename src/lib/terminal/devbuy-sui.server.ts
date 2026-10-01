@@ -85,24 +85,16 @@ export async function escrowCreatorSui(args: {
   gasPrice: number;
 }): Promise<{ coin: OwnedSuiCoin | null; error: string | null }> {
   try {
-    const [gas, coins] = await Promise.all([gasCoins(args.buyer.address), suiCoins(args.buyer.address)]);
-    if (gas.length === 0) return { coin: null, error: "The creator wallet had no SUI for gas." };
-    const spendable = coins.filter((c) => !gas.some((g) => g.objectId === c.coinObjectId));
-    if (spendable.length === 0) return { coin: null, error: "The creator wallet held no SUI for the first buy." };
-    const total = spendable.reduce((sum, c) => sum + BigInt(c.balance), 0n);
-    if (total < args.amountMist) {
-      return { coin: null, error: `The creator wallet held ${Number(total) / 1e9} SUI, less than the ${Number(args.amountMist) / 1e9} SUI first buy.` };
+    const gas = await gasCoins(args.buyer.address);
+    if (gas.length === 0) return { coin: null, error: "The creator wallet held no SUI for the first buy." };
+    const total = (await suiCoins(args.buyer.address)).reduce((sum, c) => sum + BigInt(c.balance), 0n);
+    if (total < args.amountMist + BigInt(ESCROW_BUDGET)) {
+      return { coin: null, error: `The creator wallet held ${Number(total) / 1e9} SUI, not enough for the ${Number(args.amountMist) / 1e9} SUI first buy plus gas.` };
     }
+    // Split straight from the gas coin so single-coin wallets work too.
     const tx = new Transaction();
     withGas(tx, args.buyer.address, gas, args.gasPrice, ESCROW_BUDGET);
-    const primary = tx.objectRef({ objectId: spendable[0]!.coinObjectId, version: spendable[0]!.version, digest: spendable[0]!.digest });
-    if (spendable.length > 1) {
-      tx.mergeCoins(
-        primary,
-        spendable.slice(1).map((c) => tx.objectRef({ objectId: c.coinObjectId, version: c.version, digest: c.digest })),
-      );
-    }
-    const [part] = tx.splitCoins(primary, [tx.pure.u64(args.amountMist)]);
+    const [part] = tx.splitCoins(tx.gas, [tx.pure.u64(args.amountMist)]);
     tx.transferObjects([part!], args.bot);
     const run = await signAndExecute(tx, args.buyer.signer);
     if (!run.ok || !run.digest) return { coin: null, error: run.error ?? "Moving the first-buy SUI failed." };
