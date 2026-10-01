@@ -203,7 +203,7 @@ export function parseDeployTweet(tweetText: string, defaultPad = LAUNCHPAD.id): 
       .replace(/[\s.,!?;:-]+$/g, "")
       .trim();
     const name = rawName.length >= 2 ? rawName.slice(0, 64) : symbol;
-    return { symbol, name, launchpad: pad.id, perps, feeReceiver, devBuyUsdc };
+    return { symbol, name, launchpad: pad.id, perps, feeReceiver, devBuyUsdc, devBuySui };
   }
 
   // Field-style tweets: "deploy a token on suipump / Name: THINKING CAT / ticker: $HMMM".
@@ -221,12 +221,12 @@ export function parseDeployTweet(tweetText: string, defaultPad = LAUNCHPAD.id): 
     // tweets without a cashtag still launch ("Name: Monerochan" → $MONEROCHAN).
     const derived = nameRaw.replace(/[^a-z0-9]/gi, "").toUpperCase().slice(0, 10);
     if (derived.length < 2) return null;
-    return { symbol: derived, name: nameRaw.slice(0, 64), launchpad: pad.id, perps, feeReceiver, devBuyUsdc };
+    return { symbol: derived, name: nameRaw.slice(0, 64), launchpad: pad.id, perps, feeReceiver, devBuyUsdc, devBuySui };
   }
   const symbol = normalizeSymbol(cashtag[1]);
   if (!symbol) return null;
   const name = nameRaw.length >= 2 ? nameRaw.slice(0, 64) : symbol;
-  return { symbol, name, launchpad: pad.id, perps, feeReceiver, devBuyUsdc };
+  return { symbol, name, launchpad: pad.id, perps, feeReceiver, devBuyUsdc, devBuySui };
 }
 
 export function padFor(settings: LauncherSettings, requested?: string | null): LaunchpadConfig {
