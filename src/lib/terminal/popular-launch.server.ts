@@ -282,14 +282,17 @@ export async function launchOnPopular(input: PopularLaunchInput): Promise<Popula
   // Creator-funded first buy: the creator's SUI rides into the curve::create
   // call merged with the fee coin, so the buy lands in the same block the
   // curve opens — no sniper can get in first. The bot's own SUI is never used.
-  const devBuyMist =
+  let devBuyMist =
     input.devBuySui && input.devBuySui > 0 && input.devBuyer ? BigInt(Math.round(input.devBuySui * 1e9)) : 0n;
   let escrow: OwnedSuiCoin | null = null;
   let devBuyError: string | null = null;
   if (devBuyMist > 0n && input.devBuyer) {
     const moved = await escrowCreatorSui({ buyer: input.devBuyer, bot: sender, amountMist: devBuyMist, gasPrice });
     escrow = moved.coin;
-    if (!escrow) devBuyError = `First buy skipped: ${moved.error}`;
+    if (!escrow) {
+      devBuyError = `First buy skipped: ${moved.error}`;
+      devBuyMist = 0n; // never tell the curve about SUI that is not in the fee coin
+    }
   }
   /** Returns the escrowed SUI to the creator; appends the outcome to the error. */
   const refundEscrow = async (error: string, extra: Partial<PopularLaunchResult> = {}): Promise<PopularLaunchResult> => {
