@@ -46,6 +46,8 @@ export interface LaunchRequestRow {
   starting_cap_usd: number | null;
   /** Perpsplexity only: the launcher's opening buy in USDC (null = none). */
   dev_buy_usdc: number | null;
+  /** POPULAR/RIPT only: the launcher's opening buy in SUI (null = none). */
+  dev_buy_sui: number | null;
   created_at: string;
 }
 
@@ -336,6 +338,7 @@ export async function createLaunchRequest(
       leverage_bps: request.perps?.leverageBps ?? null,
       starting_cap_usd: request.perps?.startingCapUsd ?? null,
       dev_buy_usdc: request.devBuyUsdc ?? null,
+      dev_buy_sui: request.devBuySui ?? null,
       status: "PENDING",
       notice: pad.integrated ? null : INTEGRATION_PENDING,
     })
@@ -591,10 +594,15 @@ export async function executeLaunchRequest(requestId: string): Promise<LaunchOut
       xLink: socials.x ?? (request.x_username ? `https://x.com/${request.x_username}` : null),
       telegram: socials.telegram,
       creatorWallet: routing.launcherPaidOnChain ? routing.payees[routing.payees.length - 1] ?? null : null,
+      // "dev buy 25" on POPULAR: the creator's opening buy in SUI, funded by
+      // and delivered to the creator's own OurBank wallet — never the bot.
+      devBuySui: request.dev_buy_sui ? Number(request.dev_buy_sui) : null,
+      devBuyer: await creatorDevBuyer(request),
     });
     if (outcome.status === "CONFIRMED" && outcome.coinType) {
       deployment = { tokenAddress: outcome.coinType, transactionDigest: outcome.digest ?? "" };
       popularCurveId = outcome.curveId;
+      devBuyNotice = outcome.devBuyError ?? null;
     } else {
       failure = outcome.error ?? "The POPULAR launch did not confirm on chain.";
     }
@@ -611,9 +619,14 @@ export async function executeLaunchRequest(requestId: string): Promise<LaunchOut
       xLink: socials.x ?? (request.x_username ? `https://x.com/${request.x_username}` : null),
       telegram: socials.telegram,
       creatorWallet: routing.launcherPaidOnChain ? routing.payees[routing.payees.length - 1] ?? null : null,
+      // "dev buy 25" on RIPT: the creator's opening buy in SUI, funded by and
+      // delivered to the creator's own OurBank wallet — never the bot.
+      devBuySui: request.dev_buy_sui ? Number(request.dev_buy_sui) : null,
+      devBuyer: await creatorDevBuyer(request),
     });
     if (outcome.status === "CONFIRMED" && outcome.coinType) {
       deployment = { tokenAddress: outcome.coinType, transactionDigest: outcome.digest ?? "" };
+      devBuyNotice = outcome.devBuyError ?? null;
     } else {
       failure = outcome.error ?? "The RIPT launch did not confirm on chain.";
     }

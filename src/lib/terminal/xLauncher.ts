@@ -50,8 +50,10 @@ export interface DeployRequest {
   perps?: PerpsPositionRequest | undefined;
   /** Present when the tweet names a creator-fee receiver. */
   feeReceiver?: FeeReceiverRequest | undefined;
-  /** "first buy 25" — the launcher's own opening buy, in USDC. */
+  /** "first buy 25" — the launcher's own opening buy, in USDC (Perpsplexity). */
   devBuyUsdc?: number | undefined;
+  /** "dev buy 25 SUI" — the launcher's own opening buy, in SUI (POPULAR, RIPT). */
+  devBuySui?: number | undefined;
 }
 
 /** "dev buy 25", "first buy $50", "initial buy: 10" — an opening buy in USDC. */
@@ -169,7 +171,7 @@ export function parseDeployTweet(tweetText: string, defaultPad = LAUNCHPAD.id): 
   const rawPadMatch = findPadMatch(rawText);
   // Same reason: "@adiniyi" must be read before mention stripping removes it.
   const feeReceiver = extractFeeReceiver(rawText) ?? undefined;
-  const devBuyUsdc = extractDevBuy(rawText) ?? undefined;
+  const devBuyAmount = extractDevBuy(rawText) ?? undefined;
   let text = stripDevBuyPhrase(stripPairPhrase(stripFeePhrases(normalizeCommandText(rawText))));
 
   const textPadMatch = findPadMatch(text);
@@ -184,6 +186,10 @@ export function parseDeployTweet(tweetText: string, defaultPad = LAUNCHPAD.id): 
 
   const pad = resolveLaunchpad(requestedPad ?? defaultPad);
   const isPerpsPad = pad.id === "perpsplexity";
+  // The dev-buy number is currency-denominated by pad: USDC on Perpsplexity,
+  // SUI on the SUI-quoted pads (POPULAR, RIPT).
+  const devBuyUsdc = isPerpsPad ? devBuyAmount : undefined;
+  const devBuySui = pad.id === "popular" || pad.id === "ript" ? devBuyAmount : undefined;
   const perpsExtraction = extractPerps(text, isPerpsPad);
   text = perpsExtraction.text;
   const perps = perpsExtraction.perps ?? undefined;
@@ -197,7 +203,7 @@ export function parseDeployTweet(tweetText: string, defaultPad = LAUNCHPAD.id): 
       .replace(/[\s.,!?;:-]+$/g, "")
       .trim();
     const name = rawName.length >= 2 ? rawName.slice(0, 64) : symbol;
-    return { symbol, name, launchpad: pad.id, perps, feeReceiver, devBuyUsdc };
+    return { symbol, name, launchpad: pad.id, perps, feeReceiver, devBuyUsdc, devBuySui };
   }
 
   // Field-style tweets: "deploy a token on suipump / Name: THINKING CAT / ticker: $HMMM".
@@ -215,12 +221,12 @@ export function parseDeployTweet(tweetText: string, defaultPad = LAUNCHPAD.id): 
     // tweets without a cashtag still launch ("Name: Monerochan" → $MONEROCHAN).
     const derived = nameRaw.replace(/[^a-z0-9]/gi, "").toUpperCase().slice(0, 10);
     if (derived.length < 2) return null;
-    return { symbol: derived, name: nameRaw.slice(0, 64), launchpad: pad.id, perps, feeReceiver, devBuyUsdc };
+    return { symbol: derived, name: nameRaw.slice(0, 64), launchpad: pad.id, perps, feeReceiver, devBuyUsdc, devBuySui };
   }
   const symbol = normalizeSymbol(cashtag[1]);
   if (!symbol) return null;
   const name = nameRaw.length >= 2 ? nameRaw.slice(0, 64) : symbol;
-  return { symbol, name, launchpad: pad.id, perps, feeReceiver, devBuyUsdc };
+  return { symbol, name, launchpad: pad.id, perps, feeReceiver, devBuyUsdc, devBuySui };
 }
 
 export function padFor(settings: LauncherSettings, requested?: string | null): LaunchpadConfig {

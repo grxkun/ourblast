@@ -2074,6 +2074,7 @@ export type Database = {
           created_at: string
           deployed_reply_post_id: string | null
           dev_buy: boolean
+          dev_buy_sui: number | null
           dev_buy_usdc: number | null
           fee_receiver_wallet: string | null
           fee_receiver_x_username: string | null
@@ -2104,6 +2105,7 @@ export type Database = {
           created_at?: string
           deployed_reply_post_id?: string | null
           dev_buy?: boolean
+          dev_buy_sui?: number | null
           dev_buy_usdc?: number | null
           fee_receiver_wallet?: string | null
           fee_receiver_x_username?: string | null
@@ -2134,6 +2136,7 @@ export type Database = {
           created_at?: string
           deployed_reply_post_id?: string | null
           dev_buy?: boolean
+          dev_buy_sui?: number | null
           dev_buy_usdc?: number | null
           fee_receiver_wallet?: string | null
           fee_receiver_x_username?: string | null

@@ -17,6 +17,7 @@ import { Transaction } from "@mysten/sui/transactions";
 import { bcs } from "@mysten/sui/bcs";
 import { deriveObjectID } from "@mysten/sui/utils";
 
+import { deliverBoughtCoin, escrowCreatorSui, refundCreatorSui, type DevBuySigner, type OwnedSuiCoin } from "./devbuy-sui.server";
 import { tokenIconUrl } from "./xLauncher";
 import { gasCoins, loadDeployer, normalizeType, referenceGasPrice, rpc, sharedRef, signAndExecute, withGas } from "./suipump-launch.server";
 
@@ -43,6 +44,10 @@ export interface RiptLaunchInput {
   telegram?: string | null;
   /** Wallet that receives the pool's creator fees; null keeps them with the bot. */
   creatorWallet?: string | null;
+  /** Creator's opening buy in SUI (null/0 = none). Funded by devBuyer, never the bot. */
+  devBuySui?: number | null;
+  /** The creator's OurBank wallet: funds and receives the first buy. */
+  devBuyer?: DevBuySigner | null;
 }
 
 export interface RiptLaunchResult {
@@ -53,6 +58,8 @@ export interface RiptLaunchResult {
   coinType: string | null;
   poolId: string | null;
   feeRecipient: string | null;
+  /** Set when the launch succeeded but the first buy did not go through. */
+  devBuyError: string | null;
 }
 
 interface RiptJob {
@@ -71,6 +78,7 @@ const fail = (error: string, extra: Partial<RiptLaunchResult> = {}): RiptLaunchR
   coinType: null,
   poolId: null,
   feeRecipient: null,
+  devBuyError: null,
   ...extra,
 });
 
@@ -248,7 +256,20 @@ export async function launchOnRipt(input: RiptLaunchInput): Promise<RiptLaunchRe
   }
   const coinType = normalizeType(job.coinType);
 
-  return deployRiptLp(keypair, sender, gasPrice, coinType, job.pendingLaunchId, feeRecipient, requestDigest);
+  // Creator-funded first buy: the creator escrows exactly the buy SUI to the
+  // bot, and the bot spends that very coin in the deploy transaction — the
+  // buy lands in the same block the pool opens. The bot's own SUI is never used.
+  const devBuyMist =
+    input.devBuySui && input.devBuySui > 0 && input.devBuyer ? BigInt(Math.round(input.devBuySui * 1e9)) : 0n;
+  let escrow: OwnedSuiCoin | null = null;
+  let devBuyError: string | null = null;
+  if (devBuyMist > 0n && input.devBuyer) {
+    const moved = await escrowCreatorSui({ buyer: input.devBuyer, bot: sender, amountMist: devBuyMist, gasPrice });
+    escrow = moved.coin;
+    if (!escrow) devBuyError = `First buy skipped: ${moved.error}`;
+  }
+
+  return deployRiptLp(keypair, sender, gasPrice, coinType, job.pendingLaunchId, feeRecipient, requestDigest, escrow, input.devBuyer ?? null, devBuyError);
 }
 
 /** Step 4 — open the Bluefin pool. Exported so a paid, published request can be resumed. */
@@ -260,8 +281,19 @@ export async function deployRiptLp(
   pendingLaunchId: string,
   feeRecipient: string,
   requestDigest: string,
+  /** Creator-escrowed SUI coin for the first buy; null = no buy. */
+  buyCoin: OwnedSuiCoin | null = null,
+  /** Creator wallet that funded the buy (receives the bought tokens). */
+  devBuyer: DevBuySigner | null = null,
+  devBuyError: string | null = null,
 ): Promise<RiptLaunchResult> {
   const currencyId = riptCurrencyId(coinType);
+  /** Returns the escrowed buy coin to the creator; appends the outcome to the error. */
+  const refundEscrow = async (error: string, extra: Partial<RiptLaunchResult> = {}): Promise<RiptLaunchResult> => {
+    if (!buyCoin || !devBuyer) return fail(error, extra);
+    const refundError = await refundCreatorSui({ keypair, bot: sender, coin: buyCoin, to: devBuyer.address, gasPrice });
+    return fail(`${error} ${refundError ?? "The first-buy SUI was returned to the creator."}`, extra);
+  };
   const [cfgRef, currencyRef, clockRef, bluefinRef, distributorRef, pendingRef, deployGas] = await Promise.all([
     sharedRef(RIPT_CONFIG),
     sharedRef(currencyId).catch(() => null),
@@ -271,15 +303,18 @@ export async function deployRiptLp(
     sharedRef(pendingLaunchId).catch(() => null),
     freshGas(sender),
   ]);
-  if (!currencyRef) return fail("RIPT published the coin but its registry entry is not visible yet.", { requestDigest, coinType });
-  if (!pendingRef) return fail("RIPT's pending launch object is not visible yet.", { requestDigest, coinType });
-  if (deployGas.length === 0) return fail("The bot wallet has no SUI coin left to pay gas.", { requestDigest, coinType });
+  if (!currencyRef) return refundEscrow("RIPT published the coin but its registry entry is not visible yet.", { requestDigest, coinType });
+  if (!pendingRef) return refundEscrow("RIPT's pending launch object is not visible yet.", { requestDigest, coinType });
+  if (deployGas.length === 0) return refundEscrow("The bot wallet has no SUI coin left to pay gas.", { requestDigest, coinType });
 
   const tx = new Transaction();
   withGas(tx, sender, deployGas, gasPrice, DEPLOY_BUDGET);
   const policy = tx.moveCall({ target: `${RIPT_DISTRIBUTOR_PACKAGE}::distributor::policy_to_fee_recipient` });
   const quoteZero = tx.moveCall({ target: "0x2::coin::zero", typeArguments: [SUI] });
-  const buyZero = tx.moveCall({ target: "0x2::coin::zero", typeArguments: [SUI] }); // no dev buy
+  // The creator's escrowed coin is the first buy; an empty coin when none.
+  const buyArg = buyCoin
+    ? tx.objectRef({ objectId: buyCoin.coinObjectId, version: buyCoin.version, digest: buyCoin.digest })
+    : tx.moveCall({ target: "0x2::coin::zero", typeArguments: [SUI] });
   tx.moveCall({
     target: `${RIPT_PACKAGE}::launch::deploy_lp`,
     typeArguments: [coinType, SUI],
@@ -290,17 +325,24 @@ export async function deployRiptLp(
       tx.sharedObjectRef({ ...clockRef, mutable: false }),
       tx.sharedObjectRef({ ...bluefinRef, mutable: true }),
       quoteZero,
-      buyZero,
+      buyArg,
       policy,
       tx.pure.address(feeRecipient),
       tx.sharedObjectRef({ ...distributorRef, mutable: false }),
     ],
   });
   const run = await signAndExecute(tx, keypair);
-  if (!run.ok || !run.digest) return fail(run.error ?? "RIPT pool deploy failed.", { requestDigest, coinType });
+  if (!run.ok || !run.digest) return refundEscrow(run.error ?? "RIPT pool deploy failed.", { requestDigest, coinType });
   const deployed = await receipt(run.digest);
-  if (!deployed.ok) return fail(deployed.error ?? "RIPT pool deploy failed on chain.", { requestDigest, coinType, digest: run.digest });
+  if (!deployed.ok) return refundEscrow(deployed.error ?? "RIPT pool deploy failed on chain.", { requestDigest, coinType, digest: run.digest });
   const poolId = deployed.created.find((c) => /::pool::Pool</.test(c.objectType))?.objectId ?? null;
 
-  return { status: "CONFIRMED", error: null, digest: run.digest, requestDigest, coinType, poolId, feeRecipient };
+  // The bought tokens land in the bot wallet (it sent the deploy); hand them
+  // to the creator who funded the buy.
+  if (buyCoin && devBuyer) {
+    const deliverError = await deliverBoughtCoin({ keypair, bot: sender, coinType, to: devBuyer.address, gasPrice });
+    if (deliverError) devBuyError = `First buy executed but ${deliverError}`;
+  }
+
+  return { status: "CONFIRMED", error: null, digest: run.digest, requestDigest, coinType, poolId, feeRecipient, devBuyError };
 }

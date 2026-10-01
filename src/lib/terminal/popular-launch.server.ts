@@ -16,6 +16,7 @@
  */
 import { Transaction } from "@mysten/sui/transactions";
 
+import { deliverBoughtCoin, escrowCreatorSui, refundCreatorSui, type DevBuySigner, type OwnedSuiCoin } from "./devbuy-sui.server";
 import { patchCoinTemplateByValue } from "./maelstrom-template.server";
 import { tokenIconUrl } from "./xLauncher";
 import {
@@ -90,6 +91,10 @@ export interface PopularLaunchInput {
   telegram?: string | null;
   /** Launcher wallet that should own the curve's creator role; null keeps it with the bot. */
   creatorWallet?: string | null;
+  /** Creator's opening buy in SUI (null/0 = none). Funded by devBuyer, never the bot. */
+  devBuySui?: number | null;
+  /** The creator's OurBank wallet: funds and receives the first buy. */
+  devBuyer?: DevBuySigner | null;
 }
 
 export interface PopularLaunchResult {
@@ -99,6 +104,8 @@ export interface PopularLaunchResult {
   coinType: string | null;
   curveId: string | null;
   creatorTransferred: boolean;
+  /** Set when the launch succeeded but the first buy did not go through. */
+  devBuyError: string | null;
 }
 
 const fail = (error: string, extra: Partial<PopularLaunchResult> = {}): PopularLaunchResult => ({
@@ -108,6 +115,7 @@ const fail = (error: string, extra: Partial<PopularLaunchResult> = {}): PopularL
   coinType: null,
   curveId: null,
   creatorTransferred: false,
+  devBuyError: null,
   ...extra,
 });
 
@@ -271,6 +279,25 @@ export async function launchOnPopular(input: PopularLaunchInput): Promise<Popula
   }
   if (!currencyRef) return fail("The coin registered but its shared metadata is not visible yet.", { coinType });
 
+  // Creator-funded first buy: the creator's SUI rides into the curve::create
+  // call merged with the fee coin, so the buy lands in the same block the
+  // curve opens — no sniper can get in first. The bot's own SUI is never used.
+  const devBuyMist =
+    input.devBuySui && input.devBuySui > 0 && input.devBuyer ? BigInt(Math.round(input.devBuySui * 1e9)) : 0n;
+  let escrow: OwnedSuiCoin | null = null;
+  let devBuyError: string | null = null;
+  if (devBuyMist > 0n && input.devBuyer) {
+    const moved = await escrowCreatorSui({ buyer: input.devBuyer, bot: sender, amountMist: devBuyMist, gasPrice });
+    escrow = moved.coin;
+    if (!escrow) devBuyError = `First buy skipped: ${moved.error}`;
+  }
+  /** Returns the escrowed SUI to the creator; appends the outcome to the error. */
+  const refundEscrow = async (error: string, extra: Partial<PopularLaunchResult> = {}): Promise<PopularLaunchResult> => {
+    if (!escrow || !input.devBuyer) return fail(error, extra);
+    const refundError = await refundCreatorSui({ keypair, bot: sender, coin: escrow, to: input.devBuyer.address, gasPrice });
+    return fail(`${error} ${refundError ?? "The first-buy SUI was returned to the creator."}`, extra);
+  };
+
   const [configRef, treasuryRef, cetusConfigRef, cetusPoolsRef, randomRef, clockRef, launchGas] = await Promise.all([
     sharedRef(POPULAR_CONFIG),
     sharedRef(POPULAR_TREASURY),
@@ -280,11 +307,16 @@ export async function launchOnPopular(input: PopularLaunchInput): Promise<Popula
     sharedRef(CLOCK),
     freshGas(sender),
   ]);
-  if (launchGas.length === 0) return fail("The bot wallet has no SUI coin left to pay gas.", { coinType });
+  if (launchGas.length === 0) return refundEscrow("The bot wallet has no SUI coin left to pay gas.", { coinType });
 
   const tx = new Transaction();
   withGas(tx, sender, launchGas, gasPrice, LAUNCH_BUDGET);
   const [feeCoin] = tx.splitCoins(tx.gas, [tx.pure.u64(settings.launchFee)]);
+  // The coin handed to curve::create covers fee + first buy; the escrowed
+  // creator coin is merged in so the buy is paid by the creator, not the bot.
+  if (escrow) {
+    tx.mergeCoins(feeCoin!, [tx.objectRef({ objectId: escrow.coinObjectId, version: escrow.version, digest: escrow.digest })]);
+  }
   tx.moveCall({
     target: `${POPULAR_LATEST_PACKAGE}::curve::create`,
     typeArguments: [coinType],
@@ -297,7 +329,7 @@ export async function launchOnPopular(input: PopularLaunchInput): Promise<Popula
       tx.objectRef({ objectId: metadataCap.objectId, version: metadataCap.version, digest: metadataCap.digest }),
       tx.sharedObjectRef({ ...currencyRef, mutable: false }),
       feeCoin!,
-      tx.pure.u64(0), // no dev buy: the bot never buys for the creator
+      tx.pure.u64(devBuyMist), // creator-funded first buy; 0 when none
       tx.pure.string(short(input.website, 200)),
       tx.pure.string(short(input.xLink, 200)),
       tx.pure.string(short(input.telegram, 200)),
@@ -307,12 +339,12 @@ export async function launchOnPopular(input: PopularLaunchInput): Promise<Popula
     ],
   });
   const run = await signAndExecute(tx, keypair);
-  if (!run.ok || !run.digest) return fail(run.error ?? "The POPULAR launch failed.", { coinType, digest: run.digest });
+  if (!run.ok || !run.digest) return refundEscrow(run.error ?? "The POPULAR launch failed.", { coinType, digest: run.digest });
   const launched = await receipt(run.digest);
-  if (!launched.ok) return fail(launched.error ?? "The POPULAR launch failed on chain.", { coinType, digest: run.digest });
+  if (!launched.ok) return refundEscrow(launched.error ?? "The POPULAR launch failed on chain.", { coinType, digest: run.digest });
   const created = launched.events.find((e) => e.type === normalizeType(POPULAR_EVENT_CREATED));
   const curveId = typeof created?.parsedJson["curve_id"] === "string" ? (created.parsedJson["curve_id"] as string) : null;
-  if (!curveId) return fail("The launch finished without POPULAR's on-chain confirmation.", { coinType, digest: run.digest });
+  if (!curveId) return refundEscrow("The launch finished without POPULAR's on-chain confirmation.", { coinType, digest: run.digest });
 
   // Step 4 — hand the creator role (and its fees) to the launcher's wallet.
   let creatorTransferred = false;
@@ -337,5 +369,12 @@ export async function launchOnPopular(input: PopularLaunchInput): Promise<Popula
     }
   }
 
-  return { status: "CONFIRMED", error: null, digest: run.digest, coinType, curveId, creatorTransferred };
+  // The bought tokens land in the bot wallet (it sent the launch); hand them
+  // to the creator who funded the buy.
+  if (escrow && input.devBuyer) {
+    const deliverError = await deliverBoughtCoin({ keypair, bot: sender, coinType, to: input.devBuyer.address, gasPrice });
+    if (deliverError) devBuyError = `First buy executed but ${deliverError}`;
+  }
+
+  return { status: "CONFIRMED", error: null, digest: run.digest, coinType, curveId, creatorTransferred, devBuyError };
 }
