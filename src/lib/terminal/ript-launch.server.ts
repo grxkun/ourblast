@@ -325,17 +325,24 @@ export async function deployRiptLp(
       tx.sharedObjectRef({ ...clockRef, mutable: false }),
       tx.sharedObjectRef({ ...bluefinRef, mutable: true }),
       quoteZero,
-      buyZero,
+      buyArg,
       policy,
       tx.pure.address(feeRecipient),
       tx.sharedObjectRef({ ...distributorRef, mutable: false }),
     ],
   });
   const run = await signAndExecute(tx, keypair);
-  if (!run.ok || !run.digest) return fail(run.error ?? "RIPT pool deploy failed.", { requestDigest, coinType });
+  if (!run.ok || !run.digest) return refundEscrow(run.error ?? "RIPT pool deploy failed.", { requestDigest, coinType });
   const deployed = await receipt(run.digest);
-  if (!deployed.ok) return fail(deployed.error ?? "RIPT pool deploy failed on chain.", { requestDigest, coinType, digest: run.digest });
+  if (!deployed.ok) return refundEscrow(deployed.error ?? "RIPT pool deploy failed on chain.", { requestDigest, coinType, digest: run.digest });
   const poolId = deployed.created.find((c) => /::pool::Pool</.test(c.objectType))?.objectId ?? null;
 
-  return { status: "CONFIRMED", error: null, digest: run.digest, requestDigest, coinType, poolId, feeRecipient };
+  // The bought tokens land in the bot wallet (it sent the deploy); hand them
+  // to the creator who funded the buy.
+  if (buyCoin && devBuyer) {
+    const deliverError = await deliverBoughtCoin({ keypair, bot: sender, coinType, to: devBuyer.address, gasPrice });
+    if (deliverError) devBuyError = `First buy executed but ${deliverError}`;
+  }
+
+  return { status: "CONFIRMED", error: null, digest: run.digest, requestDigest, coinType, poolId, feeRecipient, devBuyError };
 }
