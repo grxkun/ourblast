@@ -566,7 +566,8 @@ export async function executeLaunchRequest(requestId: string): Promise<LaunchOut
       telegram: socials.telegram,
       // Maelstrom routes the pool's LP fees to one address: the launcher's own
       // wallet when we know it, otherwise the bot wallet holds them.
-      feeRecipient: routing.launcherPaidOnChain ? routing.payees[3] ?? null : null,
+      // The launcher is always the last payee in the route.
+      feeRecipient: routing.launcherPaidOnChain ? routing.payees[routing.payees.length - 1] ?? null : null,
       // "paired with USDC" → a TOKEN/USDC Cetus pool; unsupported pairs fall back to SUI.
       quote: resolvePairToken(pad, extractPairToken(request.tweet_text ?? "")),
     });
