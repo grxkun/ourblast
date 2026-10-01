@@ -87,7 +87,7 @@ export async function escrowCreatorSui(args: {
   try {
     const [gas, coins] = await Promise.all([gasCoins(args.buyer.address), suiCoins(args.buyer.address)]);
     if (gas.length === 0) return { coin: null, error: "The creator wallet had no SUI for gas." };
-    const spendable = coins.filter((c) => !gas.some((g) => g.coinObjectId === c.coinObjectId));
+    const spendable = coins.filter((c) => !gas.some((g) => g.objectId === c.coinObjectId));
     if (spendable.length === 0) return { coin: null, error: "The creator wallet held no SUI for the first buy." };
     const total = spendable.reduce((sum, c) => sum + BigInt(c.balance), 0n);
     if (total < args.amountMist) {
