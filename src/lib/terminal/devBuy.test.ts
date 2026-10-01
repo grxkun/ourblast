@@ -420,6 +420,19 @@ describe("launch tweets that mention a dev buy", () => {
     expect(parsed?.perps?.underlying).toBe("SAMSUNG");
   });
 
+  it("reads the dev buy as SUI on POPULAR and RIPT, USDC on Perpsplexity", async () => {
+    const { parseDeployTweet } = await import("@/lib/terminal/xLauncher");
+    const popular = parseDeployTweet("@Ourblastbot launch on Popular, $POPCAT, Pop Cat, Dev buy 25 SUI");
+    expect(popular?.devBuySui).toBe(25);
+    expect(popular?.devBuyUsdc).toBeUndefined();
+    const ript = parseDeployTweet("@Ourblastbot launch on ript.fi, $RIPTCAT, Ript Cat, first buy 10");
+    expect(ript?.devBuySui).toBe(10);
+    expect(ript?.devBuyUsdc).toBeUndefined();
+    const suipump = parseDeployTweet("@Ourblastbot launch $DOG Sui Dog, dev buy 5");
+    expect(suipump?.devBuySui).toBeUndefined();
+    expect(suipump?.devBuyUsdc).toBeUndefined();
+  });
+
   it("does not let a 'sui' tag after the amount bleed into the token name", async () => {
     const { parseDeployTweet } = await import("@/lib/terminal/xLauncher");
     const parsed = parseDeployTweet(
