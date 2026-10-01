@@ -480,6 +480,7 @@ export async function executeLaunchRequest(requestId: string): Promise<LaunchOut
   let perpsPoolId: string | null = null;
   let blastPoolObjectId: string | null = null;
   let maelstromPoolId: string | null = null;
+  let popularCurveId: string | null = null;
   // Set when the launch confirmed but the creator's first buy did not happen.
   let devBuyNotice: string | null = null;
 
@@ -593,6 +594,7 @@ export async function executeLaunchRequest(requestId: string): Promise<LaunchOut
     });
     if (outcome.status === "CONFIRMED" && outcome.coinType) {
       deployment = { tokenAddress: outcome.coinType, transactionDigest: outcome.digest ?? "" };
+      popularCurveId = outcome.curveId;
     } else {
       failure = outcome.error ?? "The POPULAR launch did not confirm on chain.";
     }
@@ -665,8 +667,10 @@ export async function executeLaunchRequest(requestId: string): Promise<LaunchOut
     ? maelstromCoinUrl(deployment.tokenAddress)
     : isPerps
       ? `https://suiscan.xyz/mainnet/coin/${deployment.tokenAddress}`
-      : tokenPageUrl(pad, deployment.tokenAddress);
-  const poolUrl = isMaelstrom
+      : tokenPageUrl(pad, popularCurveId ?? deployment.tokenAddress);
+  const poolUrl = popularCurveId
+    ? tokenPageUrl(pad, popularCurveId)
+    : isMaelstrom
     ? maelstromPoolId
       ? dexscreenerPoolUrl(maelstromPoolId)
       : pad.site
@@ -688,7 +692,7 @@ export async function executeLaunchRequest(requestId: string): Promise<LaunchOut
     .update({
       status: "DEPLOYED",
       token_address: deployment.tokenAddress,
-      pool_object_id: blastPoolObjectId ?? maelstromPoolId,
+      pool_object_id: blastPoolObjectId ?? maelstromPoolId ?? popularCurveId,
       token_url: tokenUrl,
       pool_url: poolUrl,
       tx_digest: deployment.transactionDigest,
