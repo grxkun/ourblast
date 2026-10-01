@@ -121,6 +121,8 @@
     scroll-behavior: smooth;
   }
 
+
+
   body {
     @apply bg-background text-foreground font-body antialiased;
     background-image:
