@@ -343,7 +343,7 @@ export const MessageResponse = memo(
         "size-full [&>*:first-child]:mt-0 [&>*:last-child]:mb-0",
         className
       )}
-      plugins={plugins as MessageResponseProps["plugins"]}
+      plugins={plugins as NonNullable<MessageResponseProps["plugins"]>}
       {...props}
     />
     );
