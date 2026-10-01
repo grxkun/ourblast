@@ -208,8 +208,10 @@ function Docs() {
         </ul>
         <p>
           Your dev buy is paid from your own OurBank wallet and the position lands in your wallet.
-          It happens in the same block as the pool opening, so nobody can buy ahead of you. If the
-          launch fails at any point, that money is sent straight back to you.
+          It rides inside the very same blockchain transaction that opens the pool — the pool
+          opening and your first buy are one atomic step, so no sniper can buy ahead of you, no
+          matter how fast they are. If the launch fails at any point, that money is sent straight
+          back to you.
         </p>
       </Block>
 
