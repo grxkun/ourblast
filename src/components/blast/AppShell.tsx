@@ -20,8 +20,10 @@ const NAV = [
   { to: "/meme", label: "Meme", icon: "😂" },
   { to: "/roast", label: "Roast", icon: "🔥" },
   { to: "/builders", label: "Builders", icon: "🏗️" },
+  { to: "/docs", label: "Docs", icon: "📘" },
   { to: "/how-to-play", label: "Guide", icon: "📖" },
   { to: "/profile", label: "You", icon: "👾" },
+
 ] as const;
 
 export function AppShell({ children }: { children: ReactNode }) {
@@ -110,7 +112,9 @@ export function AppShell({ children }: { children: ReactNode }) {
               item.to !== "/ecosystem" &&
               item.to !== "/leaderboard" &&
               item.to !== "/chat" &&
+              item.to !== "/docs" &&
               item.to !== "/meme"
+
           ).map((item) => (
             <Link
               key={item.to}
