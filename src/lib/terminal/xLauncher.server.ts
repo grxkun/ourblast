@@ -52,8 +52,8 @@ export interface LaunchRequestRow {
 const INTEGRATION_PENDING = "Launchpad integration coming soon.";
 
 /**
- * On-chain creator-fee routing. The published split — 20% OURBLAST treasury,
- * 80% developer, 10% treasury, 10% launcher (bot 0%) — is written straight into the bonding curve.
+ * On-chain creator-fee routing. The published split — 80% launcher,
+ * 10% treasury, 10% developer (bot 0%) — is written straight into the bonding curve.
  *
  * When we know the launcher's wallet (their X account is linked to an OURBLAST
  * profile) their share goes to that wallet on chain. A claim/verification link is
