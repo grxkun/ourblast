@@ -8,7 +8,7 @@ import { launchFeeMist, lowBalanceNotice, noWalletNotice, requiredBalanceMist } 
  * starts — nothing is minted and no chain call is made.
  */
 export type LaunchFeeResult =
-  | { ok: true; digest: string; amountMist: bigint }
+  | { ok: true; digest: string; amountMist: bigint; payerAddress: string }
   | { ok: false; notice: string };
 
 export async function collectLaunchFee(
@@ -36,5 +36,31 @@ export async function collectLaunchFee(
   if (!sent.ok) {
     return { ok: false, notice: `The launch fee could not be taken from your OurBank wallet: ${sent.error}` };
   }
-  return { ok: true, digest: sent.digest, amountMist };
+  return { ok: true, digest: sent.digest, amountMist, payerAddress: wallet.address };
+}
+
+/**
+ * Returns a collected launch fee from the bot wallet to the payer when the
+ * launch did not reach the chain. Never throws; reports success or the reason.
+ */
+export async function refundLaunchFee(payerAddress: string, amountMist: bigint): Promise<{ ok: true; digest: string } | { ok: false; error: string }> {
+  try {
+    const { Transaction } = await import("@mysten/sui/transactions");
+    const { loadDeployer, gasCoins, withGas, signAndExecute, rpc } = await import("./suipump-launch.server");
+    const bot = await loadDeployer();
+    if (!bot) return { ok: false, error: "bot wallet unavailable" };
+    const sender = bot.getPublicKey().toSuiAddress();
+    const gas = await gasCoins(sender);
+    if (gas.length === 0) return { ok: false, error: "bot wallet has no SUI" };
+    const price = await rpc<string>("suix_getReferenceGasPrice", []);
+    const tx = new Transaction();
+    withGas(tx, sender, gas, Number(price ?? 1000), 10_000_000);
+    const [coin] = tx.splitCoins(tx.gas, [amountMist]);
+    tx.transferObjects([coin], payerAddress);
+    const res = await signAndExecute(tx, bot);
+    if (!res.ok || !res.digest) return { ok: false, error: res.error ?? "refund rejected" };
+    return { ok: true, digest: res.digest };
+  } catch (e) {
+    return { ok: false, error: (e as Error).message };
+  }
 }
