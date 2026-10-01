@@ -149,8 +149,9 @@ function Docs() {
       <Block id="ourbank" kicker="Your money" title="The OurBank wallet">
         <p>
           Every account gets an OurBank wallet. It pays your fees, funds your first buys and
-          receives your tokens. Keys are created and used inside a secure enclave — they are never
-          shown, exported or logged, and signing only happens for a command you sent.
+          receives your tokens. Keys live inside hardware-isolated secure enclaves (Turnkey, running
+          in AWS Nitro) — they are never shown, exported or logged, and signing only happens for a
+          command you sent. No plain-text key ever leaves the enclave.
         </p>
         <p>Open the OurBank card in the terminal to create your wallet, see balances and top up.</p>
         <Cmd>show my wallet</Cmd>
@@ -244,7 +245,9 @@ function Docs() {
           The Perpsplexity figure includes that launchpad's own 5 SUI charge. Leveraged launches
           also seed the pool with 1 {PERPSPLEXITY_CURVE_QUOTE_SYMBOL}. The same fee applies whether
           you launch from the terminal or from X. If your balance is short, the launch stops before
-          anything is created and you get a top-up message.
+          anything is created and you get a top-up message. If a launch fails after the fee was
+          taken — for example a chain error — the fee is sent back to your wallet automatically, so
+          a retry never charges you twice.
         </p>
       </Block>
 
@@ -348,6 +351,11 @@ function Docs() {
             — every coin the bot has deployed, with live links.
           </li>
           <li>
+            <strong className="text-foreground">Open MCP endpoint</strong> — AI agents such as
+            Claude or Cursor can inspect launches, builders and pad metrics through the public,
+            read-only endpoint at ourblast.xyz/mcp. No wallets, keys or private data are exposed.
+          </li>
+          <li>
             <Link to="/how-to-play" className="text-primary underline">
               How to play
             </Link>{" "}
@@ -373,7 +381,7 @@ function Docs() {
             },
             {
               q: "What happens if a launch fails?",
-              a: "Nothing is announced, and any money moved for your first buy is returned to your wallet automatically.",
+              a: "Nothing is announced. Any money moved for your first buy is returned to your wallet, and the launch fee is refunded automatically — a retry never charges twice.",
             },
             {
               q: "Can fees be paid to a different wallet later?",
