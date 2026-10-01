@@ -279,6 +279,25 @@ export async function launchOnPopular(input: PopularLaunchInput): Promise<Popula
   }
   if (!currencyRef) return fail("The coin registered but its shared metadata is not visible yet.", { coinType });
 
+  // Creator-funded first buy: the creator's SUI rides into the curve::create
+  // call merged with the fee coin, so the buy lands in the same block the
+  // curve opens — no sniper can get in first. The bot's own SUI is never used.
+  const devBuyMist =
+    input.devBuySui && input.devBuySui > 0 && input.devBuyer ? BigInt(Math.round(input.devBuySui * 1e9)) : 0n;
+  let escrow: OwnedSuiCoin | null = null;
+  let devBuyError: string | null = null;
+  if (devBuyMist > 0n && input.devBuyer) {
+    const moved = await escrowCreatorSui({ buyer: input.devBuyer, bot: sender, amountMist: devBuyMist, gasPrice });
+    escrow = moved.coin;
+    if (!escrow) devBuyError = `First buy skipped: ${moved.error}`;
+  }
+  /** Returns the escrowed SUI to the creator; appends the outcome to the error. */
+  const refundEscrow = async (error: string, extra: Partial<PopularLaunchResult> = {}): Promise<PopularLaunchResult> => {
+    if (!escrow || !input.devBuyer) return fail(error, extra);
+    const refundError = await refundCreatorSui({ keypair, bot: sender, coin: escrow, to: input.devBuyer.address, gasPrice });
+    return fail(`${error} ${refundError ?? "The first-buy SUI was returned to the creator."}`, extra);
+  };
+
   const [configRef, treasuryRef, cetusConfigRef, cetusPoolsRef, randomRef, clockRef, launchGas] = await Promise.all([
     sharedRef(POPULAR_CONFIG),
     sharedRef(POPULAR_TREASURY),
