@@ -5,6 +5,7 @@ import {
   formatSui,
   launchFeeMist,
   lowBalanceNotice,
+  noWalletNotice,
   requiredBalanceMist,
 } from "./launchFee";
 
