@@ -451,10 +451,15 @@ export async function executeLaunchRequest(requestId: string): Promise<LaunchOut
   // Anti-spam: a launch called in from X costs 1 SUI, taken from the caller's
   // own OurBank wallet and paid to the @ourblastbot wallet before any launchpad
   // call happens. Perpsplexity's 5 SUI on-chain launchpad fee, fronted by the
-  // bot, is collected with it. Terminal launches are not charged here.
-  if (/^\d+$/.test(String(request.x_post_id ?? ""))) {
+  // bot, is collected with it. Terminal launches pay the same fee, charged to
+  // the OurBank wallet of the signed-in account that pressed launch.
+  const postId = String(request.x_post_id ?? "");
+  const terminalUserId = postId.startsWith("terminal-")
+    ? (postId.match(/^terminal-([0-9a-fA-F-]{36})-/)?.[1] ?? null)
+    : null;
+  if (/^\d+$/.test(postId) || postId.startsWith("terminal-")) {
     const { collectLaunchFee } = await import("./launchFee.server");
-    const fee = await collectLaunchFee(request.x_username, pad.id);
+    const fee = await collectLaunchFee({ handle: request.x_username, userId: terminalUserId }, pad.id);
     if (!fee.ok) {
       await client
         .from("x_launch_requests")

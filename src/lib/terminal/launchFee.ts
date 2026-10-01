@@ -41,8 +41,10 @@ export function formatSui(mist: bigint): string {
 }
 
 /** Wording used when the caller has no OurBank wallet linked. */
-export function noWalletNotice(): string {
-  return "No OurBank wallet linked to your X account. Open https://ourblast.xyz/terminal, link it, top it up, then post the launch again.";
+export function noWalletNotice(fromTerminal = false): string {
+  return fromTerminal
+    ? "No OurBank wallet found for your account. Open the OurBank card in the terminal, create your wallet, top it up, then launch again."
+    : "No OurBank wallet linked to your X account. Open https://ourblast.xyz/terminal, link it, top it up, then post the launch again.";
 }
 
 /** Wording used when the caller's OurBank wallet is too light. */
