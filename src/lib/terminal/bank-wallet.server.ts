@@ -139,6 +139,17 @@ export async function findBankWallet(handle: string): Promise<BankWalletRow | nu
   return (data as BankWalletRow | null) ?? null;
 }
 
+/** Wallet linked to a signed-in account, used by terminal-side flows. */
+export async function findBankWalletByUserId(userId: string): Promise<BankWalletRow | null> {
+  const db = await admin();
+  const { data } = await db
+    .from("bank_wallets")
+    .select(WALLET_COLUMNS)
+    .eq("user_id", userId)
+    .maybeSingle();
+  return (data as BankWalletRow | null) ?? null;
+}
+
 /** Existing wallet for this X handle, or a freshly generated one. */
 export async function ensureBankWallet(handle: string, userId: string | null): Promise<BankWallet> {
   const existing = await findBankWallet(handle);
