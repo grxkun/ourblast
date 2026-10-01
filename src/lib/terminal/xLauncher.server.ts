@@ -598,6 +598,25 @@ export async function executeLaunchRequest(requestId: string): Promise<LaunchOut
     } else {
       failure = outcome.error ?? "The POPULAR launch did not confirm on chain.";
     }
+  } else if (pad.id === "ript") {
+    // RIPT: pay the request on chain, RIPT's publisher mints the vanity coin,
+    // then the bot opens the Bluefin pool with the launcher as fee recipient.
+    const { launchOnRipt } = await import("./ript-launch.server");
+    const outcome = await launchOnRipt({
+      symbol: request.symbol,
+      name: request.name,
+      description: extractDescription(request.tweet_text ?? "") ?? (isTerminalLaunch ? "" : request.tweet_text ?? ""),
+      iconUrl: tokenIconUrl(request.icon_url),
+      website: socials.website,
+      xLink: socials.x ?? (request.x_username ? `https://x.com/${request.x_username}` : null),
+      telegram: socials.telegram,
+      creatorWallet: routing.launcherPaidOnChain ? routing.payees[routing.payees.length - 1] ?? null : null,
+    });
+    if (outcome.status === "CONFIRMED" && outcome.coinType) {
+      deployment = { tokenAddress: outcome.coinType, transactionDigest: outcome.digest ?? "" };
+    } else {
+      failure = outcome.error ?? "The RIPT launch did not confirm on chain.";
+    }
   } else if (pad.id === "perpsplexity") {
 
     // Perpsplexity: when the post names an underlying market the launch is a
@@ -709,7 +728,7 @@ export async function executeLaunchRequest(requestId: string): Promise<LaunchOut
   // there is no launch-time payee split to claim there.
   // Maelstrom pays LP fees on chain to one recipient set at launch, so there is
   // no OurBlast payee split to claim there either.
-  const claimToken = isPerps || isMaelstrom || pad.id === "popular" ? null : await ensureFeeClaimLink(request.symbol, feeReceiverHandle(request));
+  const claimToken = isPerps || isMaelstrom || pad.id === "popular" || pad.id === "ript" ? null : await ensureFeeClaimLink(request.symbol, feeReceiverHandle(request));
 
 
   await postDeployedReply(request, tokenUrl, poolUrl, claimToken, positionLine);
