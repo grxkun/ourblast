@@ -11,12 +11,21 @@ export type LaunchFeeResult =
   | { ok: true; digest: string; amountMist: bigint }
   | { ok: false; notice: string };
 
-export async function collectLaunchFee(handle: string, padId: string): Promise<LaunchFeeResult> {
-  const { findBankWallet, sendFromBankWallet, SUI_TYPE } = await import("./bank-wallet.server");
+export async function collectLaunchFee(
+  caller: string | { handle?: string | null; userId?: string | null },
+  padId: string,
+): Promise<LaunchFeeResult> {
+  const { findBankWallet, findBankWalletByUserId, sendFromBankWallet, SUI_TYPE } = await import("./bank-wallet.server");
   const { rpc } = await import("./suipump-launch.server");
 
-  const wallet = await findBankWallet(handle);
-  if (!wallet) return { ok: false, notice: noWalletNotice() };
+  const handle = typeof caller === "string" ? caller : caller.handle ?? null;
+  const userId = typeof caller === "string" ? null : caller.userId ?? null;
+
+  // A terminal launch may have no linked X handle, so the signed-in account is
+  // the fallback way to find the caller's own OurBank wallet.
+  let wallet = handle && handle !== "terminal" ? await findBankWallet(handle) : null;
+  if (!wallet && userId) wallet = await findBankWalletByUserId(userId);
+  if (!wallet) return { ok: false, notice: noWalletNotice(Boolean(userId)) };
 
   const balance = await rpc<{ totalBalance: string }>("suix_getBalance", [wallet.address, SUI_TYPE]);
   const have = BigInt(balance?.totalBalance ?? "0");
