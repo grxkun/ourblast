@@ -264,19 +264,84 @@ function Docs() {
         </p>
       </Block>
 
-      <Block id="claim" kicker="Earnings" title="Creator fees">
-        <p>Coins you launch earn you trading fees. Check and collect them any time:</p>
+      <Block id="claim" kicker="Earnings" title="Creator fees — the full rules">
+        <p>
+          Coins you launch earn you trading fees: the launchpad pays a creator fee on every trade,
+          and OURBLAST's share of that fee is split in fixed parts the moment fees are collected.
+          The split is the same on every launchpad and cannot be changed per coin.
+        </p>
+        <div className="overflow-x-auto rounded-xl border border-border">
+          <table className="w-full border-collapse text-left font-body text-sm">
+            <thead className="bg-secondary/40 text-foreground">
+              <tr>
+                <th className="px-4 py-2.5 font-semibold">Recipient</th>
+                <th className="px-4 py-2.5 font-semibold">Share</th>
+                <th className="px-4 py-2.5 font-semibold">What it is for</th>
+              </tr>
+            </thead>
+            <tbody>
+              {CREATOR_FEE_ROUTES.map((route) => (
+                <tr key={route.label} className="border-t border-border">
+                  <td className="px-4 py-2.5 text-foreground">{route.label}</td>
+                  <td className="px-4 py-2.5">{Math.round(route.share * 100)}%</td>
+                  <td className="px-4 py-2.5">
+                    {route.address ? "Ops, development or community treasury" : "Yours — " + LAUNCHER_SHARE_USES}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        <h3 className="pt-2 font-body text-sm font-bold text-foreground">
+          How to check and claim
+        </h3>
         <Cmd>check fees on $MYCOIN</Cmd>
         <Cmd>claim my fees on $MYCOIN</Cmd>
         <p>
-          Fees always pay the recipient locked in at launch — that address is fixed when the coin is
-          created and cannot be redirected afterwards.
+          These work in the terminal and as an X reply — on X, write it as{" "}
+          <em>{BOT_HANDLE} check fees on $MYCOIN</em> or{" "}
+          <em>{BOT_HANDLE} claim my fees on $MYCOIN</em>. Claiming triggers the on-chain payout
+          straight from the launchpad; it is not a transfer the bot holds.
         </p>
+
+        <h3 className="pt-2 font-body text-sm font-bold text-foreground">The claim rules</h3>
+        <ul className="list-disc space-y-1.5 pl-5">
+          <li>
+            <strong className="text-foreground">Locked at launch.</strong> The fee recipients are
+            written into the coin when it is created and cannot be changed, redirected or stolen
+            afterwards — a claim always pays the recipients fixed at launch, no matter what the
+            claim message says.
+          </li>
+          <li>
+            <strong className="text-foreground">Who can claim.</strong> Only the X account that
+            launched the token, or the account the fees were designated to, can trigger the claim
+            from X. The bot matches the handle of the poster — a claim from another account is
+            refused.
+          </li>
+          <li>
+            <strong className="text-foreground">Redirect requests change nothing.</strong> Saying
+            "claim my fees and send them to @someone" releases the fees, but they still pay the
+            recipients locked in at launch — never a new address from the message.
+          </li>
+          <li>
+            <strong className="text-foreground">Route them to someone else instead.</strong> If you
+            want a different wallet to receive your 70%, set that <em>before</em> you launch: in the
+            terminal, open the fee routing card (or type <em>fee routing</em>) and choose your own
+            wallet, another Sui wallet, or an X handle. An X handle gets an OURBLAST claim link the
+            designated account can use to collect the fees.
+          </li>
+          <li>
+            <strong className="text-foreground">Once claimed, it stands.</strong> After the
+            designated wallet claims, the destination is remembered and future launches pay it
+            straight on chain.
+          </li>
+        </ul>
         <p>
           <Link to="/creator-fees" className="text-primary underline">
             See the creator fees page
           </Link>{" "}
-          for the full split.
+          for live balances and the fee routing setup.
         </p>
       </Block>
 
