@@ -327,7 +327,7 @@ function Docs() {
           </li>
           <li>
             <strong className="text-foreground">Route them to someone else instead.</strong> If you
-            want a different wallet to receive your 70%, set that <em>before</em> you launch: in the
+            want a different wallet to receive your launcher share, set that <em>before</em> you launch: in the
             terminal, open the fee routing card (or type <em>fee routing</em>) and choose your own
             wallet, another Sui wallet, or an X handle. An X handle gets an OURBLAST claim link the
             designated account can use to collect the fees.

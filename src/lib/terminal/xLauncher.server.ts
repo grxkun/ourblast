@@ -53,10 +53,10 @@ const INTEGRATION_PENDING = "Launchpad integration coming soon.";
 
 /**
  * On-chain creator-fee routing. The published split — 20% OURBLAST treasury,
- * 10% developer, 10% treasury, 70% launcher — is written straight into the bonding curve.
+ * 80% developer, 10% treasury, 10% launcher (bot 0%) — is written straight into the bonding curve.
  *
  * When we know the launcher's wallet (their X account is linked to an OURBLAST
- * profile) their 70% goes to that wallet on chain. A claim/verification link is
+ * profile) their share goes to that wallet on chain. A claim/verification link is
  * still posted in the X reply so the recipient can prove and remember their
  * payout route. When no wallet is known, the bot wallet holds their share until
  * that same X handle claims it. SUIPUMP_FEE_PAYEES still overrides everything
@@ -99,12 +99,12 @@ async function launcherWallet(xUsername: string): Promise<string | null> {
 interface FeeRouting {
   payees: string[];
   shareBps: number[];
-  /** True when the launcher's 70% is paid straight to their own wallet. */
+  /** True when the launcher's share is paid straight to their own wallet. */
   launcherPaidOnChain: boolean;
 }
 
 /**
- * The handle whose wallet receives the launcher's 70%: the fee receiver named
+ * The handle whose wallet receives the launcher's share: the fee receiver named
  * in the tweet when there is one, otherwise the caller themselves.
  */
 export function feeReceiverHandle(row: {
@@ -128,39 +128,40 @@ async function feeRouting(
     };
   }
 
-  // The bot wallet receives OURBLAST's 10% ops & gas share.
+  // The bot wallet receives launcher's share in trust when no wallet is known.
   const bot = (process.env['OURBLAST_BOT_WALLET_ADDRESS']?.trim() || BOT_WALLET_ADDRESS).toLowerCase();
   const developer = FOUNDER_ADDRESS.toLowerCase();
   const treasury = treasuryPayee();
   // A tweet may hand the creator fees to someone else ("Set @adiniyi as fee
-  // receiver"): that wallet takes the launcher's 70% instead.
+  // receiver"): that wallet takes the launcher's share instead.
   const named = (receiver?.wallet ?? "").trim().toLowerCase();
   const launcher = /^0x[0-9a-f]{64}$/.test(named)
     ? named
     : (receiver?.handle ? await launcherWallet(receiver.handle) : null) ?? (receiver?.handle ? null : await launcherWallet(xUsername));
-  const botShareBps = toBps(CREATOR_FEE_SPLIT.bot);
-  const treasuryBps = toBps(CREATOR_FEE_SPLIT.treasury);
+  const route = (entries: [string, number][]) => {
+    // Zero-share payees (the bot, under the current split) are left off chain.
+    const kept = entries.filter(([, bps]) => bps > 0);
+    return { payees: kept.map(([a]) => a), shareBps: kept.map(([, b]) => b) };
+  };
   if (launcher && launcher !== bot && launcher !== developer && launcher !== treasury) {
     return {
-      payees: [bot, developer, treasury, launcher],
-      shareBps: [
-        botShareBps,
-        toBps(CREATOR_FEE_SPLIT.developer),
-        treasuryBps,
-        toBps(CREATOR_FEE_SPLIT.launcher),
-      ],
+      ...route([
+        [bot, toBps(CREATOR_FEE_SPLIT.bot)],
+        [developer, toBps(CREATOR_FEE_SPLIT.developer)],
+        [treasury, toBps(CREATOR_FEE_SPLIT.treasury)],
+        [launcher, toBps(CREATOR_FEE_SPLIT.launcher)],
+      ]),
       launcherPaidOnChain: true,
     };
   }
 
   // No known launcher wallet: the bot wallet holds their share until they claim it.
   return {
-    payees: [bot, developer, treasury],
-    shareBps: [
-      botShareBps + toBps(CREATOR_FEE_SPLIT.launcher),
-      toBps(CREATOR_FEE_SPLIT.developer),
-      treasuryBps,
-    ],
+    ...route([
+      [bot, toBps(CREATOR_FEE_SPLIT.bot) + toBps(CREATOR_FEE_SPLIT.launcher)],
+      [developer, toBps(CREATOR_FEE_SPLIT.developer)],
+      [treasury, toBps(CREATOR_FEE_SPLIT.treasury)],
+    ]),
     launcherPaidOnChain: false,
   };
 }
@@ -677,7 +678,7 @@ export async function executeLaunchRequest(requestId: string): Promise<LaunchOut
     .eq("id", request.id);
 
   // Launcher share: for every Suipump launch reply, include a claim/verification
-  // link for the exact X handle that owns the 70% share. If their wallet was
+  // link for the exact X handle that owns the launcher share. If their wallet was
   // known at launch, this simply verifies/remembers the route; if not, it is how
   // they claim the parked share. Nobody has to ask for the link separately.
   // Perpsplexity routes creator fees through its own pool (pay_creator), so
