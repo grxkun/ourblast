@@ -91,11 +91,11 @@ export const LAUNCHPADS: LaunchpadConfig[] = [
     label: "POPULAR",
     site: "https://popularsui.xyz",
     network: "sui",
-    // Verified POPULAR package; on-chain adapter not wired yet, so stays catalog-only.
+    // Verified POPULAR package + config; launches run through popular-launch.server.ts.
     factoryPackage: "0x0b53342164c85a911bb34e997bf51173e781c5e8578c771d1fd8997c5a82d657",
     factoryObject: "0xc5ebd57da4387a39b5af7cd149242d437c0d195471b4e0534c08d868e77e7015",
     version: null,
-    integrated: false,
+    integrated: true,
     supportsCustomPair: false,
     pairTokens: ["SUI"],
     liquidity: { min: 1, max: 5_000, default: 10 },

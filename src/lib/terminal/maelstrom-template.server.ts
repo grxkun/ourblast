@@ -139,3 +139,45 @@ export function patchMaelstromTemplate(
   return zeroSelfAddress(withConstants);
 
 }
+
+/**
+ * Generic patcher for coin templates whose text constants hold plain
+ * placeholder values (e.g. POPULAR's "TMPL" / "Template Coin"). Every
+ * placeholder is swapped by exact value; the new values must all differ so the
+ * constant pool keeps no duplicates (the Sui verifier rejects those).
+ */
+export function patchCoinTemplateByValue(
+  template: Uint8Array,
+  identifiers: Record<string, string>,
+  values: Record<string, string>,
+): Uint8Array {
+  const replacements = Object.values(values);
+  if (new Set(replacements).size !== replacements.length) {
+    throw new Error("Coin symbol, name, description and image must all differ.");
+  }
+  const withIds = replaceTable(template, IDENTIFIERS_KIND, (body, start, end) => {
+    const ids = readStrings(body, start, end);
+    for (const from of Object.keys(identifiers)) {
+      if (!ids.includes(from)) throw new Error("Coin template identifiers not found.");
+    }
+    const next = ids.map((id) => identifiers[id] ?? id);
+    if (new Set(next).size !== next.length) throw new Error("Coin module name clashes with the template.");
+    return next.flatMap(encodeString);
+  });
+  const withConstants = replaceTable(withIds, CONSTANTS_KIND, (body, start, end) => {
+    const constants = readConstants(body, start, end);
+    const seen = new Set<string>();
+    const out = constants.flatMap((constant) => {
+      const text = constantText(constant);
+      if (text === null || values[text] === undefined) {
+        return [...constant.token, ...encodeUleb(constant.data.length), ...constant.data];
+      }
+      seen.add(text);
+      const data = new Uint8Array(encodeString(values[text] as string));
+      return [...constant.token, ...encodeUleb(data.length), ...data];
+    });
+    if (seen.size !== Object.keys(values).length) throw new Error("Coin template placeholders not found.");
+    return out;
+  });
+  return zeroSelfAddress(withConstants);
+}

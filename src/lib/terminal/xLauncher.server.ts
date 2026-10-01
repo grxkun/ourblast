@@ -480,6 +480,7 @@ export async function executeLaunchRequest(requestId: string): Promise<LaunchOut
   let perpsPoolId: string | null = null;
   let blastPoolObjectId: string | null = null;
   let maelstromPoolId: string | null = null;
+  let popularCurveId: string | null = null;
   // Set when the launch confirmed but the creator's first buy did not happen.
   let devBuyNotice: string | null = null;
 
@@ -577,6 +578,26 @@ export async function executeLaunchRequest(requestId: string): Promise<LaunchOut
     } else {
       failure = outcome.error ?? "The Maelstrom launch did not confirm on chain.";
     }
+  } else if (pad.id === "popular") {
+    // POPULAR: publish the coin, register it, open the bonding curve, then hand
+    // the curve's creator role (and its creator fees) to the launcher's wallet.
+    const { launchOnPopular } = await import("./popular-launch.server");
+    const outcome = await launchOnPopular({
+      symbol: request.symbol,
+      name: request.name,
+      description: extractDescription(request.tweet_text ?? "") ?? (isTerminalLaunch ? "" : request.tweet_text ?? ""),
+      iconUrl: tokenIconUrl(request.icon_url),
+      website: socials.website,
+      xLink: socials.x ?? (request.x_username ? `https://x.com/${request.x_username}` : null),
+      telegram: socials.telegram,
+      creatorWallet: routing.launcherPaidOnChain ? routing.payees[routing.payees.length - 1] ?? null : null,
+    });
+    if (outcome.status === "CONFIRMED" && outcome.coinType) {
+      deployment = { tokenAddress: outcome.coinType, transactionDigest: outcome.digest ?? "" };
+      popularCurveId = outcome.curveId;
+    } else {
+      failure = outcome.error ?? "The POPULAR launch did not confirm on chain.";
+    }
   } else if (pad.id === "perpsplexity") {
 
     // Perpsplexity: when the post names an underlying market the launch is a
@@ -646,8 +667,10 @@ export async function executeLaunchRequest(requestId: string): Promise<LaunchOut
     ? maelstromCoinUrl(deployment.tokenAddress)
     : isPerps
       ? `https://suiscan.xyz/mainnet/coin/${deployment.tokenAddress}`
-      : tokenPageUrl(pad, deployment.tokenAddress);
-  const poolUrl = isMaelstrom
+      : tokenPageUrl(pad, popularCurveId ?? deployment.tokenAddress);
+  const poolUrl = popularCurveId
+    ? tokenPageUrl(pad, popularCurveId)
+    : isMaelstrom
     ? maelstromPoolId
       ? dexscreenerPoolUrl(maelstromPoolId)
       : pad.site
@@ -669,7 +692,7 @@ export async function executeLaunchRequest(requestId: string): Promise<LaunchOut
     .update({
       status: "DEPLOYED",
       token_address: deployment.tokenAddress,
-      pool_object_id: blastPoolObjectId ?? maelstromPoolId,
+      pool_object_id: blastPoolObjectId ?? maelstromPoolId ?? popularCurveId,
       token_url: tokenUrl,
       pool_url: poolUrl,
       tx_digest: deployment.transactionDigest,
@@ -686,7 +709,7 @@ export async function executeLaunchRequest(requestId: string): Promise<LaunchOut
   // there is no launch-time payee split to claim there.
   // Maelstrom pays LP fees on chain to one recipient set at launch, so there is
   // no OurBlast payee split to claim there either.
-  const claimToken = isPerps || isMaelstrom ? null : await ensureFeeClaimLink(request.symbol, feeReceiverHandle(request));
+  const claimToken = isPerps || isMaelstrom || pad.id === "popular" ? null : await ensureFeeClaimLink(request.symbol, feeReceiverHandle(request));
 
 
   await postDeployedReply(request, tokenUrl, poolUrl, claimToken, positionLine);
