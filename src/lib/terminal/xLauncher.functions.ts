@@ -53,6 +53,7 @@ const terminalLaunchSchema = z.object({
   long: z.boolean().default(true),
   leverageBps: z.number().int().min(10_000).max(100_000).nullable().default(null),
   devBuyUsdc: z.number().min(0).max(100_000).nullable().default(null),
+  devBuySui: z.number().min(0).max(100_000).nullable().default(null),
   pairToken: z.string().regex(/^[A-Za-z0-9]{2,10}$/).nullable().default(null),
   feeWallet: z.string().regex(/^0x[a-fA-F0-9]{40,64}$/).nullable().default(null),
   feeX: z.string().regex(/^@?[A-Za-z0-9_]{1,15}$/).nullable().default(null),
@@ -103,6 +104,7 @@ export const launchFromTerminal = createServerFn({ method: "POST" })
             }
           : undefined,
         devBuyUsdc: data.devBuyUsdc ?? undefined,
+        devBuySui: data.devBuySui ?? undefined,
         feeReceiver,
       },
       data.iconUrl,
