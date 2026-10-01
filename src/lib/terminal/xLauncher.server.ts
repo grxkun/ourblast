@@ -746,7 +746,19 @@ export function composeDeployedLaunchReply(
   return `${base}${designation}\n\n${who}:\nhttps://ourblast.xyz/claim/${claimToken}`;
 }
 
+async function postNoticeReply(request: LaunchRequestRow, notice: string): Promise<void> {
+  const { postReply, readXCredentials } = await import("./x-api.server");
+  const credentials = readXCredentials();
+  if (!credentials || !/^\d+$/.test(String(request.x_post_id ?? ""))) return;
+  try {
+    await postReply(credentials, request.x_post_id, notice.slice(0, 275));
+  } catch (error) {
+    console.error(`Notice reply failed for ${request.symbol}: ${error instanceof Error ? error.message : "unknown"}`);
+  }
+}
+
 async function postDeployedReply(
+
   request: LaunchRequestRow,
   tokenUrl: string,
   poolUrl: string,
