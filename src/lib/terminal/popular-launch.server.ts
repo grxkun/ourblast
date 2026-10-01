@@ -16,6 +16,7 @@
  */
 import { Transaction } from "@mysten/sui/transactions";
 
+import { deliverBoughtCoin, escrowCreatorSui, refundCreatorSui, type DevBuySigner, type OwnedSuiCoin } from "./devbuy-sui.server";
 import { patchCoinTemplateByValue } from "./maelstrom-template.server";
 import { tokenIconUrl } from "./xLauncher";
 import {
@@ -90,6 +91,10 @@ export interface PopularLaunchInput {
   telegram?: string | null;
   /** Launcher wallet that should own the curve's creator role; null keeps it with the bot. */
   creatorWallet?: string | null;
+  /** Creator's opening buy in SUI (null/0 = none). Funded by devBuyer, never the bot. */
+  devBuySui?: number | null;
+  /** The creator's OurBank wallet: funds and receives the first buy. */
+  devBuyer?: DevBuySigner | null;
 }
 
 export interface PopularLaunchResult {
@@ -99,6 +104,8 @@ export interface PopularLaunchResult {
   coinType: string | null;
   curveId: string | null;
   creatorTransferred: boolean;
+  /** Set when the launch succeeded but the first buy did not go through. */
+  devBuyError: string | null;
 }
 
 const fail = (error: string, extra: Partial<PopularLaunchResult> = {}): PopularLaunchResult => ({
@@ -108,6 +115,7 @@ const fail = (error: string, extra: Partial<PopularLaunchResult> = {}): PopularL
   coinType: null,
   curveId: null,
   creatorTransferred: false,
+  devBuyError: null,
   ...extra,
 });
 
