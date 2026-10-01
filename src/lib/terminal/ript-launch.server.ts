@@ -78,6 +78,7 @@ const fail = (error: string, extra: Partial<RiptLaunchResult> = {}): RiptLaunchR
   coinType: null,
   poolId: null,
   feeRecipient: null,
+  devBuyError: null,
   ...extra,
 });
 
@@ -255,7 +256,20 @@ export async function launchOnRipt(input: RiptLaunchInput): Promise<RiptLaunchRe
   }
   const coinType = normalizeType(job.coinType);
 
-  return deployRiptLp(keypair, sender, gasPrice, coinType, job.pendingLaunchId, feeRecipient, requestDigest);
+  // Creator-funded first buy: the creator escrows exactly the buy SUI to the
+  // bot, and the bot spends that very coin in the deploy transaction — the
+  // buy lands in the same block the pool opens. The bot's own SUI is never used.
+  const devBuyMist =
+    input.devBuySui && input.devBuySui > 0 && input.devBuyer ? BigInt(Math.round(input.devBuySui * 1e9)) : 0n;
+  let escrow: OwnedSuiCoin | null = null;
+  let devBuyError: string | null = null;
+  if (devBuyMist > 0n && input.devBuyer) {
+    const moved = await escrowCreatorSui({ buyer: input.devBuyer, bot: sender, amountMist: devBuyMist, gasPrice });
+    escrow = moved.coin;
+    if (!escrow) devBuyError = `First buy skipped: ${moved.error}`;
+  }
+
+  return deployRiptLp(keypair, sender, gasPrice, coinType, job.pendingLaunchId, feeRecipient, requestDigest, escrow, input.devBuyer ?? null, devBuyError);
 }
 
 /** Step 4 — open the Bluefin pool. Exported so a paid, published request can be resumed. */
