@@ -19,7 +19,7 @@ import { timeAgo } from "@/lib/blast";
 export const Route = createFileRoute("/creator-fees")({
   head: () => ({
     meta: [
-      { title: "Designated creator fees | OURBLAST" },
+      { title: "Creator fees dashboard | OURBLAST" },
       {
         name: "description",
         content:
@@ -101,11 +101,66 @@ function CreatorFeesPage() {
     })
     .sort((a, b) => b.unclaimed - a.unclaimed);
 
+  const liveList = [...(liveRows ?? [])].sort((a, b) => b.pendingSui - a.pendingSui);
+
+  const copyCommand = async (symbol: string) => {
+    await navigator.clipboard.writeText(`@Ourblastbot claim my fees on $${symbol}`).catch(() => undefined);
+    toast.success("Claim command copied.");
+  };
+
   return (
     <div className="mx-auto w-full max-w-4xl space-y-4 px-4 py-10">
       <h1 className="flex items-center gap-2 font-display text-4xl uppercase">
-        <HandCoins className="size-7 text-primary" /> Designated creator fees
+        <HandCoins className="size-7 text-primary" /> Creator fees
       </h1>
+      <p className="text-sm text-muted-foreground">
+        Live unclaimed creator fees for every OURBLAST launch, read straight from the chain. Claiming always pays the
+        recipients locked in at launch.
+      </p>
+      {live.data ? (
+        <p className="font-display text-xl text-primary">
+          Total waiting: {formatSui(live.data.totalPendingSui)}
+        </p>
+      ) : null}
+
+      {live.isLoading ? <p className="text-sm text-muted-foreground">Reading fee balances from the chain…</p> : null}
+      {live.isError ? <p className="text-sm text-muted-foreground">Fee balances could not be read right now.</p> : null}
+      {live.data && liveList.length === 0 ? (
+        <p className="text-sm text-muted-foreground">No tokens with readable creator fees yet.</p>
+      ) : null}
+
+      <ul className="space-y-2">
+        {liveList.map((row) => (
+          <li key={row.curveId} className="flex flex-wrap items-center justify-between gap-2 border-2 border-border p-3">
+            <div className="min-w-0">
+              <p className="font-display text-xl">${row.symbol}</p>
+              <p className="text-xs text-muted-foreground">
+                {row.payouts.length} recipient{row.payouts.length === 1 ? "" : "s"}
+                {row.graduated ? " · graduated" : ""} · {shortWallet(row.curveId)}
+              </p>
+            </div>
+            <div className="flex flex-wrap items-center gap-3">
+              <span className="font-display text-lg text-primary">{formatSui(row.pendingSui)}</span>
+              <Link
+                to="/claim/$token"
+                params={{ token: row.curveId }}
+                className="rounded-full bg-primary px-3 py-1 font-body text-xs text-primary-foreground"
+              >
+                Claim page
+              </Link>
+              <button
+                type="button"
+                onClick={() => void copyCommand(row.symbol)}
+                className="flex items-center gap-1 text-xs underline"
+              >
+                <Copy className="size-3" /> Copy X command
+              </button>
+            </div>
+          </li>
+        ))}
+      </ul>
+
+      <h2 className="pt-6 font-display text-2xl uppercase">Designated to other wallets</h2>
       <p className="text-sm text-muted-foreground">{DESIGNATION_DISCLAIMER}</p>
 
       {rows.isLoading ? <p className="text-sm text-muted-foreground">Loading designations…</p> : null}
