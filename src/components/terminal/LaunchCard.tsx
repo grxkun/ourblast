@@ -16,6 +16,7 @@ import {
 const LAUNCHER_PERCENT = Math.round(CREATOR_FEE_SPLIT.launcher * 100);
 import { X_BOT_HANDLE } from "@/lib/terminal/x-bot";
 import { LAUNCHPADS, resolveLaunchpad } from "@/lib/terminal/launchpad";
+import { formatSui, launchFeeMist, requiredBalanceMist } from "@/lib/terminal/launchFee";
 import { normalizeLaunchConfig } from "@/lib/terminal/launchSettings";
 import { describeFeePayout, normalizeXUsername, shortFeePayout, type FeePayoutMode } from "@/lib/terminal/feePayout";
 import { describePerpsPosition, PERPSPLEXITY_CURVE_DEFAULT_CAP_USD, PERPSPLEXITY_DEV_BUY_PRESETS } from "@/lib/terminal/perpsplexity";
@@ -200,8 +201,8 @@ export function LaunchCard({ launch, editing, onEdit, onChange, onLaunch, onGene
           <p className="mt-2 text-[0.65rem] text-muted-foreground">Of the creator fee the launchpad pays on trading volume. Your {LAUNCHER_PERCENT}%: {LAUNCHER_SHARE_USES}.</p>
           <p className="mt-1 text-[0.65rem] text-muted-foreground">{GAS_NOTE_TERMINAL} Same for launch calls from {X_BOT_HANDLE} on X.</p>
           <p className="mt-1 text-[0.65rem] text-muted-foreground">
-            A {formatSui(launchFeeMist(launch.launchpad))} SUI launch fee is taken from your OurBank wallet before the launch runs.
-            Keep at least {formatSui(requiredBalanceMist(launch.launchpad))} SUI in it for the fee plus network fees.
+            A {formatSui(launchFeeMist(activePad.id))} SUI launch fee is taken from your OurBank wallet before the launch runs.
+            Keep at least {formatSui(requiredBalanceMist(activePad.id))} SUI in it for the fee plus network fees.
           </p>
           <div className="mt-3 border-t border-border pt-3">
             <p className="font-display text-sm uppercase">Who claims your {LAUNCHER_PERCENT}%</p>
