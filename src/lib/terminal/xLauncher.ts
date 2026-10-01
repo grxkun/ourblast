@@ -50,8 +50,10 @@ export interface DeployRequest {
   perps?: PerpsPositionRequest | undefined;
   /** Present when the tweet names a creator-fee receiver. */
   feeReceiver?: FeeReceiverRequest | undefined;
-  /** "first buy 25" — the launcher's own opening buy, in USDC. */
+  /** "first buy 25" — the launcher's own opening buy, in USDC (Perpsplexity). */
   devBuyUsdc?: number | undefined;
+  /** "dev buy 25 SUI" — the launcher's own opening buy, in SUI (POPULAR, RIPT). */
+  devBuySui?: number | undefined;
 }
 
 /** "dev buy 25", "first buy $50", "initial buy: 10" — an opening buy in USDC. */
@@ -169,7 +171,7 @@ export function parseDeployTweet(tweetText: string, defaultPad = LAUNCHPAD.id): 
   const rawPadMatch = findPadMatch(rawText);
   // Same reason: "@adiniyi" must be read before mention stripping removes it.
   const feeReceiver = extractFeeReceiver(rawText) ?? undefined;
-  const devBuyUsdc = extractDevBuy(rawText) ?? undefined;
+  const devBuyAmount = extractDevBuy(rawText) ?? undefined;
   let text = stripDevBuyPhrase(stripPairPhrase(stripFeePhrases(normalizeCommandText(rawText))));
 
   const textPadMatch = findPadMatch(text);
