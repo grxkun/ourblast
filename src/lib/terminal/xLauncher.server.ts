@@ -689,6 +689,8 @@ export async function executeLaunchRequest(requestId: string): Promise<LaunchOut
       : tokenPageUrl(pad, popularCurveId ?? deployment.tokenAddress);
   const poolUrl = popularCurveId
     ? tokenPageUrl(pad, popularCurveId)
+    : pad.id === "ript"
+    ? tokenPageUrl(pad, deployment.tokenAddress)
     : isMaelstrom
     ? maelstromPoolId
       ? dexscreenerPoolUrl(maelstromPoolId)
