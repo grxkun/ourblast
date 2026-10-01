@@ -8,6 +8,7 @@ import {
   PERPSPLEXITY_DEV_BUY_PRESETS,
   PERPSPLEXITY_MARKETS,
 } from "@/lib/terminal/perpsplexity";
+import { CREATOR_FEE_ROUTES, LAUNCHER_SHARE_USES } from "@/lib/terminal/fees";
 import { formatSui, launchFeeMist, requiredBalanceMist } from "@/lib/terminal/launchFee";
 
 const BOT_HANDLE = "@Ourblastbot";
