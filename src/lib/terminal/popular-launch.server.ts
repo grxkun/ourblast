@@ -329,7 +329,7 @@ export async function launchOnPopular(input: PopularLaunchInput): Promise<Popula
       tx.objectRef({ objectId: metadataCap.objectId, version: metadataCap.version, digest: metadataCap.digest }),
       tx.sharedObjectRef({ ...currencyRef, mutable: false }),
       feeCoin!,
-      tx.pure.u64(0), // no dev buy: the bot never buys for the creator
+      tx.pure.u64(devBuyMist), // creator-funded first buy; 0 when none
       tx.pure.string(short(input.website, 200)),
       tx.pure.string(short(input.xLink, 200)),
       tx.pure.string(short(input.telegram, 200)),
@@ -339,12 +339,12 @@ export async function launchOnPopular(input: PopularLaunchInput): Promise<Popula
     ],
   });
   const run = await signAndExecute(tx, keypair);
-  if (!run.ok || !run.digest) return fail(run.error ?? "The POPULAR launch failed.", { coinType, digest: run.digest });
+  if (!run.ok || !run.digest) return refundEscrow(run.error ?? "The POPULAR launch failed.", { coinType, digest: run.digest });
   const launched = await receipt(run.digest);
-  if (!launched.ok) return fail(launched.error ?? "The POPULAR launch failed on chain.", { coinType, digest: run.digest });
+  if (!launched.ok) return refundEscrow(launched.error ?? "The POPULAR launch failed on chain.", { coinType, digest: run.digest });
   const created = launched.events.find((e) => e.type === normalizeType(POPULAR_EVENT_CREATED));
   const curveId = typeof created?.parsedJson["curve_id"] === "string" ? (created.parsedJson["curve_id"] as string) : null;
-  if (!curveId) return fail("The launch finished without POPULAR's on-chain confirmation.", { coinType, digest: run.digest });
+  if (!curveId) return refundEscrow("The launch finished without POPULAR's on-chain confirmation.", { coinType, digest: run.digest });
 
   // Step 4 — hand the creator role (and its fees) to the launcher's wallet.
   let creatorTransferred = false;
