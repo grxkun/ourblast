@@ -78,7 +78,7 @@ export function DevFeeCard() {
       </header>
 
       <p className="mt-2 text-sm text-muted-foreground">
-        Creator fees on every new token split 80% dev (you) · 10% treasury · 10% launcher. Your 80%
+        Creator fees on every new token split 80% launcher · 10% treasury · 10% dev (you). Your 10%
         (plus 10% of game fees) is paid straight to your dev wallet on chain — nothing of yours is waiting here to be
         claimed.
       </p>

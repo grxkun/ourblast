@@ -96,7 +96,7 @@ describe("creator-fee claim flow (end to end)", () => {
     expect(result.message).toMatch(/Connect a Sui wallet/i);
   });
 
-  it("step 3: X + wallet verifies the reserved 70% share and routes future launches", async () => {
+  it("step 3: X + wallet verifies the reserved launcher share and routes future launches", async () => {
     world.xAccounts.set(userId, "Mjbdran");
     world.wallets.set(userId, WALLET);
 
