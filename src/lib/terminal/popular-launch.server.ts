@@ -307,11 +307,16 @@ export async function launchOnPopular(input: PopularLaunchInput): Promise<Popula
     sharedRef(CLOCK),
     freshGas(sender),
   ]);
-  if (launchGas.length === 0) return fail("The bot wallet has no SUI coin left to pay gas.", { coinType });
+  if (launchGas.length === 0) return refundEscrow("The bot wallet has no SUI coin left to pay gas.", { coinType });
 
   const tx = new Transaction();
   withGas(tx, sender, launchGas, gasPrice, LAUNCH_BUDGET);
   const [feeCoin] = tx.splitCoins(tx.gas, [tx.pure.u64(settings.launchFee)]);
+  // The coin handed to curve::create covers fee + first buy; the escrowed
+  // creator coin is merged in so the buy is paid by the creator, not the bot.
+  if (escrow) {
+    tx.mergeCoins(feeCoin!, [tx.objectRef({ objectId: escrow.coinObjectId, version: escrow.version, digest: escrow.digest })]);
+  }
   tx.moveCall({
     target: `${POPULAR_LATEST_PACKAGE}::curve::create`,
     typeArguments: [coinType],
