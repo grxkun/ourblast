@@ -261,10 +261,12 @@ export async function launchOnPopular(input: PopularLaunchInput): Promise<Popula
   const registered = await receipt(registerRun.digest);
   if (!registered.ok) return fail(registered.error ?? "Coin registration failed on chain.", { coinType });
 
-  // Step 3 — open the POPULAR curve.
+  // Step 3 — open the POPULAR curve. Finalizing creates the shared Currency at a new derived ID.
+  const sharedCurrencyId =
+    registered.created.find((c) => c.objectType.includes("::coin_registry::Currency<"))?.objectId ?? currency.objectId;
   let currencyRef: Awaited<ReturnType<typeof sharedRef>> | null = null;
   for (let attempt = 0; attempt < 8 && !currencyRef; attempt += 1) {
-    currencyRef = await sharedRef(currency.objectId).catch(() => null);
+    currencyRef = await sharedRef(sharedCurrencyId).catch(() => null);
     if (!currencyRef) await sleep(1500);
   }
   if (!currencyRef) return fail("The coin registered but its shared metadata is not visible yet.", { coinType });
