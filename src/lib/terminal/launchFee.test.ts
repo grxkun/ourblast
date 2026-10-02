@@ -10,25 +10,29 @@ import {
 } from "./launchFee";
 
 describe("X launch fee", () => {
-  it("charges 1 SUI on pads the bot does not pay a launchpad fee for", () => {
-    expect(launchFeeMist("suipump")).toBe(OURBLAST_LAUNCH_FEE_MIST);
-    expect(launchFeeMist("maelstrom")).toBe(1_000_000_000n);
+  it("charges only the 1 SUI OurBlast fee where the launchpad charges nothing", () => {
+    expect(launchFeeMist("maelstrom")).toBe(OURBLAST_LAUNCH_FEE_MIST);
     expect(launchFeeMist("blastfun")).toBe(1_000_000_000n);
   });
 
-  it("adds Perpsplexity's 5 SUI launchpad fee", () => {
+  it("adds each launchpad's own on-chain fee so the bot never pays it", () => {
+    expect(launchFeeMist("suipump")).toBe(3_000_000_000n);
+    expect(launchFeeMist("popular")).toBe(2_000_000_000n);
+    expect(launchFeeMist("ript")).toBe(2_000_000_000n);
     expect(launchFeeMist("perpsplexity")).toBe(6_000_000_000n);
   });
 
   it("requires the fee plus gas headroom in the OurBank wallet", () => {
-    expect(requiredBalanceMist("suipump")).toBe(5_000_000_000n);
+    expect(requiredBalanceMist("suipump")).toBe(7_000_000_000n);
+    expect(requiredBalanceMist("popular")).toBe(6_000_000_000n);
+    expect(requiredBalanceMist("maelstrom")).toBe(5_000_000_000n);
     expect(requiredBalanceMist("perpsplexity")).toBe(10_000_000_000n);
   });
 
   it("names the shortfall in plain SUI", () => {
     const notice = lowBalanceNotice("suipump", 2_500_000_000n);
     expect(notice).toContain("2.5 SUI");
-    expect(notice).toContain("5 SUI");
+    expect(notice).toContain("7 SUI");
     expect(notice).toContain("ourblast.xyz/terminal");
   });
 
