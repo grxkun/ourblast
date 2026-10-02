@@ -531,9 +531,13 @@ export async function executeLaunchRequest(requestId: string): Promise<LaunchOut
       callerTweetText: extractDescription(request.tweet_text ?? "") || socialLine || isTerminalLaunch ? null : request.tweet_text ?? null,
       payees: routing.payees,
       shareBps: routing.shareBps,
+      // Anti-sniper first buy in SUI, funded by the creator's OurBank wallet.
+      devBuySui: request.dev_buy_sui ? Number(request.dev_buy_sui) : null,
+      devBuyer: request.dev_buy_sui ? await creatorDevBuyer(request) : null,
     });
     if (outcome.status === "CONFIRMED" && outcome.tokenAddress) {
       deployment = { tokenAddress: outcome.tokenAddress, transactionDigest: outcome.transactionDigest ?? "" };
+      devBuyNotice = outcome.devBuyError ?? null;
     } else if (outcome.status === "FAILED") {
       failure = outcome.message;
     }
