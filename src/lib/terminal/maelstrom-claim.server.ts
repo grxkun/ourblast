@@ -141,7 +141,8 @@ export async function payMaelstromCreatorFees(
   let payQuote = owed.owedQuote;
   let quoteCoins: Awaited<ReturnType<typeof ownedCoins>> = [];
   if (quoteIsSui) {
-    const suiBal = gas.reduce((a, c) => a + BigInt(c.balance), 0n);
+    const bal = await rpc<{ totalBalance: string }>("suix_getBalance", [bot, SUI]).catch(() => ({ totalBalance: "0" }));
+    const suiBal = BigInt(bal.totalBalance);
     const spendable = suiBal > CLAIM_BUDGET * 2n ? suiBal - CLAIM_BUDGET * 2n : 0n;
     if (payQuote > spendable) payQuote = spendable;
   } else if (payQuote > 0n) {
