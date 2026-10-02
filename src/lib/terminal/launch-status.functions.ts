@@ -13,6 +13,7 @@ export interface PublicLaunchRow {
   tokenAddress: string | null;
   launchpad: string | null;
   devBuy: boolean | null;
+  devBuyLabel: string;
   ourblastFeePercent: number | null;
   status: string;
   notice: string | null;
@@ -47,7 +48,7 @@ export const listPublicLaunches = createServerFn({ method: "GET" }).handler(asyn
   const { data: requests, error: reqError } = await supabasePublic
     .from("x_launch_requests")
     .select(
-      "id, x_post_id, x_username, symbol, name, token_address, launchpad, dev_buy, ourblast_fee_percent, status, notice, token_url, pool_url, tx_digest, reply_post_id, deployed_reply_post_id, created_at, tweet_text",
+      "id, x_post_id, x_username, symbol, name, token_address, launchpad, dev_buy, dev_buy_usdc, dev_buy_sui, ourblast_fee_percent, status, notice, token_url, pool_url, tx_digest, reply_post_id, deployed_reply_post_id, created_at, tweet_text",
     )
     .order("created_at", { ascending: false })
     .limit(50);
@@ -63,7 +64,16 @@ export const listPublicLaunches = createServerFn({ method: "GET" }).handler(asyn
     tokenAddress: r.token_address,
     launchpad: r.launchpad,
     devBuy: r.dev_buy,
-    ourblastFeePercent: r.ourblast_fee_percent == null ? null : Number(r.ourblast_fee_percent),
+    devBuyLabel:
+      r.dev_buy_usdc != null && Number(r.dev_buy_usdc) > 0
+        ? `${Number(r.dev_buy_usdc)} USDC`
+        : r.dev_buy_sui != null && Number(r.dev_buy_sui) > 0
+          ? `${Number(r.dev_buy_sui)} SUI`
+          : r.dev_buy
+            ? "on"
+            : "off",
+    // The bot takes 0% of creator fees (launcher 80 / dev 10 / treasury 10).
+    ourblastFeePercent: r.ourblast_fee_percent == null ? null : 0,
     status: r.status,
     notice: r.notice,
     tokenUrl: r.token_url,
