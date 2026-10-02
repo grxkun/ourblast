@@ -2078,10 +2078,13 @@ export type Database = {
           dev_buy_usdc: number | null
           fee_receiver_wallet: string | null
           fee_receiver_x_username: string | null
+          fees_paid_coin: number
+          fees_paid_quote: number
           icon_url: string | null
           id: string
           launchpad: string
           leverage_bps: number | null
+          maelstrom_launch_id: string | null
           name: string
           notice: string | null
           ourblast_fee_percent: number
@@ -2109,10 +2112,13 @@ export type Database = {
           dev_buy_usdc?: number | null
           fee_receiver_wallet?: string | null
           fee_receiver_x_username?: string | null
+          fees_paid_coin?: number
+          fees_paid_quote?: number
           icon_url?: string | null
           id?: string
           launchpad?: string
           leverage_bps?: number | null
+          maelstrom_launch_id?: string | null
           name: string
           notice?: string | null
           ourblast_fee_percent?: number
@@ -2140,10 +2146,13 @@ export type Database = {
           dev_buy_usdc?: number | null
           fee_receiver_wallet?: string | null
           fee_receiver_x_username?: string | null
+          fees_paid_coin?: number
+          fees_paid_quote?: number
           icon_url?: string | null
           id?: string
           launchpad?: string
           leverage_bps?: number | null
+          maelstrom_launch_id?: string | null
           name?: string
           notice?: string | null
           ourblast_fee_percent?: number
