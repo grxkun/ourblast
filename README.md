@@ -1,55 +1,85 @@
 # OurBlast
 
-Onchain trading and launch infrastructure for the Sui ecosystem, powering **OurBlastbot** and OurBlast integrations.
+<p align="center">
+  <img src="./assets/banner.png" alt="OurBlast — Onchain trading and launch infrastructure for Sui" width="100%">
+</p>
+
+<p align="center">
+  <strong>Onchain trading and launch infrastructure for the Sui ecosystem.</strong>
+</p>
+
+OurBlast powers the **OurBlast terminal** and **@Ourblastbot**, connecting onchain token launching, trading, wallet functionality, and social workflows across the Sui ecosystem.
 
 ## Overview
 
-OurBlast is a Sui-based onchain application with integrations for token discovery, trading, social/X workflows, Telegram, and Blast.fun.
+OurBlast provides:
 
-The repository contains the application source code and integration logic used by OurBlast.
+- Token launching and discovery
+- Onchain token trading
+- Sui wallet and transaction infrastructure
+- OurBlastbot social/X workflows
+- Telegram workflows
+- Creator-fee and launch infrastructure
+- Integrations with Sui launch and trading platforms
+
+## Launch Platform Integrations
+
+OurBlast is designed to work with multiple Sui ecosystem platforms, including:
+
+| Platform | Integration |
+|---|---|
+| **Blast.fun** | Token launching with SUI pairing |
+| **Suipump** | Token launch and discovery |
+| **Maelstrom** | Launch infrastructure |
+| **Perpsplexity** | Leveraged token launches and perpetual trading |
+
+For current product documentation, see **[ourblast.xyz/docs](https://ourblast.xyz/docs)**.
 
 ## Blast.fun Integration
 
-OurBlast includes integration code for interacting with Blast.fun's launch infrastructure.
+Blast.fun is integrated into the OurBlast launch workflow.
 
-The main Blast.fun implementation is located under:
-
-```text
-src/lib/terminal/
-```
-
-with the primary launch integration in:
+The primary implementation is located at:
 
 ```text
 src/lib/terminal/blastfun-launch.server.ts
 ```
 
-The integration handles Sui transaction construction and execution for Blast.fun-related workflows.
+The integration uses the Sui transaction layer to construct and execute Blast.fun-related launch transactions.
 
 ### Deployment
 
-**No Blast.fun contract has been deployed by OurBlast as part of this repository handoff.**
+This repository handoff does **not** require deployment of a new Blast.fun contract by OurBlast.
 
-This repository is provided for technical review and integration. Any required contract or infrastructure deployment should be handled by the Blast.fun team.
+Any contract deployment or Blast.fun-side infrastructure deployment required for the integration should be handled by the Blast.fun team.
 
 ## Architecture
 
 ```text
-OurBlast
-   │
-   ├── Web Interface
-   ├── OurBlastbot
-   ├── X / Social Integration
-   │
-   ▼
-Sui Integration Layer
-   │
-   ├── Wallet / Signing
-   ├── Transaction Builder
-   └── Blast.fun Integration
-   │
-   ▼
-Sui Network
+                    OurBlast
+                       │
+        ┌──────────────┼──────────────┐
+        │              │              │
+        ▼              ▼              ▼
+     Web UI        OurBlastbot     Telegram/X
+        │              │              │
+        └──────────────┼──────────────┘
+                       ▼
+               Sui Integration Layer
+                       │
+          ┌────────────┼────────────┐
+          ▼            ▼            ▼
+       Wallet      Transactions   Launch/Trading
+          │            │            │
+          └────────────┼────────────┘
+                       ▼
+                   Sui Network
+                       │
+        ┌──────────────┼──────────────┐
+        ▼              ▼              ▼
+     Blast.fun      Suipump       Maelstrom
+                                      │
+                                 Perpsplexity
 ```
 
 ## Repository Structure
@@ -84,19 +114,35 @@ Build the application:
 bun run build
 ```
 
-An example environment file can be provided separately when required.
+## Environment Variables
+
+Production credentials must be supplied through environment variables.
+
+Never commit:
+
+```text
+.env
+.env.local
+private keys
+mnemonics
+API keys
+access tokens
+service-role keys
+```
+
+The repository's `.gitignore` excludes local environment files.
 
 ## Security
 
-Private keys and production credentials are not included in this repository.
+Wallet signing and production credentials must be configured separately in the deployment environment.
 
-Any wallet used for transaction execution must be configured separately in the deployment environment.
+No production credentials should be committed to this repository.
 
 ## License
 
 This project is licensed under the **Business Source License 1.1 (BUSL-1.1)**.
 
-See [`LICENSE`](./LICENSE) for the full license terms.
+See [`LICENSE`](./LICENSE) for the complete license terms.
 
 Relevant source files use:
 
@@ -104,16 +150,23 @@ Relevant source files use:
 // SPDX-License-Identifier: BUSL-1.1
 ```
 
-## Integration Status
+## Status
 
-| Component                       | Status                         |
-| ------------------------------- | ------------------------------ |
-| Sui integration                 | Active                         |
-| OurBlastbot                     | Active                         |
-| Blast.fun integration           | Available for technical review |
-| Contract deployment by OurBlast | None                           |
-| License                         | BUSL-1.1                       |
+| Component | Status |
+|---|---|
+| Sui integration | Active |
+| OurBlastbot | Active |
+| Blast.fun integration | Available for technical review |
+| SUI launch pairing | Supported |
+| New Blast.fun contract deployment by OurBlast | None |
+| License | BUSL-1.1 |
 
-## Contact
+## Documentation
 
-For Blast.fun integration and technical coordination, please contact the OurBlast development team.
+Product and integration documentation:
+
+**https://ourblast.xyz/docs**
+
+## Integration
+
+For Blast.fun integration and technical coordination, contact the OurBlast development team.
