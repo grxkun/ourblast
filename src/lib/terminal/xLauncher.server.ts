@@ -116,7 +116,7 @@ export function feeReceiverHandle(row: {
   return (row.fee_receiver_x_username ?? row.x_username ?? "").replace(/^@/, "");
 }
 
-async function feeRouting(
+export async function feeRouting(
   xUsername: string,
   receiver?: { handle?: string | null; wallet?: string | null },
 ): Promise<FeeRouting> {
