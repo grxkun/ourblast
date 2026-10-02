@@ -200,8 +200,8 @@ function LaunchCard({ row }: { row: PublicLaunchRow }) {
         <span>@{row.xUsername}</span>
         <span>{new Date(row.createdAt).toLocaleString()}</span>
         {row.launchpad && <span>pad: {row.launchpad}</span>}
-        {row.devBuy != null && <span>dev buy: {row.devBuy ? "on" : "off"}</span>}
-        {row.ourblastFeePercent != null && <span>OurBlast fee: {row.ourblastFeePercent}% of creator fee</span>}
+        {row.symbol != null && <span>dev buy: {row.devBuyLabel}</span>}
+        {row.ourblastFeePercent != null && <span>OurBlast fee: 0% of creator fee</span>}
       </div>
 
       {row.notice && <p className="mt-2 font-body text-sm text-muted-foreground">{row.notice}</p>}
