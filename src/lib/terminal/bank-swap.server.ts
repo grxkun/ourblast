@@ -103,7 +103,16 @@ export async function executeBankSwap(
 
   const gas = await gasCoins(sender);
   if (gas.length === 0) return { ok: false, error: "Your OurBank wallet has no SUI for network fees." };
-  withGas(built.tx, sender, gas, await referenceGasPrice(), Number(SWAP_GAS_BUDGET));
+  // Aftermath reserves the trade amount from the address balance; pinning the
+  // wallet's only SUI coin as gas makes the node reject that reservation, so
+  // let the SDK pick gas itself for Aftermath routes.
+  if (built.venue === "Aftermath") {
+    built.tx.setSender(sender);
+    built.tx.setGasPrice(await referenceGasPrice());
+    built.tx.setGasBudget(SWAP_GAS_BUDGET);
+  } else {
+    withGas(built.tx, sender, gas, await referenceGasPrice(), Number(SWAP_GAS_BUDGET));
+  }
   try {
     // Resolve the aggregator's object inputs once; signAndExecute then simulates and submits.
     await withTimeout(
@@ -201,7 +210,13 @@ export async function prepareSwapForAddress(
   if (!picked.ok) return picked;
   const gas = await gasCoins(sender);
   if (gas.length === 0) return { ok: false, error: "Your wallet has no SUI for network fees." };
-  withGas(picked.built.tx, sender, gas, await referenceGasPrice(), Number(SWAP_GAS_BUDGET));
+  if (picked.built.venue === "Aftermath") {
+    picked.built.tx.setSender(sender);
+    picked.built.tx.setGasPrice(await referenceGasPrice());
+    picked.built.tx.setGasBudget(SWAP_GAS_BUDGET);
+  } else {
+    withGas(picked.built.tx, sender, gas, await referenceGasPrice(), Number(SWAP_GAS_BUDGET));
+  }
   try {
     const bytes = await withTimeout(
       picked.built.tx.build({ client: new SuiJsonRpcClient({ url: BUILD_RPC, network: "mainnet" }) }),
