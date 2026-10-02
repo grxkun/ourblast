@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: BUSL-1.1
 /**
  * Repairs the keyword typos people make on phones ("tickrr", "deply", "nmae",
  * "recevier") so the parsers see the words they expect. Only command keywords

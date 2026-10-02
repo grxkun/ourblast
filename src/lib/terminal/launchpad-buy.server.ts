@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: BUSL-1.1
 import { Transaction } from "@mysten/sui/transactions";
 import { normalizeStructTag, normalizeSuiAddress } from "@mysten/sui/utils";
 

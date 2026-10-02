@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: BUSL-1.1
 /**
  * Private-testing allowlist for the OURBLAST Terminal.
  *

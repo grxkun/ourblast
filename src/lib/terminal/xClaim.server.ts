@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: BUSL-1.1
 /**
  * "@ourblastbot claim fees $TICKER" — lets the X account that launched a token
  * (or the account its fees were redirected to) release the accumulated creator

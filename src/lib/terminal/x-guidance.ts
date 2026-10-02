@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: BUSL-1.1
 /**
  * Near-miss guidance for X mentions the rule parser could not read.
  *

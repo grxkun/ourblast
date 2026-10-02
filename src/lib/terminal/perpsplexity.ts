@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: BUSL-1.1
 // Perpsplexity (timecurve) — mainnet constants and helpers.
 //
 // Everything here was read verbatim from the official perpsplexity.app

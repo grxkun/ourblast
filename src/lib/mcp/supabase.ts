@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: BUSL-1.1
 import { createClient } from "@supabase/supabase-js";
 
 import type { Database } from "@/integrations/supabase/types";

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: BUSL-1.1
 /**
  * OurBlast launch path for Maelstrom (maelstromfun.xyz), traced from the real
  * STROM launch (publish 6WnjePhYLWyKDBrZ3jwAXF4pxRPj4kkp32H8Sht5w95j, launch

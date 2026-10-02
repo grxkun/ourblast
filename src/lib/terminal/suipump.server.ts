@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: BUSL-1.1
 /**
  * Read-only client for the public Suipump data API (documented at
  * https://suipump.org/integrations). Suipump has no launch endpoint, so this

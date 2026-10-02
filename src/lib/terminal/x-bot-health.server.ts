@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: BUSL-1.1
 /**
  * Records X bot health milestones (last successful poll, search fallback, reply)
  * on the single-row x_bot_state table so the admin dashboard can show liveness.

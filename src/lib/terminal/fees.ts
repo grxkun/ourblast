@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: BUSL-1.1
 import { DEFAULT_TREASURY_ADDRESS, FOUNDER_ADDRESS } from "@/lib/ourblast.config";
 
 /**

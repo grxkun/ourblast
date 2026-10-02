@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: BUSL-1.1
 import { LAUNCHPAD, resolveLaunchpad, tokenPageUrl } from "./launchpad";
 import type { DeploymentResult, TerminalToolResult } from "./types";
 

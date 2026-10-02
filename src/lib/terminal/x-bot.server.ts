@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: BUSL-1.1
 import { runTerminalAgent } from "./agent";
 import { composeXReply, X_BOT_HANDLE, type XMentionOutcome, type XMentionPayload } from "./x-bot";
 import { fetchTweetImage, friendlyXError, postReply, readXCredentials } from "./x-api.server";

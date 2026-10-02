@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: BUSL-1.1
 function requireApiKey(): string {
   const key = process.env['LOVABLE_API_KEY'];
   if (!key) throw new Error("GitHub connections are not configured.");

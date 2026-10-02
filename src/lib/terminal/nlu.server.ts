@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: BUSL-1.1
 /**
  * Intelligent fallback for free-form requests the rule-based parser cannot read.
  *

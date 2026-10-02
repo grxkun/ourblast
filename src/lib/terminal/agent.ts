@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: BUSL-1.1
 import { parseTerminalCommand } from "./commandParser";
 import { executeTerminalIntent } from "./tools";
 import type { TerminalAgentContext, TerminalToolResult } from "./types";

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: BUSL-1.1
 /**
  * Creator-funded first ("dev") buys for the SUI-denominated launchpads
  * (POPULAR, RIPT). Mirrors the Perpsplexity USDC escrow pattern:

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: BUSL-1.1
 /**
  * X (Twitter) OAuth 2.0 with PKCE — server-only.
  *

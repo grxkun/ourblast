@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: BUSL-1.1
 import { resolveLaunchpad, resolvePairToken, type LaunchpadConfig } from "./launchpad";
 import { describeFeePayout, normalizeFeePayout } from "./feePayout";
 import type { LaunchConfiguration } from "./types";

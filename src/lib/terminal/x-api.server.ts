@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: BUSL-1.1
 /**
  * Minimal X API v2 client using OAuth 1.0a user-context signing, so @ourblastbot can
  * read its mentions and post replies. Server-only: credentials are read from env here.

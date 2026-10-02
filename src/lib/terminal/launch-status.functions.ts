@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: BUSL-1.1
 import { createServerFn } from "@tanstack/react-start";
 import { createClient } from "@supabase/supabase-js";
 

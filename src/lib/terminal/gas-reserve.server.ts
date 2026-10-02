@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: BUSL-1.1
 import { Ed25519Keypair } from "@mysten/sui/keypairs/ed25519";
 
 import { encryptConnectionKey } from "@/lib/connection-key.server";

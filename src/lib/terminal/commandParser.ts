@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: BUSL-1.1
 import { matchLaunchpad } from "./launchpad";
 import { extractPerps } from "./perpsParse";
 import type { ParsedIntent, TerminalIntentName } from "./types";

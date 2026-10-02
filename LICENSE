@@ -1,0 +1,45 @@
+Business Source License 1.1
+
+Licensor:             OURBLAST (grxkun)
+Licensed Work:        OURBLAST — the software in this repository, including
+                      the terminal, X bot, launchpad adapters, bank wallet,
+                      trading, and fee-routing modules.
+Change Date:          2030-10-02 (four years from first publication)
+Change License:       Apache License, Version 2.0
+
+-----------------------------------------------------------------------------
+
+Terms
+
+The Licensor hereby grants you the right to copy, modify, create derivative
+works, redistribute, and make non-production use of the Licensed Work. The
+Licensor may make an Additional Use Grant, above, permitting limited
+production use.
+
+Effective on the Change Date, or the fourth anniversary of the first publicly
+available distribution of a specific version of the Licensed Work, whichever
+comes first, the Licensor hereby grants you rights under the terms of the
+Change License, and the rights granted in the paragraph above terminate.
+
+If your use of the Licensed Work does not comply with the requirements
+currently in effect as described in this license, you must purchase a
+commercial license from the Licensor, its affiliates, or its authorized
+resellers, or you must refrain from using the Licensed Work.
+
+All copies or substantial portions of the Licensed Work must reproduce this
+license, including the copyright notice and this paragraph.
+
+Additional Use Grant: None.
+
+-----------------------------------------------------------------------------
+
+Notice
+
+The Business Source License (this document, or the "License") is not an Open
+Source license. However, the Licensed Work will eventually be made available
+under an Open Source License, as stated in this License.
+
+For more information about the Business Source License, see
+https://mariadb.com/bsl11/ and https://spdx.org/licenses/BUSL-1.1.html.
+
+Copyright (c) 2026 OURBLAST. All rights reserved.

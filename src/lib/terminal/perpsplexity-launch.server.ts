@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: BUSL-1.1
 /**
  * OurBlast launch path for Perpsplexity (perpsplexity.app) virtual pools.
  *

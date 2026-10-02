@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: BUSL-1.1
 /**
  * Pure-TypeScript patcher for the coin module Maelstrom publishes for a launch.
  *
