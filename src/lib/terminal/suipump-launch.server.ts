@@ -610,6 +610,10 @@ export interface SuipumpLaunchInput {
   /** Fee recipients and their share in basis points; must add up to 10000. */
   payees: string[];
   shareBps: number[];
+  /** Creator's opening buy in SUI; bought on the curve before it is shared. */
+  devBuySui?: number | null;
+  /** Creator OurBank wallet that funds the buy and receives the tokens. */
+  devBuyer?: DevBuySigner | null;
 }
 
 /** Waits for a freshly created owned object to be readable, then returns it. */
@@ -798,11 +802,34 @@ export async function launchOnSuipump(input: SuipumpLaunchInput): Promise<Suipum
     };
   }
 
-  const [registry, clock, createCoins] = await Promise.all([
+  // Creator first buy: the creator's own SUI is moved to the bot first, then
+  // spent on the still-unshared curve inside the create transaction, so no
+  // sniper can trade before it.
+  let devBuyError: string | null = null;
+  let escrow: OwnedSuiCoin | null = null;
+  const devBuyMist = input.devBuySui && input.devBuySui > 0 ? BigInt(Math.round(input.devBuySui * 1e9)) : 0n;
+  if (devBuyMist > 0n) {
+    if (!input.devBuyer) {
+      devBuyError = "First buy skipped: no OurBank wallet is linked to the launcher.";
+    } else {
+      const moved = await escrowCreatorSui({ buyer: input.devBuyer, bot: sender, amountMist: devBuyMist, gasPrice });
+      escrow = moved.coin;
+      if (!escrow) devBuyError = `First buy skipped: ${moved.error ?? "the SUI could not be moved"}`;
+    }
+  }
+  const refundEscrow = async (): Promise<string> => {
+    if (!escrow || !input.devBuyer) return "";
+    const refundError = await refundCreatorSui({ keypair, bot: sender, coin: escrow, to: input.devBuyer.address, gasPrice });
+    return refundError ? ` ${refundError}` : " The first-buy SUI was returned to the creator.";
+  };
+
+  const [registry, clock, allCoins] = await Promise.all([
     sharedRef(config.registryId),
     sharedRef(CLOCK_ID),
     gasCoins(sender),
   ]);
+  // The escrowed first-buy coin is spent in the buy; never also use it as gas.
+  const createCoins = allCoins.filter((coin) => coin.objectId !== escrow?.coinObjectId);
 
   // Pay the launch fee from a separate Coin<SUI> object when the wallet holds
   // more than one; with a single coin that coin must stay the gas payment, so
@@ -812,7 +839,8 @@ export async function launchOnSuipump(input: SuipumpLaunchInput): Promise<Suipum
     return {
       status: "FAILED",
       message:
-        "The bot wallet has no SUI coin to pay gas with. Send a few SUI to it with a normal transfer, then launch again.",
+        "The bot wallet has no SUI coin to pay gas with. Send a few SUI to it with a normal transfer, then launch again." +
+        (await refundEscrow()),
       tokenAddress: null,
       transactionDigest: null,
       coinType,
