@@ -89,4 +89,6 @@ export interface SuipumpLaunchResult {
   transactionDigest: string | null;
   /** Coin type of the published package, when it got that far. */
   coinType?: string | null;
+  /** Set when the launch confirmed but the creator's first buy did not happen. */
+  devBuyError?: string | null;
 }

@@ -15,8 +15,11 @@ export const MIST_PER_SUI = 1_000_000_000n;
 /** OurBlast's own anti-spam fee, charged on every X launch. */
 export const OURBLAST_LAUNCH_FEE_MIST = 1n * MIST_PER_SUI;
 
-/** On-chain launchpad fee the bot fronts, reimbursed by the caller. */
+/** On-chain launchpad fee the bot fronts, reimbursed by the caller so the bot never pays it. */
 export const PAD_LAUNCH_FEE_MIST: Record<string, bigint> = {
+  suipump: 2n * MIST_PER_SUI,
+  popular: 1n * MIST_PER_SUI,
+  ript: 1n * MIST_PER_SUI,
   perpsplexity: 5n * MIST_PER_SUI,
 };
 

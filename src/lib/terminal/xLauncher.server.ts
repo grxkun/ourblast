@@ -116,7 +116,7 @@ export function feeReceiverHandle(row: {
   return (row.fee_receiver_x_username ?? row.x_username ?? "").replace(/^@/, "");
 }
 
-async function feeRouting(
+export async function feeRouting(
   xUsername: string,
   receiver?: { handle?: string | null; wallet?: string | null },
 ): Promise<FeeRouting> {
@@ -531,9 +531,13 @@ export async function executeLaunchRequest(requestId: string): Promise<LaunchOut
       callerTweetText: extractDescription(request.tweet_text ?? "") || socialLine || isTerminalLaunch ? null : request.tweet_text ?? null,
       payees: routing.payees,
       shareBps: routing.shareBps,
+      // Anti-sniper first buy in SUI, funded by the creator's OurBank wallet.
+      devBuySui: request.dev_buy_sui ? Number(request.dev_buy_sui) : null,
+      devBuyer: request.dev_buy_sui ? await creatorDevBuyer(request) : null,
     });
     if (outcome.status === "CONFIRMED" && outcome.tokenAddress) {
       deployment = { tokenAddress: outcome.tokenAddress, transactionDigest: outcome.transactionDigest ?? "" };
+      devBuyNotice = outcome.devBuyError ?? null;
     } else if (outcome.status === "FAILED") {
       failure = outcome.message;
     }
@@ -593,7 +597,9 @@ export async function executeLaunchRequest(requestId: string): Promise<LaunchOut
       website: socials.website,
       xLink: socials.x ?? (request.x_username ? `https://x.com/${request.x_username}` : null),
       telegram: socials.telegram,
-      creatorWallet: routing.launcherPaidOnChain ? routing.payees[routing.payees.length - 1] ?? null : null,
+      // The bot keeps POPULAR's single creator role so claims through OurBlast
+      // pay the 80/10/10 split (popular-claim.server.ts).
+      creatorWallet: null,
       // "dev buy 25" on POPULAR: the creator's opening buy in SUI, funded by
       // and delivered to the creator's own OurBank wallet — never the bot.
       devBuySui: request.dev_buy_sui ? Number(request.dev_buy_sui) : null,

@@ -72,7 +72,7 @@ export function Terminal({ tryCommand }: { tryCommand?: { command: string; nonce
         // The dev-buy amount is currency-denominated by pad: USDC on
         // Perpsplexity, SUI on the SUI-quoted pads (POPULAR, RIPT).
         devBuyUsdc: launch.devBuy > 0 && launch.launchpad === "perpsplexity" ? launch.devBuy : null,
-        devBuySui: launch.devBuy > 0 && (launch.launchpad === "popular" || launch.launchpad === "ript") ? launch.devBuy : null,
+        devBuySui: launch.devBuy > 0 && (launch.launchpad === "popular" || launch.launchpad === "ript" || launch.launchpad === "suipump") ? launch.devBuy : null,
         pairToken: launch.pairToken ?? null,
         feeWallet: launch.feePayout?.mode === "wallet" ? launch.feePayout.wallet : null,
         feeX: launch.feePayout?.mode === "x" ? launch.feePayout.xUsername : null,

@@ -44,7 +44,7 @@ export async function handleFeeClaimMention(username: string, text: string): Pro
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
   const { data: launches } = await supabaseAdmin
     .from("x_launch_requests")
-    .select("symbol, token_address, launchpad, x_username, fee_receiver_x_username, status")
+    .select("symbol, token_address, launchpad, x_username, fee_receiver_x_username, fee_receiver_wallet, pool_object_id, status")
     .eq("status", "DEPLOYED")
     .order("created_at", { ascending: false })
     .limit(500);
@@ -71,6 +71,21 @@ export async function handleFeeClaimMention(username: string, text: string): Pro
         (row.token_address && v.curveId.toLowerCase() === row.token_address.toLowerCase()) ||
         v.symbol === row.symbol.toUpperCase(),
     );
+    if (!vault && row.launchpad === "popular" && row.pool_object_id) {
+      // POPULAR: the bot holds the creator role and pays the 80/10/10 split.
+      const { feeRouting } = await import("./xLauncher.server");
+      const { claimPopularCreatorFees } = await import("./popular-claim.server");
+      const routing = await feeRouting(row.x_username, { handle: row.fee_receiver_x_username, wallet: row.fee_receiver_wallet });
+      const outcome = await claimPopularCreatorFees(row.pool_object_id, routing.payees, routing.shareBps).catch((e) => ({
+        ok: false, message: e instanceof Error ? e.message : "claim failed", digest: null, claimedSui: 0,
+      }));
+      results.push(
+        outcome.ok && outcome.digest
+          ? `$${row.symbol}: ${outcome.claimedSui.toFixed(4)} SUI split 80/10/10 ✅ suiscan.xyz/mainnet/tx/${outcome.digest}`
+          : `$${row.symbol}: ${outcome.message}`,
+      );
+      continue;
+    }
     if (!vault) {
       results.push(`$${row.symbol}: fees on ${row.launchpad} can't be claimed by the bot yet`);
       continue;
@@ -103,7 +118,7 @@ export async function handleFeeCheckMention(username: string, text: string): Pro
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
   const { data: launches } = await supabaseAdmin
     .from("x_launch_requests")
-    .select("symbol, token_address, launchpad, x_username, fee_receiver_x_username, status")
+    .select("symbol, token_address, launchpad, x_username, fee_receiver_x_username, fee_receiver_wallet, pool_object_id, status")
     .eq("status", "DEPLOYED")
     .order("created_at", { ascending: false })
     .limit(500);
@@ -126,6 +141,14 @@ export async function handleFeeCheckMention(username: string, text: string): Pro
         (row.token_address && v.curveId.toLowerCase() === row.token_address.toLowerCase()) ||
         v.symbol === row.symbol.toUpperCase(),
     );
+    if (!vault && row.launchpad === "popular" && row.pool_object_id) {
+      const { readPopularCurveFees } = await import("./popular-claim.server");
+      const fees = await readPopularCurveFees(row.pool_object_id);
+      const sui = fees ? Number(fees.pendingMist) / 1e9 : 0;
+      total += sui;
+      parts.push(`$${row.symbol}: ${sui.toFixed(4)} SUI`);
+      continue;
+    }
     if (!vault) {
       parts.push(`$${row.symbol}: not readable on ${row.launchpad}`);
       continue;

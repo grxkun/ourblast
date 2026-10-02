@@ -190,9 +190,9 @@ export function parseDeployTweet(tweetText: string, defaultPad = LAUNCHPAD.id): 
   const pad = resolveLaunchpad(requestedPad ?? defaultPad);
   const isPerpsPad = pad.id === "perpsplexity";
   // The dev-buy number is currency-denominated by pad: USDC on Perpsplexity,
-  // SUI on the SUI-quoted pads (POPULAR, RIPT).
+  // SUI on the SUI-quoted pads (Suipump, POPULAR, RIPT).
   const devBuyUsdc = isPerpsPad ? devBuyAmount : undefined;
-  const devBuySui = pad.id === "popular" || pad.id === "ript" ? devBuyAmount : undefined;
+  const devBuySui = pad.id === "popular" || pad.id === "ript" || pad.id === "suipump" ? devBuyAmount : undefined;
   const perpsExtraction = extractPerps(text, isPerpsPad);
   text = perpsExtraction.text;
   const perps = perpsExtraction.perps ?? undefined;

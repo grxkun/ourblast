@@ -19,6 +19,17 @@ import {
   type SuipumpLaunchConfig,
   type SuipumpLaunchResult,
 } from "./suipump-launch";
+import { escrowCreatorSui, refundCreatorSui, type DevBuySigner, type OwnedSuiCoin } from "./devbuy-sui.server";
+
+/** The shared PriceConfig id the Suipump registry points buys at. */
+async function readRegistryPriceConfig(registryId: string): Promise<string | null> {
+  const obj = await rpc<{ data?: { content?: { fields?: Record<string, unknown> } } }>("sui_getObject", [
+    registryId,
+    { showContent: true },
+  ]).catch(() => null);
+  const id = obj?.data?.content?.fields?.["price_config_id"];
+  return typeof id === "string" && id ? id : null;
+}
 
 /**
  * Real Suipump launch adapter, following the same public flow as suipump.org:
@@ -610,6 +621,10 @@ export interface SuipumpLaunchInput {
   /** Fee recipients and their share in basis points; must add up to 10000. */
   payees: string[];
   shareBps: number[];
+  /** Creator's opening buy in SUI; bought on the curve before it is shared. */
+  devBuySui?: number | null;
+  /** Creator OurBank wallet that funds the buy and receives the tokens. */
+  devBuyer?: DevBuySigner | null;
 }
 
 /** Waits for a freshly created owned object to be readable, then returns it. */
@@ -798,11 +813,34 @@ export async function launchOnSuipump(input: SuipumpLaunchInput): Promise<Suipum
     };
   }
 
-  const [registry, clock, createCoins] = await Promise.all([
+  // Creator first buy: the creator's own SUI is moved to the bot first, then
+  // spent on the still-unshared curve inside the create transaction, so no
+  // sniper can trade before it.
+  let devBuyError: string | null = null;
+  let escrow: OwnedSuiCoin | null = null;
+  const devBuyMist = input.devBuySui && input.devBuySui > 0 ? BigInt(Math.round(input.devBuySui * 1e9)) : 0n;
+  if (devBuyMist > 0n) {
+    if (!input.devBuyer) {
+      devBuyError = "First buy skipped: no OurBank wallet is linked to the launcher.";
+    } else {
+      const moved = await escrowCreatorSui({ buyer: input.devBuyer, bot: sender, amountMist: devBuyMist, gasPrice });
+      escrow = moved.coin;
+      if (!escrow) devBuyError = `First buy skipped: ${moved.error ?? "the SUI could not be moved"}`;
+    }
+  }
+  const refundEscrow = async (): Promise<string> => {
+    if (!escrow || !input.devBuyer) return "";
+    const refundError = await refundCreatorSui({ keypair, bot: sender, coin: escrow, to: input.devBuyer.address, gasPrice });
+    return refundError ? ` ${refundError}` : " The first-buy SUI was returned to the creator.";
+  };
+
+  const [registry, clock, allCoins] = await Promise.all([
     sharedRef(config.registryId),
     sharedRef(CLOCK_ID),
     gasCoins(sender),
   ]);
+  // The escrowed first-buy coin is spent in the buy; never also use it as gas.
+  const createCoins = allCoins.filter((coin) => coin.objectId !== escrow?.coinObjectId);
 
   // Pay the launch fee from a separate Coin<SUI> object when the wallet holds
   // more than one; with a single coin that coin must stay the gas payment, so
@@ -812,7 +850,8 @@ export async function launchOnSuipump(input: SuipumpLaunchInput): Promise<Suipum
     return {
       status: "FAILED",
       message:
-        "The bot wallet has no SUI coin to pay gas with. Send a few SUI to it with a normal transfer, then launch again.",
+        "The bot wallet has no SUI coin to pay gas with. Send a few SUI to it with a normal transfer, then launch again." +
+        (await refundEscrow()),
       tokenAddress: null,
       transactionDigest: null,
       coinType,
@@ -863,17 +902,41 @@ export async function launchOnSuipump(input: SuipumpLaunchInput): Promise<Suipum
     ],
   });
   // create_and_return yields (curve, creator_cap); share the curve and keep
-  // the creator cap with the launch wallet. Developer buy stays off.
+  // the creator cap with the launch wallet.
   const curveArg = createResult[0];
   const creatorCap = createResult[1];
   if (!curveArg || !creatorCap) {
     return {
       status: "FAILED",
-      message: "The launch transaction could not be prepared.",
+      message: "The launch transaction could not be prepared." + (await refundEscrow()),
       tokenAddress: null,
       transactionDigest: published.digest,
       coinType,
     };
+  }
+  // Anti-sniper first buy: the curve is still owned by this transaction, so
+  // the creator's buy lands before anyone else can see the pool.
+  if (escrow && input.devBuyer) {
+    const priceConfigId = await readRegistryPriceConfig(config.registryId);
+    if (!priceConfigId) {
+      devBuyError = "First buy skipped: Suipump's price config could not be read." + (await refundEscrow());
+      escrow = null;
+    } else {
+      const priceConfig = await sharedRef(priceConfigId);
+      const bought = tx.moveCall({
+        target: `${config.packageId}::${SUIPUMP_MODULE}::buy`,
+        typeArguments: [coinType],
+        arguments: [
+          curveArg,
+          tx.objectRef({ objectId: escrow.coinObjectId, version: escrow.version, digest: escrow.digest }),
+          tx.pure.u64(0n),
+          tx.pure.option("address", null),
+          tx.sharedObjectRef({ ...priceConfig, mutable: false }),
+          tx.sharedObjectRef({ ...clock, mutable: false }),
+        ],
+      });
+      tx.transferObjects([bought[0]!, bought[1]!], input.devBuyer.address);
+    }
   }
   tx.moveCall({
     target: `${config.packageId}::${SUIPUMP_MODULE}::${SUIPUMP_SHARE_FUNCTION}`,
@@ -887,7 +950,7 @@ export async function launchOnSuipump(input: SuipumpLaunchInput): Promise<Suipum
     console.error("suipump create failed", created.error);
     return {
       status: "FAILED",
-      message: "Suipump rejected the launch, so no token was created.",
+      message: "Suipump rejected the launch, so no token was created." + (await refundEscrow()),
       tokenAddress: null,
       transactionDigest: created.digest,
       coinType,
@@ -911,5 +974,6 @@ export async function launchOnSuipump(input: SuipumpLaunchInput): Promise<Suipum
     tokenAddress: curve.address,
     transactionDigest: created.digest,
     coinType,
+    devBuyError,
   };
 }

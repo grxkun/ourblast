@@ -429,7 +429,7 @@ describe("launch tweets that mention a dev buy", () => {
     expect(ript?.devBuySui).toBe(10);
     expect(ript?.devBuyUsdc).toBeUndefined();
     const suipump = parseDeployTweet("@Ourblastbot launch $DOG Sui Dog, dev buy 5");
-    expect(suipump?.devBuySui).toBeUndefined();
+    expect(suipump?.devBuySui).toBe(5);
     expect(suipump?.devBuyUsdc).toBeUndefined();
   });
 
