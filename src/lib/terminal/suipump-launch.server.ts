@@ -19,6 +19,17 @@ import {
   type SuipumpLaunchConfig,
   type SuipumpLaunchResult,
 } from "./suipump-launch";
+import { escrowCreatorSui, refundCreatorSui, type DevBuySigner, type OwnedSuiCoin } from "./devbuy-sui.server";
+
+/** The shared PriceConfig id the Suipump registry points buys at. */
+async function readRegistryPriceConfig(registryId: string): Promise<string | null> {
+  const obj = await rpc<{ data?: { content?: { fields?: Record<string, unknown> } } }>("sui_getObject", [
+    registryId,
+    { showContent: true },
+  ]).catch(() => null);
+  const id = obj?.data?.content?.fields?.["price_config_id"];
+  return typeof id === "string" && id ? id : null;
+}
 
 /**
  * Real Suipump launch adapter, following the same public flow as suipump.org:
@@ -891,17 +902,41 @@ export async function launchOnSuipump(input: SuipumpLaunchInput): Promise<Suipum
     ],
   });
   // create_and_return yields (curve, creator_cap); share the curve and keep
-  // the creator cap with the launch wallet. Developer buy stays off.
+  // the creator cap with the launch wallet.
   const curveArg = createResult[0];
   const creatorCap = createResult[1];
   if (!curveArg || !creatorCap) {
     return {
       status: "FAILED",
-      message: "The launch transaction could not be prepared.",
+      message: "The launch transaction could not be prepared." + (await refundEscrow()),
       tokenAddress: null,
       transactionDigest: published.digest,
       coinType,
     };
+  }
+  // Anti-sniper first buy: the curve is still owned by this transaction, so
+  // the creator's buy lands before anyone else can see the pool.
+  if (escrow && input.devBuyer) {
+    const priceConfigId = await readRegistryPriceConfig(config.registryId);
+    if (!priceConfigId) {
+      devBuyError = "First buy skipped: Suipump's price config could not be read." + (await refundEscrow());
+      escrow = null;
+    } else {
+      const priceConfig = await sharedRef(priceConfigId);
+      const bought = tx.moveCall({
+        target: `${config.packageId}::${SUIPUMP_MODULE}::buy`,
+        typeArguments: [coinType],
+        arguments: [
+          curveArg,
+          tx.objectRef({ objectId: escrow.coinObjectId, version: escrow.version, digest: escrow.digest }),
+          tx.pure.u64(0n),
+          tx.pure.option("address", null),
+          tx.sharedObjectRef({ ...priceConfig, mutable: false }),
+          tx.sharedObjectRef({ ...clock, mutable: false }),
+        ],
+      });
+      tx.transferObjects([bought[0]!, bought[1]!], input.devBuyer.address);
+    }
   }
   tx.moveCall({
     target: `${config.packageId}::${SUIPUMP_MODULE}::${SUIPUMP_SHARE_FUNCTION}`,
@@ -915,7 +950,7 @@ export async function launchOnSuipump(input: SuipumpLaunchInput): Promise<Suipum
     console.error("suipump create failed", created.error);
     return {
       status: "FAILED",
-      message: "Suipump rejected the launch, so no token was created.",
+      message: "Suipump rejected the launch, so no token was created." + (await refundEscrow()),
       tokenAddress: null,
       transactionDigest: created.digest,
       coinType,
@@ -939,5 +974,6 @@ export async function launchOnSuipump(input: SuipumpLaunchInput): Promise<Suipum
     tokenAddress: curve.address,
     transactionDigest: created.digest,
     coinType,
+    devBuyError,
   };
 }
