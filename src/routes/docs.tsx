@@ -231,26 +231,30 @@ function Docs() {
               </tr>
             </thead>
             <tbody>
-              <tr className="border-t border-border">
-                <td className="px-4 py-2.5 text-foreground">Suipump, Blast.fun, Maelstrom</td>
-                <td className="px-4 py-2.5">{standardFee} SUI</td>
-                <td className="px-4 py-2.5">{standardNeed} SUI</td>
-              </tr>
-              <tr className="border-t border-border">
-                <td className="px-4 py-2.5 text-foreground">Perpsplexity (leveraged)</td>
-                <td className="px-4 py-2.5">{perpsFee} SUI</td>
-                <td className="px-4 py-2.5">{perpsNeed} SUI</td>
-              </tr>
+              {[
+                ["Suipump", "suipump"],
+                ["POPULAR, RIPT", "popular"],
+                ["Maelstrom, Blast.fun", "maelstrom"],
+                ["Perpsplexity (leveraged)", "perpsplexity"],
+              ].map(([label, id]) => (
+                <tr key={id} className="border-t border-border">
+                  <td className="px-4 py-2.5 text-foreground">{label}</td>
+                  <td className="px-4 py-2.5">{formatSui(launchFeeMist(id!))} SUI</td>
+                  <td className="px-4 py-2.5">{formatSui(requiredBalanceMist(id!))} SUI</td>
+                </tr>
+              ))}
             </tbody>
           </table>
         </div>
         <p>
-          The Perpsplexity figure includes that launchpad's own 5 SUI charge. Leveraged launches
-          also seed the pool with 1 {PERPSPLEXITY_CURVE_QUOTE_SYMBOL}. The same fee applies whether
-          you launch from the terminal or from X. If your balance is short, the launch stops before
-          anything is created and you get a top-up message. If a launch fails after the fee was
-          taken — for example a chain error — the fee is sent back to your wallet automatically, so
-          a retry never charges you twice.
+          Every fee is the 1 SUI OurBlast fee plus the launchpad's own on-chain charge (Suipump 2
+          SUI, POPULAR and RIPT 1 SUI, Perpsplexity 5 SUI), so the bot never pays it for you.
+          Leveraged launches also seed the pool with 1 {PERPSPLEXITY_CURVE_QUOTE_SYMBOL}. First
+          buys on Suipump, POPULAR and RIPT are paid in SUI from your wallet on top of this. The
+          same fee applies whether you launch from the terminal or from X. If your balance is
+          short, the launch stops before anything is created and you get a top-up message. If a
+          launch fails after the fee was taken — for example a chain error — the fee is sent back
+          to your wallet automatically, so a retry never charges you twice.
         </p>
       </Block>
 
