@@ -382,7 +382,7 @@ function Docs() {
             <thead className="bg-secondary/40 text-foreground">
               <tr>
                 <th className="px-3 py-2.5 font-semibold">Feature</th>
-                {["Suipump", "POPULAR", "RIPT", "Perpsplexity", "Maelstrom"].map((h) => (
+                {["Suipump", "POPULAR", "RIPT (paused)", "Perpsplexity", "Maelstrom"].map((h) => (
                   <th key={h} className="px-3 py-2.5 font-semibold">{h}</th>
                 ))}
               </tr>
