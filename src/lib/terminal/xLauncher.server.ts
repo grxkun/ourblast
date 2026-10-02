@@ -483,6 +483,7 @@ export async function executeLaunchRequest(requestId: string): Promise<LaunchOut
   let perpsPoolId: string | null = null;
   let blastPoolObjectId: string | null = null;
   let maelstromPoolId: string | null = null;
+  let maelstromLaunchId: string | null = null;
   let popularCurveId: string | null = null;
   // Set when the launch confirmed but the creator's first buy did not happen.
   let devBuyNotice: string | null = null;
@@ -572,16 +573,16 @@ export async function executeLaunchRequest(requestId: string): Promise<LaunchOut
       website: socials.website,
       xLink: socials.x ?? (request.x_username ? `https://x.com/${request.x_username}` : null),
       telegram: socials.telegram,
-      // Maelstrom routes the pool's LP fees to one address: the launcher's own
-      // wallet when we know it, otherwise the bot wallet holds them.
-      // The launcher is always the last payee in the route.
-      feeRecipient: routing.launcherPaidOnChain ? routing.payees[routing.payees.length - 1] ?? null : null,
+      // Maelstrom pushes LP creator fees to one address. The bot is that
+      // address so "claim my fees" pays the 80/10/10 split (maelstrom-claim.server.ts).
+      feeRecipient: null,
       // "paired with USDC" → a TOKEN/USDC Cetus pool; unsupported pairs fall back to SUI.
       quote: resolvePairToken(pad, extractPairToken(request.tweet_text ?? "")),
     });
     if (outcome.status === "CONFIRMED" && outcome.coinType && outcome.poolId) {
       deployment = { tokenAddress: outcome.coinType, transactionDigest: outcome.digest ?? "" };
       maelstromPoolId = outcome.poolId;
+      maelstromLaunchId = outcome.launchId;
     } else {
       failure = outcome.error ?? "The Maelstrom launch did not confirm on chain.";
     }
@@ -733,6 +734,7 @@ export async function executeLaunchRequest(requestId: string): Promise<LaunchOut
       status: "DEPLOYED",
       token_address: deployment.tokenAddress,
       pool_object_id: blastPoolObjectId ?? maelstromPoolId ?? popularCurveId,
+      ...(maelstromLaunchId ? { maelstrom_launch_id: maelstromLaunchId } : {}),
       token_url: tokenUrl,
       pool_url: poolUrl,
       tx_digest: deployment.transactionDigest,
