@@ -44,7 +44,7 @@ export async function handleFeeClaimMention(username: string, text: string): Pro
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
   const { data: launches } = await supabaseAdmin
     .from("x_launch_requests")
-    .select("symbol, token_address, launchpad, x_username, fee_receiver_x_username, fee_receiver_wallet, pool_object_id, status")
+    .select("symbol, token_address, launchpad, x_username, fee_receiver_x_username, fee_receiver_wallet, pool_object_id, maelstrom_launch_id, fees_paid_coin, fees_paid_quote, status")
     .eq("status", "DEPLOYED")
     .order("created_at", { ascending: false })
     .limit(500);
@@ -71,6 +71,12 @@ export async function handleFeeClaimMention(username: string, text: string): Pro
         (row.token_address && v.curveId.toLowerCase() === row.token_address.toLowerCase()) ||
         v.symbol === row.symbol.toUpperCase(),
     );
+    if (!vault && row.launchpad === "maelstrom") {
+      // STROM: Maelstrom pushes creator fees to the bot; the bot pays 80/10/10.
+      const { claimMaelstromRow } = await import("./maelstrom-claim.server");
+      results.push(await claimMaelstromRow(row));
+      continue;
+    }
     if (!vault && row.launchpad === "popular" && row.pool_object_id) {
       // POPULAR: the bot holds the creator role and pays the 80/10/10 split.
       const { feeRouting } = await import("./xLauncher.server");
@@ -118,7 +124,7 @@ export async function handleFeeCheckMention(username: string, text: string): Pro
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
   const { data: launches } = await supabaseAdmin
     .from("x_launch_requests")
-    .select("symbol, token_address, launchpad, x_username, fee_receiver_x_username, fee_receiver_wallet, pool_object_id, status")
+    .select("symbol, token_address, launchpad, x_username, fee_receiver_x_username, fee_receiver_wallet, pool_object_id, maelstrom_launch_id, fees_paid_coin, fees_paid_quote, status")
     .eq("status", "DEPLOYED")
     .order("created_at", { ascending: false })
     .limit(500);
@@ -141,6 +147,18 @@ export async function handleFeeCheckMention(username: string, text: string): Pro
         (row.token_address && v.curveId.toLowerCase() === row.token_address.toLowerCase()) ||
         v.symbol === row.symbol.toUpperCase(),
     );
+    if (!vault && row.launchpad === "maelstrom" && row.pool_object_id) {
+      const { findMaelstromLaunchId, maelstromOwed } = await import("./maelstrom-claim.server");
+      const launchId = row.maelstrom_launch_id ?? (await findMaelstromLaunchId(row.pool_object_id));
+      const owed = launchId
+        ? await maelstromOwed(launchId, BigInt(String(row.fees_paid_coin ?? 0).split(".")[0] || "0"), BigInt(String(row.fees_paid_quote ?? 0).split(".")[0] || "0"))
+        : null;
+      const sym = owed?.fees.quoteType.split("::").pop() ?? "SUI";
+      const q = owed ? Number(owed.owedQuote) / (sym === "SUI" ? 1e9 : 1e6) : 0;
+      if (sym === "SUI") total += q;
+      parts.push(`$${row.symbol}: ${q.toFixed(4)} ${sym} + ${row.symbol}`);
+      continue;
+    }
     if (!vault && row.launchpad === "popular" && row.pool_object_id) {
       const { readPopularCurveFees } = await import("./popular-claim.server");
       const fees = await readPopularCurveFees(row.pool_object_id);
