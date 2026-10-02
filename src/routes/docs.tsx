@@ -81,10 +81,6 @@ function Block({
 function Docs() {
   const pads = LAUNCHPADS.filter((pad) => pad.integrated);
   const soon = LAUNCHPADS.filter((pad) => !pad.integrated);
-  const standardFee = formatSui(launchFeeMist("suipump"));
-  const standardNeed = formatSui(requiredBalanceMist("suipump"));
-  const perpsFee = formatSui(launchFeeMist("perpsplexity"));
-  const perpsNeed = formatSui(requiredBalanceMist("perpsplexity"));
 
   return (
     <div className="space-y-12">

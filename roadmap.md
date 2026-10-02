@@ -110,3 +110,10 @@
 - [x] Blast.fun launchpad support (official memez-fun flow; first live launch still to be watched)
 
 - [x] Trade wallet choice (OurBank vs own wallet) for send/buy/sell on X and terminal chat
+
+## Launch fees & anti-sniper (Oct 2026)
+- [x] Charge each launchpad's own fee to the launcher (Suipump 3, POPULAR/RIPT 2, Perps 6, Maelstrom 1 SUI)
+- [x] Suipump atomic creator first buy in SUI (before curve is shared) — not live-tested
+- [x] POPULAR: bot keeps creator role; claims split 80/10/10 (dry-run passed)
+- [ ] RIPT 80/10/10 — blocked: RIPT pushes fees to one address, needs separate accounting design
+- [ ] Maelstrom creator first buy — blocked: bought tokens mix with premine in bot wallet; needs live test
