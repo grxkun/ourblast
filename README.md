@@ -84,22 +84,6 @@ Build the application:
 bun run build
 ```
 
-## Environment Variables
-
-Production credentials must be provided through environment variables.
-
-Do **not** commit:
-
-```text
-.env
-.env.local
-private keys
-mnemonics
-API keys
-access tokens
-service-role keys
-```
-
 An example environment file can be provided separately when required.
 
 ## Security
