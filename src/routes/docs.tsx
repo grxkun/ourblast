@@ -376,6 +376,51 @@ function Docs() {
         ) : null}
       </Block>
 
+      <Block id="matrix" kicker="Compare" title="Launchpad feature & fee matrix">
+        <div className="overflow-x-auto rounded-xl border border-border">
+          <table className="w-full min-w-[720px] border-collapse text-left font-body text-sm">
+            <thead className="bg-secondary/40 text-foreground">
+              <tr>
+                <th className="px-3 py-2.5 font-semibold">Feature</th>
+                {["Suipump", "POPULAR", "RIPT", "Perpsplexity", "Maelstrom"].map((h) => (
+                  <th key={h} className="px-3 py-2.5 font-semibold">{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {(
+                [
+                  ["Type", "Bonding curve", "Bonding curve → Cetus at 5,000 SUI", "Bluefin pool, locked LP", "Leveraged composite", "Cetus CLMM, locked LP"],
+                  ["Pair", "SUI", "SUI", "SUI", "USDC", "SUI / USDC / BLAST / DEEP / WAL"],
+                  ["Dev buy", "SUI", "SUI", "SUI", "USDC", "—"],
+                  ["Anti-sniper first buy", "Same block", "Same block", "Same block", "Same block", "—"],
+                  ["Creator fee split", "80/10/10", "80/10/10", "100% launcher", "Built into composite", "80/10/10"],
+                  ["Pad on-chain fee", "2 SUI", "1 SUI", "1 SUI", "5 SUI", "0 SUI"],
+                  ["OurBlast fee", "1 SUI", "1 SUI", "1 SUI", "1 SUI", "1 SUI"],
+                  ...[["Total launch fee", "suipump"], ["Balance needed", "suipump"]].map(([label]) => [
+                    label,
+                    ...["suipump", "popular", "ript", "perpsplexity", "maelstrom"].map((id) =>
+                      `${formatSui(label === "Total launch fee" ? launchFeeMist(id) : requiredBalanceMist(id))} SUI${label === "Balance needed" && id !== "maelstrom" ? " + dev buy" : ""}`,
+                    ),
+                  ]),
+                  ["Failed launch", "Full refund", "Full refund", "Full refund", "Full refund", "Full refund"],
+                  ["Launch from", "X + terminal", "X + terminal", "X + terminal", "X + terminal", "X + terminal"],
+                  ["Claim fees via", "X / terminal / page", "X / terminal / page", "On-chain to launcher", "Perpsplexity", "X / terminal / page"],
+                ] as string[][]
+              ).map(([label, ...cells]) => (
+                <tr key={label} className="border-t border-border">
+                  <td className="px-3 py-2.5 font-semibold text-foreground">{label}</td>
+                  {cells.map((c, i) => (
+                    <td key={i} className="px-3 py-2.5">{c}</td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <p>Blast.fun follows the Maelstrom fee row. Fees and splits above apply to new launches.</p>
+      </Block>
+
       <Block id="markets" kicker="Leveraged" title={`Markets you can pair with (${PERPSPLEXITY_MARKETS.length})`}>
         <p>Use any of these names as the market in a leveraged launch:</p>
         <div className="flex flex-wrap gap-1.5">
