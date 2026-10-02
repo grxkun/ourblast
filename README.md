@@ -1,97 +1,94 @@
 # OurBlast
 
-OurBlast is an onchain trading and launch interface built around the Sui ecosystem, with Telegram/X integrations and Blast.fun launch functionality.
+Onchain trading and launch infrastructure for the Sui ecosystem, powering **OurBlastbot** and OurBlast integrations.
 
 ## Overview
 
-OurBlast provides:
+OurBlast is a Sui-based onchain application with integrations for token discovery, trading, social/X workflows, Telegram, and Blast.fun.
 
-* Onchain token discovery and trading tools
-* Blast.fun token launch integration
-* Telegram bot integration
-* X/social integration
-* Sui wallet and transaction handling
-* Token launch and bonding-curve interaction
-* Backend services for transaction execution
-
-The project is designed to interact with existing Sui and Blast.fun infrastructure rather than deploying or modifying Blast.fun contracts.
+The repository contains the application source code and integration logic used by OurBlast.
 
 ## Blast.fun Integration
 
-OurBlast includes an integration layer for interacting with Blast.fun's launch infrastructure.
+OurBlast includes integration code for interacting with Blast.fun's launch infrastructure.
 
-The relevant implementation is primarily located under:
+The main Blast.fun implementation is located under:
 
 ```text
 src/lib/terminal/
 ```
 
-Key integration logic includes:
+with the primary launch integration in:
 
 ```text
 src/lib/terminal/blastfun-launch.server.ts
 ```
 
-This module handles the client-side/server-side interaction required for Blast.fun token launches, including transaction construction and execution.
+The integration handles Sui transaction construction and execution for Blast.fun-related workflows.
 
-### Important
+### Deployment
 
-This repository does **not** deploy any Blast.fun contract as part of this integration.
+**No Blast.fun contract has been deployed by OurBlast as part of this repository handoff.**
 
-No contract deployment has been performed by the project for the purpose of this integration.
-
-Deployment of any required contracts or infrastructure should be handled by the Blast.fun team.
+This repository is provided for technical review and integration. Any required contract or infrastructure deployment should be handled by the Blast.fun team.
 
 ## Architecture
 
 ```text
-                ┌─────────────────┐
-                │     OurBlast     │
-                └────────┬────────┘
-                         │
-          ┌──────────────┼──────────────┐
-          │              │              │
-          ▼              ▼              ▼
-      Telegram          X/Social       Web UI
-          │              │              │
-          └──────────────┼──────────────┘
-                         ▼
-                  OurBlast Backend
-                         │
-                         ▼
-                    Sui Network
-                         │
-                         ▼
-                    Blast.fun
+OurBlast
+   │
+   ├── Web Interface
+   ├── OurBlastbot
+   ├── X / Social Integration
+   │
+   ▼
+Sui Integration Layer
+   │
+   ├── Wallet / Signing
+   ├── Transaction Builder
+   └── Blast.fun Integration
+   │
+   ▼
+Sui Network
 ```
 
 ## Repository Structure
 
 ```text
-src/
-├── lib/
-│   ├── terminal/
-│   │   ├── blastfun-launch.server.ts
-│   │   └── ...
-│   └── ...
-├── ...
+src/            Application and integration source
+public/         Static assets
+supabase/       Database and backend functions
+package.json    Project dependencies and scripts
+bun.lock        Dependency lockfile
+LICENSE         BUSL-1.1 license
+ARCHITECTURE.md Project architecture documentation
 ```
 
-The repository also contains supporting services, database migrations, UI components, and integrations used by OurBlast.
+## Development
 
-## Transaction Execution
+Install dependencies:
 
-Blast.fun-related transactions are constructed and executed through the Sui transaction infrastructure.
+```bash
+bun install
+```
 
-The integration may require a configured wallet/signer and the appropriate environment variables.
+Run the development server:
 
-No private keys or production credentials are included in this repository.
+```bash
+bun run dev
+```
+
+Build the application:
+
+```bash
+bun run build
+```
 
 ## Environment Variables
 
-Production credentials must be supplied through environment variables.
+Production credentials must be provided through environment variables.
 
-Do not commit:
+Do **not** commit:
 
 ```text
 .env
@@ -103,54 +100,36 @@ access tokens
 service-role keys
 ```
 
-## Development
+An example environment file can be provided separately when required.
 
-Install dependencies:
+## Security
 
-```bash
-bun install
-```
+Private keys and production credentials are not included in this repository.
 
-Run the development environment:
-
-```bash
-bun run dev
-```
-
-Build:
-
-```bash
-bun run build
-```
+Any wallet used for transaction execution must be configured separately in the deployment environment.
 
 ## License
 
 This project is licensed under the **Business Source License 1.1 (BUSL-1.1)**.
 
-Relevant source files include the following SPDX declaration:
+See [`LICENSE`](./LICENSE) for the full license terms.
 
-```solidity
+Relevant source files use:
+
+```text
 // SPDX-License-Identifier: BUSL-1.1
 ```
 
-See [`LICENSE`](./LICENSE) for the complete license terms.
+## Integration Status
 
-## Integration Notes for Blast.fun
+| Component                       | Status                         |
+| ------------------------------- | ------------------------------ |
+| Sui integration                 | Active                         |
+| OurBlastbot                     | Active                         |
+| Blast.fun integration           | Available for technical review |
+| Contract deployment by OurBlast | None                           |
+| License                         | BUSL-1.1                       |
 
-This repository is provided for technical review and integration.
+## Contact
 
-Blast.fun can review the existing integration implementation and determine the appropriate deployment, contract, infrastructure, and production configuration on its side.
-
-**No Blast.fun contract deployment is requested or performed by OurBlast as part of this repository handoff.**
-
-## Status
-
-**Integration:** Ready for technical review
-
-**Network:** Sui
-
-**Blast.fun:** Integration layer included
-
-**Contract deployment by OurBlast:** None
-
-**License:** BUSL-1.1
+For Blast.fun integration and technical coordination, please contact the OurBlast development team.
