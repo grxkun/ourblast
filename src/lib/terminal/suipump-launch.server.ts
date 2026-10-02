@@ -414,6 +414,11 @@ export async function signAndExecute(
       };
     }
   }
+  // An explicit rejection (invalid input, insufficient balance, Move abort) means
+  // the network refused the bytes: fail now instead of polling for a minute.
+  if (lastSubmitError && /-32002|invalid|insufficient|abort|verif|reservation|rejected/i.test(lastSubmitError)) {
+    return { digest: null, ok: false, error: lastSubmitError.slice(0, 300), created: [] };
+  }
   if (expectedDigest && (await waitForDigest(expectedDigest))) {
     return { digest: expectedDigest, ok: true, error: null, created: await createdViaRpc(expectedDigest) };
   }
