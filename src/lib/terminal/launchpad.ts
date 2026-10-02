@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: BUSL-1.1
 /**
  * Single place that defines which launch platforms the terminal and the X bot can target.
  * Add a pad here and every card, reply and adapter follows.

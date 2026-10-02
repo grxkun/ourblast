@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: BUSL-1.1
 import type { LiveFeeRow } from "./liveFees.functions";
 
 /** Picks the on-chain fee row for a token, by ticker or by curve/token address. */

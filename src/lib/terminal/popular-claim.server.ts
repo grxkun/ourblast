@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: BUSL-1.1
 /**
  * POPULAR creator-fee claims with the OurBlast 80/10/10 split. POPULAR pays
  * creator fees to one address, so the bot keeps the curve's creator role and,

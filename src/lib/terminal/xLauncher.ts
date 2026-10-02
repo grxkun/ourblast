@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: BUSL-1.1
 import { normalizeCommandText } from "./commandParser";
 import { normalizeSymbol } from "./ticker";
 import { fixTypos } from "./typos";

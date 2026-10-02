@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: BUSL-1.1
 import { normalizeStructTag, normalizeSuiAddress } from "@mysten/sui/utils";
 
 import { describeRecipient, isBurnAddress, parseBankCommand, parseChoiceReply, parseSwapCommand, shortCoinType, toAtomic, type BankCommand } from "./bank";

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: BUSL-1.1
 import { createPrivateKey, sign as nodeSign } from "node:crypto";
 
 import { blake2b } from "@noble/hashes/blake2.js";

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: BUSL-1.1
 import { LAUNCHPAD, type LaunchpadConfig } from "./launchpad";
 import type { LaunchConfiguration, TerminalToolResult } from "./types";
 

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: BUSL-1.1
 /**
  * Sign in to OURBLAST with an X account.
  *

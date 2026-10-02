@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: BUSL-1.1
 /**
  * Where a creator's share of the launchpad creator fee goes.
  *

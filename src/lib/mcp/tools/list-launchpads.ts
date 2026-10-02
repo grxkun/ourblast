@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: BUSL-1.1
 import { defineTool } from "@lovable.dev/mcp-js";
 
 import { LAUNCHPADS } from "@/lib/terminal/launchpad";

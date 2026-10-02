@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: BUSL-1.1
 /**
  * Maelstrom (STROM) creator-fee claims with the OurBlast 80/10/10 split.
  *

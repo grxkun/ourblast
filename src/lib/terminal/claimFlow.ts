@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: BUSL-1.1
 /**
  * Store-agnostic logic for the self-serve creator-fee claim flow.
  *

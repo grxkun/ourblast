@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: BUSL-1.1
 import { LAUNCHPAD, resolveLaunchpad } from "./launchpad";
 import { FEE_SUMMARY, describeGasPolicy, gasPayerFor } from "./fees";
 import { describeLaunchSettings, normalizeLaunchSettings } from "./launchSettings";

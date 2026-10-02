@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: BUSL-1.1
 /**
  * OurBlast launch path for RIPT (ript.fi), traced from RIPT's own launch client
  * and verified against the live Move signatures:

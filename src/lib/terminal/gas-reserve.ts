@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: BUSL-1.1
 /** Gas reserve policy — shared by the browser and the server. */
 
 /** SUI needed to start sponsoring launch transactions. */

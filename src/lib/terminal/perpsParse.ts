@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: BUSL-1.1
 /**
  * Shared parsing for Perpsplexity market-backed launch calls, used by both
  * the X launcher and the terminal command parser.

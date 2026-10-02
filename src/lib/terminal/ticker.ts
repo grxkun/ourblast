@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: BUSL-1.1
 /**
  * Reads a usable ticker out of whatever people type after "Ticker:".
  * Real tweets carry stray prefixes ("Ticker : u/PURPLE", "Ticker: $/PURPLE"),

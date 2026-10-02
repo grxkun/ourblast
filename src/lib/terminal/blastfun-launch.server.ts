@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: BUSL-1.1
 /**
  * Blast.fun launch, copied step for step from the official blast.fun launch form
  * (interest-protocol/blast.fun · use-launch-coin.ts, memez-fun-sdk 19.1.0

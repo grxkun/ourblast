@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: BUSL-1.1
 import { defineMcp } from "@lovable.dev/mcp-js";
 
 import getLaunchTool from "./tools/get-launch";

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: BUSL-1.1
 import { BOT_WALLET_ADDRESS } from "@/lib/ourblast.config";
 
 import { launchFeeMist, lowBalanceNotice, noWalletNotice, requiredBalanceMist } from "./launchFee";

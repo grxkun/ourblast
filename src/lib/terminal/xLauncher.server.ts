@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: BUSL-1.1
 import { BOT_WALLET_ADDRESS, DEFAULT_TREASURY_ADDRESS, FOUNDER_ADDRESS } from "@/lib/ourblast.config";
 import { CREATOR_FEE_SPLIT } from "./fees";
 import { poolPageUrl, resolveLaunchpad, resolvePairToken, tokenPageUrl } from "./launchpad";

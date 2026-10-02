@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: BUSL-1.1
 /**
  * Shared mention-poll routine: reads new @ourblastbot mentions, answers each launch
  * call exactly once, and re-checks open Suipump requests. Used by the scheduled
