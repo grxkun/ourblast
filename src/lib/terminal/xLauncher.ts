@@ -146,6 +146,9 @@ const DEPLOY_CALL =
 /** "nsme: Tety Yety" / "name Tety Yety" / "name token: Tety" / "called Tety Yety" — chatty ways to give the name. */
 const NAME_MARKER = /^[\s,:;.\-–—]*(?:n[ase]?me|named|called|title)(?:\s+(?:token|coin|ticker))?\s*[:=]?\s*/i;
 
+/** Everything from the first trailing field label on ("Description …", "Website: …"). */
+const TRAILING_FIELDS = /\s+\b(?:desc|description|about|bio|image|img|picture|pic|supply|website|web|site|twitter|telegram|tg|fee|fees|underlying|market|asset|position|direction|side|leverage|lev|mc)\b[\s\S]*$/i;
+
 /** A deploy verb anywhere in the tweet (field-style calls put the cashtag on another line). */
 const DEPLOY_VERB = /\b(?:deploy|launch|create|mint|make)\b/i;
 
@@ -199,6 +202,8 @@ export function parseDeployTweet(tweetText: string, defaultPad = LAUNCHPAD.id): 
     const symbol = match[1].toUpperCase();
     const rawName = (match[2] ?? "")
       .replace(NAME_MARKER, "")
+      // Field-style tails ("Qinglong Description The Tesla…") are not part of the name.
+      .replace(TRAILING_FIELDS, "")
       .replace(/\s+/g, " ")
       .replace(/[\s.,!?;:-]+$/g, "")
       .trim();
@@ -247,9 +252,11 @@ export function imageUrlInText(text: string): string | null {
  * description as the caller wrote it. Runs until the next field label or the end.
  */
 export function extractDescription(rawText: string): string | null {
-  const match = rawText.match(
-    /\b(?:desc|description|about|bio)\s*[:=]\s*([\s\S]+?)(?=\n\s*(?:name|title|ticker|symbol|sym|image|img|pic|picture|supply|website|web|site|twitter|telegram|tg|x|fee|fees)\s*[:=]|$)/i,
-  );
+  const NEXT = "(?=\\n\\s*(?:name|title|ticker|symbol|sym|image|img|pic|picture|supply|website|web|site|twitter|telegram|tg|x|fee|fees|dev\\s+buy|underlying|position|leverage)\\b|$)";
+  // "Description: …" anywhere, or a line starting "Description  …" with no colon.
+  const match =
+    rawText.match(new RegExp("\\b(?:desc|description|about|bio)\\s*[:=]\\s*([\\s\\S]+?)" + NEXT, "i")) ??
+    rawText.match(new RegExp("(?:^|\\n)\\s*(?:desc|description|about|bio)\\s+([\\s\\S]+?)" + NEXT, "i"));
   const value = match?.[1]
     ?.replace(/@[a-z0-9_]{1,15}/gi, " ")
     .replace(/\s+/g, " ")
