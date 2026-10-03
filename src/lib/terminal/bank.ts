@@ -25,9 +25,14 @@ const HANDLE = /^@?[A-Za-z0-9_]{1,15}$/;
 const COMMAND =
   /\b(?:send|tip|pay|transfer|give)\s+([0-9]+(?:\.[0-9]+)?)\s+(\$?[A-Za-z0-9_]{1,20}|0x[0-9a-fA-F]{1,64}::[A-Za-z0-9_]+::[A-Za-z0-9_]+)\s+to\s+(\S+)/i;
 
+/** "10,000" → "10000" so formatted amounts parse. */
+export function stripThousands(text: string): string {
+  return text.replace(/\b(\d{1,3})((?:,\d{3})+)(?!\d)/g, (_, a: string, b: string) => a + b.replace(/,/g, ""));
+}
+
 export function parseBankCommand(raw: string): BankCommand | null {
   // Drop mentions of the bot itself so "@ourblastbot send …" parses cleanly.
-  const text = raw.replace(/@ourblastbot\b/gi, " ").replace(/\s+/g, " ").trim();
+  const text = stripThousands(raw).replace(/@ourblastbot\b/gi, " ").replace(/\s+/g, " ").trim();
   const match = COMMAND.exec(text);
   if (!match) return null;
   const [, amount, tokenRaw, targetRaw] = match;
@@ -151,7 +156,8 @@ const BURN_INTENT = /\b(?:burn(?:s|ed|ing|t)?|(?:dead|zero|null)\s*(?:address|wa
 const BURN_STRIP =
   /\s*(?:\b(?:and|then)\b|&|\+|,)?\s*(?:\bthen\b\s*)?(?:\b(?:send|transfer|forward|give)\b\s*)?(?:\b(?:it|them|all|everything|the\s+tokens?)\b\s*)?(?:\bto\b\s*(?:\bthe\b\s*)?)?\b(?:burn(?:s|ed|ing|t)?|(?:dead|zero|null)\s*(?:address|wallet))\b(?:\s*\b(?:address|wallet)\b)?/gi;
 
-export function parseSwapCommand(raw: string): SwapCommand | null {
+export function parseSwapCommand(input: string): SwapCommand | null {
+  const raw = stripThousands(input);
   const flatRaw = raw.replace(/\s+/g, " ");
   // Burn shorthand: strip the burn words, parse the trade, then aim it at the dead address.
   if (BURN_INTENT.test(flatRaw) && !/0x0{64}/i.test(flatRaw)) {
