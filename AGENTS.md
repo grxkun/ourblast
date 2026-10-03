@@ -1,0 +1,1 @@
+- Production builds read public backend values from vite.config define fallbacks — .env is gitignored and missing in deploys.
