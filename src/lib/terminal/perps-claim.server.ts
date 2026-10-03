@@ -49,7 +49,7 @@ export async function findPerpsPoolId(digest: string | null): Promise<string | n
   const tx = await rpc<{ objectChanges?: { type: string; objectType?: string; objectId?: string }[] }>(
     "sui_getTransactionBlock", [digest, { showObjectChanges: true }],
   ).catch(() => null);
-  return tx?.objectChanges?.find((c) => c.type === "created" && c.objectType?.includes("::composite_pool::CompositePool<"))?.objectId ?? null;
+  return tx?.objectChanges?.find((c) => (c.type === "created" || c.type === "mutated") && Boolean(c.objectType?.includes("::composite_pool::CompositePool<")))?.objectId ?? null;
 }
 
 async function usdcCoins(owner: string): Promise<{ coinObjectId: string; balance: string }[]> {
