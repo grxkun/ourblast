@@ -43,6 +43,15 @@ export async function readPerpsPoolFees(poolId: string): Promise<PerpsPoolFees |
   };
 }
 
+/** Finds the CompositePool created by a launch transaction. */
+export async function findPerpsPoolId(digest: string | null): Promise<string | null> {
+  if (!digest) return null;
+  const tx = await rpc<{ objectChanges?: { type: string; objectType?: string; objectId?: string }[] }>(
+    "sui_getTransactionBlock", [digest, { showObjectChanges: true }],
+  ).catch(() => null);
+  return tx?.objectChanges?.find((c) => c.type === "created" && c.objectType?.includes("::composite_pool::CompositePool<"))?.objectId ?? null;
+}
+
 async function usdcCoins(owner: string): Promise<{ coinObjectId: string; balance: string }[]> {
   const res = await rpc<{ data: { coinObjectId: string; balance: string }[] }>("suix_getCoins", [owner, PERPSPLEXITY_QUOTE_TYPE, null, 50]);
   return res.data ?? [];
