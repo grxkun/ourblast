@@ -37,6 +37,7 @@ export const Route = createFileRoute("/docs")({
 
 const TOC = [
   { id: "start", label: "Getting started" },
+  { id: "x", label: "X commands" },
   { id: "ourbank", label: "OurBank wallet" },
   { id: "launch", label: "Launching a token" },
   { id: "perps", label: "Leveraged (Perpsplexity)" },
