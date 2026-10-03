@@ -46,9 +46,14 @@ export async function readPerpsPoolFees(poolId: string): Promise<PerpsPoolFees |
 /** Finds the CompositePool created by a launch transaction. */
 export async function findPerpsPoolId(digest: string | null): Promise<string | null> {
   if (!digest) return null;
-  const tx = await rpc<{ objectChanges?: { type: string; objectType?: string; objectId?: string }[] }>(
-    "sui_getTransactionBlock", [digest, { showObjectChanges: true }],
-  ).catch(() => null);
+  const tx = await fetch("https://rpc-mainnet.suiscan.xyz", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "sui_getTransactionBlock", params: [digest, { showObjectChanges: true }] }),
+  })
+    .then((r) => r.json() as Promise<{ result?: { objectChanges?: { type: string; objectType?: string; objectId?: string }[] } }>)
+    .then((j) => j.result ?? null)
+    .catch(() => null);
   return tx?.objectChanges?.find((c) => (c.type === "created" || c.type === "mutated") && Boolean(c.objectType?.includes("::composite_pool::CompositePool<")))?.objectId ?? null;
 }
 
