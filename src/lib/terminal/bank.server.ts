@@ -120,7 +120,7 @@ export async function createBankTransferFromMention(
   }
 
   const recipientAddress = await resolveRecipient(command.recipientKind, command.recipient);
-  if (!recipientAddress && command.recipientKind === "suins") return `@${username} ${command.recipient} doesn't point to a Sui address.`;
+  if (!recipientAddress && command.recipientKind === "suins") return `@${username} ${command.recipient} isn't registered on SuiNS, so nothing was sent. Check the spelling, or use a 0x address or @handle.`;
   if (recipientAddress && recipientAddress === senderWallet) return `@${username} that's your own wallet.`;
 
   const status = recipientAddress ? "PENDING_APPROVAL" : "WAITING_RECIPIENT";
@@ -325,6 +325,11 @@ async function handleSwapMention(postId: string, username: string, text: string,
 
   if (command.side === "buy" && !command.isCoinType) {
     return `@${username} to buy safely, paste the token's full contract address, e.g. buy 5 SUI of 0x…::coin::COIN`;
+  }
+  // Check the forward destination BEFORE trading, so nothing gets stranded.
+  if (command.sendTo?.recipientKind === "suins") {
+    const dest = await resolveRecipient("suins", command.sendTo.recipient).catch(() => null);
+    if (!dest) return `@${username} ${command.sendTo.recipient} isn't registered on SuiNS, so I didn't trade. Check the spelling, or use a 0x address or @handle, then tweet again.`;
   }
   const mode = await tradeWalletFor(username);
   type BankWalletRow = NonNullable<Awaited<ReturnType<typeof findBankWallet>>>;
