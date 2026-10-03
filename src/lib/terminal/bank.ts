@@ -237,3 +237,10 @@ export function shortCoinType(type: string): string {
   const [addr = "", ...rest] = type.split("::");
   return `${addr.slice(0, 6)}…${addr.slice(-4)}::${rest.join("::")}`;
 }
+
+/** "@ourblastbot balance" / "my balance" / "bal" / "wallet" — read-only OurBank balance check. */
+export function isBalanceRequest(raw: string): boolean {
+  const t = raw.replace(/@[a-z0-9_]{1,15}/gi, " ").replace(/\s+/g, " ").trim().toLowerCase();
+  if (/\b(send|buy|sell|swap|launch|deploy|claim|fees?|burn|transfer)\b/.test(t)) return false;
+  return /^(?:(?:check|show|what(?:'s| is)?)\s+)?(?:my\s+)?(?:ourbank\s+|bank\s+|wallet\s+)?(?:balances?|bal|wallet|holdings|portfolio)\s*[?!.]*$/.test(t);
+}
