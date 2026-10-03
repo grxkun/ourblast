@@ -19,14 +19,14 @@ export default defineConfig({
     // is absent from the repo (it is gitignored). Publishable key only — safe.
     define: {
       "import.meta.env.VITE_SUPABASE_URL": JSON.stringify(
-        process.env.VITE_SUPABASE_URL || "https://lrhwkbpxnqgonuqeswng.supabase.co",
+        process.env['VITE_SUPABASE_URL'] || "https://lrhwkbpxnqgonuqeswng.supabase.co",
       ),
       "import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY": JSON.stringify(
-        process.env.VITE_SUPABASE_PUBLISHABLE_KEY ||
+        process.env['VITE_SUPABASE_PUBLISHABLE_KEY'] ||
           "sb_publishable_0wsmGRFZIV-JF5bg6xTS-Q_vqYQE0k1",
       ),
       "import.meta.env.VITE_SUPABASE_PROJECT_ID": JSON.stringify(
-        process.env.VITE_SUPABASE_PROJECT_ID || "lrhwkbpxnqgonuqeswng",
+        process.env['VITE_SUPABASE_PROJECT_ID'] || "lrhwkbpxnqgonuqeswng",
       ),
     },
   },
