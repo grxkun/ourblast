@@ -45,7 +45,7 @@ export async function handleFeeClaimMention(username: string, text: string): Pro
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
   const { data: launches } = await supabaseAdmin
     .from("x_launch_requests")
-    .select("symbol, token_address, launchpad, x_username, fee_receiver_x_username, fee_receiver_wallet, pool_object_id, maelstrom_launch_id, fees_paid_coin, fees_paid_quote, status")
+    .select("symbol, token_address, launchpad, x_username, fee_receiver_x_username, fee_receiver_wallet, pool_object_id, tx_digest, maelstrom_launch_id, fees_paid_coin, fees_paid_quote, status")
     .eq("status", "DEPLOYED")
     .order("created_at", { ascending: false })
     .limit(500);
@@ -89,6 +89,24 @@ export async function handleFeeClaimMention(username: string, text: string): Pro
       results.push(
         outcome.ok && outcome.digest
           ? `$${row.symbol}: ${outcome.claimedSui.toFixed(4)} SUI split 80/10/10 ✅ suiscan.xyz/mainnet/tx/${outcome.digest}`
+          : `$${row.symbol}: ${outcome.message}`,
+      );
+      continue;
+    }
+    if (!vault && row.launchpad === "perpsplexity") {
+      // Perpsplexity: the bot is the pool creator; pay_creator then 80/10/10 in USDC.
+      const { feeRouting } = await import("./xLauncher.server");
+      const { claimPerpsCreatorFees } = await import("./perps-claim.server");
+      const routing = await feeRouting(row.x_username, { handle: row.fee_receiver_x_username, wallet: row.fee_receiver_wallet });
+      const { findPerpsPoolId } = await import("./perps-claim.server");
+      const poolId = row.pool_object_id ?? (await findPerpsPoolId((row as { tx_digest?: string | null }).tx_digest ?? null));
+      if (!poolId) { results.push(`$${row.symbol}: pool not found for this launch`); continue; }
+      const outcome = await claimPerpsCreatorFees(poolId, routing.payees, routing.shareBps).catch((e) => ({
+        ok: false, message: e instanceof Error ? e.message : "claim failed", digest: null, claimedUsdc: 0,
+      }));
+      results.push(
+        outcome.ok && outcome.digest
+          ? `$${row.symbol}: ${outcome.claimedUsdc.toFixed(2)} USDC split 80/10/10 ✅ suiscan.xyz/mainnet/tx/${outcome.digest}`
           : `$${row.symbol}: ${outcome.message}`,
       );
       continue;
