@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 import { normalizeStructTag, normalizeSuiAddress } from "@mysten/sui/utils";
 
-import { describeRecipient, isBurnAddress, parseBankCommand, parseChoiceReply, parseSwapCommand, shortCoinType, toAtomic, type BankCommand } from "./bank";
+import { describeRecipient, isBalanceRequest, isBurnAddress, parseBankCommand, parseChoiceReply, parseSwapCommand, shortCoinType, toAtomic, type BankCommand } from "./bank";
 import { X_BOT_SITE } from "./x-bot";
 
 const SUI_TYPE = normalizeStructTag("0x2::sui::SUI");
@@ -461,6 +461,7 @@ const TRADE_WORDS = /\b(?:buy|bought|sell|sold|swap|burn|trade)\b/i;
 export async function handleBankMention(postId: string, username: string, text: string): Promise<string | null> {
   const choice = await resolvePendingChoice(postId, username, text);
   if (choice !== null) return choice;
+  if (isBalanceRequest(text)) return balanceReply(username);
   if (parseSwapCommand(text)) return handleSwapMention(postId, username, text);
   const transfer = await createBankTransferFromMention(postId, username, text);
   if (transfer !== null) return transfer;
@@ -518,4 +519,29 @@ export async function listSwapTweets() {
     .in("x_post_id", swaps.map((m) => m.x_post_id).concat(["-"]));
   const byId = new Map((rows ?? []).map((r) => [r.x_post_id, r]));
   return swaps.map((m) => ({ ...m, swap: byId.get(m.x_post_id) ?? null }));
+}
+
+/** Read-only reply listing the caller's OurBank wallet balances. */
+async function balanceReply(username: string): Promise<string> {
+  const { findBankWallet, bankBalances } = await import("./bank-wallet.server");
+  const wallet = await findBankWallet(username);
+  if (!wallet) return `@${username} you don't have an OurBank wallet yet. Sign in with X at ${bankLink()} to create one.`;
+  let rows: { coinType: string; balance: bigint }[];
+  try {
+    rows = await bankBalances(wallet.address);
+  } catch {
+    return `@${username} couldn't read your wallet from the chain right now. Try again shortly.`;
+  }
+  const short = `${wallet.address.slice(0, 6)}…${wallet.address.slice(-4)}`;
+  if (!rows.length) return `@${username} your OurBank wallet ${short} is empty. Deposit SUI to ${wallet.address}`;
+  const parts: string[] = [];
+  for (const r of rows.slice(0, 6)) {
+    const meta = await rpc<{ symbol: string; decimals: number } | null>("suix_getCoinMetadata", [r.coinType]).catch(() => null);
+    const dec = meta?.decimals ?? 9;
+    const amt = Number(r.balance) / 10 ** dec;
+    const sym = (meta?.symbol ?? r.coinType.split("::").at(-1) ?? "?").toUpperCase().replace(/^\$/, "");
+    parts.push(`${amt.toLocaleString("en-US", { maximumFractionDigits: amt < 1 ? 4 : 2 })} ${sym}`);
+  }
+  const more = rows.length > 6 ? ` +${rows.length - 6} more` : "";
+  return `@${username} OurBank ${short}: ${parts.join(", ")}${more}. ${bankLink()}`.slice(0, 280);
 }
