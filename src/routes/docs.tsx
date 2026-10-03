@@ -37,6 +37,7 @@ export const Route = createFileRoute("/docs")({
 
 const TOC = [
   { id: "start", label: "Getting started" },
+  { id: "x", label: "X commands" },
   { id: "ourbank", label: "OurBank wallet" },
   { id: "launch", label: "Launching a token" },
   { id: "perps", label: "Leveraged (Perpsplexity)" },
@@ -140,6 +141,53 @@ function Docs() {
         <p>
           Sign in once on the home page and link your X account so posts from your handle are
           matched to your wallet.
+        </p>
+      </Block>
+
+      <Block id="x" kicker="Cheat sheet" title="What you can post on X">
+        <p>
+          Tag {BOT_HANDLE} in a post with any of the lines below — write it naturally, the bot
+          reads the meaning. Amounts with commas are fine (10,000 works). Every one of these also
+          works in the terminal word-for-word.
+        </p>
+        <div className="overflow-x-auto rounded-xl border border-border">
+          <table className="w-full min-w-[560px] border-collapse text-left font-body text-sm">
+            <thead className="bg-secondary/40 text-foreground">
+              <tr>
+                <th className="px-4 py-2.5 font-semibold">What you want</th>
+                <th className="px-4 py-2.5 font-semibold">Post this</th>
+              </tr>
+            </thead>
+            <tbody>
+              {[
+                ["Launch a token", `launch $MYCOIN, My Coin on suipump, description: your pitch`],
+                ["Attach the coin picture", "attach the image to the same post — it becomes the icon"],
+                ["Leveraged launch", "launch on Perpsplexity, $MYCOIN, My Coin, SAMSUNG, Long 3x, Dev buy 5 USDC"],
+                ["Buy a token", "buy me 0xTOKEN_ADDRESS with 1 SUI"],
+                ["Buy and burn", "buy and burn 1 SUI of 0xTOKEN_ADDRESS"],
+                ["Sell", "sell 50% 0xTOKEN_ADDRESS"],
+                ["Send to someone", "send 5 SUI to @friendhandle (or name.sui, or 0xADDRESS)"],
+                ["Check your balance", "balance (or: my balance, check my wallet)"],
+                ["Check pending fees", "check fees on $MYCOIN"],
+                ["Claim your fees", "claim my fees on $MYCOIN"],
+                ["Anything else", "help — the bot replies with the exact line to post"],
+              ].map(([want, say]) => (
+                <tr key={want} className="border-t border-border">
+                  <td className="px-4 py-2.5 align-top font-semibold text-foreground">{want}</td>
+                  <td className="px-4 py-2.5 font-mono text-[0.78rem] whitespace-pre-wrap">{say}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <p>
+          Start each post with <em>{BOT_HANDLE}</em>. Manage your OurBank wallet — balances, top-up
+          and fee routing — at{" "}
+          <Link to="/terminal" className="text-primary underline">
+            ourblast.xyz/terminal
+          </Link>
+          . If the bot can't read a line it answers with the exact missing piece, so you can fix and
+          resend.
         </p>
       </Block>
 
