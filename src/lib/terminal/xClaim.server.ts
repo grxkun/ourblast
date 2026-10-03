@@ -93,6 +93,21 @@ export async function handleFeeClaimMention(username: string, text: string): Pro
       );
       continue;
     }
+    if (!vault && row.launchpad === "perpsplexity" && row.pool_object_id) {
+      // Perpsplexity: the bot is the pool creator; pay_creator then 80/10/10 in USDC.
+      const { feeRouting } = await import("./xLauncher.server");
+      const { claimPerpsCreatorFees } = await import("./perps-claim.server");
+      const routing = await feeRouting(row.x_username, { handle: row.fee_receiver_x_username, wallet: row.fee_receiver_wallet });
+      const outcome = await claimPerpsCreatorFees(row.pool_object_id, routing.payees, routing.shareBps).catch((e) => ({
+        ok: false, message: e instanceof Error ? e.message : "claim failed", digest: null, claimedUsdc: 0,
+      }));
+      results.push(
+        outcome.ok && outcome.digest
+          ? `$${row.symbol}: ${outcome.claimedUsdc.toFixed(2)} USDC split 80/10/10 ✅ suiscan.xyz/mainnet/tx/${outcome.digest}`
+          : `$${row.symbol}: ${outcome.message}`,
+      );
+      continue;
+    }
     if (!vault) {
       results.push(`$${row.symbol}: fees on ${row.launchpad} can't be claimed by the bot yet`);
       continue;
