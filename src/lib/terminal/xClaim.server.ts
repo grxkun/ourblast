@@ -186,6 +186,17 @@ export async function handleFeeCheckMention(username: string, text: string): Pro
       parts.push(`$${row.symbol}: ${sui.toFixed(4)} SUI`);
       continue;
     }
+    if (!vault && row.launchpad === "perpsplexity") {
+      const { readPerpsPoolFees, findPerpsPoolId } = await import("./perps-claim.server");
+      const poolId = row.pool_object_id ?? (await findPerpsPoolId(row.tx_digest ?? null));
+      const fees = poolId ? await readPerpsPoolFees(poolId) : null;
+      if (!fees) {
+        parts.push(`$${row.symbol}: couldn't read the pool right now`);
+        continue;
+      }
+      parts.push(`$${row.symbol}: ${(Number(fees.pendingUnits) / 1e6).toFixed(2)} USDC`);
+      continue;
+    }
     if (!vault) {
       parts.push(`$${row.symbol}: not readable on ${row.launchpad}`);
       continue;
