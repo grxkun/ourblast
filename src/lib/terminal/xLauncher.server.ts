@@ -243,8 +243,27 @@ export async function writeLauncherSettings(settings: LauncherSettings): Promise
 /** A launch needs an explicit command: a launch verb right before a cashtag, or labelled fields. */
 const EXPLICIT_LAUNCH = /\b(?:deploy|launch|create|mint)\b[^\n.!?]{0,40}\$[a-z0-9]{2,10}\b|\b(?:deploy|launch|create|mint)\b[\s\S]*\b(?:ticker|symbol)\s*[:=]/i;
 
+/** Thank-yous, praise and retrospective talk about a launch — never an order. */
+const CONVERSATIONAL = [
+  /\b(?:thanks?|thank\s*(?:you|u)|thx|ty|shout\s*-?\s*out|congrat\w*|kudos|grateful|appreciate\w*|props\s+to)\b/i,
+  /\b(?:launched|deployed|minted|created)\b/i,
+  /\blaunch(?:ing)?\s+(?:tool|bot|feature|platform|pad|service|process|day|party)\b/i,
+  /\b(?:helped|allowed|enabled|let)\s+me\s+(?:to\s+)?(?:launch|deploy|create|mint)\b/i,
+  /\b(?:i|we)\s+(?:was|were)\s+able\s+to\b/i,
+  /\b(?:after|since|before)\s+(?:the\s+)?(?:launch|deploy)\b/i,
+];
+
+/** A real command: an imperative launch verb right after the bot handle or at the start of a line. */
+const IMPERATIVE = /(?:^|\n|@ourblastbot[\s,:]+)(?:pls\s+|please\s+|hey\s+|yo\s+)?(?:deploy|launch|create|mint)\b/i;
+
+export function isConversationalMention(text: string): boolean {
+  if (IMPERATIVE.test(text.trim())) return false;
+  return CONVERSATIONAL.some((re) => re.test(text));
+}
+
 export async function readDeployRequest(text: string): Promise<DeployRequest | null> {
   if (!EXPLICIT_LAUNCH.test(text)) return null;
+  if (isConversationalMention(text)) return null;
   const settings = await readLauncherSettings();
   return parseDeployTweet(text, settings.defaultLaunchpad);
 }
