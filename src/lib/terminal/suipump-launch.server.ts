@@ -144,6 +144,7 @@ const RPC_MIRRORS = [
 
 export async function rpc<T>(method: string, params: unknown[]): Promise<T> {
   let lastError: Error | null = null;
+  let sawNull = false;
   for (const url of RPC_MIRRORS) {
     try {
       const res = await fetch(url, {
@@ -155,11 +156,15 @@ export async function rpc<T>(method: string, params: unknown[]): Promise<T> {
       const json = (await res.json()) as { result?: T; error?: { message: string } };
       if (json.error) throw new Error(json.error.message);
       if (json.result === undefined) throw new Error("Sui read failed.");
+      // Some mirrors answer null for data they haven't indexed (e.g. coin
+      // metadata held in the coin registry); ask the next mirror before trusting it.
+      if (json.result === null) { sawNull = true; continue; }
       return json.result;
     } catch (error) {
       lastError = error as Error;
     }
   }
+  if (sawNull) return null as T;
   throw lastError ?? new Error("Sui read failed.");
 }
 

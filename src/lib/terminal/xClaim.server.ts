@@ -143,7 +143,7 @@ export async function handleFeeCheckMention(username: string, text: string): Pro
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
   const { data: launches } = await supabaseAdmin
     .from("x_launch_requests")
-    .select("symbol, token_address, launchpad, x_username, fee_receiver_x_username, fee_receiver_wallet, pool_object_id, maelstrom_launch_id, fees_paid_coin, fees_paid_quote, status")
+    .select("symbol, token_address, launchpad, x_username, fee_receiver_x_username, fee_receiver_wallet, pool_object_id, tx_digest, maelstrom_launch_id, fees_paid_coin, fees_paid_quote, status")
     .eq("status", "DEPLOYED")
     .order("created_at", { ascending: false })
     .limit(500);
