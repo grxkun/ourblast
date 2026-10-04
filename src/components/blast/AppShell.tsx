@@ -3,7 +3,7 @@ import { Link, useRouterState } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import type { ReactNode } from "react";
 
-import helmet from "@/assets/helmet.jpg.asset.json";
+import helmet from "@/assets/blast-logo.jpg.asset.json";
 import { useBlast } from "@/components/blast/session";
 import { WalletButton } from "@/components/blast/WalletButton";
 import { amIStaff } from "@/lib/admin.functions";
@@ -46,7 +46,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           <Link to="/" className="flex items-center gap-2">
             <img
               src={helmet.url}
-              alt="OURBLAST helmet mascot"
+              alt="OURBLAST logo"
               width={36}
               height={36}
               className="size-9 rounded-xl border-2 border-border object-cover"
