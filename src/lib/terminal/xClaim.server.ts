@@ -143,7 +143,7 @@ export async function handleFeeCheckMention(username: string, text: string): Pro
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
   const { data: launches } = await supabaseAdmin
     .from("x_launch_requests")
-    .select("symbol, token_address, launchpad, x_username, fee_receiver_x_username, fee_receiver_wallet, pool_object_id, maelstrom_launch_id, fees_paid_coin, fees_paid_quote, status")
+    .select("symbol, token_address, launchpad, x_username, fee_receiver_x_username, fee_receiver_wallet, pool_object_id, tx_digest, maelstrom_launch_id, fees_paid_coin, fees_paid_quote, status")
     .eq("status", "DEPLOYED")
     .order("created_at", { ascending: false })
     .limit(500);
@@ -186,6 +186,17 @@ export async function handleFeeCheckMention(username: string, text: string): Pro
       parts.push(`$${row.symbol}: ${sui.toFixed(4)} SUI`);
       continue;
     }
+    if (!vault && row.launchpad === "perpsplexity") {
+      const { readPerpsPoolFees, findPerpsPoolId } = await import("./perps-claim.server");
+      const poolId = row.pool_object_id ?? (await findPerpsPoolId(row.tx_digest ?? null));
+      const fees = poolId ? await readPerpsPoolFees(poolId) : null;
+      if (!fees) {
+        parts.push(`$${row.symbol}: couldn't read the pool right now`);
+        continue;
+      }
+      parts.push(`$${row.symbol}: ${(Number(fees.pendingUnits) / 1e6).toFixed(2)} USDC`);
+      continue;
+    }
     if (!vault) {
       parts.push(`$${row.symbol}: not readable on ${row.launchpad}`);
       continue;
@@ -193,7 +204,7 @@ export async function handleFeeCheckMention(username: string, text: string): Pro
     total += vault.pendingSui;
     parts.push(`$${row.symbol}: ${vault.pendingSui.toFixed(4)} SUI`);
   }
-  const head = targets.length > 1 ? `${total.toFixed(4)} SUI waiting in total · ` : "";
+  const head = targets.length > 1 && total > 0 ? `${total.toFixed(4)} SUI waiting in total · ` : "";
   const tail = total > 0 ? ` — reply "claim my fees" to release.` : "";
   return `@${username} ${head}${parts.join(" · ")}${tail}`.slice(0, 280);
 }

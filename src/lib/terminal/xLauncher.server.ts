@@ -240,7 +240,11 @@ export async function writeLauncherSettings(settings: LauncherSettings): Promise
 }
 
 /** Reads a launch request out of a tweet. Returns null when the tweet is not a deploy call. */
+/** A launch needs an explicit command: a launch verb right before a cashtag, or labelled fields. */
+const EXPLICIT_LAUNCH = /\b(?:deploy|launch|create|mint)\b[^\n.!?]{0,40}\$[a-z0-9]{2,10}\b|\b(?:deploy|launch|create|mint)\b[\s\S]*\b(?:ticker|symbol)\s*[:=]/i;
+
 export async function readDeployRequest(text: string): Promise<DeployRequest | null> {
+  if (!EXPLICIT_LAUNCH.test(text)) return null;
   const settings = await readLauncherSettings();
   return parseDeployTweet(text, settings.defaultLaunchpad);
 }
@@ -416,6 +420,20 @@ export async function executeLaunchRequest(requestId: string): Promise<LaunchOut
   if (request.status === "DEPLOYED") {
     return { status: "DEPLOYED", notice: null, tokenUrl: request.token_url, poolUrl: request.pool_url };
   }
+
+  // A ticker that already launched on this pad is never launched again.
+  const { data: twins } = await client
+    .from("x_launch_requests")
+    .select("id")
+    .eq("symbol", request.symbol.toUpperCase())
+    .eq("launchpad", request.launchpad)
+    .eq("status", "DEPLOYED");
+  if (((twins ?? []) as { id: string }[]).some((t) => t.id !== request.id)) {
+    const notice = `$${request.symbol} already launched on ${request.launchpad}. Not launching it again.`;
+    await client.from("x_launch_requests").update({ status: "FAILED", notice }).eq("id", request.id);
+    return { status: "FAILED", notice, tokenUrl: null, poolUrl: null };
+  }
+
 
   // One mention = one deployment. Claiming the row atomically means a second
   // poll, retry or manual press can never launch the same request twice.
