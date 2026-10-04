@@ -204,7 +204,7 @@ export async function handleFeeCheckMention(username: string, text: string): Pro
     total += vault.pendingSui;
     parts.push(`$${row.symbol}: ${vault.pendingSui.toFixed(4)} SUI`);
   }
-  const head = targets.length > 1 ? `${total.toFixed(4)} SUI waiting in total · ` : "";
+  const head = targets.length > 1 && total > 0 ? `${total.toFixed(4)} SUI waiting in total · ` : "";
   const tail = total > 0 ? ` — reply "claim my fees" to release.` : "";
   return `@${username} ${head}${parts.join(" · ")}${tail}`.slice(0, 280);
 }
