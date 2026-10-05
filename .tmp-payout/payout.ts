@@ -23,7 +23,7 @@ console.log(payees, amounts.map(String));
 if (!SEND) {
   const { gql } = await import("/dev-server/src/lib/terminal/suipump-launch.server");
   const b = Buffer.from(await tx.build()).toString("base64");
-  console.log(JSON.stringify(await gql(`query($tx:Base64!){simulateTransaction(transactionDataBcs:$tx){effects{status executionError{message}}}}`,{tx:b})));
+  const r:any = await rpc("sui_dryRunTransactionBlock",[b]); console.log(JSON.stringify(r.effects.status), r.balanceChanges.map((x:any)=>[x.owner.AddressOwner?.slice(0,8),x.coinType.slice(-10),x.amount]));
 } else {
   console.log(await signAndExecute(tx, kp));
 }
