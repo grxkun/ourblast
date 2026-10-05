@@ -62,10 +62,54 @@ function missingSendPiece(text: string): string | null {
   return "I couldn't read the token. Use a symbol like SUI or the full 0x…::coin::COIN type.";
 }
 
+export type ContextKind = "thanks" | "shoutout" | "greeting";
+
+/** What kind of social mention this is — a thank-you, a past-tense shoutout, or a hello. */
+export function mentionContext(text: string): ContextKind | null {
+  const t = text.toLowerCase().replace(/@\w+/g, " ");
+  if (/\b(thanks?|thank\s*you|thx|ty|grateful|appreciate|kudos|props|shout\s*out|gm\s+and\s+thanks)\b/.test(t)) return "thanks";
+  if (/\b(launched|deployed|minted|created|was able to|helped me|love (this|the) (bot|tool)|amazing|awesome|great (bot|tool|job))\b/.test(t))
+    return "shoutout";
+  if (/^\s*(gm|gn|hi|hello|hey|yo|sup|wassup)\b[\s!.]*$/.test(t)) return "greeting";
+  return null;
+}
+
+const CONTEXT_REPLIES: Record<ContextKind, string[]> = {
+  thanks: [
+    "Thank you, means a lot! 💥 Keep building, I'm here whenever you need the next one.",
+    "Appreciate you! 💥 Glad it worked out. Ping me anytime for the next launch, trade or fee claim.",
+  ],
+  shoutout: [
+    "Love to see it! 💥 Congrats on the build. Check your creator fees anytime with \"" + X_BOT_HANDLE + " check fees TICKER\".",
+    "Huge, thanks for sharing! 💥 Keep it going — I'm here when you need me.",
+  ],
+  greeting: [
+    `gm! 💥 Want to launch, trade or check fees? Try "${X_BOT_HANDLE} help".`,
+  ],
+};
+
+/** Deterministic pick so the same tweet always gets the same reply. */
+function pick(list: string[], seed: string) {
+  let h = 0;
+  for (let i = 0; i < seed.length; i += 1) h = (h * 31 + seed.charCodeAt(i)) >>> 0;
+  return list[h % list.length]!;
+}
+
+/** A friendly in-context reply for thank-yous, shoutouts and greetings; never executes anything. */
+export function contextReply(text: string): string | null {
+  const kind = mentionContext(text);
+  if (!kind) return null;
+  return fit(enforceSingleCashtag(pick(CONTEXT_REPLIES[kind], text)));
+}
+
 export function nearMissGuidance(text: string): string | null {
   const clean = text.trim();
   if (clean.length < 3) return null;
+  // Thanks/shoutouts get a thank-you, not launch syntax.
+  const social = contextReply(clean);
+  if (social) return social;
   const topic = guidanceTopic(clean);
+
   if (!topic) return null;
   if (topic === "send") {
     const piece = missingSendPiece(clean);
