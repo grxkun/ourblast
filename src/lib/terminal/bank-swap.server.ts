@@ -183,7 +183,7 @@ function friendlySwapError(error: string): string {
 }
 
 /** Bonding-curve first (unbonded tokens), then Bluefin, then Aftermath vs Cetus. */
-async function pickSwapRoute(sender: string, inType: string, outType: string, amountIn: bigint, skipBluefin = false): Promise<{ ok: true; built: BuiltSwap } | { ok: false; error: string }> {
+export async function pickSwapRoute(sender: string, inType: string, outType: string, amountIn: bigint, skipBluefin = false): Promise<{ ok: true; built: BuiltSwap } | { ok: false; error: string }> {
   // Unbonded launchpad tokens live on a bonding curve, not a DEX pool, so the
   // aggregators have no route for them. Buy them straight from the launchpad.
   if (inType === SUI) {
