@@ -138,6 +138,7 @@ export async function executeBankSwap(
   if (!run.picked.ok) return run.picked;
   const executed = run.executed!;
   const built = run.built!;
+  if (!executed.ok || !executed.digest) console.warn("swap failed", built.venue, executed.error);
   if (!executed.ok || !executed.digest) return { ok: false, error: friendlySwapError(executed.error ?? "Swap failed.") };
 
   let received: bigint | null = null;
