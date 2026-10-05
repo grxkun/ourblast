@@ -20,6 +20,11 @@ describe("near-miss guidance", () => {
 
   it("answers questions with the help template", () => {
     expect(guidanceTopic("what can you do?")).toBe("help");
+    expect(guidanceTopic("@Ourblastbot tell me what you can do!")).toBe("help");
+    expect(guidanceTopic("what do u do")).toBe("help");
+    const reply = nearMissGuidance("@Ourblastbot tell me what you can do!")!;
+    expect(reply).toContain("Launch tokens");
+    expect(reply.length).toBeLessThanOrEqual(280);
   });
 
   it("stays silent on casual tags and spam", () => {
