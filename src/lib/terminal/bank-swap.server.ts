@@ -116,11 +116,16 @@ export async function executeBankSwap(
     }
     try {
       // Resolve the aggregator's object inputs once; signAndExecute then simulates and submits.
-      await withTimeout(
-        built.tx.build({ client: new SuiJsonRpcClient({ url: BUILD_RPC, network: "mainnet" }) }),
-        BUILD_TIMEOUT_MS,
-        "Swap build",
-      );
+      const client = new SuiJsonRpcClient({ url: BUILD_RPC, network: "mainnet" });
+      const bytes = await withTimeout(built.tx.build({ client }), BUILD_TIMEOUT_MS, "Swap build");
+      // Bluefin's quote can run ahead of its pool; dry-run it here so a doomed
+      // trade never reaches the chain (and never burns gas).
+      if (built.venue === "Bluefin") {
+        const dry = await client.dryRunTransactionBlock({ transactionBlock: bytes }).catch(() => null);
+        if (dry && dry.effects.status.status !== "success") {
+          return { picked, built, executed: { digest: null, ok: false, error: `simulation rejected: ${dry.effects.status.error ?? "unknown"}`, created: [] } };
+        }
+      }
     } catch (error) {
       if (/timeout/i.test((error as Error).message)) return { picked: { ok: false as const, error: "The network was too slow to prepare this trade. Nothing was spent — try again in a minute." }, executed: null };
       return { picked: { ok: false as const, error: `Could not prepare the swap: ${(error as Error).message.slice(0, 100)}` }, executed: null };
@@ -138,7 +143,6 @@ export async function executeBankSwap(
   if (!run.picked.ok) return run.picked;
   const executed = run.executed!;
   const built = run.built!;
-  if (!executed.ok || !executed.digest) console.warn("swap failed", built.venue, executed.error);
   if (!executed.ok || !executed.digest) return { ok: false, error: friendlySwapError(executed.error ?? "Swap failed.") };
 
   let received: bigint | null = null;
