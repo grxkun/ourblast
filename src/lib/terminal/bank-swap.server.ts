@@ -100,7 +100,7 @@ export async function executeBankSwap(
   if (inType === outType) return { ok: false, error: "Nothing to swap." };
   if (amountIn <= 0n) return { ok: false, error: "Amount is too small." };
 
-  const attempt = async (skipBluefin: boolean, skipAftermath = false) => {
+  const attempt = async (skipBluefin: boolean, skipAftermath = false, autoGas = false) => {
     const picked = await pickSwapRoute(sender, inType, outType, amountIn, skipBluefin, skipAftermath);
     if (!picked.ok) return { picked, executed: null };
     const built = picked.built;
@@ -109,7 +109,7 @@ export async function executeBankSwap(
     // Aftermath reserves the trade amount from the address balance; pinning the
     // wallet's only SUI coin as gas makes the node reject that reservation, so
     // let the SDK pick gas itself for Aftermath routes.
-    if (built.venue === "Aftermath") {
+    if (built.venue === "Aftermath" || autoGas) {
       built.tx.setSender(sender);
       built.tx.setGasPrice(await referenceGasPrice());
       built.tx.setGasBudget(SWAP_GAS_BUDGET);
@@ -144,10 +144,11 @@ export async function executeBankSwap(
   }
   // Aftermath reserves the trade amount from the address balance on top of the
   // gas coin; a wallet holding one SUI coin fails that at submit (nothing spent),
-  // even though the dry-run passes. Rebuild on Cetus, which splits the gas coin.
+  // even though the dry-run passes. Rebuild on Cetus and let the SDK pick gas
+  // (pinning that coin double-counts it against the reservation too).
   if (run.executed && !run.executed.ok && isReservationError(run.executed.error)) {
     console.warn("withdraw reservation rejected, retrying on Cetus", run.built?.venue);
-    run = await attempt(true, true);
+    run = await attempt(true, true, true);
   }
   if (!run.picked.ok) return run.picked;
   const executed = run.executed!;
