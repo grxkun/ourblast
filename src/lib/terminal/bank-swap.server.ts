@@ -100,16 +100,16 @@ export async function executeBankSwap(
   if (inType === outType) return { ok: false, error: "Nothing to swap." };
   if (amountIn <= 0n) return { ok: false, error: "Amount is too small." };
 
-  const attempt = async (skipBluefin: boolean, autoGas = false) => {
-    const picked = await pickSwapRoute(sender, inType, outType, amountIn, skipBluefin);
+  const attempt = async (skipBluefin: boolean, skipAftermath = false) => {
+    const picked = await pickSwapRoute(sender, inType, outType, amountIn, skipBluefin, skipAftermath);
     if (!picked.ok) return { picked, executed: null };
     const built = picked.built;
     const gas = await gasCoins(sender);
     if (gas.length === 0) return { picked: { ok: false as const, error: "Your OurBank wallet has no SUI for network fees." }, executed: null };
     // Aftermath reserves the trade amount from the address balance; pinning the
     // wallet's only SUI coin as gas makes the node reject that reservation, so
-    // let the SDK pick gas itself for Aftermath routes (and on reservation retries).
-    if (built.venue === "Aftermath" || autoGas) {
+    // let the SDK pick gas itself for Aftermath routes.
+    if (built.venue === "Aftermath") {
       built.tx.setSender(sender);
       built.tx.setGasPrice(await referenceGasPrice());
       built.tx.setGasBudget(SWAP_GAS_BUDGET);
@@ -142,11 +142,11 @@ export async function executeBankSwap(
     console.warn("bluefin simulation rejected, falling back", run.executed.error);
     run = await attempt(true);
   }
-  // Nodes reject the submit (nothing spent) when the trade amount is reserved
-  // from the address balance while the same SUI coin is pinned as gas.
-  // Rebuild on another venue and let the SDK choose gas.
+  // Aftermath reserves the trade amount from the address balance on top of the
+  // gas coin; a wallet holding one SUI coin fails that at submit (nothing spent),
+  // even though the dry-run passes. Rebuild on Cetus, which splits the gas coin.
   if (run.executed && !run.executed.ok && isReservationError(run.executed.error)) {
-    console.warn("withdraw reservation rejected, retrying with auto gas", run.built?.venue);
+    console.warn("withdraw reservation rejected, retrying on Cetus", run.built?.venue);
     run = await attempt(true, true);
   }
   if (!run.picked.ok) return run.picked;
@@ -183,7 +183,7 @@ function friendlySwapError(error: string): string {
 }
 
 /** Bonding-curve first (unbonded tokens), then Bluefin, then Aftermath vs Cetus. */
-export async function pickSwapRoute(sender: string, inType: string, outType: string, amountIn: bigint, skipBluefin = false): Promise<{ ok: true; built: BuiltSwap } | { ok: false; error: string }> {
+export async function pickSwapRoute(sender: string, inType: string, outType: string, amountIn: bigint, skipBluefin = false, skipAftermath = false): Promise<{ ok: true; built: BuiltSwap } | { ok: false; error: string }> {
   // Unbonded launchpad tokens live on a bonding curve, not a DEX pool, so the
   // aggregators have no route for them. Buy them straight from the launchpad.
   if (inType === SUI) {
@@ -204,9 +204,9 @@ export async function pickSwapRoute(sender: string, inType: string, outType: str
     // Bluefin liquidity, so this avoids needlessly asking unrelated routers.
     built = await (skipBluefin ? Promise.reject(new Error("skip")) : buildBluefinSwap(sender, inType, outType, amountIn)).catch(() =>
       Promise.any([
-        buildAftermathSwap(sender, inType, outType, amountIn),
+        skipAftermath ? Promise.reject(new Error("skip")) : buildAftermathSwap(sender, inType, outType, amountIn),
         (async () => {
-          await new Promise((resolve) => setTimeout(resolve, CETUS_HEAD_START_MS));
+          if (!skipAftermath) await new Promise((resolve) => setTimeout(resolve, CETUS_HEAD_START_MS));
           const result = await buildCetusSwap(sender, inType, outType, amountIn);
           if (!result.ok) throw new Error(result.error);
           return { ...result, venue: "Cetus" as const };
