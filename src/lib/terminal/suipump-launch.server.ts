@@ -402,7 +402,10 @@ export async function signAndExecute(
         return null;
       });
     if (submitted?.error) {
-      lastSubmitError = submitted.error.message;
+      // Keep a real rejection; a later mirror's "IP blocked" (403) must not
+      // hide it, or the run waits a minute for a digest and gets killed.
+      const blocked = /blocked|403|rate limit|too many/i.test(submitted.error.message);
+      if (!blocked || !lastSubmitError) lastSubmitError = submitted.error.message;
       console.error("submit via", url, "rejected:", JSON.stringify(submitted.error).slice(0, 600));
       continue;
     }

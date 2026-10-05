@@ -183,7 +183,7 @@ function friendlySwapError(error: string): string {
   return error;
 }
 
-/** Bonding-curve first (unbonded tokens), then Bluefin, then Aftermath vs Cetus. */
+/** Bonding-curve first (unbonded tokens), then Aftermath vs Cetus, then Bluefin. */
 export async function pickSwapRoute(sender: string, inType: string, outType: string, amountIn: bigint, skipBluefin = false, skipAftermath = false): Promise<{ ok: true; built: BuiltSwap } | { ok: false; error: string }> {
   // Unbonded launchpad tokens live on a bonding curve, not a DEX pool, so the
   // aggregators have no route for them. Buy them straight from the launchpad.
@@ -201,18 +201,21 @@ export async function pickSwapRoute(sender: string, inType: string, outType: str
 
   let built: BuiltSwap;
   try {
-    // First check the exact pair against Bluefin's own pool source. BLAST has
-    // Bluefin liquidity, so this avoids needlessly asking unrelated routers.
-    built = await (skipBluefin ? Promise.reject(new Error("skip")) : buildBluefinSwap(sender, inType, outType, amountIn)).catch(() =>
-      Promise.any([
-        skipAftermath ? Promise.reject(new Error("skip")) : buildAftermathSwap(sender, inType, outType, amountIn),
-        (async () => {
-          if (!skipAftermath) await new Promise((resolve) => setTimeout(resolve, CETUS_HEAD_START_MS));
-          const result = await buildCetusSwap(sender, inType, outType, amountIn);
-          if (!result.ok) throw new Error(result.error);
-          return { ...result, venue: "Cetus" as const };
-        })(),
-      ]),
+    // Aggregators are the main route: Aftermath and Cetus (CLMM + other Sui
+    // pools) race, first valid route wins. Bluefin's own pool is the fallback.
+    built = await Promise.any([
+      skipAftermath ? Promise.reject(new Error("skip")) : buildAftermathSwap(sender, inType, outType, amountIn),
+      (async () => {
+        if (!skipAftermath) await new Promise((resolve) => setTimeout(resolve, CETUS_HEAD_START_MS));
+        const result = await buildCetusSwap(sender, inType, outType, amountIn);
+        if (!result.ok) throw new Error(result.error);
+        return { ...result, venue: "Cetus" as const };
+      })(),
+    ]).catch((aggregate: unknown) =>
+      skipBluefin ? Promise.reject(aggregate) : buildBluefinSwap(sender, inType, outType, amountIn).catch((bluefinError: unknown) => {
+        const prior = aggregate instanceof AggregateError ? aggregate.errors : [aggregate];
+        throw new AggregateError([...prior, bluefinError], "all routes failed");
+      }),
     );
   } catch (error) {
     const messages = error instanceof AggregateError
