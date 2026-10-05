@@ -25,7 +25,7 @@ const TEMPLATES: Record<GuidanceTopic, string> = {
   claim: `To cash out creator fees just say: "${X_BOT_HANDLE} claim my fees on $TICKER". Fees always pay the recipient locked in at launch. Check first with "${X_BOT_HANDLE} check fees on TICKER". ${TERMINAL}`,
   send: `Sending works like this: "${X_BOT_HANDLE} send 5 SUI to @handle" or to a 0x address. Fund your OurBank wallet first: ${TERMINAL}`,
   trade: `Trading lines I read: "${X_BOT_HANDLE} buy me TOKEN_ADDRESS with 1 SUI", "sell 50% TOKEN_ADDRESS", "buy and burn 1 SUI of TOKEN_ADDRESS". ${TERMINAL}`,
-  help: `Here's what I do: launch tokens ("launch $TICKER Token Name on suipump"), leveraged launches on Perpsplexity, buy/sell/burn, send SUI, and claim creator fees. Full list: ${TERMINAL}`,
+  help: `Here's what I do 💥 Launch tokens ("launch $TICKER Token Name on suipump"), leveraged launches on Perpsplexity, buy / sell / burn, send SUI to @handle or name.sui, check your balance, and check + claim creator fees. Full list: ${TERMINAL}`,
 };
 
 const has = (text: string, pattern: RegExp) => pattern.test(text);
@@ -39,7 +39,14 @@ export function guidanceTopic(text: string): GuidanceTopic | null {
   if (has(t, /\b(fee|fees|royalt(y|ies))\b/) || has(t, /\bclaim\b/)) return "claim";
   if (has(t, /\b(send|transfer|tip|withdraw)\b/)) return "send";
   if (has(t, /\b(buy|sell|burn|swap|trade)\b/)) return "trade";
-  if (has(t, /\b(help|how|what can you|commands?|guide|syntax|instructions?)\b/) || t.includes("?")) return "help";
+  if (
+    has(t, /\b(help|how|what can you|commands?|guide|syntax|instructions?|capabilit(y|ies)|features?|menu|options)\b/) ||
+    has(t, /\bwhat (you can|can u|u can|do you|do u|you do|u do|are you|r u)\b/) ||
+    has(t, /\b(tell|show) me what\b/) ||
+    has(t, /\bwho are (you|u)\b/) ||
+    t.includes("?")
+  )
+    return "help";
 
   return null;
 }
