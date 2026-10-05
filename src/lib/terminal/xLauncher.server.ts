@@ -241,7 +241,8 @@ export async function writeLauncherSettings(settings: LauncherSettings): Promise
 
 /** Reads a launch request out of a tweet. Returns null when the tweet is not a deploy call. */
 /** A launch needs an explicit command: a launch verb right before a cashtag, or labelled fields. */
-const EXPLICIT_LAUNCH = /\b(?:deploy|launch|create|mint)\b[^\n.!?]{0,40}\$[a-z0-9]{2,10}\b|\b(?:deploy|launch|create|mint)\b[\s\S]*\b(?:ticker|symbol)\s*[:=]/i;
+const EXPLICIT_LAUNCH =
+  /\b(?:deploy|launch|create|mint)\b[\s\S]{0,80}?\$[a-z0-9]{2,10}\b|\b(?:deploy|launch|create|mint)\b[\s\S]*\b(?:ticker|symbol|name)\s*[:=]/i;
 
 /** Thank-yous, praise and retrospective talk about a launch — never an order. */
 const CONVERSATIONAL = [
