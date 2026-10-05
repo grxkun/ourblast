@@ -13,12 +13,14 @@ import { resolveLaunchpadBuy, buildLaunchpadBuySwap } from "./launchpad-buy.serv
 /**
  * OurBank swaps: "buy 5 SUI of 0x…" / "sell 50% $MOO" from X, routed through
  * the Aftermath aggregator and signed with the sender's OurBank wallet.
- * Guard rails: 1% max slippage, route must match the requested coins exactly,
+ * Guard rails: 5% max slippage, route must match the requested coins exactly,
  * the whole transaction is simulated before signing, and success is only
  * reported once the chain confirms it.
  */
 const SUI = normalizeStructTag("0x2::sui::SUI");
-const SLIPPAGE = 0.01;
+// 5%: memecoin pools on Sui move faster than 1% between quote and fill, and
+// Bluefin's quote API runs 2-3% ahead of what its pool can actually pay.
+const SLIPPAGE = 0.05;
 const SWAP_GAS_BUDGET = 50_000_000n; // 0.05 SUI
 // nodeinfra rejects this build ("Index store not available"); suiscan works.
 const BUILD_RPC = "https://rpc-mainnet.suiscan.xyz";
@@ -164,7 +166,7 @@ export async function executeBankSwap(
 /** Raw Move aborts are unreadable on X; say what happened instead. */
 function friendlySwapError(error: string): string {
   if (/simulation rejected/i.test(error) || /MoveAbort/i.test(error)) {
-    return "the price moved past the 1% safety limit, so the trade was stopped. Nothing was spent — try again in a minute.";
+    return "the price moved past the 5% safety limit, so the trade was stopped. Nothing was spent — try again in a minute.";
   }
   return error;
 }
@@ -349,7 +351,7 @@ async function buildAftermathSwap(sender: string, inType: string, outType: strin
 
 /**
  * Fallback: Cetus aggregator (Cetus CLMM + other Sui pools). Same guard rails:
- * exact coins, exact size, 1% slippage; the tx is simulated before signing.
+ * exact coins, exact size, 5% slippage; the tx is simulated before signing.
  */
 async function buildCetusSwap(
   sender: string,
