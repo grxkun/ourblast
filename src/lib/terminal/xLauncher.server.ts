@@ -89,14 +89,26 @@ async function launcherWallet(xUsername: string): Promise<string | null> {
     .select("user_id")
     .ilike("username", xUsername)
     .maybeSingle();
-  if (!account?.user_id) return null;
-  const { data: profile } = await client
-    .from("profiles")
-    .select("wallet_address")
-    .eq("id", account.user_id)
+  const valid = (w?: string | null) => {
+    const v = (w ?? "").trim().toLowerCase();
+    return /^0x[0-9a-f]{64}$/.test(v) ? v : null;
+  };
+  if (account?.user_id) {
+    const { data: profile } = await client
+      .from("profiles")
+      .select("wallet_address")
+      .eq("id", account.user_id)
+      .maybeSingle();
+    const linked = valid(profile?.wallet_address);
+    if (linked) return linked;
+  }
+  // Fall back to the X user's OurBank wallet so fees never park in the bot.
+  const { data: bank } = await client
+    .from("bank_wallets")
+    .select("address")
+    .ilike("x_username", xUsername.replace(/^@/, ""))
     .maybeSingle();
-  const wallet = (profile?.wallet_address ?? "").trim().toLowerCase();
-  return /^0x[0-9a-f]{64}$/.test(wallet) ? wallet : null;
+  return valid(bank?.address);
 }
 
 interface FeeRouting {
