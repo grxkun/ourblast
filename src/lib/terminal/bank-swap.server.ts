@@ -98,36 +98,52 @@ export async function executeBankSwap(
   if (inType === outType) return { ok: false, error: "Nothing to swap." };
   if (amountIn <= 0n) return { ok: false, error: "Amount is too small." };
 
-  const picked = await pickSwapRoute(sender, inType, outType, amountIn);
-  if (!picked.ok) return picked;
-  const built = picked.built;
+  const attempt = async (skipBluefin: boolean) => {
+    const picked = await pickSwapRoute(sender, inType, outType, amountIn, skipBluefin);
+    if (!picked.ok) return { picked, executed: null };
+    const built = picked.built;
+    const gas = await gasCoins(sender);
+    if (gas.length === 0) return { picked: { ok: false as const, error: "Your OurBank wallet has no SUI for network fees." }, executed: null };
+    // Aftermath reserves the trade amount from the address balance; pinning the
+    // wallet's only SUI coin as gas makes the node reject that reservation, so
+    // let the SDK pick gas itself for Aftermath routes.
+    if (built.venue === "Aftermath") {
+      built.tx.setSender(sender);
+      built.tx.setGasPrice(await referenceGasPrice());
+      built.tx.setGasBudget(SWAP_GAS_BUDGET);
+    } else {
+      withGas(built.tx, sender, gas, await referenceGasPrice(), Number(SWAP_GAS_BUDGET));
+    }
+    try {
+      // Resolve the aggregator's object inputs once; signAndExecute then simulates and submits.
+      const client = new SuiJsonRpcClient({ url: BUILD_RPC, network: "mainnet" });
+      const bytes = await withTimeout(built.tx.build({ client }), BUILD_TIMEOUT_MS, "Swap build");
+      // Bluefin's quote can run ahead of its pool; dry-run it here so a doomed
+      // trade never reaches the chain (and never burns gas).
+      if (built.venue === "Bluefin") {
+        const dry = await client.dryRunTransactionBlock({ transactionBlock: bytes }).catch(() => null);
+        if (dry && dry.effects.status.status !== "success") {
+          return { picked, built, executed: { digest: null, ok: false, error: `simulation rejected: ${dry.effects.status.error ?? "unknown"}`, created: [] } };
+        }
+      }
+    } catch (error) {
+      if (/timeout/i.test((error as Error).message)) return { picked: { ok: false as const, error: "The network was too slow to prepare this trade. Nothing was spent — try again in a minute." }, executed: null };
+      return { picked: { ok: false as const, error: `Could not prepare the swap: ${(error as Error).message.slice(0, 100)}` }, executed: null };
+    }
+    return { picked, built, executed: await signAndExecute(built.tx, signer) };
+  };
 
-  const gas = await gasCoins(sender);
-  if (gas.length === 0) return { ok: false, error: "Your OurBank wallet has no SUI for network fees." };
-  // Aftermath reserves the trade amount from the address balance; pinning the
-  // wallet's only SUI coin as gas makes the node reject that reservation, so
-  // let the SDK pick gas itself for Aftermath routes.
-  if (built.venue === "Aftermath") {
-    built.tx.setSender(sender);
-    built.tx.setGasPrice(await referenceGasPrice());
-    built.tx.setGasBudget(SWAP_GAS_BUDGET);
-  } else {
-    withGas(built.tx, sender, gas, await referenceGasPrice(), Number(SWAP_GAS_BUDGET));
+  let run = await attempt(false);
+  // Bluefin's quote API can be ahead of its pool, so its trade aborts in the
+  // simulation (nothing spent). Re-route through Aftermath / Cetus instead.
+  if (run.executed && !run.executed.ok && run.built?.venue === "Bluefin" && /simulation rejected/i.test(run.executed.error ?? "")) {
+    console.warn("bluefin simulation rejected, falling back", run.executed.error);
+    run = await attempt(true);
   }
-  try {
-    // Resolve the aggregator's object inputs once; signAndExecute then simulates and submits.
-    await withTimeout(
-      built.tx.build({ client: new SuiJsonRpcClient({ url: BUILD_RPC, network: "mainnet" }) }),
-      BUILD_TIMEOUT_MS,
-      "Swap build",
-    );
-  } catch (error) {
-    if (/timeout/i.test((error as Error).message)) return { ok: false, error: "The network was too slow to prepare this trade. Nothing was spent — try again in a minute." };
-    return { ok: false, error: `Could not prepare the swap: ${(error as Error).message.slice(0, 100)}` };
-  }
-
-  const executed = await signAndExecute(built.tx, signer);
-  if (!executed.ok || !executed.digest) return { ok: false, error: executed.error ?? "Swap failed." };
+  if (!run.picked.ok) return run.picked;
+  const executed = run.executed!;
+  const built = run.built!;
+  if (!executed.ok || !executed.digest) return { ok: false, error: friendlySwapError(executed.error ?? "Swap failed.") };
 
   let received: bigint | null = null;
   try {
@@ -145,8 +161,16 @@ export async function executeBankSwap(
   return { ok: true, digest: executed.digest, received, quoted: built.quoted, coinOut: outType, venue: built.venue };
 }
 
+/** Raw Move aborts are unreadable on X; say what happened instead. */
+function friendlySwapError(error: string): string {
+  if (/simulation rejected/i.test(error) || /MoveAbort/i.test(error)) {
+    return "the price moved past the 1% safety limit, so the trade was stopped. Nothing was spent — try again in a minute.";
+  }
+  return error;
+}
+
 /** Bonding-curve first (unbonded tokens), then Bluefin, then Aftermath vs Cetus. */
-async function pickSwapRoute(sender: string, inType: string, outType: string, amountIn: bigint): Promise<{ ok: true; built: BuiltSwap } | { ok: false; error: string }> {
+async function pickSwapRoute(sender: string, inType: string, outType: string, amountIn: bigint, skipBluefin = false): Promise<{ ok: true; built: BuiltSwap } | { ok: false; error: string }> {
   // Unbonded launchpad tokens live on a bonding curve, not a DEX pool, so the
   // aggregators have no route for them. Buy them straight from the launchpad.
   if (inType === SUI) {
@@ -165,7 +189,7 @@ async function pickSwapRoute(sender: string, inType: string, outType: string, am
   try {
     // First check the exact pair against Bluefin's own pool source. BLAST has
     // Bluefin liquidity, so this avoids needlessly asking unrelated routers.
-    built = await buildBluefinSwap(sender, inType, outType, amountIn).catch(() =>
+    built = await (skipBluefin ? Promise.reject(new Error("skip")) : buildBluefinSwap(sender, inType, outType, amountIn)).catch(() =>
       Promise.any([
         buildAftermathSwap(sender, inType, outType, amountIn),
         (async () => {
