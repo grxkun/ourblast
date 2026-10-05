@@ -15,18 +15,15 @@ const coins = (await rpc<any>("suix_getCoins", [bot, PERPSPLEXITY_QUOTE_TYPE, nu
 const [gas, gp] = await Promise.all([gasCoins(bot), referenceGasPrice()]);
 const tx = new Transaction();
 withGas(tx, bot, gas, gp, 20_000_000);
-const [p, ...rest] = coins.map((c: any) => tx.object(c.coinObjectId));
+const [p, ...rest] = coins.map((c: any) => tx.objectRef({objectId:c.coinObjectId,version:c.version,digest:c.digest}));
 if (rest.length) tx.mergeCoins(p, rest);
 const parts = tx.splitCoins(p, amounts.map((a) => tx.pure.u64(a)));
 payees.forEach((a, i) => tx.transferObjects([parts[i]!], a));
 console.log(payees, amounts.map(String));
 if (!SEND) {
-  const bytes = await tx.build({ client: { getRpcApiVersion: async () => "1" } as any }).catch(() => null);
-  const { SuiClient } = await import("@mysten/sui/client");
-  const c = new SuiClient({ url: "https://rpc-mainnet.suiscan.xyz" });
-  const b = await tx.build({ client: c });
-  const r = await c.dryRunTransactionBlock({ transactionBlock: b });
-  console.log("dry", r.effects.status, r.balanceChanges.map((x) => [x.owner, x.coinType.slice(-10), x.amount]));
+  const { gql } = await import("/dev-server/src/lib/terminal/suipump-launch.server");
+  const b = Buffer.from(await tx.build()).toString("base64");
+  console.log(JSON.stringify(await gql(`query($tx:Base64!){simulateTransaction(transactionDataBcs:$tx){effects{status executionError{message}}}}`,{tx:b})));
 } else {
   console.log(await signAndExecute(tx, kp));
 }
