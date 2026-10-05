@@ -170,6 +170,10 @@ export async function executeBankSwap(
   return { ok: true, digest: executed.digest, received, quoted: built.quoted, coinOut: outType, venue: built.venue };
 }
 
+export function isReservationError(error: string | null | undefined): boolean {
+  return /withdraw reservation|Insufficient address balance/i.test(error ?? "");
+}
+
 /** Raw Move aborts are unreadable on X; say what happened instead. */
 function friendlySwapError(error: string): string {
   if (/simulation rejected/i.test(error) || /MoveAbort/i.test(error)) {
