@@ -6,6 +6,7 @@ import { Transaction } from "@mysten/sui/transactions";
 import { SuiJsonRpcClient } from "@mysten/sui/jsonRpc";
 import { normalizeStructTag, normalizeSuiAddress } from "@mysten/sui/utils";
 
+import { DEFAULT_TREASURY_ADDRESS } from "@/lib/ourblast.config";
 import { bankSigner } from "./bank-wallet.server";
 import { toAtomic, type SwapCommand } from "./bank";
 import { resolveLaunchpadBuy, buildLaunchpadBuySwap } from "./launchpad-buy.server";
@@ -21,6 +22,8 @@ const SUI = normalizeStructTag("0x2::sui::SUI");
 // 5%: memecoin pools on Sui move faster than 1% between quote and fill, and
 // Bluefin's quote API runs 2-3% ahead of what its pool can actually pay.
 const SLIPPAGE = 0.05;
+// 0.25% router fee on Aftermath swaps, sent to the community treasury.
+const AFTERMATH_ROUTER_FEE = 0.0025;
 const SWAP_GAS_BUDGET = 50_000_000n; // 0.05 SUI
 // nodeinfra rejects this build ("Index store not available"); suiscan works.
 const BUILD_RPC = "https://rpc-mainnet.suiscan.xyz";
@@ -337,7 +340,13 @@ async function buildAftermathSwap(sender: string, inType: string, outType: strin
     try {
       const route = await withTimeout(
         router.getCompleteTradeRouteGivenAmountIn(
-          { coinInType: inType, coinOutType: outType, coinInAmount: amountIn },
+          {
+            coinInType: inType,
+            coinOutType: outType,
+            coinInAmount: amountIn,
+            // OurBlast router fee, paid to the community treasury on every Aftermath swap.
+            externalFee: { recipient: process.env["OURBLAST_TREASURY_ADDRESS"]?.startsWith("0x") ? process.env["OURBLAST_TREASURY_ADDRESS"]! : DEFAULT_TREASURY_ADDRESS, feePercentage: AFTERMATH_ROUTER_FEE },
+          },
           AbortSignal.timeout(AFTERMATH_TIMEOUT_MS),
         ),
         AFTERMATH_TIMEOUT_MS,
