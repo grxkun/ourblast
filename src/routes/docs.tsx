@@ -45,6 +45,7 @@ const TOC = [
   { id: "trade", label: "Trading & sending" },
   { id: "claim", label: "Creator fees" },
   { id: "pads", label: "Launchpads" },
+  { id: "matrix", label: "Fee matrix" },
   { id: "markets", label: "Perps markets" },
   { id: "blast", label: "$BLAST & arcade" },
   { id: "faq", label: "FAQ" },
@@ -305,12 +306,30 @@ function Docs() {
       <Block id="trade" kicker="Trading" title="Buying, selling and sending">
         <Cmd>buy 10 SUI of 0xTOKEN_ADDRESS</Cmd>
         <Cmd>sell 50% of $MYCOIN</Cmd>
+        <Cmd>buy and burn 1 SUI of 0xTOKEN_ADDRESS</Cmd>
         <Cmd>{`send 5 SUI to @friendhandle`}</Cmd>
+        <Cmd>send 2 SUI to name.sui</Cmd>
         <Cmd>send 2 SUI to 0xADDRESS</Cmd>
-        <p>
-          Trades are routed across Sui's main exchanges and you always see the quote before you
-          confirm. You can send to an X handle, a Sui address or a SuiNS name.
-        </p>
+        <ul className="list-disc space-y-1.5 pl-5">
+          <li>
+            <strong className="text-foreground">Best price routing.</strong> Coins still on a
+            bonding curve (Suipump, Blast.fun) are bought on the curve. Everything else races
+            Aftermath and Cetus for the best route, with Bluefin as backup.
+          </li>
+          <li>
+            <strong className="text-foreground">5% safety limit.</strong> Each trade is test-run
+            first. If the price moves more than 5% before it fills, it stops and nothing is spent.
+          </li>
+          <li>
+            <strong className="text-foreground">0.25% router fee.</strong> Trades routed through
+            Aftermath carry a 0.25% fee that goes to the OurBlast community treasury.
+          </li>
+          <li>
+            <strong className="text-foreground">Checked before sending.</strong> SuiNS names and X
+            handles are looked up first, so a typo never costs you gas. If a piece is missing (an
+            amount, a destination) the bot replies with exactly what to add.
+          </li>
+        </ul>
       </Block>
 
       <Block id="claim" kicker="Earnings" title="Creator fees — the full rules">
@@ -385,6 +404,16 @@ function Docs() {
             designated wallet claims, the destination is remembered and future launches pay it
             straight on chain.
           </li>
+          <li>
+            <strong className="text-foreground">No linked wallet? Your share is safe.</strong> If
+            your X account has no linked Sui wallet, your 80% goes to your OurBank wallet. If you
+            have neither, it is held in trust in the bot wallet until you claim or link one.
+          </li>
+          <li>
+            <strong className="text-foreground">Perpsplexity fees.</strong> Leveraged coins pay
+            creator fees in USDC. Check and claim them from X or the terminal like any other coin;
+            the USDC is split 80/10/10 automatically.
+          </li>
         </ul>
         <p>
           <Link to="/creator-fees" className="text-primary underline">
@@ -442,7 +471,7 @@ function Docs() {
                   ["Pair", "SUI", "SUI", "SUI", "USDC", "SUI / USDC / BLAST / DEEP / WAL"],
                   ["Dev buy", "SUI", "SUI", "SUI", "USDC", "—"],
                   ["Anti-sniper first buy", "Same block", "Same block", "Same block", "Same block", "—"],
-                  ["Creator fee split", "80/10/10", "80/10/10", "100% launcher", "Built into composite", "80/10/10"],
+                  ["Creator fee split", "80/10/10", "80/10/10", "100% launcher", "80/10/10 (USDC)", "80/10/10"],
                   ["Pad on-chain fee", "2 SUI", "1 SUI", "1 SUI", "5 SUI", "0 SUI"],
                   ["OurBlast fee", "1 SUI", "1 SUI", "1 SUI", "1 SUI", "1 SUI"],
                   ...[["Total launch fee", "suipump"], ["Balance needed", "suipump"]].map(([label]) => [
@@ -453,7 +482,7 @@ function Docs() {
                   ]),
                   ["Failed launch", "Full refund", "Full refund", "Full refund", "Full refund", "Full refund"],
                   ["Launch from", "X + terminal", "X + terminal", "X + terminal", "X + terminal", "X + terminal"],
-                  ["Claim fees via", "X / terminal / page", "X / terminal / page", "On-chain to launcher", "Perpsplexity", "X / terminal / page"],
+                  ["Claim fees via", "X / terminal / page", "X / terminal / page", "On-chain to launcher", "X / terminal", "X / terminal / page"],
                 ] as string[][]
               ).map(([label, ...cells]) => (
                 <tr key={label} className="border-t border-border">
@@ -530,7 +559,7 @@ function Docs() {
           {[
             {
               q: "The bot did not reply to my post. Why?",
-              a: `It only sees posts that tag ${BOT_HANDLE} directly. Quoting or mentioning the name in text is not enough. Casual tags with no request are left alone on purpose.`,
+              a: `It only sees posts that tag ${BOT_HANDLE} directly. Quoting or mentioning the name in text is not enough. Thank-yous and shoutouts get a friendly reply, not a launch — a coin is only created when the post clearly asks for one.`,
             },
             {
               q: "Can I change my coin's picture after launch?",
