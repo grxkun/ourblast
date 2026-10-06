@@ -152,6 +152,7 @@ function Home() {
         <div className="flex flex-wrap items-center gap-4">
           <a href={X_URL} target="_blank" rel="noreferrer" className="underline">X / Twitter</a>
           <a href={TG_URL} target="_blank" rel="noreferrer" className="underline">Telegram</a>
+          <Link to="/docs" className="underline">Docs</Link>
           <Link to="/terms" className="underline">Terms</Link>
           <Link to="/privacy" className="underline">Privacy</Link>
         </div>
