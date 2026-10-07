@@ -260,6 +260,8 @@ export function extractDescription(rawText: string): string | null {
     rawText.match(new RegExp("(?:^|\\n)\\s*(?:desc|description|about|bio)\\s+([\\s\\S]+?)" + NEXT, "i"));
   const value = match?.[1]
     ?.replace(/@[a-z0-9_]{1,15}/gi, " ")
+    // X appends t.co links for attached media; they are not part of the description.
+    .replace(/https?:\/\/t\.co\/\S+/gi, " ")
     .replace(/\s+/g, " ")
     .trim();
   return value && value.length >= 2 ? value : null;

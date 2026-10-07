@@ -874,9 +874,11 @@ export function composeDeployedLaunchReply(
   /** Set when the caller handed the creator fees to someone else. */
   designatedHandle?: string | null,
 ): string {
-  const position = positionLine ? `\n${positionLine}\n` : "";
+  const position = positionLine ? `\n${positionLine}` : "";
   // Exactly one $cashtag per reply — X rejects posts that carry more.
-  const base = `🚀 $${symbol} LIVE\n${position}\nToken:\n${tokenUrl}\n\nPool:\n${poolUrl}`;
+  // One link only: the trading page (pool), falling back to the token page.
+  const link = poolUrl || tokenUrl;
+  const base = `🚀 $${symbol} LIVE${position}\n\nTrade:\n${link}`;
   const designation = designatedHandle ? `\n\nCreator fees designated to @${designatedHandle}.` : "";
   if (!claimToken) return `${base}${designation}`;
   const who = designatedHandle ? `Creator fee share for @${designatedHandle}` : "Your creator fee share";
