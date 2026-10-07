@@ -43,8 +43,7 @@ export function guidanceTopic(text: string): GuidanceTopic | null {
     has(t, /\b(help|how|what can you|commands?|guide|syntax|instructions?|capabilit(y|ies)|features?|menu|options)\b/) ||
     has(t, /\bwhat (you can|can u|u can|do you|do u|you do|u do|are you|r u)\b/) ||
     has(t, /\b(tell|show) me what\b/) ||
-    has(t, /\bwho are (you|u)\b/) ||
-    t.includes("?")
+    has(t, /\bwho are (you|u)\b/)
   )
     return "help";
 
@@ -112,9 +111,9 @@ export function contextReply(text: string): string | null {
 export function nearMissGuidance(text: string): string | null {
   const clean = text.trim();
   if (clean.length < 3) return null;
-  // Thanks/shoutouts get a thank-you, not launch syntax.
-  const social = contextReply(clean);
-  if (social) return social;
+  // Thanks, shoutouts and greetings stay silent: in threads X keeps the bot
+  // tagged on every reply, so only explicit commands may get an answer.
+  if (mentionContext(clean)) return null;
   const topic = guidanceTopic(clean);
 
   if (!topic) return null;
@@ -123,4 +122,13 @@ export function nearMissGuidance(text: string): string | null {
     if (piece) return fit(enforceSingleCashtag(`Almost! ${piece} Format: "${X_BOT_HANDLE} send 5 SUI to @handle". ${TERMINAL}`));
   }
   return fit(enforceSingleCashtag(TEMPLATES[topic]));
+}
+
+/**
+ * True only when the tweet addresses the bot with a command word right after
+ * the handle ("@ourblastbot help", "@ourblastbot pls claim …"). Thread replies
+ * where X merely auto-tags the bot never qualify, so they get no reply.
+ */
+export function isDirectedCommand(text: string): boolean {
+  return /@ourblastbot\b[\s,:]*(?:(?:pls|please|hey|yo|can you|could you)\s+)?(?:launch|deploy|mint|create|buy|sell|burn|swap|trade|send|transfer|tip|withdraw|pay|claim|check|balance|wallet|portfolio|help|commands?|menu|what|tell|show|who|how)\b/i.test(text);
 }

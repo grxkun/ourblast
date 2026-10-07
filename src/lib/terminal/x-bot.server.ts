@@ -237,7 +237,8 @@ async function processClaimedMention(
   // that clearly tries to command the bot gets the exact syntax it was reaching
   // for — first from the deterministic near-miss catcher, then from the model.
   let guidance: string | null = null;
-  if (intent.name === "unknown" && source !== "simulation") {
+  const { isDirectedCommand } = await import("./x-guidance");
+  if (intent.name === "unknown" && source !== "simulation" && isDirectedCommand(text)) {
     const { nearMissGuidance } = await import("./x-guidance");
     guidance = nearMissGuidance(text);
     if (!guidance) {
