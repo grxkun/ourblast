@@ -4,8 +4,9 @@ import { useServerFn } from "@tanstack/react-start";
 import { AtSign, ShieldCheck } from "lucide-react";
 
 import helmet from "@/assets/helmet.jpg.asset.json";
-import mascotShock from "@/assets/mascot-shock.jpg.asset.json";
-import mascotStand from "@/assets/mascot-stand.jpg.asset.json";
+import heroGallery from "@/assets/hero-gallery.jpg.asset.json";
+import portrait from "@/assets/character-portrait.jpg.asset.json";
+import battlestation from "@/assets/builder-battlestation.jpg.asset.json";
 import { Ticker } from "@/components/site/Ticker";
 import { CopyAddress } from "@/components/site/CopyAddress";
 import { VaultSizes } from "@/components/site/VaultSizes";
@@ -53,8 +54,8 @@ const STATS = [
 ];
 
 const GATEWAYS = [
-  { to: "/arcade", title: "Arcade", body: "Play for BLAST POINTS, ranks and daily challenges.", img: mascotShock.url },
-  { to: "/build", title: "Builder City", body: "Build your block on Blast Island in 3D.", img: mascotStand.url },
+  { to: "/arcade", title: "Arcade", body: "Play for BLAST POINTS, ranks and daily challenges.", img: battlestation.url },
+  { to: "/build", title: "Builder City", body: "Build your block on Blast Island in 3D.", img: battlestation.url },
   { to: "/hub", title: "Coin Hub", body: "Chat, memes, roasts and the community board.", img: helmet.url },
 ] as const;
 
@@ -65,6 +66,9 @@ function Home() {
 
   return (
     <div className="space-y-10">
+      <div className="overflow-hidden rounded-2xl border-[3px] border-border shadow-[var(--shadow-sticker)]">
+        <img src={heroGallery.url} alt="OurBlast character in a chrome and ruby art gallery" className="aspect-[3/1] w-full object-cover object-left sm:aspect-[1280/426]" />
+      </div>
       {/* hero */}
       <section className="flex flex-wrap items-end justify-between gap-4 pt-2">
         <div className="max-w-2xl">
@@ -96,7 +100,10 @@ function Home() {
 
       <section>
         <div className="mb-3 flex items-end justify-between">
-          <h2 className="font-display text-3xl uppercase">Live from @Ourblastbot</h2>
+          <div className="flex items-center gap-3">
+            <img src={portrait.url} alt="@Ourblastbot" className="size-12 rounded-full border-2 border-primary object-cover" />
+            <h2 className="font-display text-3xl uppercase">Live from @Ourblastbot</h2>
+          </div>
           <Link to="/launches" className="font-body text-sm font-semibold text-primary">All launches →</Link>
         </div>
         <XLaunchQueue />
