@@ -3,11 +3,11 @@ import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { AtSign, ShieldCheck } from "lucide-react";
 
-import helmet from "@/assets/helmet.jpg.asset.json";
 import heroGallery from "@/assets/hero-gallery.jpg.asset.json";
 import portrait from "@/assets/character-portrait.jpg.asset.json";
 import arcadeImg from "@/assets/gateway-arcade.jpg";
 import cityImg from "@/assets/gateway-city.jpg";
+import hubImg from "@/assets/gateway-hub.jpg";
 import { Ticker } from "@/components/site/Ticker";
 import { CopyAddress } from "@/components/site/CopyAddress";
 import { VaultSizes } from "@/components/site/VaultSizes";
@@ -57,7 +57,7 @@ const STATS = [
 const GATEWAYS = [
   { to: "/arcade", title: "Arcade", body: "Play for BLAST POINTS, ranks and daily challenges.", img: arcadeImg },
   { to: "/build", title: "Builder City", body: "Build your block on Blast Island in 3D.", img: cityImg },
-  { to: "/hub", title: "Coin Hub", body: "Chat, memes, roasts and the community board.", img: helmet.url },
+  { to: "/hub", title: "Coin Hub", body: "Chat, memes, roasts and the community board.", img: hubImg },
 ] as const;
 
 function Home() {
@@ -147,7 +147,7 @@ function Home() {
       <section className="grid gap-4 md:grid-cols-3">
         {GATEWAYS.map((g) => (
           <Link key={g.to} to={g.to} className="group flex items-center gap-4 rounded-2xl border-[3px] border-border bg-card p-5 shadow-[var(--shadow-sticker)] transition-transform hover:-translate-y-1">
-            <img src={g.img} alt="" className="size-16 shrink-0 rounded-xl border-2 border-border object-cover" />
+            <img src={g.img} alt="" loading="lazy" className="size-16 shrink-0 rounded-xl border-2 border-border object-cover" />
             <div>
               <p className="font-display text-2xl uppercase">{g.title} →</p>
               <p className="font-body text-sm text-muted-foreground">{g.body}</p>
