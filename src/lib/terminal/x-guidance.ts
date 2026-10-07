@@ -130,5 +130,5 @@ export function nearMissGuidance(text: string): string | null {
  * where X merely auto-tags the bot never qualify, so they get no reply.
  */
 export function isDirectedCommand(text: string): boolean {
-  return /@ourblastbot\b[\s,:]*(?:(?:pls|please|hey|yo|can you|could you)\s+)?(?:launch|deploy|mint|create|buy|sell|burn|swap|trade|send|transfer|tip|withdraw|pay|claim|check|balance|wallet|portfolio|help|commands?|menu|what|tell|show|who|how)\b/i.test(text);
+  return /@ourblastbot\b[\s,:]*(?:(?:pls|please|hey|yo|can you|could you)\s+)?(?:launch|deploy|mint|create|buy|sell|burn|swap|trade|send|transfer|tip|withdraw|pay|claim|check|balance|wallet|portfolio|help|commands?|menu|what can|what do you do|tell me what|show me what|who are|how do i|how to)\b/i.test(text);
 }
