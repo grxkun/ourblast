@@ -3,11 +3,11 @@ import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { AtSign, ShieldCheck } from "lucide-react";
 
-import helmet from "@/assets/helmet.jpg.asset.json";
 import heroGallery from "@/assets/hero-gallery.jpg.asset.json";
 import portrait from "@/assets/character-portrait.jpg.asset.json";
 import arcadeImg from "@/assets/gateway-arcade.jpg";
 import cityImg from "@/assets/gateway-city.jpg";
+import hubImg from "@/assets/gateway-hub.jpg";
 import { Ticker } from "@/components/site/Ticker";
 import { CopyAddress } from "@/components/site/CopyAddress";
 import { VaultSizes } from "@/components/site/VaultSizes";
@@ -57,7 +57,7 @@ const STATS = [
 const GATEWAYS = [
   { to: "/arcade", title: "Arcade", body: "Play for BLAST POINTS, ranks and daily challenges.", img: arcadeImg },
   { to: "/build", title: "Builder City", body: "Build your block on Blast Island in 3D.", img: cityImg },
-  { to: "/hub", title: "Coin Hub", body: "Chat, memes, roasts and the community board.", img: helmet.url },
+  { to: "/hub", title: "Coin Hub", body: "Chat, memes, roasts and the community board.", img: hubImg },
 ] as const;
 
 function Home() {
