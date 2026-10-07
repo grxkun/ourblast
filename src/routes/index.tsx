@@ -147,7 +147,7 @@ function Home() {
       <section className="grid gap-4 md:grid-cols-3">
         {GATEWAYS.map((g) => (
           <Link key={g.to} to={g.to} className="group flex items-center gap-4 rounded-2xl border-[3px] border-border bg-card p-5 shadow-[var(--shadow-sticker)] transition-transform hover:-translate-y-1">
-            <img src={g.img} alt="" className="size-16 shrink-0 rounded-xl border-2 border-border object-cover" />
+            <img src={g.img} alt="" loading="lazy" className="size-16 shrink-0 rounded-xl border-2 border-border object-cover" />
             <div>
               <p className="font-display text-2xl uppercase">{g.title} →</p>
               <p className="font-body text-sm text-muted-foreground">{g.body}</p>
