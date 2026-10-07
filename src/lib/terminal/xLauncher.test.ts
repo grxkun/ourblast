@@ -218,8 +218,8 @@ describe("X mention → Suipump launch screen → verified result", () => {
 
     const reply = composeDeployedLaunchReply("TETY", outcome.tokenUrl!, outcome.poolUrl!);
     expect(reply).toContain("$TETY LIVE");
-    expect(reply).toContain(outcome.tokenUrl!);
     expect(reply).toContain(outcome.poolUrl!);
+    expect(reply.match(/https?:\/\//g)?.length).toBe(1);
   });
 
   it("includes the creator-fee claim link when one is available", () => {
