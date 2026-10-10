@@ -17,7 +17,7 @@ async def main():
         await pg.screenshot(path="/tmp/xchain_expanded.png")
         results={}
         for name, token in [("HyperEVM","HYPE"),("Monad","MON")]:
-            item=pg.get_by_text(name, exact=True).first
+            item=pg.get_by_text(name, exact=True).last  # the entry inside the open "All Chains" list
             results[name+" visible"]=await item.is_visible()
             await item.click()
             await pg.wait_for_timeout(2000)
