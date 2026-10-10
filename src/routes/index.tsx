@@ -12,6 +12,7 @@ import { Ticker } from "@/components/site/Ticker";
 import { CopyAddress } from "@/components/site/CopyAddress";
 import { VaultSizes } from "@/components/site/VaultSizes";
 import { BlastChart } from "@/components/site/BlastChart";
+import { CrossChainBuy } from "@/components/site/CrossChainBuy";
 import { Terminal } from "@/components/terminal/Terminal";
 import { OurBankCard } from "@/components/terminal/OurBankCard";
 import { SocialSignIn } from "@/components/terminal/SocialSignIn";
@@ -122,6 +123,7 @@ function Home() {
           </div>
           <div className="flex flex-wrap gap-2">
             <a href={BUY_URL} target="_blank" rel="noreferrer" className="rounded-lg border-[3px] border-border bg-primary px-4 py-2 font-display text-lg text-primary-foreground shadow-[4px_4px_0_0_var(--ink)]">BUY $BLAST</a>
+            <CrossChainBuy blastUrl={BUY_URL} />
           </div>
         </div>
         <div className="overflow-hidden rounded-xl border border-border"><Ticker /></div>
