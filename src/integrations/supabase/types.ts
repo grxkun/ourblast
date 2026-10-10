@@ -1215,6 +1215,60 @@ export type Database = {
         }
         Relationships: []
       }
+      cross_chain_orders: {
+        Row: {
+          baseline_sui: number
+          created_at: string
+          error: string | null
+          expires_at: string
+          id: string
+          received_out: number | null
+          received_sui: number | null
+          status: string
+          swapped_sui: number | null
+          target_coin: string
+          tx_digest: string | null
+          updated_at: string
+          user_id: string
+          wallet: string
+          x_username: string
+        }
+        Insert: {
+          baseline_sui: number
+          created_at?: string
+          error?: string | null
+          expires_at?: string
+          id?: string
+          received_out?: number | null
+          received_sui?: number | null
+          status?: string
+          swapped_sui?: number | null
+          target_coin: string
+          tx_digest?: string | null
+          updated_at?: string
+          user_id: string
+          wallet: string
+          x_username: string
+        }
+        Update: {
+          baseline_sui?: number
+          created_at?: string
+          error?: string | null
+          expires_at?: string
+          id?: string
+          received_out?: number | null
+          received_sui?: number | null
+          status?: string
+          swapped_sui?: number | null
+          target_coin?: string
+          tx_digest?: string | null
+          updated_at?: string
+          user_id?: string
+          wallet?: string
+          x_username?: string
+        }
+        Relationships: []
+      }
       daily_challenges: {
         Row: {
           created_at: string
