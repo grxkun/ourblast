@@ -140,7 +140,7 @@ function AutoSwapPanel() {
     setError(null);
     try {
       const { data } = await supabase.auth.getSession();
-      if (!data.session) { setError("Sign in with X on the Terminal page first, then come back."); return; }
+      if (!data.session) { setError("Sign in on the Terminal page first (X, or MetaMask / Rabby), then come back."); return; }
       const res = await start({ data: {} });
       if (!res.ok) { setError(res.error); return; }
       setAddress(res.address);

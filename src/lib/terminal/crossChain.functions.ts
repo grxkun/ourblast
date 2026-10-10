@@ -13,15 +13,22 @@ export const startCrossChainOrder = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const { supabaseAdmin: db } = await import("@/integrations/supabase/client.server");
     const { data: account } = await db.from("x_accounts").select("username").eq("user_id", context.userId).maybeSingle();
-    if (!account) return { ok: false as const, error: "Sign in with X first to get your OurBank wallet." };
+    let handle = account?.username;
+    if (!handle) {
+      // EVM-only players (MetaMask/Rabby) get an OurBank wallet keyed on their address.
+      // "-" can't appear in X handles, so this never collides with a real account.
+      const { data: profile } = await db.from("profiles").select("auth_provider, social_id").eq("id", context.userId).maybeSingle();
+      if (profile?.auth_provider === "evm" && profile.social_id) handle = `evm-${profile.social_id.toLowerCase()}`;
+    }
+    if (!handle) return { ok: false as const, error: "Sign in with X or MetaMask/Rabby first to get your OurBank wallet." };
     const { ensureBankWallet } = await import("./bank-wallet.server");
-    const wallet = await ensureBankWallet(account.username, context.userId);
+    const wallet = await ensureBankWallet(handle, context.userId);
     const { suiBalance } = await import("./crossChain.server");
     const baseline = await suiBalance(wallet.address);
     await db.from("cross_chain_orders").update({ status: "cancelled" }).eq("user_id", context.userId).eq("status", "pending");
     const { data: row, error } = await db
       .from("cross_chain_orders")
-      .insert({ user_id: context.userId, x_username: account.username.toLowerCase(), wallet: wallet.address, target_coin: data.targetCoin ?? BLAST, baseline_sui: baseline.toString() as unknown as number })
+      .insert({ user_id: context.userId, x_username: handle.toLowerCase(), wallet: wallet.address, target_coin: data.targetCoin ?? BLAST, baseline_sui: baseline.toString() as unknown as number })
       .select("id")
       .single();
     if (error) throw new Error(error.message);
