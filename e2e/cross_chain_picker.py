@@ -30,7 +30,8 @@ async def main():
         results = {}
         for name, token in [("HyperEVM", "HYPE"), ("Monad", "MON")]:
             # Open the source-chain picker via the current chain label inside the widget.
-            await root.get_by_text("Ethereum", exact=True).first.click() if name == "HyperEVM" else None
+            current = "Ethereum" if name == "HyperEVM" else "HyperEVM"
+            await root.get_by_text(current, exact=True).first.click()
             # The Sell picker lists chains directly; HyperEVM/Monad are visible without expanding "+2 chains".
             tile = pg.get_by_text(name, exact=True).last
             await tile.wait_for(state="visible", timeout=15000)
