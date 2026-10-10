@@ -38,7 +38,9 @@ export const saveLauncherSettings = createServerFn({ method: "POST" })
 export const launchXRequest = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => z.object({ requestId: z.string().uuid() }).parse(input))
-  .handler(async ({ data }) => {
+  .handler(async ({ data, context }) => {
+    const { data: staff } = await context.supabase.rpc("is_staff", { _user_id: context.userId });
+    if (!staff) throw new Error("Only OURBLAST staff can run queued launches.");
     const { executeLaunchRequest } = await import("./xLauncher.server");
     return executeLaunchRequest(data.requestId);
   });

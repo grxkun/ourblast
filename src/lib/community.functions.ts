@@ -187,7 +187,8 @@ export const submitMeme = createServerFn({ method: "POST" })
     const { count: total } = await supabaseAdmin
       .from("memes")
       .select("id", { count: "exact", head: true })
-      .eq("user_id", userId);
+      .eq("user_id", userId)
+      .eq("status", "approved");
     if ((total ?? 0) >= 5) {
       const res = await grantAchievement(supabaseAdmin, userId, "meme_warrior");
       earned += res.points;
