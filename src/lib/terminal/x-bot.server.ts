@@ -220,11 +220,17 @@ async function processClaimedMention(
     };
   }
 
-  let { intent, result } = await runTerminalAgent(text, context);
+  const { isDirectedCommand } = await import("./x-guidance");
+  // Strict command-only mode on X: a mention that doesn't address the bot with a
+  // command verb ("@Ourblastbot $BLAST", "make it moon") is never run or rewritten.
+  const directed = source === "simulation" || isDirectedCommand(text);
 
-  // Tweets are messy. When the rules cannot read one, let the model rewrite it into a
-  // canonical command and run that through the very same parser and tool registry.
-  if (intent.name === "unknown") {
+  let { intent, result } = directed
+    ? await runTerminalAgent(text, context)
+    : { intent: { name: "unknown" as const }, result: { status: "READY" as const, message: "" } as Awaited<ReturnType<typeof runTerminalAgent>>["result"] };
+
+  // Directed but messy: let the model rewrite it into a canonical command.
+  if (directed && intent.name === "unknown") {
     const { interpretFreeText } = await import("./nlu.server");
     const rewritten = await interpretFreeText(text);
     if (rewritten) {
@@ -233,11 +239,8 @@ async function processClaimedMention(
     }
   }
 
-  // Still unreadable. Casual tags ("@ourblastbot lol") stay silent, but a mention
-  // that clearly tries to command the bot gets the exact syntax it was reaching
-  // for — first from the deterministic near-miss catcher, then from the model.
+  // Still unreadable but clearly aimed at the bot: give the exact syntax.
   let guidance: string | null = null;
-  const { isDirectedCommand } = await import("./x-guidance");
   if (intent.name === "unknown" && source !== "simulation" && isDirectedCommand(text)) {
     const { nearMissGuidance } = await import("./x-guidance");
     guidance = nearMissGuidance(text);
