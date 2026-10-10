@@ -65,7 +65,7 @@ export function CrossChainBuy({ blastUrl }: { blastUrl: string }) {
   }, [open]);
 
   return (
-    {/* Non-modal: Mayan opens its chain/token menu outside the dialog, which a modal dialog blocks. */}
+    // Non-modal: Mayan opens its chain/token menu outside the dialog, which a modal dialog blocks.
     <Dialog open={open} onOpenChange={setOpen} modal={false}>
       <DialogTrigger asChild>
         <button type="button" className="rounded-lg border-[3px] border-border bg-secondary px-4 py-2 font-display text-lg text-secondary-foreground shadow-[4px_4px_0_0_var(--ink)]">
