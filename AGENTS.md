@@ -1,1 +1,2 @@
 - Production builds read public backend values from vite.config define fallbacks — .env is gitignored and missing in deploys.
+- OTC escrow uses one bot-held OurBank-style wallet per deal (handle `escrow-<postId>`), gas sponsored by the bot, settled/refunded by the X poller — no Move package needed (deploys are forbidden).
