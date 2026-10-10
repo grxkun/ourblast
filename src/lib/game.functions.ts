@@ -72,35 +72,17 @@ export const submitScore = createServerFn({ method: "POST" })
       })
       .eq("id", userId);
 
-    // Reward = flat entry reward scaled by the tier you chose, plus a small
-    // skill bonus so a great run on Chill still loses to a great run on Hard.
+    // Only the paid, tier-scaled run reward earns points. Scores are reported
+    // by the browser and cannot be verified, so they never mint points or
+    // point-bearing achievements; they only feed the leaderboard.
     const runReward = Math.round(POINTS.playGame * tier.multiplier);
-    const skillBonus = Math.min(POINTS.skillBonusCap, Math.floor(data.score / 100));
     let earned = await awardPoints(supabaseAdmin, userId, runReward, "play_game");
-    if (skillBonus > 0) {
-      earned += await awardPoints(supabaseAdmin, userId, skillBonus, "skill_bonus");
-    }
-    if (isPersonalBest && data.score > 0) {
-      earned += await awardPoints(
-        supabaseAdmin,
-        userId,
-        Math.round(POINTS.highScore * tier.multiplier),
-        "high_score",
-      );
-    }
 
     const newAchievements: string[] = [];
     const first = await grantAchievement(supabaseAdmin, userId, "first_blast");
     if (first.granted) {
       newAchievements.push("first_blast");
       earned += first.points;
-    }
-    if (data.score >= 8000) {
-      const master = await grantAchievement(supabaseAdmin, userId, "arcade_master");
-      if (master.granted) {
-        newAchievements.push("arcade_master");
-        earned += master.points;
-      }
     }
 
     // Daily challenge progress

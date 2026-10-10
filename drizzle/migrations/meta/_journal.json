@@ -29,6 +29,13 @@
       "when": 1791645177420,
       "tag": "0003_cross_chain_usdc_baseline",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1791664446687,
+      "tag": "0004_lock_profile_points",
+      "breakpoints": true
     }
   ]
 }
