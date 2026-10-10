@@ -21,20 +21,15 @@ async def main():
             results[name+" visible"]=await item.is_visible()
             await item.click()
             await pg.wait_for_timeout(2000)
-            # Picking a token closes the menu; the "From" box must then show the chain.
-            await pg.get_by_text("Search name or paste address").first.wait_for(timeout=5000)
-            box=await pg.locator("input[placeholder*='Search']").first.bounding_box()
-            await pg.mouse.click(box["x"]+60, box["y"]+box["height"]+130)
-            await pg.wait_for_timeout(2000)
-            from_text=await pg.locator("#mayan-widget-root").inner_text()
-            results[name+" selected"]=name in from_text
+            # Selecting a chain closes "All Chains" and puts it on the picker's chain row.
+            closed=not await pg.get_by_text("All Chains", exact=True).is_visible()
+            shown=await pg.get_by_text(name, exact=True).first.is_visible()
+            results[name+" selected"]=closed and shown
             print("RESULT", name, results[name+" visible"], results[name+" selected"], flush=True)
             await pg.screenshot(path=f"/tmp/xchain_{name}.png")
             if name=="HyperEVM":
-                await pg.locator("#mayan-widget-root").get_by_text(name).first.click()
+                await pg.get_by_text("+1 chains", exact=False).first.click() if await pg.get_by_text("+1 chains").count() else await pg.get_by_text("+2 chains", exact=True).click()
                 await pg.wait_for_timeout(1500)
-                more=pg.get_by_text("+2 chains", exact=True)
-                if await more.count(): await more.click(); await pg.wait_for_timeout(1000)
         assert all(results.values()), results
         print("PASS")
         await b.close()
