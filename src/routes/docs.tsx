@@ -377,6 +377,7 @@ function Docs() {
         <ul className="list-disc space-y-1.5 pl-5">
           <li><strong className="text-foreground">Pay from:</strong> Solana, Ethereum, Base, Arbitrum, BNB Chain, Optimism, Polygon, Avalanche, HyperEVM and Monad (via Mayan).</li>
           <li><strong className="text-foreground">NEAR:</strong> swap NEAR to SUI on NEAR Intents, send it to your OurBank address — the auto-swap does the rest.</li>
+          <li><strong className="text-foreground">Arc (USDC):</strong> bridge native USDC to your OurBank address with Circle CCTP (min 1 USDC); it is auto-swapped into $BLAST. Keep a little SUI for gas.</li>
           <li><strong className="text-foreground">Robinhood Chain:</strong> move ETH/USDC to Arbitrum or Base with Relay first, then use the swap.</li>
           <li><strong className="text-foreground">Rules:</strong> at least 0.1 SUI must arrive; 0.05 SUI stays for network fees; only newly arrived SUI is swapped, never what was already in your wallet.</li>
           <li><strong className="text-foreground">Window:</strong> each auto-swap waits 45 minutes for the deposit. If a swap fails, your SUI stays safe in OurBank.</li>
