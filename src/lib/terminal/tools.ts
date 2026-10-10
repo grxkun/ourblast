@@ -75,6 +75,15 @@ export const terminalTools: Record<Exclude<TerminalIntentName, "unknown">, Termi
   createToken: launchTool,
   launchToken: launchTool,
   getToken: async (intent) => launchpadAdapter.getLaunchStatus(String(intent.input["symbol"] ?? "")),
+  escrowHelp: async () => ({
+    tool: "escrowHelp",
+    status: "READY",
+    message:
+      "OTC escrow runs on X. Post: @Ourblastbot escrow with @friend 10 SUI for 50000 $BLAST. " +
+      "The bot replies with a one-time escrow wallet; each side deposits their leg. When both land it settles automatically " +
+      "(0.5% fee per side to the treasury) and pays out to each party's OurBank wallet. Not funded within 24h = full refund. " +
+      "Either party can post: @Ourblastbot cancel escrow #N. Coins only (SUI, USDC, $BLAST or a full coin type).",
+  }),
   getWallet: async (_intent, context) => context.walletConnected
     ? { tool: "getWallet", status: "READY", message: `Sui wallet connected: ${context.walletAddress ?? "Connected"}.`, data: { address: context.walletAddress } }
     : { tool: "getWallet", status: "NOT_CONNECTED", message: "Connect your Sui wallet first." },
