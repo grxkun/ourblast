@@ -64,16 +64,6 @@ async def main():
             results[name + " selected"] = closed and shown and token_shown
             print("RESULT", name, results[name + " visible"], results[name + " selected"], flush=True)
             await pg.screenshot(path=f"/tmp/xchain_{name}.png")
-            if name == "HyperEVM":
-                # Reopen the picker for the next chain. The picker modal can
-                # linger and intercept clicks, so wait for it to fully close first.
-                await pg.locator("div.MuiDialog-root").wait_for(state="hidden", timeout=15000)
-                await pg.wait_for_timeout(1000)
-                # force=True: the picker modal opens on click and covers the label,
-                # which makes Playwright's actionability retries fail after a
-                # successful first click.
-                await root.get_by_text(name, exact=True).first.click(force=True)
-                await pg.wait_for_timeout(1500)
         assert all(results.values()), results
         print("PASS")
         await b.close()
