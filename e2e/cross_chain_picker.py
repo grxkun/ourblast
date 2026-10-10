@@ -61,7 +61,10 @@ async def main():
             print("RESULT", name, results[name + " visible"], results[name + " selected"], flush=True)
             await pg.screenshot(path=f"/tmp/xchain_{name}.png")
             if name == "HyperEVM":
-                # Reopen the picker for the next chain.
+                # Reopen the picker for the next chain. The token-search modal can
+                # linger and intercept clicks, so wait for it to fully close first.
+                await pg.get_by_text("Search name or paste address", exact=True).wait_for(state="hidden", timeout=15000)
+                await pg.wait_for_timeout(1000)
                 await root.get_by_text(name, exact=True).first.click()
                 await pg.wait_for_timeout(1500)
         assert all(results.values()), results
