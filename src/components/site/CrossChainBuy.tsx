@@ -51,6 +51,7 @@ export function CrossChainBuy({ blastUrl }: { blastUrl: string }) {
         if (!el || !window.MayanSwap) throw new Error("missing");
         window.MayanSwap.init(el, {
           appIdentity: { uri: window.location.origin, icon: `${window.location.origin}/favicon.ico`, name: "OURBLAST" },
+          sourceChains: ["solana", "ethereum", "base", "arbitrum", "bsc", "optimism", "polygon", "avalanche", "hyperevm", "monad"],
           destinationChains: ["sui"],
           defaultToChain: "sui",
           setDefaultToken: true,
@@ -73,7 +74,7 @@ export function CrossChainBuy({ blastUrl }: { blastUrl: string }) {
         <DialogHeader>
           <DialogTitle className="font-display text-2xl uppercase">Buy from another chain</DialogTitle>
           <DialogDescription className="font-body">
-            Pay with ETH, SOL or USDC from Ethereum, Base, Arbitrum, BSC or Solana — you receive SUI on Sui in seconds.
+            Pay from Solana, Ethereum, Base, Arbitrum, BSC, Optimism, Polygon, Avalanche, HyperEVM or Monad — you receive SUI on Sui in seconds.
             Then swap SUI → $BLAST{" "}
             <a href={blastUrl} target="_blank" rel="noreferrer" className="text-primary underline">on Bluefin</a>
             {" "}or with @Ourblastbot (steps below).
