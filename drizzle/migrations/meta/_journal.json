@@ -15,6 +15,13 @@
       "when": 1791619365545,
       "tag": "0001_create_cross_chain_orders",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1791637314635,
+      "tag": "0002_allow_evm_login",
+      "breakpoints": true
     }
   ]
 }

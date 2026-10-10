@@ -5,6 +5,8 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { loginMessage } from "@/lib/blast";
 import { walletLogin } from "@/lib/auth.functions";
+import { evmLogin } from "@/lib/evm-auth.functions";
+import { evmLoginMessage } from "@/lib/evm-auth";
 import { ensureSocialProfile } from "@/lib/social-auth.functions";
 import { startXLogin } from "@/lib/terminal/x-login.functions";
 import { lovable } from "@/integrations/lovable/index";
@@ -48,6 +50,8 @@ type BlastSession = {
   loginWithGoogle: () => Promise<void>;
   /** Sign in with an X account (no wallet needed). */
   loginWithX: () => Promise<void>;
+  /** Sign in with an EVM wallet (MetaMask, Rabby). */
+  loginWithEvm: () => Promise<void>;
   disconnect: () => Promise<void>;
   refresh: () => void;
   /** Pays the SUI fee for an activity and returns a server-verified payment id. */
@@ -238,6 +242,32 @@ export function BlastProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
+  const loginWithEvm = useCallback(async () => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const eth = (window as any).ethereum;
+    if (!eth) {
+      toast.error("No EVM wallet found", { description: "Open ourblast.xyz inside MetaMask or Rabby, or install the extension." });
+      return;
+    }
+    setConnecting(true);
+    try {
+      const [address] = (await eth.request({ method: "eth_requestAccounts" })) as string[];
+      if (!address) throw new Error("No account shared by the wallet.");
+      const issuedAt = new Date().toISOString();
+      const message = evmLoginMessage(address, issuedAt);
+      const signature = (await eth.request({ method: "personal_sign", params: [message, address] })) as string;
+      const result = await evmLogin({ data: { address, signature, issuedAt } });
+      const { error } = await supabase.auth.signInWithPassword({ email: result.email, password: result.password });
+      if (error) throw error;
+      await queryClient.invalidateQueries();
+      toast.success(result.isNew ? "Welcome to OURBLAST 💥" : "Welcome back 💥");
+    } catch (error) {
+      toast.error("Sign-in failed", { description: error instanceof Error ? error.message : "Could not sign in." });
+    } finally {
+      setConnecting(false);
+    }
+  }, [queryClient]);
+
   // A social sign-in creates the auth user before the player profile exists.
   const bootstrapped = useRef<string | null>(null);
   useEffect(() => {
@@ -365,6 +395,7 @@ export function BlastProvider({ children }: { children: React.ReactNode }) {
       connect,
       loginWithGoogle,
       loginWithX,
+      loginWithEvm,
       disconnect,
       pay,
       recoverEntry,
@@ -382,6 +413,7 @@ export function BlastProvider({ children }: { children: React.ReactNode }) {
       connect,
       loginWithGoogle,
       loginWithX,
+      loginWithEvm,
       disconnect,
       pay,
       recoverEntry,

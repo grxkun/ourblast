@@ -10,7 +10,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 
 import type { Database } from "@/integrations/supabase/types";
 
-export type SocialProvider = "google" | "x";
+export type SocialProvider = "google" | "x" | "evm";
 
 export interface SocialIdentity {
   provider: SocialProvider;

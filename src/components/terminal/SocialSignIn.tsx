@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
  * for a wallet, which can be connected later from the same header.
  */
 export function SocialSignIn() {
-  const { userId, ready, connect, connecting, loginWithGoogle, loginWithX } = useBlast();
+  const { userId, ready, connect, connecting, loginWithGoogle, loginWithX, loginWithEvm } = useBlast();
   if (!ready || userId) return null;
 
   return (
@@ -17,8 +17,8 @@ export function SocialSignIn() {
       <div>
         <p className="font-display text-lg">Sign in to the terminal</p>
         <p className="mt-1 font-body text-sm text-muted-foreground">
-          Use a social account to start straight away — no wallet, no extension. Connect a Sui wallet
-          whenever you want to sign a launch yourself.
+          Use a social account to start straight away — no wallet, no extension. Coming from another
+          chain? Sign in with MetaMask or Rabby.
         </p>
       </div>
       <div className="flex flex-wrap gap-2">
@@ -28,9 +28,13 @@ export function SocialSignIn() {
         <Button type="button" variant="outline" disabled={connecting} onClick={() => void loginWithX()}>
           <AtSign /> Continue with X
         </Button>
+        <Button type="button" variant="outline" disabled={connecting} onClick={() => void loginWithEvm()}>
+          <Wallet /> MetaMask / Rabby
+        </Button>
         <Button type="button" variant="outline" disabled={connecting} onClick={() => void connect()}>
           <Wallet /> Connect Sui Wallet
         </Button>
+
       </div>
     </section>
   );
