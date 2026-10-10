@@ -175,6 +175,7 @@ export function parseTerminalCommand(rawInput: string): ParsedIntent {
     });
   }
 
+  if (/^(?:escrow|otc)\b/i.test(body)) return intent("escrowHelp", raw);
   if (/^(?:show\s+)?my\s+launches$/i.test(body)) return intent("getLaunches", raw);
   if (/^(?:wallet|show\s+my\s+wallet)$/i.test(body)) return intent("getWallet", raw);
   if (/^(?:portfolio|show\s+my\s+portfolio)$/i.test(body)) return intent("getPortfolio", raw);

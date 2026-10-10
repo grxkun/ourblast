@@ -43,6 +43,7 @@ const TOC = [
   { id: "perps", label: "Leveraged (Perpsplexity)" },
   { id: "fees", label: "Launch cost" },
   { id: "trade", label: "Trading & sending" },
+  { id: "escrow", label: "OTC escrow" },
   { id: "claim", label: "Creator fees" },
   { id: "pads", label: "Launchpads" },
   { id: "matrix", label: "Fee matrix" },
@@ -169,6 +170,8 @@ function Docs() {
                 ["Sell", "sell 50% 0xTOKEN_ADDRESS"],
                 ["Send to someone", "send 5 SUI to @friendhandle (or name.sui, or 0xADDRESS)"],
                 ["Check your balance", "balance (or: my balance, check my wallet)"],
+                ["OTC escrow", "escrow with @friend 10 SUI for 50000 $BLAST"],
+                ["Cancel an escrow", "cancel escrow #12"],
                 ["Check pending fees", "check fees on $MYCOIN"],
                 ["Claim your fees", "claim my fees on $MYCOIN"],
                 ["Anything else", "help — the bot replies with the exact line to post"],
@@ -329,6 +332,33 @@ function Docs() {
             handles are looked up first, so a typo never costs you gas. If a piece is missing (an
             amount, a destination) the bot replies with exactly what to add.
           </li>
+        </ul>
+      </Block>
+
+      <Block id="escrow" kicker="OTC" title="OTC escrow — trade safely with anyone">
+        <p>
+          Swap coins with another X user without trusting them first. The bot holds both sides in a
+          one-time escrow wallet and only releases them once both have arrived.
+        </p>
+        <Cmd>@Ourblastbot escrow with @friend 10 SUI for 50000 $BLAST</Cmd>
+        <ol className="list-decimal space-y-1.5 pl-5">
+          <li>The bot replies with a deal number (#N) and a fresh escrow wallet address for this deal only.</li>
+          <li>You send your side (10 SUI); your friend sends theirs (50,000 $BLAST) to that address.</li>
+          <li>
+            As soon as both deposits land, it settles automatically: each side goes to the other
+            person's OurBank wallet, and the bot replies with the transaction link.
+          </li>
+        </ol>
+        <ul className="list-disc space-y-1.5 pl-5">
+          <li><strong className="text-foreground">Fee:</strong> 0.5% of each side, sent to the OurBlast treasury.</li>
+          <li><strong className="text-foreground">24h timeout:</strong> if both sides aren't funded within 24 hours, every deposit is refunded.</li>
+          <li>
+            <strong className="text-foreground">Cancel anytime before settling:</strong> either party posts{" "}
+            <em>@Ourblastbot cancel escrow #N</em> and deposits go back to each OurBank wallet.
+          </li>
+          <li><strong className="text-foreground">Overpaid?</strong> Anything above the agreed amount is returned to the sender's OurBank wallet.</li>
+          <li><strong className="text-foreground">Coins only:</strong> SUI, USDC, $BLAST or any token by its full coin type (0x…::coin::COIN). NFTs aren't supported yet.</li>
+          <li><strong className="text-foreground">No gas needed:</strong> the bot pays network fees for settlement and refunds.</li>
         </ul>
       </Block>
 

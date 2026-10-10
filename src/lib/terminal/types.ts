@@ -22,6 +22,7 @@ export type TerminalIntentName =
   | "buyToken"
   | "sellToken"
   | "getTransaction"
+  | "escrowHelp"
   | "unknown";
 
 import type { FeePayout } from "./feePayout";

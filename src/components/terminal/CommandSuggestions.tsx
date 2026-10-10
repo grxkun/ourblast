@@ -1,4 +1,4 @@
-import { ChartNoAxesCombined, CircleDollarSign, Coins, Search, WalletCards, Zap } from "lucide-react";
+import { ChartNoAxesCombined, Handshake, CircleDollarSign, Coins, Search, WalletCards, Zap } from "lucide-react";
 
 import { Suggestion } from "@/components/ai-elements/suggestion";
 
@@ -9,6 +9,7 @@ const suggestions = [
   { icon: WalletCards, label: "View wallet", command: "wallet" },
   { icon: Coins, label: "Buy & burn", command: "buy and burn 1 SUI of $BLAST" },
   { icon: CircleDollarSign, label: "Buy $BLAST", command: "buy 0.1 SUI of $BLAST" },
+  { icon: Handshake, label: "OTC escrow", command: "escrow" },
 ] as const;
 
 export function CommandSuggestions({ onSelect }: { onSelect: (command: string) => void }) {
