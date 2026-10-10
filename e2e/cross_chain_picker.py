@@ -32,8 +32,15 @@ async def main():
             # Open the source-chain picker via the current chain label inside the widget.
             current = "Ethereum" if name == "HyperEVM" else "HyperEVM"
             await root.get_by_text(current, exact=True).first.click()
-            # The Sell picker lists chains directly; HyperEVM/Monad are visible without expanding "+2 chains".
+            # The Sell picker grid shows ~8 chains; the rest sit behind "+2 chains".
+            # The grid composition varies, so expand "+2 chains" when the tile isn't shown.
             tile = pg.get_by_text(name, exact=True).last
+            if not await tile.is_visible():
+                more = pg.get_by_text("+2 chains", exact=True)
+                await more.wait_for(state="visible", timeout=15000)
+                await more.click()
+                await pg.wait_for_timeout(1500)
+                tile = pg.get_by_text(name, exact=True).last
             try:
                 await tile.wait_for(state="visible", timeout=15000)
             except Exception:
