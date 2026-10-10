@@ -16,7 +16,7 @@ async def main():
         await pg.wait_for_timeout(1500)
         await pg.screenshot(path="/tmp/xchain_expanded.png")
         results={}
-        for name in ["HyperEVM","Monad"]:
+        for name, token in [("HyperEVM","HYPE"),("Monad","MON")]:
             item=pg.get_by_text(name, exact=True).first
             results[name+" visible"]=await item.is_visible()
             await item.click()
@@ -24,11 +24,11 @@ async def main():
             # Selecting a chain closes "All Chains" and puts it on the picker's chain row.
             closed=not await pg.get_by_text("All Chains", exact=True).is_visible()
             shown=await pg.get_by_text(name, exact=True).first.is_visible()
-            results[name+" selected"]=closed and shown
+            results[name+" selected"]=closed and shown and await pg.get_by_text(token, exact=True).first.is_visible()
             print("RESULT", name, results[name+" visible"], results[name+" selected"], flush=True)
             await pg.screenshot(path=f"/tmp/xchain_{name}.png")
             if name=="HyperEVM":
-                await pg.get_by_text("+1 chains", exact=False).first.click() if await pg.get_by_text("+1 chains").count() else await pg.get_by_text("+2 chains", exact=True).click()
+                await pg.get_by_text("+2 chains", exact=True).click()
                 await pg.wait_for_timeout(1500)
         assert all(results.values()), results
         print("PASS")
