@@ -52,12 +52,13 @@ async def main():
             tok = pg.get_by_text(token, exact=True).first
             await tok.wait_for(state="visible", timeout=15000)
             await tok.click()
-            # After selection the token-search modal closes (its search input detaches)
-            # and the Sell selector shows chain + token.
-            search = pg.locator("input[placeholder='Search name or paste address']")
-            await search.wait_for(state="hidden", timeout=15000)
+            # After selection the picker's MuiDialog modal closes and the Sell
+            # selector shows chain + token. (Both the chain grid and the token
+            # list have a search input, so track the modal itself.)
+            modal = pg.locator("div.MuiDialog-root")
+            await modal.wait_for(state="hidden", timeout=15000)
             await pg.wait_for_timeout(1000)
-            closed = not await search.is_visible()
+            closed = not await modal.is_visible()
             shown = await root.get_by_text(name, exact=True).first.is_visible()
             token_shown = await root.get_by_text(token, exact=True).first.is_visible()
             results[name + " selected"] = closed and shown and token_shown
