@@ -44,6 +44,7 @@ const TOC = [
   { id: "fees", label: "Launch cost" },
   { id: "trade", label: "Trading & sending" },
   { id: "escrow", label: "OTC escrow" },
+  { id: "crosschain", label: "Buy from any chain" },
   { id: "claim", label: "Creator fees" },
   { id: "pads", label: "Launchpads" },
   { id: "matrix", label: "Fee matrix" },
@@ -361,6 +362,27 @@ function Docs() {
           <li><strong className="text-foreground">No gas needed:</strong> the bot pays network fees for settlement and refunds.</li>
         </ul>
       </Block>
+
+      <Block id="crosschain" kicker="Any chain" title="Buy from another chain — one shot">
+        <p>
+          Hold ETH, SOL or USDC somewhere else? Open <em>Buy with ETH / SOL</em> on the home page.
+          You sign once in your own wallet (MetaMask, Phantom…) and end up holding $BLAST in OurBank.
+        </p>
+        <ol className="list-decimal space-y-1.5 pl-5">
+          <li>Sign in with X, then tap <em>Get my address + auto-swap</em> to get your OurBank address.</li>
+          <li>Pick your chain and coin in the swap, paste that address as the Sui destination, and confirm.</li>
+          <li>When the SUI lands, OurBank swaps it into $BLAST automatically and shows the transaction link.</li>
+        </ol>
+        <ul className="list-disc space-y-1.5 pl-5">
+          <li><strong className="text-foreground">Pay from:</strong> Solana, Ethereum, Base, Arbitrum, BNB Chain, Optimism, Polygon, Avalanche, HyperEVM and Monad (via Mayan).</li>
+          <li><strong className="text-foreground">NEAR:</strong> swap NEAR to SUI on NEAR Intents, send it to your OurBank address — the auto-swap does the rest.</li>
+          <li><strong className="text-foreground">Robinhood Chain:</strong> move ETH/USDC to Arbitrum or Base with Relay first, then use the swap.</li>
+          <li><strong className="text-foreground">Rules:</strong> at least 0.1 SUI must arrive; 0.05 SUI stays for network fees; only newly arrived SUI is swapped, never what was already in your wallet.</li>
+          <li><strong className="text-foreground">Window:</strong> each auto-swap waits 45 minutes for the deposit. If a swap fails, your SUI stays safe in OurBank.</li>
+          <li><strong className="text-foreground">Fees:</strong> the bridge's own fee plus the usual 0.25% on Aftermath swaps. No custody — OURBLAST never holds funds on the other chain.</li>
+        </ul>
+      </Block>
+
 
       <Block id="claim" kicker="Earnings" title="Creator fees — the full rules">
         <p>
