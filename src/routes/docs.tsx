@@ -335,6 +335,33 @@ function Docs() {
         </ul>
       </Block>
 
+      <Block id="escrow" kicker="OTC" title="OTC escrow — trade safely with anyone">
+        <p>
+          Swap coins with another X user without trusting them first. The bot holds both sides in a
+          one-time escrow wallet and only releases them once both have arrived.
+        </p>
+        <Cmd>@Ourblastbot escrow with @friend 10 SUI for 50000 $BLAST</Cmd>
+        <ol className="list-decimal space-y-1.5 pl-5">
+          <li>The bot replies with a deal number (#N) and a fresh escrow wallet address for this deal only.</li>
+          <li>You send your side (10 SUI); your friend sends theirs (50,000 $BLAST) to that address.</li>
+          <li>
+            As soon as both deposits land, it settles automatically: each side goes to the other
+            person's OurBank wallet, and the bot replies with the transaction link.
+          </li>
+        </ol>
+        <ul className="list-disc space-y-1.5 pl-5">
+          <li><strong className="text-foreground">Fee:</strong> 0.5% of each side, sent to the OurBlast treasury.</li>
+          <li><strong className="text-foreground">24h timeout:</strong> if both sides aren't funded within 24 hours, every deposit is refunded.</li>
+          <li>
+            <strong className="text-foreground">Cancel anytime before settling:</strong> either party posts{" "}
+            <em>@Ourblastbot cancel escrow #N</em> and deposits go back to each OurBank wallet.
+          </li>
+          <li><strong className="text-foreground">Overpaid?</strong> Anything above the agreed amount is returned to the sender's OurBank wallet.</li>
+          <li><strong className="text-foreground">Coins only:</strong> SUI, USDC, $BLAST or any token by its full coin type (0x…::coin::COIN). NFTs aren't supported yet.</li>
+          <li><strong className="text-foreground">No gas needed:</strong> the bot pays network fees for settlement and refunds.</li>
+        </ul>
+      </Block>
+
       <Block id="claim" kicker="Earnings" title="Creator fees — the full rules">
         <p>
           Coins you launch earn you trading fees: the launchpad pays a creator fee on every trade,
