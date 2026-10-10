@@ -30,7 +30,7 @@ async def main():
         page = await ctx.new_page()
         await page.goto(f"{BASE}/terminal", wait_until="networkidle")
         await page.get_by_role("button", name="MetaMask / Rabby").click()
-        await page.get_by_role("button", name="Sign out").wait_for(timeout=30000)
+        await page.get_by_role("button", name="Sign out").first.wait_for(timeout=30000)
         print("signed in as", sign("x")["addr"])
         await page.goto(BASE, wait_until="networkidle")
         await page.get_by_role("button", name="BUY WITH ETH / SOL").first.click()
