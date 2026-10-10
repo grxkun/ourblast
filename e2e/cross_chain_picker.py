@@ -10,7 +10,7 @@ async def main():
         await pg.goto("http://localhost:8080",wait_until="domcontentloaded"); await pg.wait_for_timeout(5000)
         await pg.get_by_role("button",name="BUY WITH ETH / SOL").first.click()
         await pg.wait_for_timeout(5000)
-        await pg.locator("#mayan-widget-root").get_by_text("Ethereum").first.click()
+        await pg.locator("#mayan-widget-root").get_by_text("Ethereum").first.click(timeout=60000)
         await pg.wait_for_timeout(2000)
         await pg.get_by_text("+2 chains", exact=True).click()
         await pg.wait_for_timeout(1500)
