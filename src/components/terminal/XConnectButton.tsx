@@ -89,7 +89,7 @@ export function XConnectButton() {
         connect.mutate();
       }}
     >
-      {connect.isPending ? <Loader2 className="animate-spin" /> : <AtSign />} Connect X
+      {connect.isPending ? <Loader2 className="animate-spin" /> : <AtSign />} Link X to use @Ourblastbot
     </Button>
   );
 }

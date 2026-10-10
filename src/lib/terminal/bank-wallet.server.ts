@@ -152,6 +152,27 @@ export async function findBankWalletByUserId(userId: string): Promise<BankWallet
 }
 
 /** Existing wallet for this X handle, or a freshly generated one. */
+/**
+ * When a MetaMask/Rabby account links X, its `evm-<addr>` wallet is re-keyed to
+ * the X handle. Skipped if that handle already has its own wallet (never merge
+ * or overwrite funds) — returns what happened.
+ */
+export async function linkEvmWalletToX(userId: string, xUsername: string): Promise<"moved" | "kept" | "none"> {
+  const db = await admin();
+  const { data: profile } = await db.from("profiles").select("auth_provider, social_id").eq("id", userId).maybeSingle();
+  if (profile?.auth_provider !== "evm" || !profile.social_id) return "none";
+  const evmHandle = `evm-${profile.social_id.toLowerCase()}`;
+  const evmWallet = await findBankWallet(evmHandle);
+  if (!evmWallet) return "none";
+  if (await findBankWallet(xUsername)) return "kept";
+  const { error } = await db
+    .from("bank_wallets")
+    .update({ x_username: xUsername.toLowerCase(), user_id: userId })
+    .eq("x_username", evmHandle);
+  if (error) throw new Error(error.message);
+  return "moved";
+}
+
 export async function ensureBankWallet(handle: string, userId: string | null): Promise<BankWallet> {
   const existing = await findBankWallet(handle);
   if (existing) {

@@ -45,6 +45,7 @@ const TOC = [
   { id: "trade", label: "Trading & sending" },
   { id: "escrow", label: "OTC escrow" },
   { id: "crosschain", label: "Buy from any chain" },
+  { id: "evm-x", label: "EVM accounts on X" },
   { id: "claim", label: "Creator fees" },
   { id: "pads", label: "Launchpads" },
   { id: "matrix", label: "Fee matrix" },
@@ -369,7 +370,7 @@ function Docs() {
           You sign once in your own wallet (MetaMask, Phantom…) and end up holding $BLAST in OurBank.
         </p>
         <ol className="list-decimal space-y-1.5 pl-5">
-          <li>Sign in with X, then tap <em>Get my address + auto-swap</em> to get your OurBank address.</li>
+          <li>Sign in with X or with <em>MetaMask / Rabby</em> (one free signature), then tap <em>Get my address + auto-swap</em> to get your OurBank address.</li>
           <li>Pick your chain and coin in the swap, paste that address as the Sui destination, and confirm.</li>
           <li>When the SUI lands, OurBank swaps it into $BLAST automatically and shows the transaction link.</li>
         </ol>
@@ -380,6 +381,22 @@ function Docs() {
           <li><strong className="text-foreground">Rules:</strong> at least 0.1 SUI must arrive; 0.05 SUI stays for network fees; only newly arrived SUI is swapped, never what was already in your wallet.</li>
           <li><strong className="text-foreground">Window:</strong> each auto-swap waits 45 minutes for the deposit. If a swap fails, your SUI stays safe in OurBank.</li>
           <li><strong className="text-foreground">Fees:</strong> the bridge's own fee plus the usual 0.25% on Aftermath swaps. No custody — OURBLAST never holds funds on the other chain.</li>
+        </ul>
+      </Block>
+
+      <Block id="evm-x" kicker="MetaMask / Rabby" title="Use @Ourblastbot from an EVM account">
+        <p>
+          Signed in with MetaMask or Rabby? Your OurBank wallet works on the site straight away. To
+          also control it from X, link your X account once.
+        </p>
+        <ol className="list-decimal space-y-1.5 pl-5">
+          <li>Open the Terminal and tap <em>Link X to use @Ourblastbot</em>, then approve on X.</li>
+          <li>Your OurBank wallet — and everything in it — now answers to your X handle.</li>
+          <li>Post commands like <em>@Ourblastbot show my wallet</em>, <em>@Ourblastbot buy 5 SUI of $BLAST</em> or <em>@Ourblastbot send 100 $BLAST to @friend</em>.</li>
+        </ol>
+        <ul className="list-disc space-y-1.5 pl-5">
+          <li><strong className="text-foreground">Same wallet everywhere:</strong> the address doesn't change, so bridged funds and earlier buys stay put.</li>
+          <li><strong className="text-foreground">Already used the bot on X?</strong> If your X handle already has its own OurBank wallet, we keep both untouched and the bot uses the X one — funds are never merged automatically.</li>
         </ul>
       </Block>
 
