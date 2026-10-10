@@ -10,7 +10,7 @@ function sign(priv: Uint8Array, message: string) {
   const full = new Uint8Array([...p, ...m]);
   const rec = secp256k1.sign(keccak_256(full), priv, { prehash: false, format: "recovered" });
   // noble: [v, r, s] -> EVM: r||s||v+27
-  const out = new Uint8Array([...rec.slice(1), rec[0] + 27]);
+  const out = new Uint8Array([...rec.slice(1), rec[0]! + 27]);
   return "0x" + Array.from(out, (b) => b.toString(16).padStart(2, "0")).join("");
 }
 
