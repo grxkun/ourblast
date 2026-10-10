@@ -209,6 +209,14 @@ export async function saveXAccount(userId: string, profile: XProfile, tokens: To
     { onConflict: "user_id" },
   );
   if (error) throw new Error("Could not save your X connection.");
+  // MetaMask/Rabby players: hand their evm-<addr> OurBank wallet to the X handle
+  // so @Ourblastbot mentions control the same funds.
+  try {
+    const { linkEvmWalletToX } = await import("./bank-wallet.server");
+    await linkEvmWalletToX(userId, profile.username);
+  } catch (e) {
+    console.error("[x-link] evm wallet hand-over failed", e);
+  }
 }
 
 /** A valid access token for this user, refreshed when it is close to expiry. */
