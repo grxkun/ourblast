@@ -1305,6 +1305,87 @@ export type Database = {
           },
         ]
       }
+      escrows: {
+        Row: {
+          a_amount_atomic: number
+          a_coin_type: string
+          a_decimals: number
+          a_symbol: string
+          b_amount_atomic: number
+          b_coin_type: string
+          b_decimals: number
+          b_symbol: string
+          created_at: string
+          error: string | null
+          escrow_address: string
+          escrow_handle: string
+          expires_at: string
+          fee_bps: number
+          final_reply_post_id: string | null
+          id: string
+          number: number
+          party_a: string
+          party_b: string
+          reply_post_id: string | null
+          status: string
+          tx_digest: string | null
+          updated_at: string
+          x_post_id: string
+        }
+        Insert: {
+          a_amount_atomic: number
+          a_coin_type: string
+          a_decimals: number
+          a_symbol: string
+          b_amount_atomic: number
+          b_coin_type: string
+          b_decimals: number
+          b_symbol: string
+          created_at?: string
+          error?: string | null
+          escrow_address: string
+          escrow_handle: string
+          expires_at?: string
+          fee_bps?: number
+          final_reply_post_id?: string | null
+          id?: string
+          number?: never
+          party_a: string
+          party_b: string
+          reply_post_id?: string | null
+          status?: string
+          tx_digest?: string | null
+          updated_at?: string
+          x_post_id: string
+        }
+        Update: {
+          a_amount_atomic?: number
+          a_coin_type?: string
+          a_decimals?: number
+          a_symbol?: string
+          b_amount_atomic?: number
+          b_coin_type?: string
+          b_decimals?: number
+          b_symbol?: string
+          created_at?: string
+          error?: string | null
+          escrow_address?: string
+          escrow_handle?: string
+          expires_at?: string
+          fee_bps?: number
+          final_reply_post_id?: string | null
+          id?: string
+          number?: never
+          party_a?: string
+          party_b?: string
+          reply_post_id?: string | null
+          status?: string
+          tx_digest?: string | null
+          updated_at?: string
+          x_post_id?: string
+        }
+        Relationships: []
+      }
       fee_claim_links: {
         Row: {
           amount_sui: number

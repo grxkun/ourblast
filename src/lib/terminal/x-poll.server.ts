@@ -239,5 +239,12 @@ export async function runXMentionPoll(): Promise<{
     console.error(`OurBank maintenance failed: ${error instanceof Error ? error.message : "unknown"}`);
   }
 
+  try {
+    const { maintainEscrows } = await import("./escrow.server");
+    await maintainEscrows();
+  } catch (error) {
+    console.error(`Escrow maintenance failed: ${error instanceof Error ? error.message : "unknown"}`);
+  }
+
   return { live: true, handled, confirmed, reason: null, error: null };
 }
