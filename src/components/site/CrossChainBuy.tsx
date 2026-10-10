@@ -97,6 +97,13 @@ export function CrossChainBuy({ blastUrl }: { blastUrl: string }) {
           </p>
         )}
         <div id={ROOT_ID} className="min-h-[520px] w-full" />
+        <div className="rounded-lg border-2 border-border bg-muted p-3 font-body text-sm">
+          <p className="mb-1 font-display uppercase">Coming from NEAR or Robinhood Chain?</p>
+          <ul className="list-disc space-y-1 pl-5">
+            <li><b>NEAR:</b> swap NEAR straight to SUI on <a href="https://app.near-intents.org" target="_blank" rel="noreferrer" className="text-primary underline">NEAR Intents</a> and send it to your OurBank address above.</li>
+            <li><b>Robinhood Chain:</b> move ETH/USDC to Arbitrum or Base with <a href="https://relay.link/bridge" target="_blank" rel="noreferrer" className="text-primary underline">Relay</a> (seconds), then use the swap here.</li>
+          </ul>
+        </div>
         <p className="font-body text-xs text-muted-foreground">
           Powered by Mayan. You sign with your own wallet; OURBLAST never holds your funds. Use a Sui address you control as the destination.
         </p>
