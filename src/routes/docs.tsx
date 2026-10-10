@@ -45,6 +45,7 @@ const TOC = [
   { id: "trade", label: "Trading & sending" },
   { id: "escrow", label: "OTC escrow" },
   { id: "crosschain", label: "Buy from any chain" },
+  { id: "evm-x", label: "EVM accounts on X" },
   { id: "claim", label: "Creator fees" },
   { id: "pads", label: "Launchpads" },
   { id: "matrix", label: "Fee matrix" },
