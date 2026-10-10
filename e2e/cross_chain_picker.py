@@ -1,5 +1,6 @@
 # SPDX-License-Identifier: BUSL-1.1
-# Browser test: buy popup lets users expand "+2 chains" and pick HyperEVM and Monad.
+# Browser test: buy popup's source-chain picker shows HyperEVM and Monad,
+# and both are selectable (chain + token land on the Sell selector).
 # Run with the dev server up: python3 e2e/cross_chain_picker.py
 import asyncio
 from playwright.async_api import async_playwright
@@ -15,29 +16,31 @@ async def main():
         # only appears once the swap form (incl. the chain selector) is ready.
         await pg.locator("#mayan-originFormInput").wait_for(state="visible", timeout=60000)
         root = pg.locator("#mayan-widget-root")
-        # Open the source-chain picker via the current chain label inside the widget.
-        await root.get_by_text("Ethereum", exact=True).first.click()
-        await pg.get_by_text("+2 chains", exact=True).wait_for(state="visible", timeout=15000)
-        await pg.get_by_text("+2 chains", exact=True).click()
-        await pg.wait_for_timeout(1500)
-        await pg.screenshot(path="/tmp/xchain_expanded.png")
+
         results = {}
         for name, token in [("HyperEVM", "HYPE"), ("Monad", "MON")]:
-            item = pg.get_by_text(name, exact=True).last  # the entry inside the open "All Chains" list
-            await item.wait_for(state="visible", timeout=15000)
+            # Open the source-chain picker via the current chain label inside the widget.
+            await root.get_by_text("Ethereum", exact=True).first.click() if name == "HyperEVM" else None
+            # The Sell picker lists chains directly; HyperEVM/Monad are visible without expanding "+2 chains".
+            tile = pg.get_by_text(name, exact=True).last
+            await tile.wait_for(state="visible", timeout=15000)
             results[name + " visible"] = True
-            await item.click()
+            await tile.click()
+            # Picking a chain opens its token list; choose the native token to finish selection.
+            tok = pg.get_by_text(token, exact=True).first
+            await tok.wait_for(state="visible", timeout=15000)
+            await tok.click()
             await pg.wait_for_timeout(2000)
-            # Selecting a chain closes "All Chains" and puts it on the picker's chain row.
-            closed = not await pg.get_by_text("All Chains", exact=True).is_visible()
+            # After selection the picker closes and the Sell selector shows chain + token.
+            closed = not await pg.get_by_text("Search name or paste address", exact=True).is_visible()
             shown = await root.get_by_text(name, exact=True).first.is_visible()
-            results[name + " selected"] = closed and shown and await root.get_by_text(token, exact=True).first.is_visible()
+            token_shown = await root.get_by_text(token, exact=True).first.is_visible()
+            results[name + " selected"] = closed and shown and token_shown
             print("RESULT", name, results[name + " visible"], results[name + " selected"], flush=True)
             await pg.screenshot(path=f"/tmp/xchain_{name}.png")
             if name == "HyperEVM":
+                # Reopen the picker for the next chain.
                 await root.get_by_text(name, exact=True).first.click()
-                await pg.get_by_text("+2 chains", exact=True).wait_for(state="visible", timeout=15000)
-                await pg.get_by_text("+2 chains", exact=True).click()
                 await pg.wait_for_timeout(1500)
         assert all(results.values()), results
         print("PASS")
