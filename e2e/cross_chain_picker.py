@@ -69,7 +69,10 @@ async def main():
                 # linger and intercept clicks, so wait for it to fully close first.
                 await pg.locator("div.MuiDialog-root").wait_for(state="hidden", timeout=15000)
                 await pg.wait_for_timeout(1000)
-                await root.get_by_text(name, exact=True).first.click()
+                # force=True: the picker modal opens on click and covers the label,
+                # which makes Playwright's actionability retries fail after a
+                # successful first click.
+                await root.get_by_text(name, exact=True).first.click(force=True)
                 await pg.wait_for_timeout(1500)
         assert all(results.values()), results
         print("PASS")
