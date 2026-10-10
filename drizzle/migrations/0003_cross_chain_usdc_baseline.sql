@@ -1,0 +1,1 @@
+ALTER TABLE public.cross_chain_orders ADD COLUMN IF NOT EXISTS baseline_usdc numeric NOT NULL DEFAULT 0, ADD COLUMN IF NOT EXISTS deposit_coin text;
