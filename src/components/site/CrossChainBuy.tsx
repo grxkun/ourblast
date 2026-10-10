@@ -70,11 +70,21 @@ export function CrossChainBuy({ blastUrl }: { blastUrl: string }) {
         <DialogHeader>
           <DialogTitle className="font-display text-2xl uppercase">Buy from another chain</DialogTitle>
           <DialogDescription className="font-body">
-            1. Pay with ETH, SOL or USDC from Ethereum, Base, Arbitrum, BSC or Solana — you receive SUI on Sui in seconds.
-            <br />2. Then swap SUI → $BLAST{" "}
+            Pay with ETH, SOL or USDC from Ethereum, Base, Arbitrum, BSC or Solana — you receive SUI on Sui in seconds.
+            Then swap SUI → $BLAST{" "}
             <a href={blastUrl} target="_blank" rel="noreferrer" className="text-primary underline">on Bluefin</a>
-            {" "}or ask @Ourblastbot.
+            {" "}or with @Ourblastbot (steps below).
           </DialogDescription>
+          <div className="rounded-lg border-2 border-border bg-muted p-3 font-body text-sm">
+            <p className="mb-2 font-display uppercase">Swap SUI → $BLAST with @Ourblastbot</p>
+            <ol className="list-decimal space-y-1 pl-5">
+              <li>Find your OurBank deposit address: tweet <code>@Ourblastbot wallet</code> or sign in with X on the Terminal page.</li>
+              <li>In the swap below, paste that OurBank address as the Sui destination.</li>
+              <li>Wait until the SUI arrives (usually under a minute).</li>
+              <li>Tweet <code>@Ourblastbot buy $BLAST with 5 SUI</code> (change 5 to your amount).</li>
+              <li>The bot replies with the transaction link once it's confirmed on-chain. Keep a little SUI for gas.</li>
+            </ol>
+          </div>
         </DialogHeader>
         {state === "loading" && <p className="font-body text-sm text-muted-foreground">Loading swap…</p>}
         {state === "error" && (
