@@ -65,13 +65,14 @@ export function CrossChainBuy({ blastUrl }: { blastUrl: string }) {
   }, [open]);
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    {/* Non-modal: Mayan opens its chain/token menu outside the dialog, which a modal dialog blocks. */}
+    <Dialog open={open} onOpenChange={setOpen} modal={false}>
       <DialogTrigger asChild>
         <button type="button" className="rounded-lg border-[3px] border-border bg-secondary px-4 py-2 font-display text-lg text-secondary-foreground shadow-[4px_4px_0_0_var(--ink)]">
           BUY WITH ETH / SOL
         </button>
       </DialogTrigger>
-      <DialogContent className="max-h-[92vh] max-w-[480px] overflow-y-auto">
+      <DialogContent className="max-h-[92vh] max-w-[480px] overflow-y-auto" onInteractOutside={(e) => e.preventDefault()}>
         <DialogHeader>
           <DialogTitle className="font-display text-2xl uppercase">Buy from another chain</DialogTitle>
           <DialogDescription className="font-body">
