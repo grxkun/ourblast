@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
+import { ALTERNATE_ROUTES, MAYAN_SOURCE_CHAINS } from "@/lib/terminal/crossChain";
 import { getCrossChainOrder, startCrossChainOrder } from "@/lib/terminal/crossChain.functions";
 
 /**
@@ -51,7 +52,7 @@ export function CrossChainBuy({ blastUrl }: { blastUrl: string }) {
         if (!el || !window.MayanSwap) throw new Error("missing");
         window.MayanSwap.init(el, {
           appIdentity: { uri: window.location.origin, icon: `${window.location.origin}/favicon.ico`, name: "OURBLAST" },
-          sourceChains: ["solana", "ethereum", "base", "arbitrum", "bsc", "optimism", "polygon", "avalanche", "hyperevm", "monad"],
+          sourceChains: [...MAYAN_SOURCE_CHAINS],
           destinationChains: ["sui"],
           defaultToChain: "sui",
           setDefaultToken: true,
@@ -100,8 +101,8 @@ export function CrossChainBuy({ blastUrl }: { blastUrl: string }) {
         <div className="rounded-lg border-2 border-border bg-muted p-3 font-body text-sm">
           <p className="mb-1 font-display uppercase">Coming from NEAR or Robinhood Chain?</p>
           <ul className="list-disc space-y-1 pl-5">
-            <li><b>NEAR:</b> swap NEAR straight to SUI on <a href="https://app.near-intents.org" target="_blank" rel="noreferrer" className="text-primary underline">NEAR Intents</a> and send it to your OurBank address above.</li>
-            <li><b>Robinhood Chain:</b> move ETH/USDC to Arbitrum or Base with <a href="https://relay.link/bridge" target="_blank" rel="noreferrer" className="text-primary underline">Relay</a> (seconds), then use the swap here.</li>
+            <li><b>NEAR:</b> swap NEAR straight to SUI on <a href={ALTERNATE_ROUTES.near.url} target="_blank" rel="noreferrer" className="text-primary underline">NEAR Intents</a> and send it to your OurBank address above.</li>
+            <li><b>Robinhood Chain:</b> move ETH/USDC to Arbitrum or Base with <a href={ALTERNATE_ROUTES.robinhood.url} target="_blank" rel="noreferrer" className="text-primary underline">Relay</a> (seconds), then use the swap here.</li>
           </ul>
         </div>
         <p className="font-body text-xs text-muted-foreground">
