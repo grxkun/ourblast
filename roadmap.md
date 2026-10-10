@@ -4,4 +4,4 @@
 - [ ] Publish routing fix (needs go-ahead)
 - [ ] Update GitHub repo — blocked: needs GitHub connected in Lovable (syncs automatically after)
 
-- [ ] Cross-chain buy: add Robinhood Chain and NEAR as source chains (if Mayan supports them)
+- [ ] Cross-chain buy: add Robinhood Chain and NEAR as source chains — blocked: Mayan does not support either chain yet
