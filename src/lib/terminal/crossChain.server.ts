@@ -1,17 +1,23 @@
 // SPDX-License-Identifier: BUSL-1.1
 import { normalizeStructTag } from "@mysten/sui/utils";
-import { crossChainSwapAmount } from "./crossChain";
+import { crossChainSwapAmount, crossChainUsdcSwapAmount, SUI_USDC } from "./crossChain";
 
 const SUI = normalizeStructTag("0x2::sui::SUI");
+const USDC = normalizeStructTag(SUI_USDC);
 
 async function admin() {
   return (await import("@/integrations/supabase/client.server")).supabaseAdmin;
 }
 
-export async function suiBalance(address: string): Promise<bigint> {
+export async function walletBalances(address: string): Promise<{ sui: bigint; usdc: bigint }> {
   const { bankBalances } = await import("./bank-wallet.server");
   const balances = await bankBalances(address);
-  return balances.find((b) => b.coinType === SUI)?.balance ?? 0n;
+  const of = (t: string) => balances.find((b) => normalizeStructTag(b.coinType) === t)?.balance ?? 0n;
+  return { sui: of(SUI), usdc: of(USDC) };
+}
+
+export async function suiBalance(address: string): Promise<bigint> {
+  return (await walletBalances(address)).sui;
 }
 
 /**
@@ -25,13 +31,18 @@ export async function maintainCrossChainOrders(): Promise<void> {
   const { data: orders } = await db.from("cross_chain_orders").select("*").eq("status", "pending").limit(20);
   for (const order of orders ?? []) {
     try {
-      const current = await suiBalance(order.wallet);
-      const amount = crossChainSwapAmount(BigInt(order.baseline_sui), current);
+      const bal = await walletBalances(order.wallet);
+      // USDC (CCTP from Arc & co.) first, else bridged SUI.
+      const usdcAmount = crossChainUsdcSwapAmount(BigInt(order.baseline_usdc ?? 0), bal.usdc);
+      const coinIn = usdcAmount > 0n ? USDC : SUI;
+      const current = usdcAmount > 0n ? bal.usdc : bal.sui;
+      const base = usdcAmount > 0n ? BigInt(order.baseline_usdc ?? 0) : BigInt(order.baseline_sui);
+      const amount = usdcAmount > 0n ? usdcAmount : crossChainSwapAmount(base, current);
       if (amount <= 0n) continue;
       // Claim the order so two poll runs never swap the same deposit.
       const { data: claimed } = await db
         .from("cross_chain_orders")
-        .update({ status: "swapping", received_sui: (current - BigInt(order.baseline_sui)).toString() as unknown as number, swapped_sui: amount.toString() as unknown as number })
+        .update({ status: "swapping", deposit_coin: coinIn === USDC ? "USDC" : "SUI", received_sui: (current - base).toString() as unknown as number, swapped_sui: amount.toString() as unknown as number })
         .eq("id", order.id)
         .eq("status", "pending")
         .select("id");
@@ -40,7 +51,7 @@ export async function maintainCrossChainOrders(): Promise<void> {
       const wallet = await findBankWallet(order.x_username);
       if (!wallet || wallet.address !== order.wallet) throw new Error("OurBank wallet not found.");
       const { executeBankSwap } = await import("./bank-swap.server");
-      const result = await executeBankSwap(wallet, SUI, order.target_coin, amount);
+      const result = await executeBankSwap(wallet, coinIn, order.target_coin, amount);
       if (result.ok) {
         await db.from("cross_chain_orders").update({ status: "completed", tx_digest: result.digest, received_out: (result.received ?? result.quoted).toString() as unknown as number }).eq("id", order.id);
       } else {

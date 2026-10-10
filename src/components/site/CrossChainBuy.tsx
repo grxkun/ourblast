@@ -103,6 +103,7 @@ export function CrossChainBuy({ blastUrl }: { blastUrl: string }) {
           <p className="mb-1 font-display uppercase">Coming from NEAR or Robinhood Chain?</p>
           <ul className="list-disc space-y-1 pl-5">
             <li><b>NEAR:</b> swap NEAR straight to SUI on <a href={ALTERNATE_ROUTES.near.url} target="_blank" rel="noreferrer" className="text-primary underline">NEAR Intents</a> and send it to your OurBank address above.</li>
+            <li><b>Arc (USDC):</b> send native USDC from Arc to your OurBank address above with Circle CCTP (e.g. <a href="https://app.mayan.finance" target="_blank" rel="noreferrer" className="text-primary underline">Mayan</a> or any CCTP bridge). It's swapped into $BLAST automatically.</li>
             <li><b>Robinhood Chain:</b> move ETH/USDC to Arbitrum or Base with <a href={ALTERNATE_ROUTES.robinhood.url} target="_blank" rel="noreferrer" className="text-primary underline">Relay</a> (seconds), then use the swap here.</li>
           </ul>
         </div>
@@ -179,7 +180,7 @@ function AutoSwapPanel() {
             {status === "failed" && `Swap didn't go through — your SUI is safe in OurBank. ${order?.error ?? ""}`}
             {status === "expired" && "No deposit arrived in time. Start again when you're ready."}
           </p>
-          <p className="mt-1 text-xs text-muted-foreground">Needs at least 0.1 SUI; 0.05 SUI stays for network fees.</p>
+          <p className="mt-1 text-xs text-muted-foreground">Needs at least 0.1 SUI (0.05 SUI stays for network fees) or 1 USDC. Gas is covered by SUI in your wallet.</p>
         </>
       )}
       {error && <p className="mt-2 text-destructive">{error}</p>}

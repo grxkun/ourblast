@@ -18,3 +18,14 @@ describe("buy popup routes", () => {
     for (const hop of ALTERNATE_ROUTES.robinhood.hopTo) expect(MAYAN_SOURCE_CHAINS).toContain(hop);
   });
 });
+
+import { crossChainUsdcSwapAmount } from "./crossChain";
+describe("Arc / CCTP USDC deposits", () => {
+  it("lists Arc as a CCTP route that lands on Sui", () => {
+    expect(ALTERNATE_ROUTES.arc.landsOnSui).toBe(true);
+  });
+  it("swaps the whole USDC deposit of at least 1 USDC", () => {
+    expect(crossChainUsdcSwapAmount(0n, 5_000_000n)).toBe(5_000_000n);
+    expect(crossChainUsdcSwapAmount(2_000_000n, 2_900_000n)).toBe(0n);
+  });
+});

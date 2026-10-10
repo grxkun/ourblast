@@ -1218,7 +1218,9 @@ export type Database = {
       cross_chain_orders: {
         Row: {
           baseline_sui: number
+          baseline_usdc: number
           created_at: string
+          deposit_coin: string | null
           error: string | null
           expires_at: string
           id: string
@@ -1235,7 +1237,9 @@ export type Database = {
         }
         Insert: {
           baseline_sui: number
+          baseline_usdc?: number
           created_at?: string
+          deposit_coin?: string | null
           error?: string | null
           expires_at?: string
           id?: string
@@ -1252,7 +1256,9 @@ export type Database = {
         }
         Update: {
           baseline_sui?: number
+          baseline_usdc?: number
           created_at?: string
+          deposit_coin?: string | null
           error?: string | null
           expires_at?: string
           id?: string

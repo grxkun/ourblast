@@ -16,5 +16,16 @@ export const MAYAN_SOURCE_CHAINS = ["solana", "ethereum", "base", "arbitrum", "b
 /** Chains Mayan can't reach yet: each gets an outside route into Sui. */
 export const ALTERNATE_ROUTES = {
   near: { via: "NEAR Intents", url: "https://app.near-intents.org", landsOnSui: true },
+  arc: { via: "Circle CCTP (USDC)", url: "https://docs.arc.io/integrate/exchanges/cctp-bridging", landsOnSui: true },
   robinhood: { via: "Relay", url: "https://relay.link/bridge", landsOnSui: false, hopTo: ["arbitrum", "base"] },
 } as const;
+
+/** Native USDC on Sui (arrives via Circle CCTP from Arc, Base, Ethereum, Solana…). */
+export const SUI_USDC = "0xdba34672e30cb065b1f93e3ab55318768fd6fef66c15942c9f7cb846e2f900e7::usdc::USDC";
+export const CROSS_CHAIN_MIN_USDC = 1_000_000n; // 1 USDC minimum (6 decimals)
+
+/** USDC to swap: the whole new deposit (gas is paid in SUI), 0n if not arrived. */
+export function crossChainUsdcSwapAmount(baseline: bigint, current: bigint): bigint {
+  const delta = current - baseline;
+  return delta < CROSS_CHAIN_MIN_USDC ? 0n : delta;
+}

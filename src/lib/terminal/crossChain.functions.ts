@@ -23,12 +23,13 @@ export const startCrossChainOrder = createServerFn({ method: "POST" })
     if (!handle) return { ok: false as const, error: "Sign in with X or MetaMask/Rabby first to get your OurBank wallet." };
     const { ensureBankWallet } = await import("./bank-wallet.server");
     const wallet = await ensureBankWallet(handle, context.userId);
-    const { suiBalance } = await import("./crossChain.server");
-    const baseline = await suiBalance(wallet.address);
+    const { walletBalances } = await import("./crossChain.server");
+    const bal = await walletBalances(wallet.address);
+    const baseline = bal.sui;
     await db.from("cross_chain_orders").update({ status: "cancelled" }).eq("user_id", context.userId).eq("status", "pending");
     const { data: row, error } = await db
       .from("cross_chain_orders")
-      .insert({ user_id: context.userId, x_username: handle.toLowerCase(), wallet: wallet.address, target_coin: data.targetCoin ?? BLAST, baseline_sui: baseline.toString() as unknown as number })
+      .insert({ user_id: context.userId, x_username: handle.toLowerCase(), wallet: wallet.address, target_coin: data.targetCoin ?? BLAST, baseline_sui: baseline.toString() as unknown as number, baseline_usdc: bal.usdc.toString() as unknown as number })
       .select("id")
       .single();
     if (error) throw new Error(error.message);
@@ -41,7 +42,7 @@ export const getCrossChainOrder = createServerFn({ method: "GET" })
   .handler(async ({ data, context }) => {
     const { data: row } = await context.supabase
       .from("cross_chain_orders")
-      .select("id, status, tx_digest, error, received_sui, swapped_sui, received_out, expires_at")
+      .select("id, status, deposit_coin, tx_digest, error, received_sui, swapped_sui, received_out, expires_at")
       .eq("id", data.id)
       .maybeSingle();
     if (!row) return null;

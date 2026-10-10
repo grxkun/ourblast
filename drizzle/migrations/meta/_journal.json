@@ -22,6 +22,13 @@
       "when": 1791637314635,
       "tag": "0002_allow_evm_login",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1791645177420,
+      "tag": "0003_cross_chain_usdc_baseline",
+      "breakpoints": true
     }
   ]
 }
