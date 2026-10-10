@@ -65,9 +65,9 @@ async def main():
             print("RESULT", name, results[name + " visible"], results[name + " selected"], flush=True)
             await pg.screenshot(path=f"/tmp/xchain_{name}.png")
             if name == "HyperEVM":
-                # Reopen the picker for the next chain. The token-search modal can
+                # Reopen the picker for the next chain. The picker modal can
                 # linger and intercept clicks, so wait for it to fully close first.
-                await pg.locator("input[placeholder='Search name or paste address']").wait_for(state="hidden", timeout=15000)
+                await pg.locator("div.MuiDialog-root").wait_for(state="hidden", timeout=15000)
                 await pg.wait_for_timeout(1000)
                 await root.get_by_text(name, exact=True).first.click()
                 await pg.wait_for_timeout(1500)
