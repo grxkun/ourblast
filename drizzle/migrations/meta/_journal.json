@@ -8,6 +8,13 @@
       "when": 1791616080760,
       "tag": "0000_create_escrows",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1791619365545,
+      "tag": "0001_create_cross_chain_orders",
+      "breakpoints": true
     }
   ]
 }

@@ -1,6 +1,9 @@
 // SPDX-License-Identifier: BUSL-1.1
 import { useEffect, useRef, useState } from "react";
+import { useServerFn } from "@tanstack/react-start";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { supabase } from "@/integrations/supabase/client";
+import { getCrossChainOrder, startCrossChainOrder } from "@/lib/terminal/crossChain.functions";
 
 /**
  * Cross-chain "Buy with ETH / SOL" via the hosted Mayan swap widget.
@@ -75,16 +78,15 @@ export function CrossChainBuy({ blastUrl }: { blastUrl: string }) {
             <a href={blastUrl} target="_blank" rel="noreferrer" className="text-primary underline">on Bluefin</a>
             {" "}or with @Ourblastbot (steps below).
           </DialogDescription>
-          <div className="rounded-lg border-2 border-border bg-muted p-3 font-body text-sm">
-            <p className="mb-2 font-display uppercase">Swap SUI → $BLAST with @Ourblastbot</p>
-            <ol className="list-decimal space-y-1 pl-5">
-              <li>Find your OurBank deposit address: tweet <code>@Ourblastbot show my wallet</code> or sign in with X on the Terminal page.</li>
+          <AutoSwapPanel />
+          <details className="rounded-lg border-2 border-border bg-muted p-3 font-body text-sm">
+            <summary className="cursor-pointer font-display uppercase">Manual: swap with @Ourblastbot</summary>
+            <ol className="mt-2 list-decimal space-y-1 pl-5">
+              <li>Find your OurBank deposit address: tweet <code>@Ourblastbot show my wallet</code>.</li>
               <li>In the swap below, paste that OurBank address as the Sui destination.</li>
-              <li>Wait until the SUI arrives (usually under a minute).</li>
-              <li>Tweet <code>@Ourblastbot buy 5 SUI of $BLAST</code> (change 5 to your amount).</li>
-              <li>The bot replies with the transaction link once it's confirmed on-chain. Keep a little SUI for gas.</li>
+              <li>Wait until the SUI arrives, then tweet <code>@Ourblastbot buy 5 SUI of $BLAST</code>.</li>
             </ol>
-          </div>
+          </details>
         </DialogHeader>
         {state === "loading" && <p className="font-body text-sm text-muted-foreground">Loading swap…</p>}
         {state === "error" && (
@@ -99,5 +101,78 @@ export function CrossChainBuy({ blastUrl }: { blastUrl: string }) {
         </p>
       </DialogContent>
     </Dialog>
+  );
+}
+
+type Order = Awaited<ReturnType<typeof getCrossChainOrder>>;
+
+function AutoSwapPanel() {
+  const start = useServerFn(startCrossChainOrder);
+  const check = useServerFn(getCrossChainOrder);
+  const [address, setAddress] = useState<string | null>(null);
+  const [orderId, setOrderId] = useState<string | null>(null);
+  const [order, setOrder] = useState<Order>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    if (!orderId) return;
+    const timer = setInterval(async () => {
+      const next = await check({ data: { id: orderId } }).catch(() => null);
+      if (next) setOrder(next);
+      if (next && next.status !== "pending" && next.status !== "swapping") clearInterval(timer);
+    }, 8000);
+    return () => clearInterval(timer);
+  }, [orderId, check]);
+
+  const arm = async () => {
+    setBusy(true);
+    setError(null);
+    try {
+      const { data } = await supabase.auth.getSession();
+      if (!data.session) { setError("Sign in with X on the Terminal page first, then come back."); return; }
+      const res = await start({ data: {} });
+      if (!res.ok) { setError(res.error); return; }
+      setAddress(res.address);
+      setOrderId(res.id);
+      setOrder(null);
+    } catch {
+      setError("Couldn't start auto-swap. Try again.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const status = order?.status ?? (orderId ? "pending" : null);
+  return (
+    <div className="rounded-lg border-2 border-primary bg-muted p-3 font-body text-sm">
+      <p className="mb-2 font-display uppercase">One-shot: auto-swap into $BLAST</p>
+      {!address ? (
+        <>
+          <p className="mb-2">Get your OurBank address, bridge to it below, and we swap the SUI into $BLAST the moment it lands.</p>
+          <button type="button" onClick={arm} disabled={busy} className="rounded-md border-2 border-border bg-primary px-3 py-1 font-display text-primary-foreground">
+            {busy ? "Preparing…" : "Get my address + auto-swap"}
+          </button>
+        </>
+      ) : (
+        <>
+          <p className="mb-1">Paste this as the Sui destination in the swap below:</p>
+          <button type="button" onClick={() => navigator.clipboard.writeText(address)} className="w-full break-all rounded-md border-2 border-border bg-background p-2 text-left font-mono text-xs">
+            {address} <span className="text-primary">(tap to copy)</span>
+          </button>
+          <p className="mt-2">
+            {status === "pending" && "Waiting for your SUI to arrive… (open for 45 min)"}
+            {status === "swapping" && "SUI received — swapping into $BLAST…"}
+            {status === "completed" && order?.tx_digest && (
+              <>Done! <a className="text-primary underline" href={`https://suiscan.xyz/mainnet/tx/${order.tx_digest}`} target="_blank" rel="noreferrer">View transaction</a></>
+            )}
+            {status === "failed" && `Swap didn't go through — your SUI is safe in OurBank. ${order?.error ?? ""}`}
+            {status === "expired" && "No deposit arrived in time. Start again when you're ready."}
+          </p>
+          <p className="mt-1 text-xs text-muted-foreground">Needs at least 0.1 SUI; 0.05 SUI stays for network fees.</p>
+        </>
+      )}
+      {error && <p className="mt-2 text-destructive">{error}</p>}
+    </div>
   );
 }

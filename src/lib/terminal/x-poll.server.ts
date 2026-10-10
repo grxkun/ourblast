@@ -246,5 +246,13 @@ export async function runXMentionPoll(): Promise<{
     console.error(`Escrow maintenance failed: ${error instanceof Error ? error.message : "unknown"}`);
   }
 
+  try {
+    const { maintainCrossChainOrders } = await import("./crossChain.server");
+    await maintainCrossChainOrders();
+  } catch (error) {
+    console.error(`Cross-chain auto-swap failed: ${error instanceof Error ? error.message : "unknown"}`);
+  }
+
+
   return { live: true, handled, confirmed, reason: null, error: null };
 }
