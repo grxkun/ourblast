@@ -21,7 +21,7 @@ export const startCrossChainOrder = createServerFn({ method: "POST" })
     await db.from("cross_chain_orders").update({ status: "cancelled" }).eq("user_id", context.userId).eq("status", "pending");
     const { data: row, error } = await db
       .from("cross_chain_orders")
-      .insert({ user_id: context.userId, x_username: account.username.toLowerCase(), wallet: wallet.address, target_coin: data.targetCoin ?? BLAST, baseline_sui: baseline.toString() })
+      .insert({ user_id: context.userId, x_username: account.username.toLowerCase(), wallet: wallet.address, target_coin: data.targetCoin ?? BLAST, baseline_sui: baseline.toString() as unknown as number })
       .select("id")
       .single();
     if (error) throw new Error(error.message);

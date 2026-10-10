@@ -31,7 +31,7 @@ export async function maintainCrossChainOrders(): Promise<void> {
       // Claim the order so two poll runs never swap the same deposit.
       const { data: claimed } = await db
         .from("cross_chain_orders")
-        .update({ status: "swapping", received_sui: (current - BigInt(order.baseline_sui)).toString(), swapped_sui: amount.toString() })
+        .update({ status: "swapping", received_sui: (current - BigInt(order.baseline_sui)).toString() as unknown as number, swapped_sui: amount.toString() as unknown as number })
         .eq("id", order.id)
         .eq("status", "pending")
         .select("id");
@@ -42,7 +42,7 @@ export async function maintainCrossChainOrders(): Promise<void> {
       const { executeBankSwap } = await import("./bank-swap.server");
       const result = await executeBankSwap(wallet, SUI, order.target_coin, amount);
       if (result.ok) {
-        await db.from("cross_chain_orders").update({ status: "completed", tx_digest: result.digest, received_out: (result.received ?? result.quoted).toString() }).eq("id", order.id);
+        await db.from("cross_chain_orders").update({ status: "completed", tx_digest: result.digest, received_out: (result.received ?? result.quoted).toString() as unknown as number }).eq("id", order.id);
       } else {
         await db.from("cross_chain_orders").update({ status: "failed", error: result.error.slice(0, 300) }).eq("id", order.id);
       }
