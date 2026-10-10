@@ -11,10 +11,20 @@ async def main():
         pg = await (await b.new_context(viewport={"width": 1280, "height": 1800})).new_page()
         await pg.goto("http://localhost:8080", wait_until="domcontentloaded")
         await pg.wait_for_timeout(5000)
-        await pg.get_by_role("button", name="BUY WITH ETH / SOL").first.click()
-        # Wait until the Mayan widget is fully rendered: the origin amount input
-        # only appears once the swap form (incl. the chain selector) is ready.
-        await pg.locator("#mayan-originFormInput").wait_for(state="visible", timeout=60000)
+        # Open the popup and wait for the widget; retry once if the CDN script is slow.
+        for attempt in range(3):
+            await pg.get_by_role("button", name="BUY WITH ETH / SOL").first.click()
+            try:
+                await pg.wait_for_function("!!window.MayanSwap", timeout=30000)
+                # Wait until the Mayan widget is fully rendered: the origin amount
+                # input only appears once the swap form (incl. chain selector) is ready.
+                await pg.locator("#mayan-originFormInput").wait_for(state="visible", timeout=45000)
+                break
+            except Exception:
+                if attempt == 2:
+                    raise
+                await pg.keyboard.press("Escape")
+                await pg.wait_for_timeout(2000)
         root = pg.locator("#mayan-widget-root")
 
         results = {}
