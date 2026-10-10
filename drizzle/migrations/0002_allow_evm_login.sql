@@ -1,0 +1,2 @@
+ALTER TABLE public.profiles DROP CONSTRAINT IF EXISTS profiles_auth_provider_check;
+ALTER TABLE public.profiles ADD CONSTRAINT profiles_auth_provider_check CHECK (auth_provider IN ('wallet','google','x','evm'));
