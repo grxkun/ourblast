@@ -34,7 +34,11 @@ async def main():
             await root.get_by_text(current, exact=True).first.click()
             # The Sell picker lists chains directly; HyperEVM/Monad are visible without expanding "+2 chains".
             tile = pg.get_by_text(name, exact=True).last
-            await tile.wait_for(state="visible", timeout=15000)
+            try:
+                await tile.wait_for(state="visible", timeout=15000)
+            except Exception:
+                await pg.screenshot(path=f"/tmp/xchain_debug_{name}.png")
+                raise
             results[name + " visible"] = True
             await tile.click()
             # Picking a chain opens its token list; choose the native token to finish selection.
