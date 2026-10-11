@@ -130,7 +130,14 @@ function ProfilePage() {
             {playerLabel(profile)}
           </h1>
           <p className="mt-0.5 font-body text-[0.7rem] break-all text-muted-foreground sm:text-xs">
-            {profile.wallet_address ?? `Signed in with ${profile.auth_provider === "x" ? "X" : "Google"} · no wallet connected`}
+            {profile.wallet_address ??
+              `Signed in with ${
+                profile.auth_provider === "x"
+                  ? "X"
+                  : profile.auth_provider === "evm"
+                    ? "EVM wallet (MetaMask / Rabby)"
+                    : "Google"
+              } · no wallet connected`}
           </p>
           {profile.wallet_address ? (
           <p className="mt-2 inline-flex items-center gap-2 rounded-full border border-border px-3 py-1 font-body text-xs">
