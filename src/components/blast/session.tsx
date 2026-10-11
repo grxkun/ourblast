@@ -18,7 +18,7 @@ export type Profile = {
   id: string;
   /** Null for players who signed in with Google or X and have no wallet yet. */
   wallet_address: string | null;
-  auth_provider: "wallet" | "google" | "x";
+  auth_provider: "wallet" | "google" | "x" | "evm";
   display_name: string | null;
   avatar_url: string | null;
   nickname: string | null;

@@ -12,6 +12,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { formatNumber, playerAvatarSeed, playerLabel, timeAgo } from "@/lib/blast";
 import { fetchSuiBalance, formatSui } from "@/lib/sui-balance";
 import { amIStaff } from "@/lib/admin.functions";
+import { getMyBankWallet } from "@/lib/terminal/bank.functions";
 
 export const Route = createFileRoute("/profile")({
   head: () => ({
@@ -35,6 +36,7 @@ export const Route = createFileRoute("/profile")({
 function ProfilePage() {
   const { profile, userId, connect, connecting, disconnect, refresh } = useBlast();
   const staffCheck = useServerFn(amIStaff);
+  const bankWalletFn = useServerFn(getMyBankWallet);
   const [nickname, setNickname] = useState("");
   const [saving, setSaving] = useState(false);
 
@@ -46,6 +48,12 @@ function ProfilePage() {
     queryKey: ["staff", userId],
     enabled: Boolean(userId),
     queryFn: () => staffCheck({}),
+  });
+
+  const bankWallet = useQuery({
+    queryKey: ["bank-wallet", userId],
+    enabled: Boolean(userId) && !profile?.wallet_address,
+    queryFn: () => bankWalletFn({}),
   });
 
   const balance = useQuery({
@@ -130,7 +138,14 @@ function ProfilePage() {
             {playerLabel(profile)}
           </h1>
           <p className="mt-0.5 font-body text-[0.7rem] break-all text-muted-foreground sm:text-xs">
-            {profile.wallet_address ?? `Signed in with ${profile.auth_provider === "x" ? "X" : "Google"} · no wallet connected`}
+            {profile.wallet_address ??
+              `Signed in with ${
+                profile.auth_provider === "x"
+                  ? "X"
+                  : profile.auth_provider === "evm"
+                    ? "EVM wallet (MetaMask / Rabby)"
+                    : "Google"
+              } · no wallet connected`}
           </p>
           {profile.wallet_address ? (
           <p className="mt-2 inline-flex items-center gap-2 rounded-full border border-border px-3 py-1 font-body text-xs">
@@ -139,6 +154,22 @@ function ProfilePage() {
               {balance.isLoading ? "…" : `${formatSui(balance.data ?? 0)} SUI`}
             </span>
           </p>
+          ) : null}
+          {!profile.wallet_address && bankWallet.data?.linked ? (
+            <p className="mt-2 inline-flex flex-wrap items-center gap-2 rounded-full border border-border px-3 py-1 font-body text-xs">
+              <span className="text-muted-foreground">OurBank wallet</span>
+              <Link to="/terminal" className="font-display text-sm text-lime break-all">
+                {bankWallet.data.address.slice(0, 10)}…{bankWallet.data.address.slice(-6)}
+              </Link>
+              <span className="text-muted-foreground">
+                {bankWallet.data.balances.length === 0
+                  ? "empty"
+                  : bankWallet.data.balances
+                      .slice(0, 3)
+                      .map((b) => `${formatNumber(b.amount)} ${b.symbol}`)
+                      .join(" · ")}
+              </span>
+            </p>
           ) : null}
         </div>
         <div className="flex flex-wrap gap-2">
