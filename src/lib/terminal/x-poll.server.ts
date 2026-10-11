@@ -183,7 +183,11 @@ export async function runXMentionPoll(): Promise<{
       // "not-authorized-for-resource" body), can never succeed. Mark the row
       // done so it leaves the retry queue instead of blocking newer replies
       // and burning the X rate limit on every poll.
-      if (/deleted or not visible|not-authorized|only reply to or quote/i.test(message)) {
+      const friendly = friendlyXError(error);
+      if (
+        /deleted or not visible|not-authorized|only reply to or quote|\b403\b|forbidden|not allowed to post/i.test(message) ||
+        /not allowed to post/i.test(friendly)
+      ) {
         await supabaseAdmin
           .from("x_mentions")
           .update({ posted: true, post_error: "Reply abandoned: X does not allow the bot to reply to this tweet." })
