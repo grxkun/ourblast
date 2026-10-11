@@ -256,8 +256,23 @@ export function friendlyXError(error: unknown): string {
   return "X rejected the reply.";
 }
 
+/**
+ * 48-hour ghost window: when X_BOT_PAUSED_UNTIL is an ISO timestamp in the
+ * future, the bot stays completely silent on X — no replies, no posts. Reads
+ * still work so nothing is lost; mentions are picked up after the window ends.
+ */
+export function xBotPausedUntil(): Date | null {
+  const raw = process.env["X_BOT_PAUSED_UNTIL"];
+  if (!raw) return null;
+  const until = new Date(raw);
+  if (Number.isNaN(until.getTime()) || until.getTime() <= Date.now()) return null;
+  return until;
+}
+
 /** Post a reply to a tweet. Returns the new post id. */
 export async function postReply(credentials: XCredentials, inReplyToPostId: string, text: string): Promise<string> {
+  const paused = xBotPausedUntil();
+  if (paused) throw new Error(`X bot paused until ${paused.toISOString()} (ghost window)`);
   const safeText = enforceSingleCashtag(text);
   try {
     const result = await request<{ data: { id: string } }>(credentials, "POST", "/2/tweets", {

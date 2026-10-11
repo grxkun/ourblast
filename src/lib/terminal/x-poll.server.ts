@@ -11,9 +11,17 @@ export async function runXMentionPoll(): Promise<{
   reason: string | null;
   error: string | null;
 }> {
-  const { readXCredentials, getBotAccount, listMentions, searchMentions } = await import("./x-api.server");
+  const { readXCredentials, getBotAccount, listMentions, searchMentions, xBotPausedUntil } = await import("./x-api.server");
   const credentials = readXCredentials();
   if (!credentials) return { live: false, handled: 0, confirmed: 0, reason: "X credentials not saved yet", error: null };
+
+  // Ghost window: fully silent on X — skip reading AND posting so the account
+  // risk score can reset. Mentions are not lost: the cursor does not move, so
+  // everything is picked up once the window ends.
+  const paused = xBotPausedUntil();
+  if (paused) {
+    return { live: true, handled: 0, confirmed: 0, reason: `Bot paused until ${paused.toISOString()} (ghost window)`, error: null };
+  }
 
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
   const { data: state } = await supabaseAdmin
