@@ -270,8 +270,8 @@ export function xBotPausedUntil(): Date | null {
   const duration = raw.match(/^(\d+(?:\.\d+)?)\s*(h|hr|hrs|hour|hours|d|day|days|m|min|mins|minute|minutes)$/i);
   let until: Date;
   if (duration) {
-    const amount = Number(duration[1]);
-    const unit = duration[2].toLowerCase();
+    const amount = Number(duration[1]!);
+    const unit = duration[2]!.toLowerCase();
     const ms = unit.startsWith("d") ? 86_400_000 : unit.startsWith("h") ? 3_600_000 : 60_000;
     until = new Date(Date.now() + amount * ms);
   } else {
