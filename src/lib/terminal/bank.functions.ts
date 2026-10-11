@@ -146,7 +146,11 @@ export const cancelTransfer = createServerFn({ method: "POST" })
 async function myXHandle(userId: string) {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
   const { data } = await supabaseAdmin.from("x_accounts").select("username").eq("user_id", userId).maybeSingle();
-  return data?.username ?? null;
+  if (data?.username) return data.username;
+  // MetaMask/Rabby-only players use the same synthetic handle as the cross-chain buy.
+  const { data: profile } = await supabaseAdmin.from("profiles").select("auth_provider, social_id").eq("id", userId).maybeSingle();
+  if (profile?.auth_provider === "evm" && profile.social_id) return `evm-${profile.social_id.toLowerCase()}`;
+  return null;
 }
 
 /** Your OurBank wallet (created on first visit): the address to top up, plus balances. */
