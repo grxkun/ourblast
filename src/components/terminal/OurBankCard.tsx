@@ -141,7 +141,7 @@ export function OurBankCard() {
       {userId ? <SwapPanel userId={userId} /> : null}
       {userId ? <TradeWalletPanel userId={userId} /> : null}
 
-      {!userId ? <p className="mt-3 text-sm text-muted-foreground">Sign in with X and connect your wallet to use OurBank.</p> : null}
+      {!userId ? <p className="mt-3 text-sm text-muted-foreground">Sign in with X or MetaMask / Rabby to use OurBank.</p> : null}
       {userId && transfers.isLoading ? <p className="mt-3 text-sm text-muted-foreground">Loading transfers…</p> : null}
       {userId && transfers.data && rows.length === 0 ? (
         <p className="mt-3 text-sm text-muted-foreground">No transfers yet.</p>
@@ -283,7 +283,7 @@ function BankWalletPanel({ userId }: { userId: string }) {
 
   const w = wallet.data;
   if (!w) return null;
-  if (!w.linked) return <p className="mt-3 text-sm text-muted-foreground">Sign in with X to get an OurBank wallet for instant sends.</p>;
+  if (!w.linked) return <p className="mt-3 text-sm text-muted-foreground">Sign in with X or MetaMask / Rabby to get an OurBank wallet for instant sends.</p>;
 
   const hasFunds = w.balances.length > 0;
   const isImport = confirmAction === "import";
