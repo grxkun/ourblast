@@ -12,6 +12,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { formatNumber, playerAvatarSeed, playerLabel, timeAgo } from "@/lib/blast";
 import { fetchSuiBalance, formatSui } from "@/lib/sui-balance";
 import { amIStaff } from "@/lib/admin.functions";
+import { getMyBankWallet } from "@/lib/terminal/bank.functions";
 
 export const Route = createFileRoute("/profile")({
   head: () => ({
@@ -35,6 +36,7 @@ export const Route = createFileRoute("/profile")({
 function ProfilePage() {
   const { profile, userId, connect, connecting, disconnect, refresh } = useBlast();
   const staffCheck = useServerFn(amIStaff);
+  const bankWalletFn = useServerFn(getMyBankWallet);
   const [nickname, setNickname] = useState("");
   const [saving, setSaving] = useState(false);
 
