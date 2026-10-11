@@ -262,9 +262,21 @@ export function friendlyXError(error: unknown): string {
  * still work so nothing is lost; mentions are picked up after the window ends.
  */
 export function xBotPausedUntil(): Date | null {
-  const raw = process.env["X_BOT_PAUSED_UNTIL"];
+  const raw = process.env["X_BOT_PAUSED_UNTIL"]?.trim();
   if (!raw) return null;
-  const until = new Date(raw);
+  // Accept a duration ("48 hour", "48h", "2 days") measured from now, or an
+  // ISO/date timestamp. Durations re-extend on each process start, which is
+  // fine for a short ghost window.
+  const duration = raw.match(/^(\d+(?:\.\d+)?)\s*(h|hr|hrs|hour|hours|d|day|days|m|min|mins|minute|minutes)$/i);
+  let until: Date;
+  if (duration) {
+    const amount = Number(duration[1]);
+    const unit = duration[2].toLowerCase();
+    const ms = unit.startsWith("d") ? 86_400_000 : unit.startsWith("h") ? 3_600_000 : 60_000;
+    until = new Date(Date.now() + amount * ms);
+  } else {
+    until = new Date(raw);
+  }
   if (Number.isNaN(until.getTime()) || until.getTime() <= Date.now()) return null;
   return until;
 }
