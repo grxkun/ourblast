@@ -62,6 +62,14 @@ function TerminalPage() {
         </div>
       </div>
       <div className="mb-4 space-y-4">
+        {Date.now() < Date.parse("2026-10-13T11:30:00Z") ? (
+          <div role="status" className="rounded-lg border border-primary/40 bg-primary/10 p-4 text-sm text-foreground">
+            <p className="font-bold text-primary">@Ourblastbot on X is in scheduled 48h maintenance</p>
+            <p className="mt-1 text-muted-foreground">
+              The bot won't reply on X until Tue, Oct 13 (11:30 UTC). Trading, balances, fee claims and launches all work right here in the web terminal.
+            </p>
+          </div>
+        ) : null}
         <SocialSignIn />
         {ready ? <OurBankCard /> : null}
         {ready ? <Terminal tryCommand={tryCommand} /> : null}
