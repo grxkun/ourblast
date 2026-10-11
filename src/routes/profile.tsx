@@ -50,6 +50,12 @@ function ProfilePage() {
     queryFn: () => staffCheck({}),
   });
 
+  const bankWallet = useQuery({
+    queryKey: ["bank-wallet", userId],
+    enabled: Boolean(userId) && !profile?.wallet_address,
+    queryFn: () => bankWalletFn({}),
+  });
+
   const balance = useQuery({
     queryKey: ["sui-balance", profile?.wallet_address],
     enabled: Boolean(profile?.wallet_address),
@@ -148,6 +154,22 @@ function ProfilePage() {
               {balance.isLoading ? "…" : `${formatSui(balance.data ?? 0)} SUI`}
             </span>
           </p>
+          ) : null}
+          {!profile.wallet_address && bankWallet.data?.linked ? (
+            <p className="mt-2 inline-flex flex-wrap items-center gap-2 rounded-full border border-border px-3 py-1 font-body text-xs">
+              <span className="text-muted-foreground">OurBank wallet</span>
+              <Link to="/terminal" className="font-display text-sm text-lime break-all">
+                {bankWallet.data.address.slice(0, 10)}…{bankWallet.data.address.slice(-6)}
+              </Link>
+              <span className="text-muted-foreground">
+                {bankWallet.data.balances.length === 0
+                  ? "empty"
+                  : bankWallet.data.balances
+                      .slice(0, 3)
+                      .map((b) => `${formatNumber(b.amount)} ${b.symbol}`)
+                      .join(" · ")}
+              </span>
+            </p>
           ) : null}
         </div>
         <div className="flex flex-wrap gap-2">
