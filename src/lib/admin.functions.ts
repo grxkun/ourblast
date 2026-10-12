@@ -117,10 +117,13 @@ export const botHealth = createServerFn({ method: "GET" })
         .select("id", { count: "exact", head: true })
         .gte("created_at", new Date(Date.now() - 24 * 3600_000).toISOString()),
     ]);
+    const { xBotPausedUntil } = await import("./terminal/x-api.server");
+    const pausedUntil = xBotPausedUntil();
     return {
       state: state.data ?? null,
       pendingFailedReplies: failedReplies.count ?? 0,
       mentionsLast24h: recentMentions.count ?? 0,
+      pausedUntil: pausedUntil ? pausedUntil.toISOString() : null,
     };
   });
 

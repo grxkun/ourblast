@@ -38,6 +38,21 @@ export function BotHealthCard() {
         <p className="font-body text-sm text-destructive">Could not load bot health.</p>
       ) : (
         <>
+          {health.data?.pausedUntil ? (
+            <div className="rounded-xl border border-destructive/40 bg-destructive/10 px-4 py-3 font-body text-sm text-destructive">
+              <p className="font-bold uppercase tracking-wide">⏸ Paused on X</p>
+              <p className="mt-1 text-xs">
+                Silent until{" "}
+                {new Date(health.data.pausedUntil).toUTCString().replace(" GMT", " UTC")} — no
+                replies or posts until then.
+              </p>
+            </div>
+          ) : (
+            <div className="rounded-xl border border-border bg-secondary px-4 py-3 font-body text-sm text-primary">
+              <p className="font-bold uppercase tracking-wide">▶ Active on X</p>
+              <p className="mt-1 text-xs text-muted-foreground">Not paused — the bot reads and replies normally.</p>
+            </div>
+          )}
           <div className="divide-y divide-border rounded-xl border border-border">
             {rows.map((row) => (
               <div key={row.name} className="flex items-center justify-between px-4 py-2.5">
