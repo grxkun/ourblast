@@ -12,7 +12,8 @@
     "format": "prettier --write ."
   },
   "overrides": {
-    "rolldown": "1.2.1"
+    "rolldown": "1.2.1",
+    "rpc-websockets": "7.11.2"
   },
   "dependencies": {
     "@bluefin-exchange/bluefin7k-aggregator-sdk": "^7.6.3",
