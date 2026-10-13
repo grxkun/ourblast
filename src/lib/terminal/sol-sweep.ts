@@ -9,8 +9,8 @@ import bs58 from "bs58";
 
 export const SOL_USDC_MINT = "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v";
 export const SYSTEM_PROGRAM = "11111111111111111111111111111111";
-export const TOKEN_PROGRAM = "TokenkegQfeZyiNwAJbNbGQPMBXttVdKgjtD9wrtqZ";
-export const ATA_PROGRAM = "ATokenGPvbdGVxr1b2hvZbsikTEbzF4wiwHvmcYbXW";
+export const TOKEN_PROGRAM = "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA";
+export const ATA_PROGRAM = "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL";
 
 export const SOL_FEE_LAMPORTS = 5_000n;
 /** Rent for a new token account + fee, needed before a USDC sweep can run. */
