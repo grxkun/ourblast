@@ -29,6 +29,9 @@ export const Route = createFileRoute("/buy")({
 });
 
 function BuyPage() {
+  const { usd: usdParam } = Route.useSearch();
+  const initialUsd = /^\d+(\.\d+)?$/.test(usdParam) && Number(usdParam) > 0 ? usdParam : "10";
+  const [shareUrl, setShareUrl] = useState(usdParam ? `${SHARE_URL}?usd=${encodeURIComponent(usdParam)}` : SHARE_URL);
   const [copied, setCopied] = useState(false);
   return (
     <div className="mx-auto max-w-2xl space-y-6 px-4 py-10">
