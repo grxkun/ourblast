@@ -27,6 +27,7 @@ import { CommandSuggestions } from "./CommandSuggestions";
 import { LaunchCard } from "./LaunchCard";
 import { TerminalMessage } from "./TerminalMessage";
 import { TransactionCard } from "./TransactionCard";
+import { BridgeTracker } from "./BridgeTracker";
 
 const SESSION_KEY = "ourblast-terminal-session-v1";
 const makeId = () => crypto.randomUUID();
@@ -135,14 +136,19 @@ export function Terminal({ tryCommand }: { tryCommand?: { command: string; nonce
       // Send / buy / sell (and "1"/"2" answers to a which-token question) run the same
       // OurBank logic as an X mention, with the wallet the user picked.
       // "bridge 0.03 sol" / "buy blast with 0.03 sol": move only that SOL to Sui → $BLAST.
+      if (/^\s*(?:bridge|sol)\s+status\s*$/i.test(clean)) {
+        await saveEntry({ id: makeId(), command: clean, intent: "getWallet", result: { tool: "getWallet", status: userId ? "SUCCESS" : "NOT_CONNECTED", message: userId ? "Latest SOL bridge:" : "Sign in first.", data: userId ? { bridgeTrack: "latest" } : undefined }, createdAt: new Date().toISOString() });
+        return;
+      }
       const solCmd = parseSolCommand(clean);
       if (solCmd) {
         if (!userId) {
           await saveEntry({ id: makeId(), command: clean, intent: "getWallet", result: { tool: "getWallet", status: "NOT_CONNECTED", message: "Sign in first to use your OurBank Solana address." }, createdAt: new Date().toISOString() });
           return;
         }
+        const startedAt = new Date().toISOString();
         const out = await bridgeSol({ data: { amountSol: solCmd.amountSol } }).catch((e: Error) => ({ ok: false, message: e.message }));
-        await saveEntry({ id: makeId(), command: clean, intent: "getWallet", result: { tool: "getWallet", status: out.ok ? "SUBMITTING" : "FAILED", message: out.ok ? `${out.message}\nIt lands as SUI in your OurBank wallet; with "Auto-buy $BLAST" on, it's swapped to $BLAST automatically.` : out.message }, createdAt: new Date().toISOString() });
+        await saveEntry({ id: makeId(), command: clean, intent: "getWallet", result: { tool: "getWallet", status: out.ok ? "SUBMITTING" : "FAILED", message: out.ok ? `${out.message}\nLive status below. Type "bridge status" anytime to check again.` : out.message, data: out.ok ? { bridgeTrack: startedAt } : undefined }, createdAt: new Date().toISOString() });
         void queryClient.invalidateQueries({ queryKey: ["bank-wallet", userId] });
         return;
       }
@@ -280,7 +286,7 @@ export function Terminal({ tryCommand }: { tryCommand?: { command: string; nonce
             {!history.length && !cloudHistory.isLoading ? <div className="flex min-h-[24rem] flex-col items-center justify-center text-center"><div className="terminal-agent-mark mb-5">OB<span>_</span></div><p className="font-display text-3xl uppercase">What do you want to do on Sui?</p><p className="mt-2 max-w-md text-sm text-muted-foreground">Describe the action. The terminal maps it to an allowlisted tool and shows the exact state before anything touches your wallet.</p><div className="mt-6"><CommandSuggestions onSelect={setDraft} /></div></div> : null}
             {history.map((entry) => {
               const launch = launchOverrides[entry.id] ?? entry.result.launch;
-              return <TerminalMessage key={entry.id} entry={entry} onCopy={() => void navigator.clipboard.writeText(entry.command)} onRerun={() => void run(entry.command)}>{launch ? <LaunchCard launch={launch} editing={editingId === entry.id} onEdit={() => setEditingId((value) => value === entry.id ? null : entry.id)} onChange={(next) => setLaunchOverrides((current) => ({ ...current, [entry.id]: next }))} onGenerate={() => toast("Image generation is coming soon / not connected.")} onLaunch={() => { if (!userId) { void connect(); return; } void doLaunch(launch); }} /> : null}{["launchToken", "createToken", "buyToken", "sellToken"].includes(entry.intent) ? <TransactionCard status={entry.result.status} /> : null}</TerminalMessage>;
+              return <TerminalMessage key={entry.id} entry={entry} onCopy={() => void navigator.clipboard.writeText(entry.command)} onRerun={() => void run(entry.command)}>{launch ? <LaunchCard launch={launch} editing={editingId === entry.id} onEdit={() => setEditingId((value) => value === entry.id ? null : entry.id)} onChange={(next) => setLaunchOverrides((current) => ({ ...current, [entry.id]: next }))} onGenerate={() => toast("Image generation is coming soon / not connected.")} onLaunch={() => { if (!userId) { void connect(); return; } void doLaunch(launch); }} /> : null}{["launchToken", "createToken", "buyToken", "sellToken"].includes(entry.intent) ? <TransactionCard status={entry.result.status} /> : null}{typeof entry.result.data?.bridgeTrack === "string" ? <BridgeTracker since={entry.result.data.bridgeTrack === "latest" ? undefined : entry.result.data.bridgeTrack} /> : null}</TerminalMessage>;
             })}
             {processing ? <div className="space-y-3">{pending ? <div className="ml-auto w-fit max-w-full rounded-lg border border-border bg-card px-3 py-2 font-mono text-sm">&gt; {pending}</div> : null}<div className="flex items-center gap-2 text-sm"><span className="terminal-status-dot" /><Shimmer>Working on it…</Shimmer></div></div> : null}
           </ConversationContent>

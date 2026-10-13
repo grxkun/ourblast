@@ -30,7 +30,7 @@ function steps(s: BridgeStatus): Step[] {
     out.push({
       label: "Auto-buy $BLAST",
       state: st === "completed" ? "ok" : st === "failed" || st === "expired" ? "fail" : st === "swapping" ? "run" : "wait",
-      detail: st === "completed" ? (order.receivedOut ? `Bought ${Number(order.receivedOut) / 1e9 >= 1 ? (Number(order.receivedOut) / 1e9).toLocaleString(undefined, { maximumFractionDigits: 2 }) : order.receivedOut} BLAST` : "Bought") : st === "failed" ? `Swap failed: ${order.error ?? "unknown"} — your SUI is safe in OurBank.` : st === "expired" ? "Order expired — SUI stays in OurBank; buy from the terminal." : st === "swapping" ? "Swapping…" : undefined,
+      detail: st === "completed" ? (order.receivedOut ? `Bought ${(Number(order.receivedOut) / 1e9).toLocaleString(undefined, { maximumFractionDigits: 2 })} BLAST` : "Bought") : st === "failed" ? `Swap failed: ${order.error ?? "unknown"} — your SUI is safe in OurBank.` : st === "expired" ? "Order expired — SUI stays in OurBank; buy from the terminal." : st === "swapping" ? "Swapping…" : undefined,
       link: order.txDigest ? { href: `https://suiscan.xyz/mainnet/tx/${order.txDigest}`, text: "Suiscan" } : undefined,
     });
   }
