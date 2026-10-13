@@ -5,7 +5,7 @@ import { CheckCircle2, Circle, Loader2, XCircle } from "lucide-react";
 
 import { getBridgeStatus, type BridgeStatus } from "@/lib/terminal/bridge-status.functions";
 
-type Step = { label: string; state: "wait" | "run" | "ok" | "fail"; detail?: string; link?: { href: string; text: string } };
+type Step = { label: string; state: "wait" | "run" | "ok" | "fail"; detail?: string | undefined; link?: { href: string; text: string } | undefined };
 
 function steps(s: BridgeStatus): Step[] {
   const { sweep, arrival, order } = s;
@@ -39,11 +39,11 @@ function steps(s: BridgeStatus): Step[] {
 
 const done = (st: Step[]) => st.some((x) => x.state === "fail") || st.every((x) => x.state === "ok" || (x.state === "wait" && x.detail?.startsWith("Off")));
 
-export function BridgeTracker({ since }: { since?: string }) {
+export function BridgeTracker({ since }: { since?: string | undefined }) {
   const fn = useServerFn(getBridgeStatus);
   const q = useQuery({
     queryKey: ["bridge-status", since ?? "latest"],
-    queryFn: () => fn({ data: { since } }),
+    queryFn: () => fn({ data: since ? { since } : {} }),
     refetchInterval: (query) => (query.state.data && done(steps(query.state.data)) ? false : 6_000),
   });
   if (!q.data) return <div className="mt-2 text-xs text-muted-foreground">Loading bridge status…</div>;
