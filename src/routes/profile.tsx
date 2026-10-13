@@ -171,6 +171,15 @@ function ProfilePage() {
               </span>
             </p>
           ) : null}
+          {bankWallet.data?.linked && bankWallet.data.evmAddress ? (
+            <p className="mt-2 inline-flex flex-wrap items-center gap-2 rounded-full border border-border px-3 py-1 font-body text-xs">
+              <span className="text-muted-foreground">OurBank EVM</span>
+              <span className="font-display text-sm text-foreground">
+                {bankWallet.data.evmAddress.slice(0, 8)}…{bankWallet.data.evmAddress.slice(-6)}
+              </span>
+              <span className="text-destructive">coming soon — don't send yet</span>
+            </p>
+          ) : null}
         </div>
         <div className="flex flex-wrap gap-2">
           {staff.data?.staff ? (
