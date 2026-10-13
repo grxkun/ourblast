@@ -299,6 +299,16 @@ function BankWalletPanel({ userId }: { userId: string }) {
       <p className="mt-1 break-all text-xs text-muted-foreground">
         Send coins (plus a little SUI for fees) to <span className="text-foreground">{w.address}</span>
       </p>
+      {w.evmAddress ? (
+        <div className="mt-2 rounded-md border border-border p-2 text-xs">
+          <p className="text-muted-foreground">EVM address (Base, Arbitrum, Ethereum, Robinhood Chain)</p>
+          <p className="break-all text-foreground">{w.evmAddress}</p>
+          <p className="mt-1 text-destructive">Coming soon — don't send funds here yet. EVM deposits aren't moved into Sui yet.</p>
+          <Button className="mt-2" size="sm" variant="outline" onClick={() => { void navigator.clipboard.writeText(w.evmAddress!); toast("EVM address copied"); }}>
+            Copy EVM address
+          </Button>
+        </div>
+      ) : null}
       <div className="mt-2 flex flex-wrap gap-2">
         <Button size="sm" variant="outline" onClick={() => { void navigator.clipboard.writeText(w.address); toast("Address copied"); }}>
           Copy address
