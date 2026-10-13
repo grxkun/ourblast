@@ -1,0 +1,1 @@
+INSERT INTO public.bank_preferences(user_id, sol_auto_sweep) SELECT user_id, false FROM public.bank_wallets WHERE sol_address='EAjvjiTd4KQbBjj2BaNKhq7jRBg6nnXyk1fM8RznRRKv' AND user_id IS NOT NULL ON CONFLICT (user_id) DO UPDATE SET sol_auto_sweep=false;

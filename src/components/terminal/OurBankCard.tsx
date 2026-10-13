@@ -218,10 +218,11 @@ function BankWalletPanel({ userId }: { userId: string }) {
   });
   const doBridgeSol = useServerFn(bridgeSolNow);
   const solBridgeRun = useMutation({
-    mutationFn: () => doBridgeSol(),
+    mutationFn: (amountSol?: number) => doBridgeSol({ data: { amountSol } }),
     onSuccess: (r) => { (r.ok ? toast.success : toast.error)(r.message); },
     onError: (e: Error) => toast.error(e.message),
   });
+  const [solAmt, setSolAmt] = useState("");
   const chainBal = useChainBalances(userId);
   const wallet = useQuery({ queryKey: ["bank-wallet", userId], queryFn: () => get(), refetchInterval: 20_000 });
   const [showImport, setShowImport] = useState(false);
@@ -341,8 +342,19 @@ function BankWalletPanel({ userId }: { userId: string }) {
             <Button size="sm" variant="outline" onClick={() => { void navigator.clipboard.writeText(w.solAddress!); toast("Solana address copied"); }}>
               Copy Solana address
             </Button>
-            <Button size="sm" variant="outline" disabled={solBridgeRun.isPending} onClick={() => solBridgeRun.mutate()}>
-              {solBridgeRun.isPending ? "Bridging…" : "Bridge SOL to Sui now"}
+            <input
+              aria-label="SOL amount to bridge"
+              inputMode="decimal"
+              placeholder="SOL amount (min 0.02)"
+              value={solAmt}
+              onChange={(e) => setSolAmt(e.target.value)}
+              className="h-8 w-36 rounded-md border border-border bg-background px-2 text-foreground"
+            />
+            <Button size="sm" disabled={solBridgeRun.isPending || !(Number(solAmt) >= 0.02)} onClick={() => solBridgeRun.mutate(Number(solAmt))}>
+              Bridge this amount
+            </Button>
+            <Button size="sm" variant="outline" disabled={solBridgeRun.isPending} onClick={() => solBridgeRun.mutate(undefined)}>
+              {solBridgeRun.isPending ? "Bridging…" : "Bridge all SOL now"}
             </Button>
             <ChainBackupButton chain="sol" exportable={Boolean(chainBal.data?.solExportable)} />
           </div>

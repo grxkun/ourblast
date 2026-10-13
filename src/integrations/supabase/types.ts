@@ -105,6 +105,7 @@ export type Database = {
         Row: {
           created_at: string
           deposit_action: string
+          sol_auto_sweep: boolean
           trade_wallet: string
           updated_at: string
           user_id: string
@@ -112,6 +113,7 @@ export type Database = {
         Insert: {
           created_at?: string
           deposit_action?: string
+          sol_auto_sweep?: boolean
           trade_wallet?: string
           updated_at?: string
           user_id: string
@@ -119,6 +121,7 @@ export type Database = {
         Update: {
           created_at?: string
           deposit_action?: string
+          sol_auto_sweep?: boolean
           trade_wallet?: string
           updated_at?: string
           user_id?: string
