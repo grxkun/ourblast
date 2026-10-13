@@ -78,6 +78,13 @@
       "when": 1791860008855,
       "tag": "0010_bank_preferences_sol_auto_sweep",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1791860122968,
+      "tag": "0011_mjbdran_manual_sol",
+      "breakpoints": true
     }
   ]
 }
