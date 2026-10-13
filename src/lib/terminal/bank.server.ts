@@ -463,12 +463,13 @@ export async function handleBankMention(postId: string, username: string, text: 
   if (choice !== null) return choice;
   if (isBalanceRequest(text)) return balanceReply(username);
   // SOL spends ("buy 0.03 sol of blast on sui", "bridge sol") run before Sui swaps.
+  // Nothing moves until the author replies "confirm bridge".
+  const solSweep = await import("./sol-sweep.server");
+  const solReply = await solSweep.resolveSolBridgeReply(postId, username, text);
+  if (solReply !== null) return solReply;
   const { parseSolCommand } = await import("./solCommand");
   const solCmd = parseSolCommand(text);
-  if (solCmd) {
-    const { bridgeSolForXHandle } = await import("./sol-sweep.server");
-    return bridgeSolForXHandle(username, solCmd.amountSol);
-  }
+  if (solCmd) return solSweep.stageSolBridgeForXHandle(postId, username, solCmd.amountSol);
   if (parseSwapCommand(text)) return handleSwapMention(postId, username, text);
   const transfer = await createBankTransferFromMention(postId, username, text);
   if (transfer !== null) return transfer;
