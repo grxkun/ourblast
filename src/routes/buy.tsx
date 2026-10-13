@@ -35,7 +35,7 @@ function BuyPage() {
         <li>Pay from your chain into that address — SUI or USDC landing there is swapped into $BLAST automatically.</li>
       </ol>
       <UsdBuyCalculator />
-      <CrossChainBuy blastUrl={BUY_URL} defaultOpen />
+      <CrossChainBuy blastUrl={BUY_URL}/>
       <div className="rounded-lg border-2 border-border bg-muted p-4 font-body text-sm">
         <p className="mb-2 font-display uppercase">Share this buy link</p>
         <button
