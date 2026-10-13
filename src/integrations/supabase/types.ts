@@ -2055,6 +2055,57 @@ export type Database = {
         }
         Relationships: []
       }
+      sol_sweeps: {
+        Row: {
+          amount_atomic: number
+          created_at: string
+          deposit_address: string | null
+          error: string | null
+          id: string
+          order_id: string | null
+          route: string
+          sol_address: string
+          status: string
+          token: string
+          tx_sig: string | null
+          updated_at: string
+          user_id: string | null
+          x_username: string
+        }
+        Insert: {
+          amount_atomic: number
+          created_at?: string
+          deposit_address?: string | null
+          error?: string | null
+          id?: string
+          order_id?: string | null
+          route?: string
+          sol_address: string
+          status?: string
+          token: string
+          tx_sig?: string | null
+          updated_at?: string
+          user_id?: string | null
+          x_username: string
+        }
+        Update: {
+          amount_atomic?: number
+          created_at?: string
+          deposit_address?: string | null
+          error?: string | null
+          id?: string
+          order_id?: string | null
+          route?: string
+          sol_address?: string
+          status?: string
+          token?: string
+          tx_sig?: string | null
+          updated_at?: string
+          user_id?: string | null
+          x_username?: string
+        }
+        Relationships: []
+      }
       sui_payments: {
         Row: {
           amount_mist: number
@@ -2265,6 +2316,7 @@ export type Database = {
           last_poll_success_at: string | null
           last_reply_success_at: string | null
           last_search_success_at: string | null
+          last_sol_scan_at: string | null
           pause_anchor_at: string | null
           pause_anchor_raw: string | null
           updated_at: string
@@ -2278,6 +2330,7 @@ export type Database = {
           last_poll_success_at?: string | null
           last_reply_success_at?: string | null
           last_search_success_at?: string | null
+          last_sol_scan_at?: string | null
           pause_anchor_at?: string | null
           pause_anchor_raw?: string | null
           updated_at?: string
@@ -2291,6 +2344,7 @@ export type Database = {
           last_poll_success_at?: string | null
           last_reply_success_at?: string | null
           last_search_success_at?: string | null
+          last_sol_scan_at?: string | null
           pause_anchor_at?: string | null
           pause_anchor_raw?: string | null
           updated_at?: string
