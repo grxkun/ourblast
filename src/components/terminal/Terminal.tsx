@@ -55,7 +55,7 @@ export function Terminal({ tryCommand }: { tryCommand?: { command: string; nonce
   const bridgeSol = useServerFn(bridgeSolNow);
   const previewSol = useServerFn(previewSolBridge);
   // SOL bridge waiting for "confirm" (10 min).
-  const pendingSol = useRef<{ amountSol?: number | undefined; until: number } | null>(null);
+  const pendingSol = useRef<{ amountSol?: number | undefined; buyBlast: boolean; until: number } | null>(null);
   const [launching, setLaunching] = useState(false);
   const { approveSwap, approveTransfer } = useBankApprovals();
 
@@ -149,8 +149,8 @@ export function Terminal({ tryCommand }: { tryCommand?: { command: string; nonce
           await saveEntry({ id: makeId(), command: clean, intent: "getWallet", result: { tool: "getWallet", status: "NOT_CONNECTED", message: "Sign in first to use your OurBank Solana address." }, createdAt: new Date().toISOString() });
           return;
         }
-        const review = await previewSol({ data: { amountSol: solCmd.amountSol } }).catch((e: Error) => ({ ok: false, message: e.message }));
-        pendingSol.current = review.ok ? { amountSol: solCmd.amountSol, until: Date.now() + 10 * 60_000 } : null;
+        const review = await previewSol({ data: { amountSol: solCmd.amountSol, buyBlast: solCmd.buyBlast === true } }).catch((e: Error) => ({ ok: false, message: e.message }));
+        pendingSol.current = review.ok ? { amountSol: solCmd.amountSol, buyBlast: solCmd.buyBlast === true, until: Date.now() + 10 * 60_000 } : null;
         await saveEntry({ id: makeId(), command: clean, intent: "getWallet", result: { tool: "getWallet", status: review.ok ? "READY" : "FAILED", message: review.ok ? `${review.message}\nType "confirm" to send, or "cancel". Nothing moves until you confirm.` : review.message }, createdAt: new Date().toISOString() });
         return;
       }
@@ -162,7 +162,7 @@ export function Terminal({ tryCommand }: { tryCommand?: { command: string; nonce
           return;
         }
         const startedAt = new Date().toISOString();
-        const out = await bridgeSol({ data: { amountSol: p.amountSol } }).catch((e: Error) => ({ ok: false, message: e.message }));
+        const out = await bridgeSol({ data: { amountSol: p.amountSol, buyBlast: p.buyBlast } }).catch((e: Error) => ({ ok: false, message: e.message }));
         await saveEntry({ id: makeId(), command: clean, intent: "getWallet", result: { tool: "getWallet", status: out.ok ? "SUBMITTING" : "FAILED", message: out.ok ? `${out.message}\nLive status below. Type "bridge status" anytime to check again.` : out.message, data: out.ok ? { bridgeTrack: startedAt } : {} }, createdAt: new Date().toISOString() });
         void queryClient.invalidateQueries({ queryKey: ["bank-wallet", userId] });
         return;

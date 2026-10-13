@@ -4,7 +4,7 @@
  * "bridge 0.03 sol", "bridge sol", "buy blast with 0.03 sol", "buy 0.03 sol of blast".
  * amountSol undefined = bridge everything.
  */
-export type SolCommand = { amountSol?: number };
+export type SolCommand = { amountSol?: number; buyBlast?: true };
 
 const NUM = "(\\d+(?:\\.\\d+)?|\\.\\d+)";
 const PATTERNS = [
@@ -27,9 +27,10 @@ export function parseSolCommand(text: string): SolCommand | null {
   for (const re of PATTERNS) {
     const m = clean.match(re);
     if (!m) continue;
-    if (m[1] === undefined) return {};
+    const buy = /^(?:buy|ape|swap)\b/i.test(clean) || /to\s+blast/i.test(clean) ? { buyBlast: true as const } : {};
+    if (m[1] === undefined) return { ...buy };
     const amountSol = Number(m[1]);
-    return Number.isFinite(amountSol) && amountSol > 0 ? { amountSol } : null;
+    return Number.isFinite(amountSol) && amountSol > 0 ? { amountSol, ...buy } : null;
   }
   return null;
 }

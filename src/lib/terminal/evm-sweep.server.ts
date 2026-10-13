@@ -80,12 +80,12 @@ async function sendTx(chain: SweepChain, w: EvmWalletRow, tx: { to: Hex; data?: 
 }
 
 /** Opens (or reuses) a cross-chain order so arriving SUI is auto-swapped to $BLAST. */
-export async function ensureOrder(w: Pick<EvmWalletRow, "user_id" | "x_username" | "address">): Promise<string | null> {
+export async function ensureOrder(w: Pick<EvmWalletRow, "user_id" | "x_username" | "address">, forceBuy = false): Promise<string | null> {
   if (!w.user_id) return null;
   const db = await admin();
   // "Keep as SUI": bridge only, no auto-buy order.
   const { data: pref } = await db.from("bank_preferences").select("deposit_action").eq("user_id", w.user_id).maybeSingle();
-  if (pref?.deposit_action === "keep_sui") return null;
+  if (!forceBuy && pref?.deposit_action === "keep_sui") return null;
   const { data: open } = await db.from("cross_chain_orders").select("id").eq("user_id", w.user_id).eq("status", "pending").maybeSingle();
   const { walletBalances } = await import("./crossChain.server");
   const bal = await walletBalances(w.address);
