@@ -104,18 +104,21 @@ export type Database = {
       bank_preferences: {
         Row: {
           created_at: string
+          deposit_action: string
           trade_wallet: string
           updated_at: string
           user_id: string
         }
         Insert: {
           created_at?: string
+          deposit_action?: string
           trade_wallet?: string
           updated_at?: string
           user_id: string
         }
         Update: {
           created_at?: string
+          deposit_action?: string
           trade_wallet?: string
           updated_at?: string
           user_id?: string

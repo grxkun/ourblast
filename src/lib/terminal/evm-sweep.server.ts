@@ -83,6 +83,9 @@ async function sendTx(chain: SweepChain, w: EvmWalletRow, tx: { to: Hex; data?: 
 export async function ensureOrder(w: Pick<EvmWalletRow, "user_id" | "x_username" | "address">): Promise<string | null> {
   if (!w.user_id) return null;
   const db = await admin();
+  // "Keep as SUI": bridge only, no auto-buy order.
+  const { data: pref } = await db.from("bank_preferences").select("deposit_action").eq("user_id", w.user_id).maybeSingle();
+  if (pref?.deposit_action === "keep_sui") return null;
   const { data: open } = await db.from("cross_chain_orders").select("id").eq("user_id", w.user_id).eq("status", "pending").maybeSingle();
   const { walletBalances } = await import("./crossChain.server");
   const bal = await walletBalances(w.address);
