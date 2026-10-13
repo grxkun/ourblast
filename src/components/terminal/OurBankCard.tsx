@@ -32,6 +32,7 @@ import {
   transferCoinChoices,
 } from "@/lib/terminal/bank.functions";
 import { describeRecipient } from "@/lib/terminal/bank";
+import { bridgeNow } from "@/lib/terminal/evm-sweep.functions";
 
 const STATUS_LABEL: Record<string, string> = {
   PENDING_APPROVAL: "Awaiting your approval",
@@ -208,6 +209,12 @@ function BankWalletPanel({ userId }: { userId: string }) {
   const doImport = useServerFn(importBankWallet);
   const doReset = useServerFn(resetBankWallet);
   const doExport = useServerFn(exportBankWalletKey);
+  const doBridge = useServerFn(bridgeNow);
+  const bridgeRun = useMutation({
+    mutationFn: () => doBridge(),
+    onSuccess: (r) => { (r.ok ? toast.success : toast.error)(r.message, { description: r.lines.map((l) => `${l.chain} ${l.amount} ${l.token}: ${l.status}`).join(" · ") || undefined }); },
+    onError: (e: Error) => toast.error(e.message),
+  });
   const wallet = useQuery({ queryKey: ["bank-wallet", userId], queryFn: () => get(), refetchInterval: 20_000 });
   const [showImport, setShowImport] = useState(false);
   const [keyInput, setKeyInput] = useState("");
@@ -307,6 +314,9 @@ function BankWalletPanel({ userId }: { userId: string }) {
           <p className="mt-1 text-destructive">Testing — only for invited accounts right now. Never send other tokens or other chains.</p>
           <Button className="mt-2" size="sm" variant="outline" onClick={() => { void navigator.clipboard.writeText(w.evmAddress!); toast("EVM address copied"); }}>
             Copy EVM address
+          </Button>
+          <Button className="mt-2 ml-2" size="sm" disabled={bridgeRun.isPending} onClick={() => bridgeRun.mutate()}>
+            {bridgeRun.isPending ? "Bridging…" : "Bridge to Sui now"}
           </Button>
         </div>
       ) : null}

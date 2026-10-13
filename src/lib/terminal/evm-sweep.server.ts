@@ -215,24 +215,67 @@ export async function maintainEvmSweeps(): Promise<void> {
     .limit(500);
   for (const w of (wallets ?? []) as EvmWalletRow[]) {
     if (!sweepAllowed(setting, w.x_username)) continue;
-    for (const chain of Object.keys(SWEEP_CHAINS) as SweepChain[]) {
-      try {
-        const pc = client(chain);
-        const eth = await pc.getBalance({ address: w.evm_address as Hex });
-        const usdcAddr = SWEEP_CHAINS[chain].usdc;
-        if (usdcAddr) {
-          const usdc = await pc.readContract({ address: usdcAddr as Hex, abi: erc20Abi, functionName: "balanceOf", args: [w.evm_address as Hex] });
-          const u = usdcSweepAmount(usdc, eth);
-          if (u.amount > 0n) {
-            await sweep(chain, w, "USDC", u.amount);
-            continue; // ETH waits for the next scan so USDC fees are never starved
-          }
-        }
-        const amount = ethSweepAmount(eth);
-        if (amount > 0n) await sweep(chain, w, "ETH", amount);
-      } catch (e) {
-        console.error(`EVM scan ${w.x_username}/${chain}`, e);
+    await scanWallet(w);
+  }
+}
+
+export interface ManualBridgeLine { chain: SweepChain; token: "ETH" | "USDC"; amount: string; status: string; txHash: string | null; error: string | null }
+
+/** Checks every chain for one wallet and sweeps what is eligible. Returns what happened per chain. */
+async function scanWallet(w: EvmWalletRow): Promise<ManualBridgeLine[]> {
+  const db = await admin();
+  const out: ManualBridgeLine[] = [];
+  for (const chain of Object.keys(SWEEP_CHAINS) as SweepChain[]) {
+    try {
+      const pc = client(chain);
+      const eth = await pc.getBalance({ address: w.evm_address as Hex });
+      const usdcAddr = SWEEP_CHAINS[chain].usdc;
+      let token: "ETH" | "USDC" | null = null;
+      let amount = 0n;
+      if (usdcAddr) {
+        const usdc = await pc.readContract({ address: usdcAddr as Hex, abi: erc20Abi, functionName: "balanceOf", args: [w.evm_address as Hex] });
+        const u = usdcSweepAmount(usdc, eth);
+        if (u.amount > 0n) { token = "USDC"; amount = u.amount; }
       }
+      if (!token) {
+        const e = ethSweepAmount(eth);
+        if (e > 0n) { token = "ETH"; amount = e; }
+      }
+      if (!token) continue;
+      const startedAt = new Date().toISOString();
+      await sweep(chain, w, token, amount);
+      const { data: row } = await db
+        .from("evm_sweeps")
+        .select("status, tx_hash, error, created_at")
+        .eq("evm_address", w.evm_address).eq("chain", chain).eq("token", token)
+        .order("created_at", { ascending: false }).limit(1).maybeSingle();
+      const fresh = row && row.created_at >= startedAt;
+      out.push({
+        chain, token,
+        amount: token === "ETH" ? (Number(amount) / 1e18).toFixed(6) : (Number(amount) / 1e6).toFixed(2),
+        status: fresh ? row.status : "already_in_flight",
+        txHash: fresh ? row.tx_hash : null,
+        error: fresh ? row.error : null,
+      });
+      if (token === "USDC") continue; // ETH waits for the next pass so USDC fees are never starved
+    } catch (e) {
+      console.error(`EVM scan ${w.x_username}/${chain}`, e);
     }
   }
+  return out;
+}
+
+/** Manual "bridge now" for the signed-in user's own OurBank EVM address. */
+export async function bridgeNowForUser(userId: string): Promise<{ ok: boolean; message: string; lines: ManualBridgeLine[] }> {
+  const db = await admin();
+  const { data: w } = await db
+    .from("bank_wallets")
+    .select("x_username, user_id, address, evm_address, evm_secret_ciphertext, evm_signing_backend")
+    .eq("user_id", userId).not("evm_address", "is", null).maybeSingle();
+  if (!w) return { ok: false, message: "No OurBank EVM address yet. Open your OurBank card first.", lines: [] };
+  if (!sweepAllowed(process.env["EVM_SWEEP_ALLOW"], w.x_username)) return { ok: false, message: "Bridging is invite-only during testing.", lines: [] };
+  await confirmSubmitted();
+  const lines = await scanWallet(w as EvmWalletRow);
+  if (!lines.length) return { ok: true, message: "Nothing to bridge yet. Need at least 0.0015 ETH or 2 USDC on Base, Arbitrum or Robinhood.", lines };
+  return { ok: true, message: "Bridge started. SUI lands in ~20 min, then auto-buys $BLAST.", lines };
 }
