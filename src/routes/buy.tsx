@@ -2,6 +2,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { CrossChainBuy } from "@/components/site/CrossChainBuy";
+import { UsdBuyCalculator } from "@/components/site/UsdBuyCalculator";
 
 const BUY_URL = "https://trade.bluefin.io/swap/SUI-0x577a8addf60a34d4c705914ad066a3b28c3fc40d365ed0d9dfc408f29b4725d3::blast::BLAST";
 const SHARE_URL = "https://ourblast.xyz/buy";
@@ -33,7 +34,8 @@ function BuyPage() {
         <li>Tap the button below, then "Get my address + auto-swap".</li>
         <li>Pay from your chain into that address — SUI or USDC landing there is swapped into $BLAST automatically.</li>
       </ol>
-      <CrossChainBuy blastUrl={BUY_URL} defaultOpen />
+      <UsdBuyCalculator />
+      <CrossChainBuy blastUrl={BUY_URL}/>
       <div className="rounded-lg border-2 border-border bg-muted p-4 font-body text-sm">
         <p className="mb-2 font-display uppercase">Share this buy link</p>
         <button
