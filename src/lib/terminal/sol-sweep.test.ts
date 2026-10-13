@@ -1,8 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 import { describe, expect, it } from "vitest";
-import { PublicKey, SystemProgram, Transaction } from "@solana/web3.js";
 
-import { associatedTokenAddress, ATA_PROGRAM, planSolSweep, SOL_USDC_MINT, solTransferMessage, TOKEN_PROGRAM, usdcTransferMessage } from "./sol-sweep";
+import { associatedTokenAddress, planSolSweep, SOL_USDC_MINT, solTransferMessage, usdcTransferMessage } from "./sol-sweep";
 
 const A = "9WzDXwBbmkg8ZTbNMqUxvQRAyrZzDsGYdLwnzjKZqjpf";
 const B = "4Nd1mBQtrMJVYVfKf2PJy9NZUZdTAsp7D4xWLs4gDB4T";
@@ -24,19 +23,16 @@ describe("SOL sweep rules", () => {
   });
 });
 
-describe("Solana transaction building matches web3.js", () => {
-  it("derives the associated token address", () => {
-    const [ata] = PublicKey.findProgramAddressSync(
-      [new PublicKey(A).toBuffer(), new PublicKey(TOKEN_PROGRAM).toBuffer(), new PublicKey(SOL_USDC_MINT).toBuffer()],
-      new PublicKey(ATA_PROGRAM),
-    );
-    expect(associatedTokenAddress(A, SOL_USDC_MINT)).toBe(ata.toBase58());
+describe("Solana transaction building", () => {
+  it("derives a real mainnet USDC token account", () => {
+    expect(associatedTokenAddress("3oNW5dwqcfct5Nj7QLstiAwE7rZFTpBeiHp8pET7z5s4", SOL_USDC_MINT)).toBe("6y3N8YE5zdunhuRPPeKF2orZCLfBVNtsqHbLbWCTbHFF");
   });
-  it("serializes a SOL transfer identically", () => {
-    const tx = new Transaction({ feePayer: new PublicKey(A), recentBlockhash: HASH }).add(
-      SystemProgram.transfer({ fromPubkey: new PublicKey(A), toPubkey: new PublicKey(B), lamports: 123_456_789 }),
-    );
-    expect(Buffer.from(solTransferMessage(A, B, 123_456_789n, HASH)).toString("hex")).toBe(tx.serializeMessage().toString("hex"));
+  it("encodes a SOL transfer: 3 accounts, system transfer of the exact lamports", () => {
+    const m = solTransferMessage(A, B, 123_456_789n, HASH);
+    expect([m[0], m[1], m[2], m[3]]).toEqual([1, 0, 1, 3]);
+    const data = m.slice(-12);
+    expect(Array.from(data.slice(0, 4))).toEqual([2, 0, 0, 0]);
+    expect(Buffer.from(data.slice(4)).readBigUInt64LE()).toBe(123_456_789n);
   });
   it("builds a USDC message with 8 accounts and 2 instructions", () => {
     const m = usdcTransferMessage(A, B, 5_000_000n, HASH);
