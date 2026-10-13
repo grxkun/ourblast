@@ -44,16 +44,16 @@ function BuyPage() {
         <li>Tap the button below, then "Get my address + auto-swap".</li>
         <li>Pay from your chain into that address — SUI or USDC landing there is swapped into $BLAST automatically.</li>
       </ol>
-      <UsdBuyCalculator />
+      <UsdBuyCalculator initialUsd={initialUsd} onUsdChange={(v) => setShareUrl(/^\d+(\.\d+)?$/.test(v) && Number(v) > 0 ? `${SHARE_URL}?usd=${encodeURIComponent(v)}` : SHARE_URL)} />
       <CrossChainBuy blastUrl={BUY_URL}/>
       <div className="rounded-lg border-2 border-border bg-muted p-4 font-body text-sm">
         <p className="mb-2 font-display uppercase">Share this buy link</p>
         <button
           type="button"
-          onClick={() => { navigator.clipboard.writeText(SHARE_URL); setCopied(true); }}
+          onClick={() => { navigator.clipboard.writeText(shareUrl); setCopied(true); }}
           className="w-full break-all rounded-md border-2 border-border bg-background p-2 text-left font-mono text-xs"
         >
-          {SHARE_URL} <span className="text-primary">{copied ? "(copied)" : "(tap to copy)"}</span>
+          {shareUrl} <span className="text-primary">{copied ? "(copied)" : "(tap to copy)"}</span>
         </button>
       </div>
     </div>
