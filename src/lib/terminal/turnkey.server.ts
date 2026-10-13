@@ -222,6 +222,22 @@ export async function createEvmWallet(name: string): Promise<{ walletId: string;
   return { walletId: wallet.walletId, address: address.toLowerCase() };
 }
 
+/** Creates a fresh Solana (Ed25519) account inside a new Turnkey wallet. */
+export async function createSolanaWallet(name: string): Promise<{ walletId: string; address: string }> {
+  const result = await activity<{
+    createWalletResult?: { walletId: string; addresses: { address: string }[] };
+  }>("CREATE_WALLET", {
+    walletName: name,
+    accounts: [
+      { curve: "CURVE_ED25519", pathFormat: "PATH_FORMAT_BIP32", path: "m/44'/501'/0'/0'", addressFormat: "ADDRESS_FORMAT_SOLANA" },
+    ],
+  });
+  const wallet = result.createWalletResult;
+  const address = wallet?.addresses[0]?.address;
+  if (!wallet || !address) throw new Error("Turnkey did not return a Solana address.");
+  return { walletId: wallet.walletId, address };
+}
+
 /** Signs a 32-byte digest with a Turnkey secp256k1 (EVM) key. */
 export async function signEvmDigest(signWith: string, digestHex: string): Promise<{ r: `0x${string}`; s: `0x${string}`; yParity: 0 | 1 }> {
   const result = await activity<{ signRawPayloadResult?: { r: string; s: string; v: string } }>("SIGN_RAW_PAYLOAD", {

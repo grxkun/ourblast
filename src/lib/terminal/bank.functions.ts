@@ -171,8 +171,12 @@ export const getMyBankWallet = createServerFn({ method: "GET" })
       }),
     );
     const { ensureEvmDepositAddress } = await import("./bank-evm.server");
-    const evmAddress = await ensureEvmDepositAddress(handle).catch(() => null);
-    return { linked: true as const, address: wallet.address, evmAddress, handle, balances: out, signingBackend: wallet.signingBackend };
+    const { ensureSolDepositAddress } = await import("./bank-sol.server");
+    const [evmAddress, solAddress] = await Promise.all([
+      ensureEvmDepositAddress(handle).catch(() => null),
+      ensureSolDepositAddress(handle).catch(() => null),
+    ]);
+    return { linked: true as const, address: wallet.address, evmAddress, solAddress, handle, balances: out, signingBackend: wallet.signingBackend };
   });
 
 /** Moves everything of one coin from your OurBank wallet to your connected wallet. */

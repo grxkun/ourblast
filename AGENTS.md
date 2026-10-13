@@ -3,3 +3,4 @@
 - Cross-chain auto-swap: orders live in cross_chain_orders; the X poll loop swaps only SUI above the order's baseline balance, claiming pending→swapping atomically so a deposit is never swapped twice.
 - Each OurBank wallet gets one lazily-created EVM deposit address (bank-evm.server.ts), Turnkey-first with encrypted local fallback; never replaced once set — funds could be stranded.
 - OurBank EVM deposits are swept to the Sui wallet by evm-sweep.server.ts (Mayan; Robinhood hops to Arbitrum via Relay) and auto-bought via cross_chain_orders; gated by EVM_SWEEP_ALLOW and one in-flight sweep per address/chain/token so a deposit is never sent twice.
+- Each OurBank wallet gets one lazily-created Solana deposit address (bank-sol.server.ts), Turnkey-first with encrypted local fallback; never replaced once set — funds could be stranded. No Solana sweeper yet, so the UI says "don't send funds".

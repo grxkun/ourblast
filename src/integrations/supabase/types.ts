@@ -265,6 +265,10 @@ export type Database = {
           id: string
           secret_ciphertext: string | null
           signing_backend: string
+          sol_address: string | null
+          sol_secret_ciphertext: string | null
+          sol_signing_backend: string | null
+          sol_turnkey_wallet_id: string | null
           turnkey_key_id: string | null
           turnkey_public_key: string | null
           updated_at: string
@@ -281,6 +285,10 @@ export type Database = {
           id?: string
           secret_ciphertext?: string | null
           signing_backend?: string
+          sol_address?: string | null
+          sol_secret_ciphertext?: string | null
+          sol_signing_backend?: string | null
+          sol_turnkey_wallet_id?: string | null
           turnkey_key_id?: string | null
           turnkey_public_key?: string | null
           updated_at?: string
@@ -297,6 +305,10 @@ export type Database = {
           id?: string
           secret_ciphertext?: string | null
           signing_backend?: string
+          sol_address?: string | null
+          sol_secret_ciphertext?: string | null
+          sol_signing_backend?: string | null
+          sol_turnkey_wallet_id?: string | null
           turnkey_key_id?: string | null
           turnkey_public_key?: string | null
           updated_at?: string
