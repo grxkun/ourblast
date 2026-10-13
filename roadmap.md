@@ -9,3 +9,4 @@
 - [x] Open EVM deposit bridge + auto-buy to all users (public test)
 - [ ] Wire cross-chain buy into X bot — blocked: waiting until @Ourblastbot X is active again
 - [x] Solana deposit watcher: SOL/USDC → SUI (NEAR Intents) → auto-buy $BLAST (preview; no live funds tested)
+- [x] Terminal chat: "bridge 0.03 sol" / "buy blast with 0.03 sol" (preview)
