@@ -17,7 +17,8 @@ import { runTerminalAgent } from "@/lib/terminal/agent";
 import { chatCommand, interpretCommand } from "@/lib/terminal/nlu.functions";
 import { runBankCommand } from "@/lib/terminal/bank.functions";
 import { launchFromTerminal } from "@/lib/terminal/xLauncher.functions";
-import { bridgeNow } from "@/lib/terminal/evm-sweep.functions";
+import { bridgeNow, bridgeSolNow } from "@/lib/terminal/evm-sweep.functions";
+import { parseSolCommand } from "@/lib/terminal/solCommand";
 import { parseBankCommand, parseSwapCommand } from "@/lib/terminal/bank";
 import { useBankApprovals } from "./useBankApprovals";
 import type { LaunchConfiguration, TerminalEntry, TerminalIntentName, TerminalStatus } from "@/lib/terminal/types";
@@ -50,6 +51,7 @@ export function Terminal({ tryCommand }: { tryCommand?: { command: string; nonce
   const bankCommand = useServerFn(runBankCommand);
   const launchNow = useServerFn(launchFromTerminal);
   const bridge = useServerFn(bridgeNow);
+  const bridgeSol = useServerFn(bridgeSolNow);
   const [launching, setLaunching] = useState(false);
   const { approveSwap, approveTransfer } = useBankApprovals();
 
@@ -132,6 +134,18 @@ export function Terminal({ tryCommand }: { tryCommand?: { command: string; nonce
       const context = { walletConnected: Boolean(userId), walletAddress: profile?.wallet_address ?? null, source: "terminal" as const };
       // Send / buy / sell (and "1"/"2" answers to a which-token question) run the same
       // OurBank logic as an X mention, with the wallet the user picked.
+      // "bridge 0.03 sol" / "buy blast with 0.03 sol": move only that SOL to Sui → $BLAST.
+      const solCmd = parseSolCommand(clean);
+      if (solCmd) {
+        if (!userId) {
+          await saveEntry({ id: makeId(), command: clean, intent: "getWallet", result: { tool: "getWallet", status: "NOT_CONNECTED", message: "Sign in first to use your OurBank Solana address." }, createdAt: new Date().toISOString() });
+          return;
+        }
+        const out = await bridgeSol({ data: { amountSol: solCmd.amountSol } }).catch((e: Error) => ({ ok: false, message: e.message }));
+        await saveEntry({ id: makeId(), command: clean, intent: "getWallet", result: { tool: "getWallet", status: out.ok ? "SUBMITTING" : "FAILED", message: out.ok ? `${out.message}\nIt lands as SUI in your OurBank wallet; with "Auto-buy $BLAST" on, it's swapped to $BLAST automatically.` : out.message }, createdAt: new Date().toISOString() });
+        void queryClient.invalidateQueries({ queryKey: ["bank-wallet", userId] });
+        return;
+      }
       // "bridge" / "sweep": move ETH/USDC on the OurBank EVM address to Sui now (auto-buys $BLAST).
       if (/^\s*(?:bridge|sweep)(?:\s+(?:now|eth|usdc|base|arbitrum|arb|robinhood|to\s+sui|to\s+blast))*\s*$/i.test(clean)) {
         if (!userId) {
