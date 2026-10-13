@@ -326,3 +326,32 @@ function ProfilePage() {
     </div>
   );
 }
+
+function CopyPill({ value }: { value: string }) {
+  const [copied, setCopied] = useState(false);
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(value);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 1500);
+    } catch {
+      setCopied(false);
+    }
+  };
+  return (
+    <button
+      type="button"
+      onClick={() => void copy()}
+      title={value}
+      aria-label="Copy address"
+      className="inline-flex max-w-full items-center gap-2 rounded-full border border-border px-3 py-1 font-body text-xs transition-transform hover:-translate-y-0.5"
+    >
+      <span className="truncate">
+        {value.slice(0, 8)}…{value.slice(-6)}
+      </span>
+      <span className="shrink-0 font-display text-[0.6rem] tracking-wide text-lime uppercase">
+        {copied ? "Copied" : "Copy"}
+      </span>
+    </button>
+  );
+}
