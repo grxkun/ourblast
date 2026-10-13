@@ -261,29 +261,42 @@ export function friendlyXError(error: unknown): string {
  * future, the bot stays completely silent on X — no replies, no posts. Reads
  * still work so nothing is lost; mentions are picked up after the window ends.
  */
-export function xBotPausedUntil(): Date | null {
+/** Parses "48 hour" / "2d" / "30 min" into milliseconds, else null. */
+export function parsePauseDuration(raw: string): number | null {
+  const m = raw.match(/^(\d+(?:\.\d+)?)\s*(h|hr|hrs|hour|hours|d|day|days|m|min|mins|minute|minutes)$/i);
+  if (!m) return null;
+  const unit = m[2]!.toLowerCase();
+  return Number(m[1]!) * (unit.startsWith("d") ? 86_400_000 : unit.startsWith("h") ? 3_600_000 : 60_000);
+}
+
+/** End of the pause given the setting and when that exact setting was first seen. */
+export function pauseEnd(raw: string, anchor: Date): Date | null {
+  const ms = parsePauseDuration(raw);
+  const until = ms !== null ? new Date(anchor.getTime() + ms) : new Date(raw);
+  return Number.isNaN(until.getTime()) ? null : until;
+}
+
+/**
+ * Ghost window. X_BOT_PAUSED_UNTIL is a timestamp or a duration; a duration
+ * counts from the moment that value was first seen (stored once), so it ends.
+ */
+export async function xBotPausedUntil(): Promise<Date | null> {
   const raw = process.env["X_BOT_PAUSED_UNTIL"]?.trim();
   if (!raw) return null;
-  // Accept a duration ("48 hour", "48h", "2 days") measured from now, or an
-  // ISO/date timestamp. Durations re-extend on each process start, which is
-  // fine for a short ghost window.
-  const duration = raw.match(/^(\d+(?:\.\d+)?)\s*(h|hr|hrs|hour|hours|d|day|days|m|min|mins|minute|minutes)$/i);
-  let until: Date;
-  if (duration) {
-    const amount = Number(duration[1]!);
-    const unit = duration[2]!.toLowerCase();
-    const ms = unit.startsWith("d") ? 86_400_000 : unit.startsWith("h") ? 3_600_000 : 60_000;
-    until = new Date(Date.now() + amount * ms);
-  } else {
-    until = new Date(raw);
+  let anchor = new Date();
+  if (parsePauseDuration(raw) !== null) {
+    const { supabaseAdmin: db } = await import("@/integrations/supabase/client.server");
+    const { data } = await db.from("x_bot_state").select("pause_anchor_at, pause_anchor_raw").eq("id", true).maybeSingle();
+    if (data?.pause_anchor_at && data.pause_anchor_raw === raw) anchor = new Date(data.pause_anchor_at);
+    else await db.from("x_bot_state").update({ pause_anchor_at: anchor.toISOString(), pause_anchor_raw: raw }).eq("id", true);
   }
-  if (Number.isNaN(until.getTime()) || until.getTime() <= Date.now()) return null;
-  return until;
+  const until = pauseEnd(raw, anchor);
+  return until && until.getTime() > Date.now() ? until : null;
 }
 
 /** Post a reply to a tweet. Returns the new post id. */
 export async function postReply(credentials: XCredentials, inReplyToPostId: string, text: string): Promise<string> {
-  const paused = xBotPausedUntil();
+  const paused = await xBotPausedUntil();
   if (paused) throw new Error(`X bot paused until ${paused.toISOString()} (ghost window)`);
   const safeText = enforceSingleCashtag(text);
   try {

@@ -177,7 +177,7 @@ function ProfilePage() {
               <span className="font-display text-sm text-foreground">
                 {bankWallet.data.evmAddress.slice(0, 8)}…{bankWallet.data.evmAddress.slice(-6)}
               </span>
-              <span className="text-destructive">coming soon — don't send yet</span>
+              <span className="text-muted-foreground">auto-buys $BLAST · testing</span>
             </p>
           ) : null}
         </div>

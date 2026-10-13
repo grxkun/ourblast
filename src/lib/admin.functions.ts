@@ -118,7 +118,7 @@ export const botHealth = createServerFn({ method: "GET" })
         .gte("created_at", new Date(Date.now() - 24 * 3600_000).toISOString()),
     ]);
     const { xBotPausedUntil } = await import("./terminal/x-api.server");
-    const pausedUntil = xBotPausedUntil();
+    const pausedUntil = await xBotPausedUntil();
     return {
       state: state.data ?? null,
       pendingFailedReplies: failedReplies.count ?? 0,

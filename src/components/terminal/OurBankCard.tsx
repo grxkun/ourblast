@@ -303,7 +303,8 @@ function BankWalletPanel({ userId }: { userId: string }) {
         <div className="mt-2 rounded-md border border-border p-2 text-xs">
           <p className="text-muted-foreground">EVM address (Base, Arbitrum, Ethereum, Robinhood Chain)</p>
           <p className="break-all text-foreground">{w.evmAddress}</p>
-          <p className="mt-1 text-destructive">Coming soon — don't send funds here yet. EVM deposits aren't moved into Sui yet.</p>
+          <p className="mt-1 text-muted-foreground">Send ETH (min 0.0015) on Base, Arbitrum or Robinhood Chain, or USDC (min 2) on Base or Arbitrum. It moves to your Sui wallet and buys $BLAST automatically (~20 min). 0.0003 ETH stays behind for fees.</p>
+          <p className="mt-1 text-destructive">Testing — only for invited accounts right now. Never send other tokens or other chains.</p>
           <Button className="mt-2" size="sm" variant="outline" onClick={() => { void navigator.clipboard.writeText(w.evmAddress!); toast("EVM address copied"); }}>
             Copy EVM address
           </Button>

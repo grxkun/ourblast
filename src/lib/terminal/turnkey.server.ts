@@ -221,3 +221,17 @@ export async function createEvmWallet(name: string): Promise<{ walletId: string;
   if (!wallet || !address) throw new Error("Turnkey did not return an EVM address.");
   return { walletId: wallet.walletId, address: address.toLowerCase() };
 }
+
+/** Signs a 32-byte digest with a Turnkey secp256k1 (EVM) key. */
+export async function signEvmDigest(signWith: string, digestHex: string): Promise<{ r: `0x${string}`; s: `0x${string}`; yParity: 0 | 1 }> {
+  const result = await activity<{ signRawPayloadResult?: { r: string; s: string; v: string } }>("SIGN_RAW_PAYLOAD", {
+    signWith,
+    payload: digestHex.replace(/^0x/, ""),
+    encoding: "PAYLOAD_ENCODING_HEXADECIMAL",
+    hashFunction: "HASH_FUNCTION_NO_OP",
+  });
+  const sig = result.signRawPayloadResult;
+  if (!sig?.r || !sig.s) throw new Error("Turnkey did not return a signature.");
+  const v = parseInt(sig.v || "0", 16);
+  return { r: `0x${sig.r.padStart(64, "0")}`, s: `0x${sig.s.padStart(64, "0")}`, yParity: (v % 2) as 0 | 1 };
+}

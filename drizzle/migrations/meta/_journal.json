@@ -43,6 +43,13 @@
       "when": 1791850012020,
       "tag": "0005_bank_wallets_evm_address",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1791851700836,
+      "tag": "0006_evm_sweeps",
+      "breakpoints": true
     }
   ]
 }

@@ -1458,6 +1458,60 @@ export type Database = {
         }
         Relationships: []
       }
+      evm_sweeps: {
+        Row: {
+          amount_atomic: number
+          approve_tx: string | null
+          chain: string
+          created_at: string
+          error: string | null
+          evm_address: string
+          id: string
+          order_id: string | null
+          route: string
+          status: string
+          token: string
+          tx_hash: string | null
+          updated_at: string
+          user_id: string | null
+          x_username: string
+        }
+        Insert: {
+          amount_atomic: number
+          approve_tx?: string | null
+          chain: string
+          created_at?: string
+          error?: string | null
+          evm_address: string
+          id?: string
+          order_id?: string | null
+          route: string
+          status?: string
+          token: string
+          tx_hash?: string | null
+          updated_at?: string
+          user_id?: string | null
+          x_username: string
+        }
+        Update: {
+          amount_atomic?: number
+          approve_tx?: string | null
+          chain?: string
+          created_at?: string
+          error?: string | null
+          evm_address?: string
+          id?: string
+          order_id?: string | null
+          route?: string
+          status?: string
+          token?: string
+          tx_hash?: string | null
+          updated_at?: string
+          user_id?: string | null
+          x_username?: string
+        }
+        Relationships: []
+      }
       fee_claim_links: {
         Row: {
           amount_sui: number
@@ -2193,31 +2247,40 @@ export type Database = {
         Row: {
           bot_user_id: string | null
           id: boolean
+          last_evm_scan_at: string | null
           last_mention_id: string | null
           last_poll_error: string | null
           last_poll_success_at: string | null
           last_reply_success_at: string | null
           last_search_success_at: string | null
+          pause_anchor_at: string | null
+          pause_anchor_raw: string | null
           updated_at: string
         }
         Insert: {
           bot_user_id?: string | null
           id?: boolean
+          last_evm_scan_at?: string | null
           last_mention_id?: string | null
           last_poll_error?: string | null
           last_poll_success_at?: string | null
           last_reply_success_at?: string | null
           last_search_success_at?: string | null
+          pause_anchor_at?: string | null
+          pause_anchor_raw?: string | null
           updated_at?: string
         }
         Update: {
           bot_user_id?: string | null
           id?: boolean
+          last_evm_scan_at?: string | null
           last_mention_id?: string | null
           last_poll_error?: string | null
           last_poll_success_at?: string | null
           last_reply_success_at?: string | null
           last_search_success_at?: string | null
+          pause_anchor_at?: string | null
+          pause_anchor_raw?: string | null
           updated_at?: string
         }
         Relationships: []

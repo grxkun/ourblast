@@ -18,8 +18,10 @@ export async function runXMentionPoll(): Promise<{
   // Ghost window: fully silent on X — skip reading AND posting so the account
   // risk score can reset. Mentions are not lost: the cursor does not move, so
   // everything is picked up once the window ends.
-  const paused = xBotPausedUntil();
+  const paused = await xBotPausedUntil();
   if (paused) {
+    // Wallet jobs never post on X, so they keep running during the ghost window.
+    await runWalletJobs();
     return { live: true, handled: 0, confirmed: 0, reason: `Bot paused until ${paused.toISOString()} (ghost window)`, error: null };
   }
 
@@ -258,13 +260,24 @@ export async function runXMentionPoll(): Promise<{
     console.error(`Escrow maintenance failed: ${error instanceof Error ? error.message : "unknown"}`);
   }
 
+  await runWalletJobs();
+
+
+  return { live: true, handled, confirmed, reason: null, error: null };
+}
+
+/** Cross-chain auto-swap and EVM deposit sweeps (no X posting). */
+async function runWalletJobs() {
+  try {
+    const { maintainEvmSweeps } = await import("./evm-sweep.server");
+    await maintainEvmSweeps();
+  } catch (error) {
+    console.error(`EVM sweep failed: ${error instanceof Error ? error.message : "unknown"}`);
+  }
   try {
     const { maintainCrossChainOrders } = await import("./crossChain.server");
     await maintainCrossChainOrders();
   } catch (error) {
     console.error(`Cross-chain auto-swap failed: ${error instanceof Error ? error.message : "unknown"}`);
   }
-
-
-  return { live: true, handled, confirmed, reason: null, error: null };
 }
