@@ -4,7 +4,7 @@ import bs58 from "bs58";
 
 import { decryptConnectionKey } from "@/lib/connection-key.server";
 import { sweepAllowed } from "./evm-sweep";
-import { planSolSweep, SOL_USDC_MINT, signedTxBase64, solTransferMessage, usdcTransferMessage } from "./sol-sweep";
+import { planSolSweep, SOL_FEE_LAMPORTS, SOL_USDC_MINT, signedTxBase64, solTransferMessage, usdcTransferMessage } from "./sol-sweep";
 
 /**
  * OurBank Solana deposits → Sui: SOL/USDC on a user's OurBank Solana address is
@@ -182,6 +182,8 @@ export async function bridgeSolNowForUser(userId: string, amountSol?: number): P
     const want = BigInt(Math.round(amountSol * 1e9));
     const { lamports } = await balances(w.sol_address as string);
     if (want + SOL_FEE_LAMPORTS > lamports) return { ok: false, message: `Not enough SOL. Balance ${(Number(lamports) / 1e9).toFixed(4)} SOL (keep 0.000005 for the fee).` };
+    const left = lamports - want - SOL_FEE_LAMPORTS;
+    if (left > 0n && left < 890_880n) return { ok: false, message: "Leave at least 0.0009 SOL behind (Solana rent), or bridge everything." };
     await db.from("bank_preferences").upsert({ user_id: userId, sol_auto_sweep: false }, { onConflict: "user_id" });
     await sweep(w as SolWalletRow, "SOL", want);
     return { ok: true, message: `Bridging ${amountSol} SOL. The rest stays on Solana (auto-bridge is now off).` };
