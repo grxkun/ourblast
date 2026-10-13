@@ -129,7 +129,7 @@ async function sweep(w: SolWalletRow, token: "SOL" | "USDC", amount: bigint) {
 }
 
 /** Confirms submitted sweeps so the address can be swept again. */
-async function confirmSubmitted() {
+export async function confirmSubmitted() {
   const db = await admin();
   const { data: rows } = await db.from("sol_sweeps").select("id, tx_sig, created_at").eq("status", "submitted").limit(50);
   if (!rows?.length) return;

@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { TradeWalletPanel } from "./TradeWalletPanel";
+import { BridgeTracker } from "./BridgeTracker";
 import { useServerFn } from "@tanstack/react-start";
 import { Landmark, AlertTriangle, ShieldCheck } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -218,11 +219,12 @@ function BankWalletPanel({ userId }: { userId: string }) {
   });
   const doBridgeSol = useServerFn(bridgeSolNow);
   const solBridgeRun = useMutation({
-    mutationFn: (amountSol?: number) => doBridgeSol({ data: { amountSol } }),
-    onSuccess: (r) => { (r.ok ? toast.success : toast.error)(r.message); },
+    mutationFn: (amountSol?: number) => { setSolTrack(new Date().toISOString()); return doBridgeSol({ data: { amountSol } }); },
+    onSuccess: (r) => { (r.ok ? toast.success : toast.error)(r.message); if (!r.ok) setSolTrack(null); },
     onError: (e: Error) => toast.error(e.message),
   });
   const [solAmt, setSolAmt] = useState("");
+  const [solTrack, setSolTrack] = useState<string | null>(null);
   const chainBal = useChainBalances(userId);
   const wallet = useQuery({ queryKey: ["bank-wallet", userId], queryFn: () => get(), refetchInterval: 20_000 });
   const [showImport, setShowImport] = useState(false);
@@ -358,6 +360,7 @@ function BankWalletPanel({ userId }: { userId: string }) {
             </Button>
             <ChainBackupButton chain="sol" exportable={Boolean(chainBal.data?.solExportable)} />
           </div>
+          {solTrack ? <BridgeTracker since={solTrack} /> : null}
         </div>
       ) : null}
       <div className="mt-2 flex flex-wrap gap-2">
