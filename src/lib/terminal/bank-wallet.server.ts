@@ -176,9 +176,12 @@ export async function linkEvmWalletToX(userId: string, xUsername: string): Promi
 export async function ensureBankWallet(handle: string, userId: string | null): Promise<BankWallet> {
   const existing = await findBankWallet(handle);
   if (existing) {
-    if (userId && !existing.user_id) {
+    // Keep user_id in sync with whoever currently owns this X handle, so
+    // user_id-based lookups (balances, SOL/EVM bridge) find the same wallet.
+    if (userId && existing.user_id !== userId) {
       const db = await admin();
-      await db.from("bank_wallets").update({ user_id: userId }).eq("x_username", handle.toLowerCase());
+      const { error } = await db.from("bank_wallets").update({ user_id: userId }).eq("x_username", handle.toLowerCase());
+      if (!error) return { ...toWallet(existing), user_id: userId };
     }
     return { ...toWallet(existing), user_id: existing.user_id ?? userId };
   }
