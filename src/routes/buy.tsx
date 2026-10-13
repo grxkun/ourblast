@@ -1,13 +1,20 @@
 // SPDX-License-Identifier: BUSL-1.1
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
+import { z } from "zod";
+import { zodValidator, fallback } from "@tanstack/zod-adapter";
 import { CrossChainBuy } from "@/components/site/CrossChainBuy";
 import { UsdBuyCalculator } from "@/components/site/UsdBuyCalculator";
 
 const BUY_URL = "https://trade.bluefin.io/swap/SUI-0x577a8addf60a34d4c705914ad066a3b28c3fc40d365ed0d9dfc408f29b4725d3::blast::BLAST";
 const SHARE_URL = "https://ourblast.xyz/buy";
 
+const buySearchSchema = z.object({
+  usd: fallback(z.string(), "").default(""),
+});
+
 export const Route = createFileRoute("/buy")({
+  validateSearch: zodValidator(buySearchSchema),
   head: () => ({
     meta: [
       { title: "Buy $BLAST from any chain | OURBLAST" },
