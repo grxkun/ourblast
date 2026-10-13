@@ -33,7 +33,7 @@ import {
   transferCoinChoices,
 } from "@/lib/terminal/bank.functions";
 import { describeRecipient } from "@/lib/terminal/bank";
-import { bridgeNow, bridgeSolNow } from "@/lib/terminal/evm-sweep.functions";
+import { bridgeNow, bridgeSolNow, previewSolBridge } from "@/lib/terminal/evm-sweep.functions";
 import { ChainBackupButton, DepositActionToggle, evmSummary, solSummary, useChainBalances } from "@/components/terminal/ChainWallets";
 
 const STATUS_LABEL: Record<string, string> = {
@@ -218,8 +218,15 @@ function BankWalletPanel({ userId }: { userId: string }) {
     onError: (e: Error) => toast.error(e.message),
   });
   const doBridgeSol = useServerFn(bridgeSolNow);
+  const doPreviewSol = useServerFn(previewSolBridge);
   const solBridgeRun = useMutation({
-    mutationFn: (amountSol?: number) => { setSolTrack(new Date().toISOString()); return doBridgeSol({ data: { amountSol } }); },
+    mutationFn: async (amountSol?: number) => {
+      const review = await doPreviewSol({ data: { amountSol } });
+      if (!review.ok) return review;
+      if (!window.confirm(`${review.message}\n\nSend now?`)) return { ok: false, message: "Cancelled. Nothing moved." };
+      setSolTrack(new Date().toISOString());
+      return doBridgeSol({ data: { amountSol } });
+    },
     onSuccess: (r) => { (r.ok ? toast.success : toast.error)(r.message); if (!r.ok) setSolTrack(null); },
     onError: (e: Error) => toast.error(e.message),
   });

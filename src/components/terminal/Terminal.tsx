@@ -17,7 +17,7 @@ import { runTerminalAgent } from "@/lib/terminal/agent";
 import { chatCommand, interpretCommand } from "@/lib/terminal/nlu.functions";
 import { runBankCommand } from "@/lib/terminal/bank.functions";
 import { launchFromTerminal } from "@/lib/terminal/xLauncher.functions";
-import { bridgeNow, bridgeSolNow } from "@/lib/terminal/evm-sweep.functions";
+import { bridgeNow, bridgeSolNow, previewSolBridge } from "@/lib/terminal/evm-sweep.functions";
 import { parseSolCommand } from "@/lib/terminal/solCommand";
 import { parseBankCommand, parseSwapCommand } from "@/lib/terminal/bank";
 import { useBankApprovals } from "./useBankApprovals";
@@ -53,6 +53,9 @@ export function Terminal({ tryCommand }: { tryCommand?: { command: string; nonce
   const launchNow = useServerFn(launchFromTerminal);
   const bridge = useServerFn(bridgeNow);
   const bridgeSol = useServerFn(bridgeSolNow);
+  const previewSol = useServerFn(previewSolBridge);
+  // SOL bridge waiting for "confirm" (10 min).
+  const pendingSol = useRef<{ amountSol?: number | undefined; until: number } | null>(null);
   const [launching, setLaunching] = useState(false);
   const { approveSwap, approveTransfer } = useBankApprovals();
 
@@ -146,8 +149,20 @@ export function Terminal({ tryCommand }: { tryCommand?: { command: string; nonce
           await saveEntry({ id: makeId(), command: clean, intent: "getWallet", result: { tool: "getWallet", status: "NOT_CONNECTED", message: "Sign in first to use your OurBank Solana address." }, createdAt: new Date().toISOString() });
           return;
         }
+        const review = await previewSol({ data: { amountSol: solCmd.amountSol } }).catch((e: Error) => ({ ok: false, message: e.message }));
+        pendingSol.current = review.ok ? { amountSol: solCmd.amountSol, until: Date.now() + 10 * 60_000 } : null;
+        await saveEntry({ id: makeId(), command: clean, intent: "getWallet", result: { tool: "getWallet", status: review.ok ? "READY" : "FAILED", message: review.ok ? `${review.message}\nType "confirm" to send, or "cancel". Nothing moves until you confirm.` : review.message }, createdAt: new Date().toISOString() });
+        return;
+      }
+      if (/^\s*(?:confirm|yes|confirm bridge|cancel|no|cancel bridge)\s*$/i.test(clean) && pendingSol.current) {
+        const p = pendingSol.current;
+        pendingSol.current = null;
+        if (/cancel|no/i.test(clean) || Date.now() > p.until) {
+          await saveEntry({ id: makeId(), command: clean, intent: "getWallet", result: { tool: "getWallet", status: "READY", message: Date.now() > p.until && !/cancel|no/i.test(clean) ? "That bridge request expired. Type the command again." : "SOL bridge cancelled. Nothing moved." }, createdAt: new Date().toISOString() });
+          return;
+        }
         const startedAt = new Date().toISOString();
-        const out = await bridgeSol({ data: { amountSol: solCmd.amountSol } }).catch((e: Error) => ({ ok: false, message: e.message }));
+        const out = await bridgeSol({ data: { amountSol: p.amountSol } }).catch((e: Error) => ({ ok: false, message: e.message }));
         await saveEntry({ id: makeId(), command: clean, intent: "getWallet", result: { tool: "getWallet", status: out.ok ? "SUBMITTING" : "FAILED", message: out.ok ? `${out.message}\nLive status below. Type "bridge status" anytime to check again.` : out.message, data: out.ok ? { bridgeTrack: startedAt } : {} }, createdAt: new Date().toISOString() });
         void queryClient.invalidateQueries({ queryKey: ["bank-wallet", userId] });
         return;
@@ -206,7 +221,7 @@ export function Terminal({ tryCommand }: { tryCommand?: { command: string; nonce
     } catch (error) {
       toast.error("Terminal history was not saved", { description: error instanceof Error ? error.message : "Try again." });
     } finally { setProcessing(false); setPending(null); }
-  }, [interpret, chat, processing, profile?.wallet_address, saveEntry, userId, bankCommand, approveSwap, approveTransfer, queryClient, bridge, bridgeSol]);
+  }, [interpret, chat, processing, profile?.wallet_address, saveEntry, userId, bankCommand, approveSwap, approveTransfer, queryClient, bridge, bridgeSol, previewSol]);
 
   const handleSubmit = async (message: PromptInputMessage) => {
     const image = message.files.find((file) => file.mediaType?.startsWith("image/"));
