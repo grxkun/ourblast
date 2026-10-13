@@ -18,7 +18,7 @@ export async function runXMentionPoll(): Promise<{
   // Ghost window: fully silent on X — skip reading AND posting so the account
   // risk score can reset. Mentions are not lost: the cursor does not move, so
   // everything is picked up once the window ends.
-  const paused = xBotPausedUntil();
+  const paused = await xBotPausedUntil();
   if (paused) {
     return { live: true, handled: 0, confirmed: 0, reason: `Bot paused until ${paused.toISOString()} (ghost window)`, error: null };
   }
