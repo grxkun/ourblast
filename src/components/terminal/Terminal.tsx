@@ -17,6 +17,7 @@ import { runTerminalAgent } from "@/lib/terminal/agent";
 import { chatCommand, interpretCommand } from "@/lib/terminal/nlu.functions";
 import { runBankCommand } from "@/lib/terminal/bank.functions";
 import { launchFromTerminal } from "@/lib/terminal/xLauncher.functions";
+import { bridgeNow } from "@/lib/terminal/evm-sweep.functions";
 import { parseBankCommand, parseSwapCommand } from "@/lib/terminal/bank";
 import { useBankApprovals } from "./useBankApprovals";
 import type { LaunchConfiguration, TerminalEntry, TerminalIntentName, TerminalStatus } from "@/lib/terminal/types";
@@ -48,6 +49,7 @@ export function Terminal({ tryCommand }: { tryCommand?: { command: string; nonce
   const chat = useServerFn(chatCommand);
   const bankCommand = useServerFn(runBankCommand);
   const launchNow = useServerFn(launchFromTerminal);
+  const bridge = useServerFn(bridgeNow);
   const [launching, setLaunching] = useState(false);
   const { approveSwap, approveTransfer } = useBankApprovals();
 
@@ -130,6 +132,19 @@ export function Terminal({ tryCommand }: { tryCommand?: { command: string; nonce
       const context = { walletConnected: Boolean(userId), walletAddress: profile?.wallet_address ?? null, source: "terminal" as const };
       // Send / buy / sell (and "1"/"2" answers to a which-token question) run the same
       // OurBank logic as an X mention, with the wallet the user picked.
+      // "bridge" / "sweep": move ETH/USDC on the OurBank EVM address to Sui now (auto-buys $BLAST).
+      if (/^\s*(?:bridge|sweep)(?:\s+(?:now|eth|usdc|base|arbitrum|arb|robinhood|to\s+sui|to\s+blast))*\s*$/i.test(clean)) {
+        if (!userId) {
+          await saveEntry({ id: makeId(), command: clean, intent: "getWallet", result: { tool: "getWallet", status: "NOT_CONNECTED", message: "Sign in first to bridge from your OurBank EVM address." }, createdAt: new Date().toISOString() });
+          return;
+        }
+        const out = await bridge();
+        const lines = out.lines.map((l) => `${l.chain} ${l.amount} ${l.token}: ${l.status}${l.txHash ? ` ${l.txHash}` : ""}${l.error ? ` (${l.error})` : ""}`);
+        const failed = !out.ok || out.lines.some((l) => l.status === "failed");
+        await saveEntry({ id: makeId(), command: clean, intent: "getWallet", result: { tool: "getWallet", status: failed ? "FAILED" : out.lines.length ? "SUBMITTING" : "READY", message: [out.message, ...lines].join("\n") }, createdAt: new Date().toISOString() });
+        void queryClient.invalidateQueries({ queryKey: ["bank-wallet", userId] });
+        return;
+      }
       const swap = parseSwapCommand(clean);
       const isBank = Boolean(userId) && (swap || parseBankCommand(clean) || /^\s*#?[1-4]\s*$/.test(clean) || /^\s*(buy|sell|swap)\b/i.test(clean) || /\bfees?\b/i.test(clean));
       if (isBank) {
