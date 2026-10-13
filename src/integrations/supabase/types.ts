@@ -2061,6 +2061,33 @@ export type Database = {
         }
         Relationships: []
       }
+      sol_bridge_intents: {
+        Row: {
+          amount_sol: number | null
+          created_at: string
+          expires_at: string
+          id: string
+          x_post_id: string
+          x_username: string
+        }
+        Insert: {
+          amount_sol?: number | null
+          created_at?: string
+          expires_at: string
+          id?: string
+          x_post_id: string
+          x_username: string
+        }
+        Update: {
+          amount_sol?: number | null
+          created_at?: string
+          expires_at?: string
+          id?: string
+          x_post_id?: string
+          x_username?: string
+        }
+        Relationships: []
+      }
       sol_sweeps: {
         Row: {
           amount_atomic: number
