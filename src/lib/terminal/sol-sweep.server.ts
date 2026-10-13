@@ -157,20 +157,35 @@ export async function maintainSolSweeps(): Promise<void> {
 
   await confirmSubmitted();
   const { data: wallets } = await db.from("bank_wallets").select(COLS).not("sol_address", "is", null).limit(500);
+  const { data: manual } = await db.from("bank_preferences").select("user_id").eq("sol_auto_sweep", false);
+  const skip = new Set((manual ?? []).map((m) => m.user_id));
   for (const w of (wallets ?? []) as SolWalletRow[]) {
     if (!sweepAllowed(setting, w.x_username)) continue;
+    if (w.user_id && skip.has(w.user_id)) continue; // user bridges chosen amounts by hand
     try { await scanWallet(w); } catch (e) { console.error(`SOL scan ${w.x_username}`, e); }
   }
 }
 
-/** Manual "bridge now" for the signed-in user's own OurBank Solana address. */
-export async function bridgeSolNowForUser(userId: string): Promise<{ ok: boolean; message: string }> {
+/**
+ * Manual "bridge now" for the signed-in user's own OurBank Solana address.
+ * With amountSol, bridges only that much SOL and switches auto-sweep off so the rest stays on Solana.
+ */
+export async function bridgeSolNowForUser(userId: string, amountSol?: number): Promise<{ ok: boolean; message: string }> {
   const db = await admin();
   const { data: w } = await db.from("bank_wallets").select(COLS).eq("user_id", userId).not("sol_address", "is", null).maybeSingle();
   if (!w) return { ok: false, message: "No OurBank Solana address yet." };
   const { sweepSetting } = await import("./evm-sweep.server");
   if (!sweepAllowed(sweepSetting(), w.x_username)) return { ok: false, message: "Bridging is invite-only during testing." };
   await confirmSubmitted();
+  if (amountSol !== undefined) {
+    if (!(amountSol >= 0.02)) return { ok: false, message: "Minimum is 0.02 SOL." };
+    const want = BigInt(Math.round(amountSol * 1e9));
+    const { lamports } = await balances(w.sol_address as string);
+    if (want + SOL_FEE_LAMPORTS > lamports) return { ok: false, message: `Not enough SOL. Balance ${(Number(lamports) / 1e9).toFixed(4)} SOL (keep 0.000005 for the fee).` };
+    await db.from("bank_preferences").upsert({ user_id: userId, sol_auto_sweep: false }, { onConflict: "user_id" });
+    await sweep(w as SolWalletRow, "SOL", want);
+    return { ok: true, message: `Bridging ${amountSol} SOL. The rest stays on Solana (auto-bridge is now off).` };
+  }
   const r = await scanWallet(w as SolWalletRow);
   if (!r) return { ok: true, message: "Nothing to bridge from Solana. Need 0.02 SOL, or 2 USDC plus 0.0025 SOL for fees." };
   return { ok: true, message: `Bridging ${r.amount} ${r.token} from Solana. SUI lands in ~1–5 min, then auto-buys $BLAST.` };
