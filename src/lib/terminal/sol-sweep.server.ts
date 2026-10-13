@@ -294,8 +294,7 @@ export async function bridgeSolForXHandle(handle: string, amountSol?: number, bu
   try {
     const r = await bridgeSolNowForUser(w.user_id, amountSol, buyBlast);
     if (!r.ok) return `@${handle} ${r.message} Your SOL address: ${w.sol_address}`.slice(0, 280);
-    const { data: s } = await db.from("sol_sweeps").select("tx_sig").eq("sol_address", w.sol_address).order("created_at", { ascending: false }).limit(1).maybeSingle();
-    const link = s?.tx_sig ? ` https://solscan.io/tx/${s.tx_sig}` : "";
+    const link = r.txSig ? ` https://solscan.io/tx/${r.txSig}` : "";
     return `@${handle} ${r.message}${link} Track: ourblast.xyz/terminal ("bridge status")`.slice(0, 280);
   } catch (e) {
     return `@${handle} couldn't bridge right now: ${e instanceof Error ? e.message : "unknown error"}`.slice(0, 280);
