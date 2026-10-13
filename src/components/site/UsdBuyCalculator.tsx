@@ -13,8 +13,9 @@ const PRESETS = [5, 10, 25, 50, 100];
 type Prices = Record<string, number>;
 
 /** Shows how much of each source asset to send for a USD amount, and the ≈ $BLAST received. Estimates only. */
-export function UsdBuyCalculator() {
-  const [usd, setUsd] = useState("10");
+export function UsdBuyCalculator({ initialUsd = "10", onUsdChange }: { initialUsd?: string; onUsdChange?: (usd: string) => void }) {
+  const [usd, setUsdState] = useState(initialUsd);
+  const setUsd = (v: string) => { setUsdState(v); onUsdChange?.(v); };
   const [prices, setPrices] = useState<Prices | null>(null);
   const [blastUsd, setBlastUsd] = useState<number | null>(null);
   const [failed, setFailed] = useState(false);
