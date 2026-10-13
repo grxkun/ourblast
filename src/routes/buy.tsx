@@ -1,13 +1,20 @@
 // SPDX-License-Identifier: BUSL-1.1
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
+import { z } from "zod";
+import { zodValidator, fallback } from "@tanstack/zod-adapter";
 import { CrossChainBuy } from "@/components/site/CrossChainBuy";
 import { UsdBuyCalculator } from "@/components/site/UsdBuyCalculator";
 
 const BUY_URL = "https://trade.bluefin.io/swap/SUI-0x577a8addf60a34d4c705914ad066a3b28c3fc40d365ed0d9dfc408f29b4725d3::blast::BLAST";
 const SHARE_URL = "https://ourblast.xyz/buy";
 
+const buySearchSchema = z.object({
+  usd: fallback(z.string(), "").default(""),
+});
+
 export const Route = createFileRoute("/buy")({
+  validateSearch: zodValidator(buySearchSchema),
   head: () => ({
     meta: [
       { title: "Buy $BLAST from any chain | OURBLAST" },
@@ -22,6 +29,9 @@ export const Route = createFileRoute("/buy")({
 });
 
 function BuyPage() {
+  const { usd: usdParam } = Route.useSearch();
+  const initialUsd = /^\d+(\.\d+)?$/.test(usdParam) && Number(usdParam) > 0 ? usdParam : "10";
+  const [shareUrl, setShareUrl] = useState(usdParam ? `${SHARE_URL}?usd=${encodeURIComponent(usdParam)}` : SHARE_URL);
   const [copied, setCopied] = useState(false);
   return (
     <div className="mx-auto max-w-2xl space-y-6 px-4 py-10">
@@ -34,16 +44,16 @@ function BuyPage() {
         <li>Tap the button below, then "Get my address + auto-swap".</li>
         <li>Pay from your chain into that address — SUI or USDC landing there is swapped into $BLAST automatically.</li>
       </ol>
-      <UsdBuyCalculator />
+      <UsdBuyCalculator initialUsd={initialUsd} onUsdChange={(v) => setShareUrl(/^\d+(\.\d+)?$/.test(v) && Number(v) > 0 ? `${SHARE_URL}?usd=${encodeURIComponent(v)}` : SHARE_URL)} />
       <CrossChainBuy blastUrl={BUY_URL}/>
       <div className="rounded-lg border-2 border-border bg-muted p-4 font-body text-sm">
         <p className="mb-2 font-display uppercase">Share this buy link</p>
         <button
           type="button"
-          onClick={() => { navigator.clipboard.writeText(SHARE_URL); setCopied(true); }}
+          onClick={() => { navigator.clipboard.writeText(shareUrl); setCopied(true); }}
           className="w-full break-all rounded-md border-2 border-border bg-background p-2 text-left font-mono text-xs"
         >
-          {SHARE_URL} <span className="text-primary">{copied ? "(copied)" : "(tap to copy)"}</span>
+          {shareUrl} <span className="text-primary">{copied ? "(copied)" : "(tap to copy)"}</span>
         </button>
       </div>
     </div>
