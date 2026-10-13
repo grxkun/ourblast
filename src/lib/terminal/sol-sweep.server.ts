@@ -25,16 +25,25 @@ function rpcUrl() {
   return process.env["SOLANA_RPC_URL"] || "https://api.mainnet-beta.solana.com";
 }
 
+const SOL_RPCS = () => [process.env["SOLANA_RPC_URL"], "https://api.mainnet-beta.solana.com", "https://solana-rpc.publicnode.com"].filter(Boolean) as string[];
+
+/** Tries each Solana RPC in turn; public endpoints throttle edge IPs. */
 async function rpc<T>(method: string, params: unknown[]): Promise<T> {
-  const res = await fetch(rpcUrl(), {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({ jsonrpc: "2.0", id: 1, method, params }),
-    signal: AbortSignal.timeout(15_000),
-  });
-  const json = (await res.json()) as { result?: T; error?: { message: string } };
-  if (json.error || json.result === undefined) throw new Error(`Solana RPC ${method}: ${json.error?.message ?? res.status}`);
-  return json.result;
+  let last: unknown;
+  for (const url of SOL_RPCS()) {
+    try {
+      const res = await fetch(url, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ jsonrpc: "2.0", id: 1, method, params }),
+        signal: AbortSignal.timeout(10_000),
+      });
+      const json = (await res.json()) as { result?: T; error?: { message: string } };
+      if (json.error || json.result === undefined) throw new Error(`Solana RPC ${method}: ${json.error?.message ?? res.status}`);
+      return json.result;
+    } catch (e) { last = e; }
+  }
+  throw last instanceof Error ? last : new Error(`Solana RPC ${method} failed`);
 }
 
 async function balances(addr: string): Promise<{ lamports: bigint; usdc: bigint }> {

@@ -22,23 +22,32 @@ export async function evmBalances(address: string): Promise<ChainBalance[]> {
   );
 }
 
+const SOL_RPCS = () => [process.env["SOLANA_RPC_URL"], "https://api.mainnet-beta.solana.com", "https://solana-rpc.publicnode.com"].filter(Boolean) as string[];
+
+/** Tries each Solana RPC in turn; public endpoints throttle edge IPs. */
 async function rpc<T>(method: string, params: unknown[]): Promise<T> {
-  const res = await fetch(process.env["SOLANA_RPC_URL"] || "https://api.mainnet-beta.solana.com", {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({ jsonrpc: "2.0", id: 1, method, params }),
-    signal: AbortSignal.timeout(10_000),
-  });
-  const json = (await res.json()) as { result?: T; error?: { message: string } };
-  if (json.error || json.result === undefined) throw new Error(json.error?.message ?? "Solana RPC error");
-  return json.result;
+  let last: unknown;
+  for (const url of SOL_RPCS()) {
+    try {
+      const res = await fetch(url, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ jsonrpc: "2.0", id: 1, method, params }),
+        signal: AbortSignal.timeout(10_000),
+      });
+      const json = (await res.json()) as { result?: T; error?: { message: string } };
+      if (json.error || json.result === undefined) throw new Error(`Solana RPC ${method}: ${json.error?.message ?? res.status}`);
+      return json.result;
+    } catch (e) { last = e; }
+  }
+  throw last instanceof Error ? last : new Error(`Solana RPC ${method} failed`);
 }
 
 export async function solBalances(address: string): Promise<{ sol: number; usdc: number }> {
   const bal = await rpc<{ value: number }>("getBalance", [address, { commitment: "confirmed" }]);
   const toks = await rpc<{ value: { account: { data: { parsed: { info: { tokenAmount: { amount: string } } } } } }[] }>(
     "getTokenAccountsByOwner", [address, { mint: SOL_USDC_MINT }, { encoding: "jsonParsed", commitment: "confirmed" }],
-  );
+  ).catch(() => ({ value: [] })); // a USDC lookup failure must never hide the SOL balance
   const usdc = toks.value.reduce((n, a) => n + Number(a.account.data.parsed.info.tokenAmount.amount), 0);
   return { sol: bal.value / 1e9, usdc: usdc / 1e6 };
 }
