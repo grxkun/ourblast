@@ -57,6 +57,13 @@
       "when": 1791856331702,
       "tag": "0007_bank_wallets_sol_address",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1791856831904,
+      "tag": "0008_sol_sweeps",
+      "breakpoints": true
     }
   ]
 }

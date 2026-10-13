@@ -8,3 +8,4 @@
 - [x] Cross-chain buy: HyperEVM + Monad added; NEAR (NEAR Intents) and Robinhood Chain (Relay → Arbitrum/Base) linked as alternate routes
 - [x] Open EVM deposit bridge + auto-buy to all users (public test)
 - [ ] Wire cross-chain buy into X bot — blocked: waiting until @Ourblastbot X is active again
+- [x] Solana deposit watcher: SOL/USDC → SUI (NEAR Intents) → auto-buy $BLAST (preview; no live funds tested)

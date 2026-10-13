@@ -186,7 +186,7 @@ function ProfilePage() {
               <span className="font-display text-sm text-foreground">
                 {bankWallet.data.solAddress.slice(0, 6)}…{bankWallet.data.solAddress.slice(-6)}
               </span>
-              <span className="text-muted-foreground">coming soon</span>
+              <span className="text-muted-foreground">auto-buys $BLAST</span>
             </p>
           ) : null}
         </div>

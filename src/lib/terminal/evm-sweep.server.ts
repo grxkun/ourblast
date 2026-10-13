@@ -80,7 +80,7 @@ async function sendTx(chain: SweepChain, w: EvmWalletRow, tx: { to: Hex; data?: 
 }
 
 /** Opens (or reuses) a cross-chain order so arriving SUI is auto-swapped to $BLAST. */
-async function ensureOrder(w: EvmWalletRow): Promise<string | null> {
+export async function ensureOrder(w: Pick<EvmWalletRow, "user_id" | "x_username" | "address">): Promise<string | null> {
   if (!w.user_id) return null;
   const db = await admin();
   const { data: open } = await db.from("cross_chain_orders").select("id").eq("user_id", w.user_id).eq("status", "pending").maybeSingle();
@@ -200,7 +200,7 @@ async function confirmSubmitted() {
 }
 
 /** EVM_SWEEP_PUBLIC=1 opens sweeps to everyone (public test); else EVM_SWEEP_ALLOW. */
-function sweepSetting(): string | undefined {
+export function sweepSetting(): string | undefined {
   return process.env["EVM_SWEEP_PUBLIC"] === "1" ? "*" : process.env["EVM_SWEEP_ALLOW"];
 }
 
