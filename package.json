@@ -21,7 +21,6 @@
     "@hookform/resolvers": "^5.2.2",
     "@lovable.dev/cloud-auth-js": "^1.1.2",
     "@lovable.dev/mcp-js": "^3.0.0",
-    "@mayanfinance/swap-sdk": "^15.2.2",
     "@mysten/sui": "2.31.2",
     "@mysten/wallet-standard": "^0.21.22",
     "@pythnetwork/pyth-sui-js": "^4.0.0",

@@ -108,13 +108,10 @@ async function ensureOrder(w: EvmWalletRow): Promise<string | null> {
   return data.id;
 }
 
-async function mayanTx(chain: SweepChain, w: EvmWalletRow, token: string, amount: bigint) {
-  const { fetchQuote, getSwapFromEvmTxPayload } = await import("@mayanfinance/swap-sdk");
-  const quotes = await fetchQuote({ amountIn64: amount.toString(), fromToken: token, toToken: "0x2::sui::SUI", fromChain: chain, toChain: "sui", slippageBps: 300 } as never);
-  const quote = quotes[0];
-  if (!quote) throw new Error("No Mayan route to Sui right now.");
-  const payload = (await getSwapFromEvmTxPayload(quote, w.evm_address, w.address, null, w.evm_address, SWEEP_CHAINS[chain].id, null, null)) as { to: string; data: string; value?: unknown };
-  return { to: payload.to as Hex, data: payload.data as Hex, value: payload.value ? BigInt(String(payload.value)) : 0n };
+// The Mayan SDK crashes the edge runtime at startup, so automatic Mayan sweeps are
+// disabled until a REST-only route is built. Throwing here happens before any funds move.
+async function mayanTx(_chain: SweepChain, _w: EvmWalletRow, _token: string, _amount: bigint): Promise<{ to: Hex; data: Hex; value: bigint }> {
+  throw new Error("Automatic Base/Arbitrum sweep is temporarily paused.");
 }
 
 async function relayTxs(w: EvmWalletRow, amount: bigint) {
