@@ -137,7 +137,7 @@ export function Terminal({ tryCommand }: { tryCommand?: { command: string; nonce
       // OurBank logic as an X mention, with the wallet the user picked.
       // "bridge 0.03 sol" / "buy blast with 0.03 sol": move only that SOL to Sui → $BLAST.
       if (/^\s*(?:bridge|sol)\s+status\s*$/i.test(clean)) {
-        await saveEntry({ id: makeId(), command: clean, intent: "getWallet", result: { tool: "getWallet", status: userId ? "SUCCESS" : "NOT_CONNECTED", message: userId ? "Latest SOL bridge:" : "Sign in first.", data: userId ? { bridgeTrack: "latest" } : undefined }, createdAt: new Date().toISOString() });
+        await saveEntry({ id: makeId(), command: clean, intent: "getWallet", result: { tool: "getWallet", status: userId ? "READY" : "NOT_CONNECTED", message: userId ? "Latest SOL bridge:" : "Sign in first.", data: userId ? { bridgeTrack: "latest" } : {} }, createdAt: new Date().toISOString() });
         return;
       }
       const solCmd = parseSolCommand(clean);
@@ -148,7 +148,7 @@ export function Terminal({ tryCommand }: { tryCommand?: { command: string; nonce
         }
         const startedAt = new Date().toISOString();
         const out = await bridgeSol({ data: { amountSol: solCmd.amountSol } }).catch((e: Error) => ({ ok: false, message: e.message }));
-        await saveEntry({ id: makeId(), command: clean, intent: "getWallet", result: { tool: "getWallet", status: out.ok ? "SUBMITTING" : "FAILED", message: out.ok ? `${out.message}\nLive status below. Type "bridge status" anytime to check again.` : out.message, data: out.ok ? { bridgeTrack: startedAt } : undefined }, createdAt: new Date().toISOString() });
+        await saveEntry({ id: makeId(), command: clean, intent: "getWallet", result: { tool: "getWallet", status: out.ok ? "SUBMITTING" : "FAILED", message: out.ok ? `${out.message}\nLive status below. Type "bridge status" anytime to check again.` : out.message, data: out.ok ? { bridgeTrack: startedAt } : {} }, createdAt: new Date().toISOString() });
         void queryClient.invalidateQueries({ queryKey: ["bank-wallet", userId] });
         return;
       }
