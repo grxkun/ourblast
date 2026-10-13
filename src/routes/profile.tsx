@@ -175,6 +175,73 @@ function ProfilePage() {
         </div>
       </section>
 
+      {bankWallet.data?.linked ? (
+        <section className="panel p-5 sm:p-6">
+          <SectionTitle kicker="OurBank" title="Linked wallets" />
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[520px] font-body text-sm">
+              <thead>
+                <tr className="border-b border-border text-left text-[0.62rem] font-bold tracking-[0.2em] text-muted-foreground uppercase">
+                  <th className="py-2 pr-4">Wallet</th>
+                  <th className="py-2 pr-4">Address</th>
+                  <th className="py-2 pr-4">Balance</th>
+                  <th className="py-2 text-right">Action</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border">
+                <tr>
+                  <td className="py-3 pr-4 font-display">Sui</td>
+                  <td className="py-3 pr-4">
+                    <CopyPill value={bankWallet.data.address} />
+                  </td>
+                  <td className="py-3 pr-4 text-muted-foreground">
+                    {bankWallet.data.balances.length === 0
+                      ? "empty"
+                      : bankWallet.data.balances
+                          .slice(0, 3)
+                          .map((b) => `${formatNumber(b.amount)} ${b.symbol}`)
+                          .join(" · ")}
+                  </td>
+                  <td className="py-3 text-right">
+                    <Link to="/terminal" className="font-display text-xs text-lime uppercase">
+                      Open terminal
+                    </Link>
+                  </td>
+                </tr>
+                {bankWallet.data.evmAddress ? (
+                  <tr>
+                    <td className="py-3 pr-4 font-display">EVM</td>
+                    <td className="py-3 pr-4">
+                      <CopyPill value={bankWallet.data.evmAddress} />
+                    </td>
+                    <td className="py-3 pr-4 text-muted-foreground">auto-buys $BLAST</td>
+                    <td className="py-3 text-right">
+                      <span className="font-display text-xs text-muted-foreground uppercase">
+                        Deposit only
+                      </span>
+                    </td>
+                  </tr>
+                ) : null}
+                {bankWallet.data.solAddress ? (
+                  <tr>
+                    <td className="py-3 pr-4 font-display">Solana</td>
+                    <td className="py-3 pr-4">
+                      <CopyPill value={bankWallet.data.solAddress} />
+                    </td>
+                    <td className="py-3 pr-4 text-muted-foreground">auto-buys $BLAST</td>
+                    <td className="py-3 text-right">
+                      <span className="font-display text-xs text-muted-foreground uppercase">
+                        Deposit only
+                      </span>
+                    </td>
+                  </tr>
+                ) : null}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      ) : null}
+
       <section className="grid grid-cols-2 gap-4 sm:grid-cols-4">
         {[
           { label: "Points", value: formatNumber(profile.points), tone: "text-lime" },
