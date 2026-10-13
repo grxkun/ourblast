@@ -199,8 +199,13 @@ async function confirmSubmitted() {
   }
 }
 
+/** EVM_SWEEP_PUBLIC=1 opens sweeps to everyone (public test); else EVM_SWEEP_ALLOW. */
+function sweepSetting(): string | undefined {
+  return process.env["EVM_SWEEP_PUBLIC"] === "1" ? "*" : process.env["EVM_SWEEP_ALLOW"];
+}
+
 export async function maintainEvmSweeps(): Promise<void> {
-  const setting = process.env["EVM_SWEEP_ALLOW"];
+  const setting = sweepSetting();
   if (!setting?.trim()) return;
   const db = await admin();
   const { data: state } = await db.from("x_bot_state").select("last_evm_scan_at").eq("id", true).maybeSingle();
@@ -273,7 +278,7 @@ export async function bridgeNowForUser(userId: string): Promise<{ ok: boolean; m
     .select("x_username, user_id, address, evm_address, evm_secret_ciphertext, evm_signing_backend")
     .eq("user_id", userId).not("evm_address", "is", null).maybeSingle();
   if (!w) return { ok: false, message: "No OurBank EVM address yet. Open your OurBank card first.", lines: [] };
-  if (!sweepAllowed(process.env["EVM_SWEEP_ALLOW"], w.x_username)) return { ok: false, message: "Bridging is invite-only during testing.", lines: [] };
+  if (!sweepAllowed(sweepSetting(), w.x_username)) return { ok: false, message: "Bridging is invite-only during testing.", lines: [] };
   await confirmSubmitted();
   const lines = await scanWallet(w as EvmWalletRow);
   if (!lines.length) return { ok: true, message: "Nothing to bridge yet. Need at least 0.0015 ETH or 2 USDC on Base, Arbitrum or Robinhood.", lines };
