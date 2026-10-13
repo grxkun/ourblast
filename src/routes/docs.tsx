@@ -385,7 +385,52 @@ function Docs() {
         </ul>
       </Block>
 
+      <Block id="links" kicker="Share" title="Shareable & deep links">
+        <p>
+          One link to hand to anyone. Open it on a phone or desktop, sign in, and the page walks
+          them through paying from their own chain.
+        </p>
+        <div className="overflow-x-auto rounded-xl border border-border">
+          <table className="w-full border-collapse text-left font-body text-sm">
+            <thead className="bg-secondary/40 text-foreground">
+              <tr>
+                <th className="px-4 py-2.5 font-semibold">Link</th>
+                <th className="px-4 py-2.5 font-semibold">Who it's for</th>
+                <th className="px-4 py-2.5 font-semibold">What happens</th>
+              </tr>
+            </thead>
+            <tbody className="align-top">
+              <tr className="border-t border-border">
+                <td className="px-4 py-2.5 break-all font-mono text-xs text-primary">https://ourblast.xyz/buy</td>
+                <td className="px-4 py-2.5">Everyone — desktop and in-wallet browsers</td>
+                <td className="px-4 py-2.5">Sign in, get your OurBank address, bridge from your chain with Mayan — the auto-swap buys $BLAST on arrival.</td>
+              </tr>
+              <tr className="border-t border-border">
+                <td className="px-4 py-2.5 break-all font-mono text-xs text-primary">https://ourblast.xyz/buy?usd=10</td>
+                <td className="px-4 py-2.5">Everyone — pick any amount (10, 25, 50, 100…)</td>
+                <td className="px-4 py-2.5">Same flow, with the USD amount pre-filled in the calculator; the amount is entered into the swap before paying.</td>
+              </tr>
+              <tr className="border-t border-border">
+                <td className="px-4 py-2.5 break-all font-mono text-xs text-primary">https://ourblast.xyz/terminal</td>
+                <td className="px-4 py-2.5">People who prefer chat</td>
+                <td className="px-4 py-2.5">Sign in with X, Google, MetaMask or Rabby and trade $BLAST by chat once SUI is in OurBank.</td>
+              </tr>
+              <tr className="border-t border-border">
+                <td className="px-4 py-2.5 break-all font-mono text-xs text-primary">https://trade.bluefin.io/swap/SUI-0x577a8addf60a34d4c705914ad066a3b28c3fc40d365ed0d9dfc408f29b4725d3::blast::BLAST</td>
+                <td className="px-4 py-2.5">Sui wallets that already hold SUI (Sui Wallet, Slingshot, Nightly…)</td>
+                <td className="px-4 py-2.5">Opens the $BLAST/SUI pool directly on Bluefin — no bridging, swap straight away.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <ul className="list-disc space-y-1.5 pl-5">
+          <li><strong className="text-foreground">In-wallet browsers:</strong> open <em>ourblast.xyz/buy</em> from MetaMask's or Phantom's built-in browser so the wallet connects in one tap.</li>
+          <li><strong className="text-foreground">Mins to remember:</strong> 0.1 SUI (or 1 USDC / 0.02 SOL) minimum to reach the auto-swap; 0.05 SUI stays behind for gas.</li>
+        </ul>
+      </Block>
+
       <Block id="evm-x" kicker="MetaMask / Rabby" title="Use @Ourblastbot from an EVM account">
+
         <p>
           Signed in with MetaMask or Rabby? Your OurBank wallet works on the site straight away. To
           also control it from X, link your X account once.
