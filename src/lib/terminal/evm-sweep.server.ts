@@ -108,10 +108,12 @@ async function ensureOrder(w: EvmWalletRow): Promise<string | null> {
   return data.id;
 }
 
-// The Mayan SDK crashes the edge runtime at startup, so automatic Mayan sweeps are
-// disabled until a REST-only route is built. Throwing here happens before any funds move.
-async function mayanTx(_chain: SweepChain, _w: EvmWalletRow, _token: string, _amount: bigint): Promise<{ to: Hex; data: Hex; value: bigint }> {
-  throw new Error("Automatic Base/Arbitrum sweep is temporarily paused.");
+// REST quote + viem encoding (the Mayan SDK crashes the edge runtime).
+async function mayanTx(chain: SweepChain, w: EvmWalletRow, token: string, amount: bigint): Promise<{ to: Hex; data: Hex; value: bigint }> {
+  const { fetchMayanQuote, fetchMayanRouterSwap, buildMayanTx } = await import("./mayan-evm");
+  const quote = await fetchMayanQuote(chain, token, amount);
+  const router = token === NATIVE ? await fetchMayanRouterSwap(quote) : undefined;
+  return buildMayanTx(quote, w.address, router);
 }
 
 async function relayTxs(w: EvmWalletRow, amount: bigint) {
