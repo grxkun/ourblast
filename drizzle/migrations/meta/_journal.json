@@ -85,6 +85,13 @@
       "when": 1791860122968,
       "tag": "0011_mjbdran_manual_sol",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1791905940457,
+      "tag": "0012_sol_intent_buy_blast",
+      "breakpoints": true
     }
   ]
 }

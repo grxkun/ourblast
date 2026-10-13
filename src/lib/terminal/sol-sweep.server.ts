@@ -116,7 +116,7 @@ async function intentsDeposit(token: "SOL" | "USDC", amount: bigint, w: SolWalle
 }
 
 /** Claims, sends and records one sweep. Never throws. */
-async function sweep(w: SolWalletRow, token: "SOL" | "USDC", amount: bigint) {
+async function sweep(w: SolWalletRow, token: "SOL" | "USDC", amount: bigint, buyBlast = false) {
   const db = await admin();
   const { data: claimed, error } = await db
     .from("sol_sweeps")
@@ -125,7 +125,7 @@ async function sweep(w: SolWalletRow, token: "SOL" | "USDC", amount: bigint) {
   if (error || !claimed) return; // another run holds this address (unique in-flight index)
   try {
     const { ensureOrder } = await import("./evm-sweep.server");
-    const orderId = await ensureOrder(w);
+    const orderId = await ensureOrder(w, buyBlast);
     const dep = await intentsDeposit(token, amount, w);
     await db.from("sol_sweeps").update({ deposit_address: dep, order_id: orderId }).eq("id", claimed.id);
     const { value } = await rpc<{ value: { blockhash: string } }>("getLatestBlockhash", [{ commitment: "confirmed" }]);
@@ -159,10 +159,10 @@ export async function confirmSubmitted() {
   }
 }
 
-async function scanWallet(w: SolWalletRow): Promise<{ token: string; amount: string } | null> {
+async function scanWallet(w: SolWalletRow, buyBlast = false): Promise<{ token: string; amount: string } | null> {
   const plan = planSolSweep(...Object.values(await balances(w.sol_address)) as [bigint, bigint]);
   if (!plan) return null;
-  await sweep(w, plan.token, plan.amount);
+  await sweep(w, plan.token, plan.amount, buyBlast);
   return { token: plan.token, amount: plan.token === "SOL" ? (Number(plan.amount) / 1e9).toFixed(4) : (Number(plan.amount) / 1e6).toFixed(2) };
 }
 
@@ -192,7 +192,7 @@ export async function maintainSolSweeps(): Promise<void> {
  * Manual "bridge now" for the signed-in user's own OurBank Solana address.
  * With amountSol, bridges only that much SOL and switches auto-sweep off so the rest stays on Solana.
  */
-export async function bridgeSolNowForUser(userId: string, amountSol?: number): Promise<{ ok: boolean; message: string }> {
+export async function bridgeSolNowForUser(userId: string, amountSol?: number, buyBlast = false): Promise<{ ok: boolean; message: string }> {
   const db = await admin();
   const { data: w } = await db.from("bank_wallets").select(COLS).eq("user_id", userId).not("sol_address", "is", null).maybeSingle();
   if (!w) return { ok: false, message: "No OurBank Solana address yet." };
@@ -207,16 +207,16 @@ export async function bridgeSolNowForUser(userId: string, amountSol?: number): P
     const left = lamports - want - SOL_FEE_LAMPORTS;
     if (left > 0n && left < 890_880n) return { ok: false, message: "Leave at least 0.0009 SOL behind (Solana rent), or bridge everything." };
     await db.from("bank_preferences").upsert({ user_id: userId, sol_auto_sweep: false }, { onConflict: "user_id" });
-    await sweep(w as SolWalletRow, "SOL", want);
+    await sweep(w as SolWalletRow, "SOL", want, buyBlast);
     return { ok: true, message: `Bridging ${amountSol} SOL. The rest stays on Solana (auto-bridge is now off).` };
   }
-  const r = await scanWallet(w as SolWalletRow);
+  const r = await scanWallet(w as SolWalletRow, buyBlast);
   if (!r) return { ok: true, message: "Nothing to bridge from Solana. Need 0.02 SOL, or 2 USDC plus 0.0025 SOL for fees." };
   return { ok: true, message: `Bridging ${r.amount} ${r.token} from Solana. SUI lands in ~1–5 min, then auto-buys $BLAST.` };
 }
 
 /** Review step: what a bridge would move and where, without moving anything. */
-export async function previewSolBridgeForUser(userId: string, amountSol?: number): Promise<{ ok: boolean; message: string }> {
+export async function previewSolBridgeForUser(userId: string, amountSol?: number, buyBlast = false): Promise<{ ok: boolean; message: string }> {
   const db = await admin();
   const { data: w } = await db.from("bank_wallets").select(COLS).eq("user_id", userId).not("sol_address", "is", null).maybeSingle();
   if (!w) return { ok: false, message: "No OurBank Solana address yet." };
@@ -225,7 +225,7 @@ export async function previewSolBridgeForUser(userId: string, amountSol?: number
   const { lamports } = await balances(w.sol_address as string);
   const bal = Number(lamports) / 1e9;
   const { data: pref } = await db.from("bank_preferences").select("deposit_action").eq("user_id", userId).maybeSingle();
-  const action = pref?.deposit_action === "keep_sui" ? "keep as SUI" : "auto-buy $BLAST";
+  const action = !buyBlast && pref?.deposit_action === "keep_sui" ? "keep as SUI" : "auto-buy $BLAST";
   const dest = `${w.address.slice(0, 6)}…${w.address.slice(-4)}`;
   let what: string;
   if (amountSol !== undefined) {
@@ -243,15 +243,15 @@ export async function previewSolBridgeForUser(userId: string, amountSol?: number
 }
 
 /** X mention "buy 0.03 sol of blast" / "bridge sol": resolve the OurBank wallet by X handle, then bridge. */
-export async function stageSolBridgeForXHandle(postId: string, handle: string, amountSol?: number): Promise<string> {
+export async function stageSolBridgeForXHandle(postId: string, handle: string, amountSol?: number, buyBlast = false): Promise<string> {
   const db = await admin();
   const { data: w } = await db.from("bank_wallets").select("user_id, sol_address").ilike("x_username", handle).maybeSingle();
   if (!w?.sol_address) return `@${handle} you don't have an OurBank Solana address yet. Sign in at https://ourblast.xyz/terminal to get one.`;
   if (!w.user_id) return `@${handle} sign in with X at https://ourblast.xyz/terminal once to activate SOL bridging.`;
-  const p = await previewSolBridgeForUser(w.user_id, amountSol);
+  const p = await previewSolBridgeForUser(w.user_id, amountSol, buyBlast);
   if (!p.ok) return `@${handle} ${p.message} Your SOL address: ${w.sol_address}`.slice(0, 280);
   const { error } = await db.from("sol_bridge_intents").insert({
-    x_username: handle.toLowerCase(), x_post_id: postId, amount_sol: amountSol ?? null,
+    x_username: handle.toLowerCase(), x_post_id: postId, amount_sol: amountSol ?? null, buy_blast: buyBlast,
     expires_at: new Date(Date.now() + SOL_INTENT_TTL_MS).toISOString(),
   });
   if (error?.code === "23505") return "";
@@ -268,7 +268,7 @@ export async function resolveSolBridgeReply(postId: string, handle: string, text
   const cancel = /^(?:cancel|no)\s+bridge$|^bridge\s+cancel$/.test(clean);
   if (!confirm && !cancel) return null;
   const db = await admin();
-  const { data: pending } = await db.from("sol_bridge_intents").select("id, x_post_id, amount_sol")
+  const { data: pending } = await db.from("sol_bridge_intents").select("id, x_post_id, amount_sol, buy_blast")
     .eq("x_username", handle.toLowerCase()).gt("expires_at", new Date().toISOString())
     .order("created_at", { ascending: false }).limit(1).maybeSingle();
   if (!pending || pending.x_post_id === postId) return `@${handle} no pending SOL bridge to ${confirm ? "confirm" : "cancel"} (they expire after 10 min).`;
@@ -276,16 +276,16 @@ export async function resolveSolBridgeReply(postId: string, handle: string, text
   const { data: taken } = await db.from("sol_bridge_intents").delete().eq("id", pending.id).select("id");
   if (!taken?.length) return "";
   if (cancel) return `@${handle} SOL bridge cancelled. Nothing moved.`;
-  return bridgeSolForXHandle(handle, pending.amount_sol === null ? undefined : Number(pending.amount_sol));
+  return bridgeSolForXHandle(handle, pending.amount_sol === null ? undefined : Number(pending.amount_sol), pending.buy_blast);
 }
 
-export async function bridgeSolForXHandle(handle: string, amountSol?: number): Promise<string> {
+export async function bridgeSolForXHandle(handle: string, amountSol?: number, buyBlast = false): Promise<string> {
   const db = await admin();
   const { data: w } = await db.from("bank_wallets").select("user_id, sol_address").ilike("x_username", handle).maybeSingle();
   if (!w?.sol_address) return `@${handle} you don't have an OurBank Solana address yet. Sign in at https://ourblast.xyz/terminal to get one.`;
   if (!w.user_id) return `@${handle} sign in with X at https://ourblast.xyz/terminal once to activate SOL bridging.`;
   try {
-    const r = await bridgeSolNowForUser(w.user_id, amountSol);
+    const r = await bridgeSolNowForUser(w.user_id, amountSol, buyBlast);
     if (!r.ok) return `@${handle} ${r.message} Your SOL address: ${w.sol_address}`.slice(0, 280);
     const { data: s } = await db.from("sol_sweeps").select("tx_sig").eq("sol_address", w.sol_address).order("created_at", { ascending: false }).limit(1).maybeSingle();
     const link = s?.tx_sig ? ` https://solscan.io/tx/${s.tx_sig}` : "";
