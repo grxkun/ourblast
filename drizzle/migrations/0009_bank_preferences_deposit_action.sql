@@ -1,0 +1,2 @@
+ALTER TABLE public.bank_preferences ADD COLUMN IF NOT EXISTS deposit_action text NOT NULL DEFAULT 'buy_blast';
+ALTER TABLE public.bank_preferences ADD CONSTRAINT bank_preferences_deposit_action_check CHECK (deposit_action IN ('buy_blast','keep_sui'));

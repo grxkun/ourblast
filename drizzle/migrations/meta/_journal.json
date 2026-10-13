@@ -64,6 +64,13 @@
       "when": 1791856831904,
       "tag": "0008_sol_sweeps",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1791858122196,
+      "tag": "0009_bank_preferences_deposit_action",
+      "breakpoints": true
     }
   ]
 }
