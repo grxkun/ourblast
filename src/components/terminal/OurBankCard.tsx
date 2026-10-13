@@ -360,6 +360,7 @@ function BankWalletPanel({ userId }: { userId: string }) {
             </Button>
             <ChainBackupButton chain="sol" exportable={Boolean(chainBal.data?.solExportable)} />
           </div>
+          {solTrack ? <BridgeTracker since={solTrack} /> : null}
         </div>
       ) : null}
       <div className="mt-2 flex flex-wrap gap-2">
