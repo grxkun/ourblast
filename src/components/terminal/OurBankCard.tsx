@@ -320,6 +320,16 @@ function BankWalletPanel({ userId }: { userId: string }) {
           </Button>
         </div>
       ) : null}
+      {w.solAddress ? (
+        <div className="mt-2 rounded-md border border-border p-2 text-xs">
+          <p className="text-muted-foreground">Solana address</p>
+          <p className="break-all text-foreground">{w.solAddress}</p>
+          <p className="mt-1 text-destructive">Coming soon — don't send funds yet. Auto-bridge to Sui isn't switched on for Solana.</p>
+          <Button className="mt-2" size="sm" variant="outline" onClick={() => { void navigator.clipboard.writeText(w.solAddress!); toast("Solana address copied"); }}>
+            Copy Solana address
+          </Button>
+        </div>
+      ) : null}
       <div className="mt-2 flex flex-wrap gap-2">
         <Button size="sm" variant="outline" onClick={() => { void navigator.clipboard.writeText(w.address); toast("Address copied"); }}>
           Copy address

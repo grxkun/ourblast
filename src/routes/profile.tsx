@@ -180,6 +180,15 @@ function ProfilePage() {
               <span className="text-muted-foreground">auto-buys $BLAST · testing</span>
             </p>
           ) : null}
+          {bankWallet.data?.linked && bankWallet.data.solAddress ? (
+            <p className="mt-2 inline-flex flex-wrap items-center gap-2 rounded-full border border-border px-3 py-1 font-body text-xs">
+              <span className="text-muted-foreground">OurBank SOL</span>
+              <span className="font-display text-sm text-foreground">
+                {bankWallet.data.solAddress.slice(0, 6)}…{bankWallet.data.solAddress.slice(-6)}
+              </span>
+              <span className="text-muted-foreground">coming soon</span>
+            </p>
+          ) : null}
         </div>
         <div className="flex flex-wrap gap-2">
           {staff.data?.staff ? (
