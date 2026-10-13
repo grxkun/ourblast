@@ -155,40 +155,6 @@ function ProfilePage() {
             </span>
           </p>
           ) : null}
-          {!profile.wallet_address && bankWallet.data?.linked ? (
-            <p className="mt-2 inline-flex flex-wrap items-center gap-2 rounded-full border border-border px-3 py-1 font-body text-xs">
-              <span className="text-muted-foreground">OurBank wallet</span>
-              <Link to="/terminal" className="font-display text-sm text-lime break-all">
-                {bankWallet.data.address.slice(0, 10)}…{bankWallet.data.address.slice(-6)}
-              </Link>
-              <span className="text-muted-foreground">
-                {bankWallet.data.balances.length === 0
-                  ? "empty"
-                  : bankWallet.data.balances
-                      .slice(0, 3)
-                      .map((b) => `${formatNumber(b.amount)} ${b.symbol}`)
-                      .join(" · ")}
-              </span>
-            </p>
-          ) : null}
-          {bankWallet.data?.linked && bankWallet.data.evmAddress ? (
-            <p className="mt-2 inline-flex flex-wrap items-center gap-2 rounded-full border border-border px-3 py-1 font-body text-xs">
-              <span className="text-muted-foreground">OurBank EVM</span>
-              <span className="font-display text-sm text-foreground">
-                {bankWallet.data.evmAddress.slice(0, 8)}…{bankWallet.data.evmAddress.slice(-6)}
-              </span>
-              <span className="text-muted-foreground">auto-buys $BLAST · testing</span>
-            </p>
-          ) : null}
-          {bankWallet.data?.linked && bankWallet.data.solAddress ? (
-            <p className="mt-2 inline-flex flex-wrap items-center gap-2 rounded-full border border-border px-3 py-1 font-body text-xs">
-              <span className="text-muted-foreground">OurBank SOL</span>
-              <span className="font-display text-sm text-foreground">
-                {bankWallet.data.solAddress.slice(0, 6)}…{bankWallet.data.solAddress.slice(-6)}
-              </span>
-              <span className="text-muted-foreground">auto-buys $BLAST</span>
-            </p>
-          ) : null}
         </div>
         <div className="flex flex-wrap gap-2">
           {staff.data?.staff ? (
@@ -208,6 +174,73 @@ function ProfilePage() {
           </button>
         </div>
       </section>
+
+      {bankWallet.data?.linked ? (
+        <section className="panel p-5 sm:p-6">
+          <SectionTitle kicker="OurBank" title="Linked wallets" />
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[520px] font-body text-sm">
+              <thead>
+                <tr className="border-b border-border text-left text-[0.62rem] font-bold tracking-[0.2em] text-muted-foreground uppercase">
+                  <th className="py-2 pr-4">Wallet</th>
+                  <th className="py-2 pr-4">Address</th>
+                  <th className="py-2 pr-4">Balance</th>
+                  <th className="py-2 text-right">Action</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border">
+                <tr>
+                  <td className="py-3 pr-4 font-display">Sui</td>
+                  <td className="py-3 pr-4">
+                    <CopyPill value={bankWallet.data.address} />
+                  </td>
+                  <td className="py-3 pr-4 text-muted-foreground">
+                    {bankWallet.data.balances.length === 0
+                      ? "empty"
+                      : bankWallet.data.balances
+                          .slice(0, 3)
+                          .map((b) => `${formatNumber(b.amount)} ${b.symbol}`)
+                          .join(" · ")}
+                  </td>
+                  <td className="py-3 text-right">
+                    <Link to="/terminal" className="font-display text-xs text-lime uppercase">
+                      Open terminal
+                    </Link>
+                  </td>
+                </tr>
+                {bankWallet.data.evmAddress ? (
+                  <tr>
+                    <td className="py-3 pr-4 font-display">EVM</td>
+                    <td className="py-3 pr-4">
+                      <CopyPill value={bankWallet.data.evmAddress} />
+                    </td>
+                    <td className="py-3 pr-4 text-muted-foreground">auto-buys $BLAST</td>
+                    <td className="py-3 text-right">
+                      <span className="font-display text-xs text-muted-foreground uppercase">
+                        Deposit only
+                      </span>
+                    </td>
+                  </tr>
+                ) : null}
+                {bankWallet.data.solAddress ? (
+                  <tr>
+                    <td className="py-3 pr-4 font-display">Solana</td>
+                    <td className="py-3 pr-4">
+                      <CopyPill value={bankWallet.data.solAddress} />
+                    </td>
+                    <td className="py-3 pr-4 text-muted-foreground">auto-buys $BLAST</td>
+                    <td className="py-3 text-right">
+                      <span className="font-display text-xs text-muted-foreground uppercase">
+                        Deposit only
+                      </span>
+                    </td>
+                  </tr>
+                ) : null}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      ) : null}
 
       <section className="grid grid-cols-2 gap-4 sm:grid-cols-4">
         {[
@@ -291,5 +324,34 @@ function ProfilePage() {
         )}
       </section>
     </div>
+  );
+}
+
+function CopyPill({ value }: { value: string }) {
+  const [copied, setCopied] = useState(false);
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(value);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 1500);
+    } catch {
+      setCopied(false);
+    }
+  };
+  return (
+    <button
+      type="button"
+      onClick={() => void copy()}
+      title={value}
+      aria-label="Copy address"
+      className="inline-flex max-w-full items-center gap-2 rounded-full border border-border px-3 py-1 font-body text-xs transition-transform hover:-translate-y-0.5"
+    >
+      <span className="truncate">
+        {value.slice(0, 8)}…{value.slice(-6)}
+      </span>
+      <span className="shrink-0 font-display text-[0.6rem] tracking-wide text-lime uppercase">
+        {copied ? "Copied" : "Copy"}
+      </span>
+    </button>
   );
 }
