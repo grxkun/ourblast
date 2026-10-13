@@ -275,6 +275,12 @@ async function runWalletJobs() {
     console.error(`EVM sweep failed: ${error instanceof Error ? error.message : "unknown"}`);
   }
   try {
+    const { maintainSolSweeps } = await import("./sol-sweep.server");
+    await maintainSolSweeps();
+  } catch (error) {
+    console.error(`SOL sweep failed: ${error instanceof Error ? error.message : "unknown"}`);
+  }
+  try {
     const { maintainCrossChainOrders } = await import("./crossChain.server");
     await maintainCrossChainOrders();
   } catch (error) {
