@@ -15,7 +15,15 @@ const PATTERNS = [
 ];
 
 export function parseSolCommand(text: string): SolCommand | null {
-  const clean = text.trim().replace(/\s+/g, " ");
+  // Tweets: drop @mentions, links, trailing punctuation and "on/in sui".
+  const clean = text
+    .replace(/@[a-z0-9_]{1,15}/gi, " ")
+    .replace(/https?:\/\/\S+/gi, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .replace(/[\s.,!?]+$/g, "")
+    .replace(/\s+(?:on|in|via)\s+sui$/i, "")
+    .trim();
   for (const re of PATTERNS) {
     const m = clean.match(re);
     if (!m) continue;

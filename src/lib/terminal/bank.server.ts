@@ -462,6 +462,13 @@ export async function handleBankMention(postId: string, username: string, text: 
   const choice = await resolvePendingChoice(postId, username, text);
   if (choice !== null) return choice;
   if (isBalanceRequest(text)) return balanceReply(username);
+  // SOL spends ("buy 0.03 sol of blast on sui", "bridge sol") run before Sui swaps.
+  const { parseSolCommand } = await import("./solCommand");
+  const solCmd = parseSolCommand(text);
+  if (solCmd) {
+    const { bridgeSolForXHandle } = await import("./sol-sweep.server");
+    return bridgeSolForXHandle(username, solCmd.amountSol);
+  }
   if (parseSwapCommand(text)) return handleSwapMention(postId, username, text);
   const transfer = await createBankTransferFromMention(postId, username, text);
   if (transfer !== null) return transfer;

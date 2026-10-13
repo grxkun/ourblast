@@ -214,3 +214,20 @@ export async function bridgeSolNowForUser(userId: string, amountSol?: number): P
   if (!r) return { ok: true, message: "Nothing to bridge from Solana. Need 0.02 SOL, or 2 USDC plus 0.0025 SOL for fees." };
   return { ok: true, message: `Bridging ${r.amount} ${r.token} from Solana. SUI lands in ~1–5 min, then auto-buys $BLAST.` };
 }
+
+/** X mention "buy 0.03 sol of blast" / "bridge sol": resolve the OurBank wallet by X handle, then bridge. */
+export async function bridgeSolForXHandle(handle: string, amountSol?: number): Promise<string> {
+  const db = await admin();
+  const { data: w } = await db.from("bank_wallets").select("user_id, sol_address").ilike("x_username", handle).maybeSingle();
+  if (!w?.sol_address) return `@${handle} you don't have an OurBank Solana address yet. Sign in at https://ourblast.xyz/terminal to get one.`;
+  if (!w.user_id) return `@${handle} sign in with X at https://ourblast.xyz/terminal once to activate SOL bridging.`;
+  try {
+    const r = await bridgeSolNowForUser(w.user_id, amountSol);
+    if (!r.ok) return `@${handle} ${r.message} Your SOL address: ${w.sol_address}`.slice(0, 280);
+    const { data: s } = await db.from("sol_sweeps").select("tx_sig").eq("sol_address", w.sol_address).order("created_at", { ascending: false }).limit(1).maybeSingle();
+    const link = s?.tx_sig ? ` https://solscan.io/tx/${s.tx_sig}` : "";
+    return `@${handle} ${r.message}${link} Track: ourblast.xyz/terminal ("bridge status")`.slice(0, 280);
+  } catch (e) {
+    return `@${handle} couldn't bridge right now: ${e instanceof Error ? e.message : "unknown error"}`.slice(0, 280);
+  }
+}
