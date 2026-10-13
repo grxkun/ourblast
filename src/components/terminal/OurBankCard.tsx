@@ -32,7 +32,7 @@ import {
   transferCoinChoices,
 } from "@/lib/terminal/bank.functions";
 import { describeRecipient } from "@/lib/terminal/bank";
-import { bridgeNow } from "@/lib/terminal/evm-sweep.functions";
+import { bridgeNow, bridgeSolNow } from "@/lib/terminal/evm-sweep.functions";
 
 const STATUS_LABEL: Record<string, string> = {
   PENDING_APPROVAL: "Awaiting your approval",
@@ -215,6 +215,12 @@ function BankWalletPanel({ userId }: { userId: string }) {
     onSuccess: (r) => { (r.ok ? toast.success : toast.error)(r.message, { description: r.lines.map((l) => `${l.chain} ${l.amount} ${l.token}: ${l.status}`).join(" · ") || undefined }); },
     onError: (e: Error) => toast.error(e.message),
   });
+  const doBridgeSol = useServerFn(bridgeSolNow);
+  const solBridgeRun = useMutation({
+    mutationFn: () => doBridgeSol(),
+    onSuccess: (r) => { (r.ok ? toast.success : toast.error)(r.message); },
+    onError: (e: Error) => toast.error(e.message),
+  });
   const wallet = useQuery({ queryKey: ["bank-wallet", userId], queryFn: () => get(), refetchInterval: 20_000 });
   const [showImport, setShowImport] = useState(false);
   const [keyInput, setKeyInput] = useState("");
@@ -324,10 +330,15 @@ function BankWalletPanel({ userId }: { userId: string }) {
         <div className="mt-2 rounded-md border border-border p-2 text-xs">
           <p className="text-muted-foreground">Solana address</p>
           <p className="break-all text-foreground">{w.solAddress}</p>
-          <p className="mt-1 text-destructive">Coming soon — don't send funds yet. Auto-bridge to Sui isn't switched on for Solana.</p>
-          <Button className="mt-2" size="sm" variant="outline" onClick={() => { void navigator.clipboard.writeText(w.solAddress!); toast("Solana address copied"); }}>
-            Copy Solana address
-          </Button>
+          <p className="mt-1 text-muted-foreground">Public beta — start small. Send only SOL or USDC on Solana (min 0.02 SOL, or 2 USDC plus 0.0025 SOL for fees). It bridges to your Sui wallet and auto-buys $BLAST. Other tokens may be lost.</p>
+          <div className="mt-2 flex flex-wrap gap-2">
+            <Button size="sm" variant="outline" onClick={() => { void navigator.clipboard.writeText(w.solAddress!); toast("Solana address copied"); }}>
+              Copy Solana address
+            </Button>
+            <Button size="sm" variant="outline" disabled={solBridgeRun.isPending} onClick={() => solBridgeRun.mutate()}>
+              {solBridgeRun.isPending ? "Bridging…" : "Bridge SOL to Sui now"}
+            </Button>
+          </div>
         </div>
       ) : null}
       <div className="mt-2 flex flex-wrap gap-2">

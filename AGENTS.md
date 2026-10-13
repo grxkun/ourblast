@@ -4,3 +4,4 @@
 - Each OurBank wallet gets one lazily-created EVM deposit address (bank-evm.server.ts), Turnkey-first with encrypted local fallback; never replaced once set — funds could be stranded.
 - OurBank EVM deposits are swept to the Sui wallet by evm-sweep.server.ts (Mayan; Robinhood hops to Arbitrum via Relay) and auto-bought via cross_chain_orders; gated by EVM_SWEEP_ALLOW and one in-flight sweep per address/chain/token so a deposit is never sent twice.
 - Each OurBank wallet gets one lazily-created Solana deposit address (bank-sol.server.ts), Turnkey-first with encrypted local fallback; never replaced once set — funds could be stranded. No Solana sweeper yet, so the UI says "don't send funds".
+- OurBank Solana deposits (SOL, USDC) are swept by sol-sweep.server.ts via NEAR Intents 1Click (no Solana SDK — hand-built legacy txs) into SUI on the Sui wallet, then auto-bought via cross_chain_orders; same gate as EVM sweeps, one in-flight sweep per address.
