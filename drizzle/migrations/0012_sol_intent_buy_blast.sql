@@ -1,0 +1,1 @@
+ALTER TABLE public.sol_bridge_intents ADD COLUMN IF NOT EXISTS buy_blast boolean NOT NULL DEFAULT false;

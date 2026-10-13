@@ -2064,6 +2064,7 @@ export type Database = {
       sol_bridge_intents: {
         Row: {
           amount_sol: number | null
+          buy_blast: boolean
           created_at: string
           expires_at: string
           id: string
@@ -2072,6 +2073,7 @@ export type Database = {
         }
         Insert: {
           amount_sol?: number | null
+          buy_blast?: boolean
           created_at?: string
           expires_at: string
           id?: string
@@ -2080,6 +2082,7 @@ export type Database = {
         }
         Update: {
           amount_sol?: number | null
+          buy_blast?: boolean
           created_at?: string
           expires_at?: string
           id?: string
