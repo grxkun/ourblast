@@ -67,7 +67,7 @@ export function UsdBuyCalculator() {
         <ul className="grid grid-cols-2 gap-2">
           {ASSETS.map((a) => (
             <li key={a.id} className="rounded-md border-2 border-border bg-background p-2 font-mono text-xs">
-              {prices[a.id] ? `${fmt(amount / prices[a.id])} ${a.label}` : `— ${a.label}`}
+              {prices[a.id] ? `${fmt(amount / (prices[a.id] ?? 1))} ${a.label}` : `— ${a.label}`}
             </li>
           ))}
         </ul>
