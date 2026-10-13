@@ -268,17 +268,21 @@ export async function runXMentionPoll(): Promise<{
 
 /** Cross-chain auto-swap and EVM deposit sweeps (no X posting). */
 async function runWalletJobs() {
-  try {
-    const { maintainEvmSweeps } = await import("./evm-sweep.server");
-    await maintainEvmSweeps();
-  } catch (error) {
-    console.error(`EVM sweep failed: ${error instanceof Error ? error.message : "unknown"}`);
-  }
-  try {
-    const { maintainSolSweeps } = await import("./sol-sweep.server");
-    await maintainSolSweeps();
-  } catch (error) {
-    console.error(`SOL sweep failed: ${error instanceof Error ? error.message : "unknown"}`);
+  // Deposits stay where they land until the user asks to bridge (terminal/X/card).
+  // Background sweeping is opt-in for the whole app via AUTO_SWEEP_BACKGROUND=1.
+  if (process.env["AUTO_SWEEP_BACKGROUND"] === "1") {
+    try {
+      const { maintainEvmSweeps } = await import("./evm-sweep.server");
+      await maintainEvmSweeps();
+    } catch (error) {
+      console.error(`EVM sweep failed: ${error instanceof Error ? error.message : "unknown"}`);
+    }
+    try {
+      const { maintainSolSweeps } = await import("./sol-sweep.server");
+      await maintainSolSweeps();
+    } catch (error) {
+      console.error(`SOL sweep failed: ${error instanceof Error ? error.message : "unknown"}`);
+    }
   }
   try {
     const { maintainCrossChainOrders } = await import("./crossChain.server");
