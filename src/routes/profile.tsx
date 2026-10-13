@@ -155,40 +155,6 @@ function ProfilePage() {
             </span>
           </p>
           ) : null}
-          {!profile.wallet_address && bankWallet.data?.linked ? (
-            <p className="mt-2 inline-flex flex-wrap items-center gap-2 rounded-full border border-border px-3 py-1 font-body text-xs">
-              <span className="text-muted-foreground">OurBank wallet</span>
-              <Link to="/terminal" className="font-display text-sm text-lime break-all">
-                {bankWallet.data.address.slice(0, 10)}…{bankWallet.data.address.slice(-6)}
-              </Link>
-              <span className="text-muted-foreground">
-                {bankWallet.data.balances.length === 0
-                  ? "empty"
-                  : bankWallet.data.balances
-                      .slice(0, 3)
-                      .map((b) => `${formatNumber(b.amount)} ${b.symbol}`)
-                      .join(" · ")}
-              </span>
-            </p>
-          ) : null}
-          {bankWallet.data?.linked && bankWallet.data.evmAddress ? (
-            <p className="mt-2 inline-flex flex-wrap items-center gap-2 rounded-full border border-border px-3 py-1 font-body text-xs">
-              <span className="text-muted-foreground">OurBank EVM</span>
-              <span className="font-display text-sm text-foreground">
-                {bankWallet.data.evmAddress.slice(0, 8)}…{bankWallet.data.evmAddress.slice(-6)}
-              </span>
-              <span className="text-muted-foreground">auto-buys $BLAST · testing</span>
-            </p>
-          ) : null}
-          {bankWallet.data?.linked && bankWallet.data.solAddress ? (
-            <p className="mt-2 inline-flex flex-wrap items-center gap-2 rounded-full border border-border px-3 py-1 font-body text-xs">
-              <span className="text-muted-foreground">OurBank SOL</span>
-              <span className="font-display text-sm text-foreground">
-                {bankWallet.data.solAddress.slice(0, 6)}…{bankWallet.data.solAddress.slice(-6)}
-              </span>
-              <span className="text-muted-foreground">auto-buys $BLAST</span>
-            </p>
-          ) : null}
         </div>
         <div className="flex flex-wrap gap-2">
           {staff.data?.staff ? (
