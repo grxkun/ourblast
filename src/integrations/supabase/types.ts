@@ -258,6 +258,10 @@ export type Database = {
         Row: {
           address: string
           created_at: string
+          evm_address: string | null
+          evm_secret_ciphertext: string | null
+          evm_signing_backend: string | null
+          evm_turnkey_wallet_id: string | null
           id: string
           secret_ciphertext: string | null
           signing_backend: string
@@ -270,6 +274,10 @@ export type Database = {
         Insert: {
           address: string
           created_at?: string
+          evm_address?: string | null
+          evm_secret_ciphertext?: string | null
+          evm_signing_backend?: string | null
+          evm_turnkey_wallet_id?: string | null
           id?: string
           secret_ciphertext?: string | null
           signing_backend?: string
@@ -282,6 +290,10 @@ export type Database = {
         Update: {
           address?: string
           created_at?: string
+          evm_address?: string | null
+          evm_secret_ciphertext?: string | null
+          evm_signing_backend?: string | null
+          evm_turnkey_wallet_id?: string | null
           id?: string
           secret_ciphertext?: string | null
           signing_backend?: string

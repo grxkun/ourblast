@@ -200,3 +200,24 @@ export async function signSuiTransaction(
   const publicKey = Buffer.from(publicKeyHex.replace(/^0x/, ""), "hex");
   return assembleSuiSignature(signature, publicKey);
 }
+
+/** Creates a fresh EVM (secp256k1) account inside a new Turnkey wallet. Same address on every EVM chain. */
+export async function createEvmWallet(name: string): Promise<{ walletId: string; address: string }> {
+  const result = await activity<{
+    createWalletResult?: { walletId: string; addresses: { address: string }[] };
+  }>("CREATE_WALLET", {
+    walletName: name,
+    accounts: [
+      {
+        curve: "CURVE_SECP256K1",
+        pathFormat: "PATH_FORMAT_BIP32",
+        path: "m/44'/60'/0'/0/0",
+        addressFormat: "ADDRESS_FORMAT_ETHEREUM",
+      },
+    ],
+  });
+  const wallet = result.createWalletResult;
+  const address = wallet?.addresses[0]?.address;
+  if (!wallet || !address) throw new Error("Turnkey did not return an EVM address.");
+  return { walletId: wallet.walletId, address: address.toLowerCase() };
+}

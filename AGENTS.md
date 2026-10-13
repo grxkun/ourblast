@@ -1,3 +1,4 @@
 - Production builds read public backend values from vite.config define fallbacks — .env is gitignored and missing in deploys.
 - OTC escrow uses one bot-held OurBank-style wallet per deal (handle `escrow-<postId>`), gas sponsored by the bot, settled/refunded by the X poller — no Move package needed (deploys are forbidden).
 - Cross-chain auto-swap: orders live in cross_chain_orders; the X poll loop swaps only SUI above the order's baseline balance, claiming pending→swapping atomically so a deposit is never swapped twice.
+- Each OurBank wallet gets one lazily-created EVM deposit address (bank-evm.server.ts), Turnkey-first with encrypted local fallback; never replaced once set — funds could be stranded.
