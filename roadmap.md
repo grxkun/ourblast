@@ -6,3 +6,5 @@
 - [ ] Update GitHub repo — blocked: needs GitHub connected in Lovable (syncs automatically after)
 
 - [x] Cross-chain buy: HyperEVM + Monad added; NEAR (NEAR Intents) and Robinhood Chain (Relay → Arbitrum/Base) linked as alternate routes
+- [x] Open EVM deposit bridge + auto-buy to all users (public test)
+- [ ] Wire cross-chain buy into X bot — blocked: waiting until @Ourblastbot X is active again
