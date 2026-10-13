@@ -33,6 +33,7 @@ import {
 } from "@/lib/terminal/bank.functions";
 import { describeRecipient } from "@/lib/terminal/bank";
 import { bridgeNow, bridgeSolNow } from "@/lib/terminal/evm-sweep.functions";
+import { ChainBackupButton, DepositActionToggle, evmSummary, solSummary, useChainBalances } from "@/components/terminal/ChainWallets";
 
 const STATUS_LABEL: Record<string, string> = {
   PENDING_APPROVAL: "Awaiting your approval",
@@ -221,6 +222,7 @@ function BankWalletPanel({ userId }: { userId: string }) {
     onSuccess: (r) => { (r.ok ? toast.success : toast.error)(r.message); },
     onError: (e: Error) => toast.error(e.message),
   });
+  const chainBal = useChainBalances(userId);
   const wallet = useQuery({ queryKey: ["bank-wallet", userId], queryFn: () => get(), refetchInterval: 20_000 });
   const [showImport, setShowImport] = useState(false);
   const [keyInput, setKeyInput] = useState("");
@@ -316,7 +318,8 @@ function BankWalletPanel({ userId }: { userId: string }) {
         <div className="mt-2 rounded-md border border-border p-2 text-xs">
           <p className="text-muted-foreground">EVM address (Base, Arbitrum, Ethereum, Robinhood Chain)</p>
           <p className="break-all text-foreground">{w.evmAddress}</p>
-          <p className="mt-1 text-muted-foreground">Send ETH (min 0.0015) on Base, Arbitrum or Robinhood Chain, or USDC (min 2) on Base or Arbitrum. It moves to your Sui wallet and buys $BLAST automatically (~20 min). 0.0003 ETH stays behind for fees.</p>
+          <p className="mt-1 text-foreground">Balance: {evmSummary(chainBal.data)}</p>
+          <p className="mt-1 text-muted-foreground">Send ETH (min 0.0015) on Base, Arbitrum or Robinhood Chain, or USDC (min 2) on Base or Arbitrum. It moves to your Sui wallet (~20 min), then auto-buys $BLAST or stays as SUI — your choice below. 0.0003 ETH stays behind for fees.</p>
           <p className="mt-1 text-destructive">Public beta — start small. Only ETH or USDC on the chains above; other tokens or chains may be lost.</p>
           <Button className="mt-2" size="sm" variant="outline" onClick={() => { void navigator.clipboard.writeText(w.evmAddress!); toast("EVM address copied"); }}>
             Copy EVM address
@@ -324,13 +327,16 @@ function BankWalletPanel({ userId }: { userId: string }) {
           <Button className="mt-2 ml-2" size="sm" disabled={bridgeRun.isPending} onClick={() => bridgeRun.mutate()}>
             {bridgeRun.isPending ? "Bridging…" : "Bridge to Sui now"}
           </Button>
+          <span className="mt-2 ml-2 inline-block"><ChainBackupButton chain="evm" exportable={Boolean(chainBal.data?.evmExportable)} /></span>
         </div>
       ) : null}
+      {w.evmAddress || w.solAddress ? <div className="mt-2"><DepositActionToggle userId={userId} /></div> : null}
       {w.solAddress ? (
         <div className="mt-2 rounded-md border border-border p-2 text-xs">
           <p className="text-muted-foreground">Solana address</p>
           <p className="break-all text-foreground">{w.solAddress}</p>
-          <p className="mt-1 text-muted-foreground">Public beta — start small. Send only SOL or USDC on Solana (min 0.02 SOL, or 2 USDC plus 0.0025 SOL for fees). It bridges to your Sui wallet and auto-buys $BLAST. Other tokens may be lost.</p>
+          <p className="mt-1 text-foreground">Balance: {solSummary(chainBal.data)}</p>
+          <p className="mt-1 text-muted-foreground">Public beta — start small. Send only SOL or USDC on Solana (min 0.02 SOL, or 2 USDC plus 0.0025 SOL for fees). It bridges to your Sui wallet, then auto-buys $BLAST or stays as SUI — your choice below. Other tokens may be lost.</p>
           <div className="mt-2 flex flex-wrap gap-2">
             <Button size="sm" variant="outline" onClick={() => { void navigator.clipboard.writeText(w.solAddress!); toast("Solana address copied"); }}>
               Copy Solana address
@@ -338,6 +344,7 @@ function BankWalletPanel({ userId }: { userId: string }) {
             <Button size="sm" variant="outline" disabled={solBridgeRun.isPending} onClick={() => solBridgeRun.mutate()}>
               {solBridgeRun.isPending ? "Bridging…" : "Bridge SOL to Sui now"}
             </Button>
+            <ChainBackupButton chain="sol" exportable={Boolean(chainBal.data?.solExportable)} />
           </div>
         </div>
       ) : null}

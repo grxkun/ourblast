@@ -13,6 +13,7 @@ import { formatNumber, playerAvatarSeed, playerLabel, timeAgo } from "@/lib/blas
 import { fetchSuiBalance, formatSui } from "@/lib/sui-balance";
 import { amIStaff } from "@/lib/admin.functions";
 import { getMyBankWallet } from "@/lib/terminal/bank.functions";
+import { ChainBackupButton, DepositActionToggle, evmSummary, solSummary, useChainBalances } from "@/components/terminal/ChainWallets";
 
 export const Route = createFileRoute("/profile")({
   head: () => ({
@@ -55,6 +56,8 @@ function ProfilePage() {
     enabled: Boolean(userId) && !profile?.wallet_address,
     queryFn: () => bankWalletFn({}),
   });
+
+  const chainBal = useChainBalances(userId ?? "");
 
   const balance = useQuery({
     queryKey: ["sui-balance", profile?.wallet_address],
@@ -214,11 +217,9 @@ function ProfilePage() {
                     <td className="py-3 pr-4">
                       <CopyPill value={bankWallet.data.evmAddress} />
                     </td>
-                    <td className="py-3 pr-4 text-muted-foreground">auto-buys $BLAST</td>
+                    <td className="py-3 pr-4 text-muted-foreground">{evmSummary(chainBal.data)}</td>
                     <td className="py-3 text-right">
-                      <span className="font-display text-xs text-muted-foreground uppercase">
-                        Deposit only
-                      </span>
+                      <ChainBackupButton chain="evm" exportable={Boolean(chainBal.data?.evmExportable)} />
                     </td>
                   </tr>
                 ) : null}
@@ -228,17 +229,16 @@ function ProfilePage() {
                     <td className="py-3 pr-4">
                       <CopyPill value={bankWallet.data.solAddress} />
                     </td>
-                    <td className="py-3 pr-4 text-muted-foreground">auto-buys $BLAST</td>
+                    <td className="py-3 pr-4 text-muted-foreground">{solSummary(chainBal.data)}</td>
                     <td className="py-3 text-right">
-                      <span className="font-display text-xs text-muted-foreground uppercase">
-                        Deposit only
-                      </span>
+                      <ChainBackupButton chain="sol" exportable={Boolean(chainBal.data?.solExportable)} />
                     </td>
                   </tr>
                 ) : null}
               </tbody>
             </table>
           </div>
+          {userId ? <div className="mt-4"><DepositActionToggle userId={userId} /></div> : null}
         </section>
       ) : null}
 
