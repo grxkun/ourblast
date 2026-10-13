@@ -36,8 +36,8 @@ function loadMayan(): Promise<void> {
   });
 }
 
-export function CrossChainBuy({ blastUrl }: { blastUrl: string }) {
-  const [open, setOpen] = useState(false);
+export function CrossChainBuy({ blastUrl, defaultOpen = false }: { blastUrl: string; defaultOpen?: boolean }) {
+  const [open, setOpen] = useState(defaultOpen);
   const [state, setState] = useState<"idle" | "loading" | "ready" | "error">("idle");
   const mounted = useRef(false);
 

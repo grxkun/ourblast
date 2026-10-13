@@ -14,6 +14,7 @@ import { Route as AdminRouteImport } from './routes/admin'
 import { Route as ArcadeRouteImport } from './routes/arcade'
 import { Route as BuildRouteImport } from './routes/build'
 import { Route as BuildersRouteImport } from './routes/builders'
+import { Route as BuyRouteImport } from './routes/buy'
 import { Route as ChatRouteImport } from './routes/chat'
 import { Route as CommunityCityRouteImport } from './routes/community-city'
 import { Route as CreatorFeesRouteImport } from './routes/creator-fees'
@@ -64,6 +65,11 @@ const BuildRoute = BuildRouteImport.update({
 const BuildersRoute = BuildersRouteImport.update({
   id: '/builders',
   path: '/builders',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const BuyRoute = BuyRouteImport.update({
+  id: '/buy',
+  path: '/buy',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ChatRoute = ChatRouteImport.update({
@@ -204,6 +210,7 @@ export interface FileRoutesByFullPath {
   '/arcade': typeof ArcadeRoute
   '/build': typeof BuildRoute
   '/builders': typeof BuildersRoute
+  '/buy': typeof BuyRoute
   '/chat': typeof ChatRoute
   '/community-city': typeof CommunityCityRoute
   '/creator-fees': typeof CreatorFeesRoute
@@ -237,6 +244,7 @@ export interface FileRoutesByTo {
   '/arcade': typeof ArcadeRoute
   '/build': typeof BuildRoute
   '/builders': typeof BuildersRoute
+  '/buy': typeof BuyRoute
   '/chat': typeof ChatRoute
   '/community-city': typeof CommunityCityRoute
   '/creator-fees': typeof CreatorFeesRoute
@@ -271,6 +279,7 @@ export interface FileRoutesById {
   '/arcade': typeof ArcadeRoute
   '/build': typeof BuildRoute
   '/builders': typeof BuildersRoute
+  '/buy': typeof BuyRoute
   '/chat': typeof ChatRoute
   '/community-city': typeof CommunityCityRoute
   '/creator-fees': typeof CreatorFeesRoute
@@ -306,6 +315,7 @@ export interface FileRouteTypes {
     | '/arcade'
     | '/build'
     | '/builders'
+    | '/buy'
     | '/chat'
     | '/community-city'
     | '/creator-fees'
@@ -339,6 +349,7 @@ export interface FileRouteTypes {
     | '/arcade'
     | '/build'
     | '/builders'
+    | '/buy'
     | '/chat'
     | '/community-city'
     | '/creator-fees'
@@ -372,6 +383,7 @@ export interface FileRouteTypes {
     | '/arcade'
     | '/build'
     | '/builders'
+    | '/buy'
     | '/chat'
     | '/community-city'
     | '/creator-fees'
@@ -406,6 +418,7 @@ export interface RootRouteChildren {
   ArcadeRoute: typeof ArcadeRoute
   BuildRoute: typeof BuildRoute
   BuildersRoute: typeof BuildersRoute
+  BuyRoute: typeof BuyRoute
   ChatRoute: typeof ChatRoute
   CommunityCityRoute: typeof CommunityCityRoute
   CreatorFeesRoute: typeof CreatorFeesRoute
@@ -469,6 +482,13 @@ declare module '@tanstack/react-router' {
       path: '/builders'
       fullPath: '/builders'
       preLoaderRoute: typeof BuildersRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/buy': {
+      id: '/buy'
+      path: '/buy'
+      fullPath: '/buy'
+      preLoaderRoute: typeof BuyRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/chat': {
@@ -662,6 +682,7 @@ const rootRouteChildren: RootRouteChildren = {
   ArcadeRoute: ArcadeRoute,
   BuildRoute: BuildRoute,
   BuildersRoute: BuildersRoute,
+  BuyRoute: BuyRoute,
   ChatRoute: ChatRoute,
   CommunityCityRoute: CommunityCityRoute,
   CreatorFeesRoute: CreatorFeesRoute,
