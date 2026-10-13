@@ -1,0 +1,1 @@
+ALTER TABLE public.bank_preferences ADD COLUMN IF NOT EXISTS sol_auto_sweep boolean NOT NULL DEFAULT true;

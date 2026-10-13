@@ -71,6 +71,13 @@
       "when": 1791858122196,
       "tag": "0009_bank_preferences_deposit_action",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1791860008855,
+      "tag": "0010_bank_preferences_sol_auto_sweep",
+      "breakpoints": true
     }
   ]
 }
