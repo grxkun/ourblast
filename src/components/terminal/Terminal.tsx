@@ -19,6 +19,8 @@ import { runBankCommand } from "@/lib/terminal/bank.functions";
 import { launchFromTerminal } from "@/lib/terminal/xLauncher.functions";
 import { bridgeNow, bridgeSolNow, previewSolBridge } from "@/lib/terminal/evm-sweep.functions";
 import { parseSolCommand } from "@/lib/terminal/solCommand";
+import { parseFundWith } from "@/lib/terminal/fundedLaunch";
+import { resolveFundedLaunchTerminal, stageFundedLaunchTerminal } from "@/lib/terminal/fundedLaunch.functions";
 import { parseBankCommand, parseSwapCommand } from "@/lib/terminal/bank";
 import { useBankApprovals } from "./useBankApprovals";
 import type { LaunchConfiguration, TerminalEntry, TerminalIntentName, TerminalStatus } from "@/lib/terminal/types";
@@ -54,6 +56,9 @@ export function Terminal({ tryCommand }: { tryCommand?: { command: string; nonce
   const bridge = useServerFn(bridgeNow);
   const bridgeSol = useServerFn(bridgeSolNow);
   const previewSol = useServerFn(previewSolBridge);
+  const stageFunded = useServerFn(stageFundedLaunchTerminal);
+  const resolveFunded = useServerFn(resolveFundedLaunchTerminal);
+  const pendingFunded = useRef<string | null>(null);
   // SOL bridge waiting for "confirm" (10 min).
   const pendingSol = useRef<{ amountSol?: number | undefined; buyBlast: boolean; until: number } | null>(null);
   const [launching, setLaunching] = useState(false);
@@ -142,6 +147,27 @@ export function Terminal({ tryCommand }: { tryCommand?: { command: string; nonce
       if (/^\s*(?:bridge|sol)\s+status\s*$/i.test(clean)) {
         await saveEntry({ id: makeId(), command: clean, intent: "getWallet", result: { tool: "getWallet", status: userId ? "READY" : "NOT_CONNECTED", message: userId ? "Latest SOL bridge:" : "Sign in first.", data: userId ? { bridgeTrack: "latest" } : {} }, createdAt: new Date().toISOString() });
         return;
+      }
+      // "launch $MOON on suipump with 0.1 sol|eth|bnb": review, then bridge → launch.
+      if (pendingFunded.current && /^\s*(?:confirm|yes|confirm launch|cancel|no|cancel launch)\s*$/i.test(clean)) {
+        const id = pendingFunded.current;
+        pendingFunded.current = null;
+        const out = await resolveFunded({ data: { id, confirm: !/cancel|no/i.test(clean) } }).catch((e: Error) => ({ ok: false, message: e.message, link: undefined }));
+        const link = "link" in out && out.link ? `\n${out.link}` : "";
+        await saveEntry({ id: makeId(), command: clean, intent: "launchToken", result: { tool: "launchToken", status: out.ok ? (/cancel/i.test(clean) ? "READY" : "SUBMITTING") : "FAILED", message: `${out.message}${link}` }, createdAt: new Date().toISOString() });
+        return;
+      }
+      if (parseFundWith(clean) && /^\s*(?:launch|deploy|create|mint)\b/i.test(clean)) {
+        if (!userId) {
+          await saveEntry({ id: makeId(), command: clean, intent: "launchToken", result: { tool: "launchToken", status: "NOT_CONNECTED", message: "Sign in first to launch with SOL, ETH or BNB." }, createdAt: new Date().toISOString() });
+          return;
+        }
+        const review = await stageFunded({ data: { text: clean } }).catch((e: Error) => ({ ok: false, message: e.message, id: undefined }));
+        if (review) {
+          pendingFunded.current = review.ok && review.id ? review.id : null;
+          await saveEntry({ id: makeId(), command: clean, intent: "launchToken", result: { tool: "launchToken", status: review.ok ? "READY" : "FAILED", message: review.ok ? `${review.message}\nType "confirm" to start, or "cancel". Nothing moves until you confirm.` : review.message }, createdAt: new Date().toISOString() });
+          return;
+        }
       }
       const solCmd = parseSolCommand(clean);
       if (solCmd) {
