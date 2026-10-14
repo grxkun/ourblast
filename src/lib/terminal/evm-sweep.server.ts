@@ -14,7 +14,7 @@ import {
 import { privateKeyToAccount } from "viem/accounts";
 
 import { decryptConnectionKey } from "@/lib/connection-key.server";
-import { ethSweepAmount, NATIVE, SWEEP_CHAINS, sweepAllowed, usdcSweepAmount, type SweepChain } from "./evm-sweep";
+import { ethSweepAmount, NATIVE, SWEEP_CHAINS, sweepAllowed, usdcSweepAmount, type SweepChain, type SweepToken } from "./evm-sweep";
 
 /**
  * Phase 3 of multi-chain OurBank: moves ETH/USDC that lands on a user's OurBank
@@ -32,7 +32,7 @@ async function admin() {
 function client(chain: SweepChain) {
   const c = SWEEP_CHAINS[chain];
   return createPublicClient({
-    chain: defineChain({ id: c.id, name: chain, nativeCurrency: { name: "Ether", symbol: "ETH", decimals: 18 }, rpcUrls: { default: { http: [c.rpc] } } }),
+    chain: defineChain({ id: c.id, name: chain, nativeCurrency: { name: c.native, symbol: c.native, decimals: 18 }, rpcUrls: { default: { http: [c.rpc] } } }),
     transport: http(c.rpc, { timeout: 15_000 }),
   });
 }
@@ -144,8 +144,32 @@ async function relayTxs(w: EvmWalletRow, amount: bigint) {
   return txs.map((t) => ({ to: t.to as Hex, data: t.data as Hex, value: BigInt(t.value ?? "0") }));
 }
 
+/** NEAR Intents 1Click: quote native BNB → SUI and return the BSC deposit address to pay. */
+async function intentsBnbDeposit(w: EvmWalletRow, amount: bigint): Promise<Hex> {
+  const headers: Record<string, string> = { "content-type": "application/json" };
+  const jwt = process.env["ONECLICK_JWT"];
+  if (jwt) headers["authorization"] = `Bearer ${jwt}`;
+  const res = await fetch("https://1click.chaindefuser.com/v0/quote", {
+    method: "POST",
+    headers,
+    body: JSON.stringify({
+      dry: false, swapType: "EXACT_INPUT", slippageTolerance: 300,
+      originAsset: "nep245:v2_1.omni.hot.tg:56_11111111111111111111", depositType: "ORIGIN_CHAIN", amount: amount.toString(),
+      destinationAsset: "nep141:sui.omft.near", recipient: w.address, recipientType: "DESTINATION_CHAIN",
+      refundTo: w.evm_address, refundType: "ORIGIN_CHAIN",
+      deadline: new Date(Date.now() + 3_600_000).toISOString(),
+    }),
+    signal: AbortSignal.timeout(20_000),
+  });
+  const json = (await res.json()) as { message?: string; quote?: { depositAddress?: string } };
+  const dep = json.quote?.depositAddress;
+  if (!res.ok || !dep) throw new Error(`NEAR Intents quote failed: ${json.message ?? res.status}`);
+  if (!/^0x[0-9a-fA-F]{40}$/.test(dep)) throw new Error("NEAR Intents returned a bad deposit address.");
+  return dep as Hex;
+}
+
 /** Claims, sends and records one sweep. Never throws. */
-async function sweep(chain: SweepChain, w: EvmWalletRow, token: "ETH" | "USDC", amount: bigint) {
+async function sweep(chain: SweepChain, w: EvmWalletRow, token: SweepToken, amount: bigint) {
   const db = await admin();
   const route = SWEEP_CHAINS[chain].route;
   const { data: claimed, error } = await db
@@ -163,6 +187,10 @@ async function sweep(chain: SweepChain, w: EvmWalletRow, token: "ETH" | "USDC", 
       if (!txs.length) throw new Error("Relay returned no transaction.");
       for (const t of txs) hash = await sendTx(chain, w, t);
       hash = hash!;
+    } else if (route === "intents") {
+      orderId = await ensureOrder(w);
+      const to = await intentsBnbDeposit(w, amount);
+      hash = await sendTx(chain, w, { to, value: amount });
     } else {
       orderId = await ensureOrder(w);
       const usdc = SWEEP_CHAINS[chain].usdc!;
@@ -227,7 +255,7 @@ export async function maintainEvmSweeps(): Promise<void> {
   }
 }
 
-export interface ManualBridgeLine { chain: SweepChain; token: "ETH" | "USDC"; amount: string; status: string; txHash: string | null; error: string | null }
+export interface ManualBridgeLine { chain: SweepChain; token: SweepToken; amount: string; status: string; txHash: string | null; error: string | null }
 
 /** Checks every chain for one wallet and sweeps what is eligible. Returns what happened per chain. */
 async function scanWallet(w: EvmWalletRow): Promise<ManualBridgeLine[]> {
@@ -238,7 +266,7 @@ async function scanWallet(w: EvmWalletRow): Promise<ManualBridgeLine[]> {
       const pc = client(chain);
       const eth = await pc.getBalance({ address: w.evm_address as Hex });
       const usdcAddr = SWEEP_CHAINS[chain].usdc;
-      let token: "ETH" | "USDC" | null = null;
+      let token: SweepToken | null = null;
       let amount = 0n;
       if (usdcAddr) {
         const usdc = await pc.readContract({ address: usdcAddr as Hex, abi: erc20Abi, functionName: "balanceOf", args: [w.evm_address as Hex] });
@@ -246,8 +274,9 @@ async function scanWallet(w: EvmWalletRow): Promise<ManualBridgeLine[]> {
         if (u.amount > 0n) { token = "USDC"; amount = u.amount; }
       }
       if (!token) {
-        const e = ethSweepAmount(eth);
-        if (e > 0n) { token = "ETH"; amount = e; }
+        const native = SWEEP_CHAINS[chain].native;
+        const e = ethSweepAmount(eth, native);
+        if (e > 0n) { token = native; amount = e; }
       }
       if (!token) continue;
       const startedAt = new Date().toISOString();
@@ -260,7 +289,7 @@ async function scanWallet(w: EvmWalletRow): Promise<ManualBridgeLine[]> {
       const fresh = row && row.created_at >= startedAt;
       out.push({
         chain, token,
-        amount: token === "ETH" ? (Number(amount) / 1e18).toFixed(6) : (Number(amount) / 1e6).toFixed(2),
+        amount: token !== "USDC" ? (Number(amount) / 1e18).toFixed(6) : (Number(amount) / 1e6).toFixed(2),
         status: fresh ? row.status : "already_in_flight",
         txHash: fresh ? row.tx_hash : null,
         error: fresh ? row.error : null,
@@ -284,6 +313,6 @@ export async function bridgeNowForUser(userId: string): Promise<{ ok: boolean; m
   if (!sweepAllowed(sweepSetting(), w.x_username)) return { ok: false, message: "Bridging is invite-only during testing.", lines: [] };
   await confirmSubmitted();
   const lines = await scanWallet(w as EvmWalletRow);
-  if (!lines.length) return { ok: true, message: "Nothing to bridge yet. Need at least 0.0015 ETH or 2 USDC on Base, Arbitrum or Robinhood.", lines };
+  if (!lines.length) return { ok: true, message: "Nothing to bridge yet. Need at least 0.0015 ETH or 2 USDC on Base, Arbitrum or Robinhood, or 0.01 BNB on BNB Chain.", lines };
   return { ok: true, message: "Bridge started. SUI lands in ~20 min, then auto-buys $BLAST.", lines };
 }

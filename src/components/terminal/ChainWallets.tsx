@@ -15,7 +15,7 @@ export function useChainBalances(userId: string) {
 /** One-line summary of the EVM/Solana deposit balances. */
 export function evmSummary(b: ReturnType<typeof useChainBalances>["data"]) {
   const parts = (b?.evm ?? []).flatMap((c) => [
-    c.eth > 0 ? `${c.eth.toFixed(5)} ETH (${c.chain})` : null,
+    c.eth > 0 ? `${c.eth.toFixed(5)} ${c.native ?? "ETH"} (${c.chain === "bsc" ? "BNB Chain" : c.chain})` : null,
     c.usdc ? `${c.usdc.toFixed(2)} USDC (${c.chain})` : null,
   ]).filter(Boolean);
   return b ? (parts.length ? parts.join(" · ") : "empty") : "…";

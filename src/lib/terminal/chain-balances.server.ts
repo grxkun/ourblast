@@ -6,7 +6,7 @@ import { createPublicClient, erc20Abi, http, type Hex } from "viem";
 import { SWEEP_CHAINS, type SweepChain } from "./evm-sweep";
 import { SOL_USDC_MINT } from "./sol-sweep";
 
-export interface ChainBalance { chain: string; eth: number; usdc: number | null }
+export interface ChainBalance { chain: string; eth: number; usdc: number | null; native: "ETH" | "BNB" }
 
 export async function evmBalances(address: string): Promise<ChainBalance[]> {
   return Promise.all(
@@ -17,7 +17,7 @@ export async function evmBalances(address: string): Promise<ChainBalance[]> {
       const usdc = c.usdc
         ? await pc.readContract({ address: c.usdc as Hex, abi: erc20Abi, functionName: "balanceOf", args: [address as Hex] }).catch(() => 0n)
         : null;
-      return { chain, eth: Number(eth) / 1e18, usdc: usdc === null ? null : Number(usdc) / 1e6 };
+      return { chain, native: c.native, eth: Number(eth) / 1e18, usdc: usdc === null ? null : Number(usdc) / 1e6 };
     }),
   );
 }
