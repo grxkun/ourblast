@@ -209,6 +209,22 @@ function Docs() {
         <p>Open the OurBank card in the terminal to create your wallet, see balances and top up.</p>
         <Cmd>show my wallet</Cmd>
         <Cmd>my balances</Cmd>
+        <p>
+          Your OurBank also has a permanent EVM address (works on Ethereum, Base, Arbitrum and BNB
+          Chain) and a permanent Solana address. Deposits sit there untouched — nothing is bridged
+          until you ask. Bridge any amount you want:
+        </p>
+        <Cmd>bridge 10 sol</Cmd>
+        <Cmd>{`${BOT_HANDLE} buy 0.03 sol of blast on sui`}</Cmd>
+        <ul className="list-disc space-y-1.5 pl-5">
+          <li>Minimums: 0.02 SOL (or 2 USDC), 0.0015 ETH, 0.01 BNB. A little is kept back for network fees.</li>
+          <li>
+            <strong className="text-foreground">Your words win:</strong> "buy … of blast" always buys
+            $BLAST. A plain "bridge" follows your card setting (Auto-buy $BLAST or Keep as SUI).
+          </li>
+          <li>Commands run straight away and reply with the result and a transaction link. If a bridge fails, the reply says so and nothing is sent.</li>
+          <li>Type <em>bridge status</em> in the terminal to follow the transfer, SUI arrival and $BLAST buy live.</li>
+        </ul>
       </Block>
 
       <Block id="launch" kicker="Launching" title="Launching a token">
@@ -231,6 +247,24 @@ function Docs() {
             the live token and pool links.
           </li>
         </ul>
+        <p>
+          <strong className="text-foreground">Pay with SOL, ETH or BNB.</strong> No SUI? Add the
+          amount to your launch and the bot bridges it, then launches once the SUI arrives:
+        </p>
+        <Cmd>{`${BOT_HANDLE} launch $MOON Moon Doge on suipump with 0.1 sol`}</Cmd>
+        <Cmd>{`launch $MOON Moon Doge on maelstrom paying with 0.01 eth`}</Cmd>
+        <ul className="list-disc space-y-1.5 pl-5">
+          <li>Also accepted: "using 0.05 bnb", "paid with", "funded with".</li>
+          <li>Minimums: 0.02 SOL, 0.0015 ETH, 0.01 BNB. Leftover SUI stays in your wallet.</li>
+          <li>If the SUI doesn't arrive within 2 hours or the launch fails, whatever arrived stays safe in OurBank.</li>
+          <li>Not available while a $BLAST auto-buy is still open, so arriving SUI is never swapped by mistake.</li>
+        </ul>
+        <p>
+          <strong className="text-foreground">Typos are fine.</strong> Common slips like "lauch",
+          "deply", "tickr" or "wiht" are corrected, chatter like "pls", "ser", emoji and links are
+          ignored, and fully free-form requests are translated into a command and checked before
+          anything runs. Tickers, @handles, addresses and amounts are never changed.
+        </p>
       </Block>
 
       <Block id="perps" kicker="Leveraged" title="Coins backed by a leveraged position">
