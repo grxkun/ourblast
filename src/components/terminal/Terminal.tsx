@@ -164,8 +164,13 @@ export function Terminal({ tryCommand }: { tryCommand?: { command: string; nonce
         }
         const review = await stageFunded({ data: { text: clean } }).catch((e: Error) => ({ ok: false, message: e.message, id: undefined }));
         if (review) {
-          pendingFunded.current = review.ok && review.id ? review.id : null;
-          await saveEntry({ id: makeId(), command: clean, intent: "launchToken", result: { tool: "launchToken", status: review.ok ? "READY" : "FAILED", message: review.ok ? `${review.message}\nType "confirm" to start, or "cancel". Nothing moves until you confirm.` : review.message }, createdAt: new Date().toISOString() });
+          if (!review.ok || !review.id) {
+            await saveEntry({ id: makeId(), command: clean, intent: "launchToken", result: { tool: "launchToken", status: "FAILED", message: review.message }, createdAt: new Date().toISOString() });
+            return;
+          }
+          const out = await resolveFunded({ data: { id: review.id, confirm: true } }).catch((e: Error) => ({ ok: false, message: e.message, link: undefined }));
+          const link = "link" in out && out.link ? `\n${out.link}` : "";
+          await saveEntry({ id: makeId(), command: clean, intent: "launchToken", result: { tool: "launchToken", status: out.ok ? "SUBMITTING" : "FAILED", message: `${out.message}${link}` }, createdAt: new Date().toISOString() });
           return;
         }
       }
@@ -175,9 +180,10 @@ export function Terminal({ tryCommand }: { tryCommand?: { command: string; nonce
           await saveEntry({ id: makeId(), command: clean, intent: "getWallet", result: { tool: "getWallet", status: "NOT_CONNECTED", message: "Sign in first to use your OurBank Solana address." }, createdAt: new Date().toISOString() });
           return;
         }
-        const review = await previewSol({ data: { amountSol: solCmd.amountSol, buyBlast: solCmd.buyBlast === true } }).catch((e: Error) => ({ ok: false, message: e.message }));
-        pendingSol.current = review.ok ? { amountSol: solCmd.amountSol, buyBlast: solCmd.buyBlast === true, until: Date.now() + 10 * 60_000 } : null;
-        await saveEntry({ id: makeId(), command: clean, intent: "getWallet", result: { tool: "getWallet", status: review.ok ? "READY" : "FAILED", message: review.ok ? `${review.message}\nType "confirm" to send, or "cancel". Nothing moves until you confirm.` : review.message }, createdAt: new Date().toISOString() });
+        const startedAt = new Date().toISOString();
+        const out = await bridgeSol({ data: { amountSol: solCmd.amountSol, buyBlast: solCmd.buyBlast === true } }).catch((e: Error) => ({ ok: false, message: e.message }));
+        await saveEntry({ id: makeId(), command: clean, intent: "getWallet", result: { tool: "getWallet", status: out.ok ? "SUBMITTING" : "FAILED", message: out.ok ? `${out.message}\nLive status below. Type "bridge status" anytime to check again.` : out.message, data: out.ok ? { bridgeTrack: startedAt } : {} }, createdAt: new Date().toISOString() });
+        void queryClient.invalidateQueries({ queryKey: ["bank-wallet", userId] });
         return;
       }
       if (/^\s*(?:confirm|yes|confirm bridge|cancel|no|cancel bridge)\s*$/i.test(clean) && pendingSol.current) {
