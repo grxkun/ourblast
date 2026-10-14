@@ -11,4 +11,4 @@
 - [x] Solana deposit watcher: SOL/USDC → SUI (NEAR Intents) → auto-buy $BLAST (preview; no live funds tested)
 - [x] Terminal chat: "bridge 0.03 sol" / "buy blast with 0.03 sol" (preview)
 - [x] BNB Chain: show BNB balance on the OurBank EVM address; bridge BNB → SUI via NEAR Intents on user command
-- [ ] Launch Sui tokens paid with SOL/ETH/BNB (X + terminal) — next step
+- [x] Launch Sui tokens paid with SOL/ETH/BNB (X + terminal): review → confirm → bridge (no auto-buy) → launch on arrival

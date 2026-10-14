@@ -285,6 +285,12 @@ async function runWalletJobs() {
     }
   }
   try {
+    const { maintainFundedLaunches } = await import("./fundedLaunch.server");
+    await maintainFundedLaunches();
+  } catch (error) {
+    console.error(`Funded launches failed: ${error instanceof Error ? error.message : "unknown"}`);
+  }
+  try {
     const { maintainCrossChainOrders } = await import("./crossChain.server");
     await maintainCrossChainOrders();
   } catch (error) {

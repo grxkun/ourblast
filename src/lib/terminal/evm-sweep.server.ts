@@ -169,7 +169,7 @@ async function intentsBnbDeposit(w: EvmWalletRow, amount: bigint): Promise<Hex> 
 }
 
 /** Claims, sends and records one sweep. Never throws. */
-async function sweep(chain: SweepChain, w: EvmWalletRow, token: SweepToken, amount: bigint) {
+async function sweep(chain: SweepChain, w: EvmWalletRow, token: SweepToken, amount: bigint, keep = false): Promise<{ ok: true; hash: string } | { ok: false; error: string }> {
   const db = await admin();
   const route = SWEEP_CHAINS[chain].route;
   const { data: claimed, error } = await db
@@ -177,7 +177,7 @@ async function sweep(chain: SweepChain, w: EvmWalletRow, token: SweepToken, amou
     .insert({ x_username: w.x_username, user_id: w.user_id, evm_address: w.evm_address, chain, token, amount_atomic: amount.toString() as unknown as number, route })
     .select("id")
     .single();
-  if (error || !claimed) return; // another run holds this one (unique in-flight index)
+  if (error || !claimed) return { ok: false, error: "An earlier bridge from this address is still in progress." }; // unique in-flight index
   try {
     let approveTx: string | null = null;
     let hash: Hex;
@@ -188,11 +188,11 @@ async function sweep(chain: SweepChain, w: EvmWalletRow, token: SweepToken, amou
       for (const t of txs) hash = await sendTx(chain, w, t);
       hash = hash!;
     } else if (route === "intents") {
-      orderId = await ensureOrder(w);
+      orderId = keep ? null : await ensureOrder(w);
       const to = await intentsBnbDeposit(w, amount);
       hash = await sendTx(chain, w, { to, value: amount });
     } else {
-      orderId = await ensureOrder(w);
+      orderId = keep ? null : await ensureOrder(w);
       const usdc = SWEEP_CHAINS[chain].usdc!;
       const tx = await mayanTx(chain, w, token === "ETH" ? NATIVE : usdc, amount);
       if (token === "USDC") {
@@ -206,9 +206,12 @@ async function sweep(chain: SweepChain, w: EvmWalletRow, token: SweepToken, amou
       hash = await sendTx(chain, w, tx);
     }
     await db.from("evm_sweeps").update({ status: "submitted", tx_hash: hash, approve_tx: approveTx, order_id: orderId, updated_at: new Date().toISOString() }).eq("id", claimed.id);
+    return { ok: true, hash };
   } catch (e) {
-    await db.from("evm_sweeps").update({ status: "failed", error: (e as Error).message.slice(0, 300), updated_at: new Date().toISOString() }).eq("id", claimed.id);
+    const m = (e as Error).message.slice(0, 300);
+    await db.from("evm_sweeps").update({ status: "failed", error: m, updated_at: new Date().toISOString() }).eq("id", claimed.id);
     console.error(`EVM sweep ${claimed.id} failed`, e);
+    return { ok: false, error: `Bridge failed, nothing was sent: ${m}` };
   }
 }
 
@@ -315,4 +318,30 @@ export async function bridgeNowForUser(userId: string): Promise<{ ok: boolean; m
   const lines = await scanWallet(w as EvmWalletRow);
   if (!lines.length) return { ok: true, message: "Nothing to bridge yet. Need at least 0.0015 ETH or 2 USDC on Base, Arbitrum or Robinhood, or 0.01 BNB on BNB Chain.", lines };
   return { ok: true, message: "Bridge started. SUI lands in ~20 min, then auto-buys $BLAST.", lines };
+}
+
+/**
+ * Bridges an exact native amount (ETH on Base/Arbitrum, or BNB) from the user's
+ * OurBank EVM address to their Sui wallet with no auto-buy — used to fund a launch.
+ */
+export async function bridgeEvmAmountForUser(userId: string, asset: "ETH" | "BNB", amount: number): Promise<{ ok: boolean; message: string; txHash?: string; explorer?: string }> {
+  const db = await admin();
+  const { data: w } = await db
+    .from("bank_wallets")
+    .select("x_username, user_id, address, evm_address, evm_secret_ciphertext, evm_signing_backend")
+    .eq("user_id", userId).not("evm_address", "is", null).maybeSingle();
+  if (!w) return { ok: false, message: "No OurBank EVM address yet. Open your OurBank card first." };
+  if (!sweepAllowed(sweepSetting(), w.x_username)) return { ok: false, message: "Bridging is invite-only during testing." };
+  await confirmSubmitted();
+  const want = BigInt(Math.round(amount * 1e18));
+  const chains: SweepChain[] = asset === "BNB" ? ["bsc"] : ["base", "arbitrum"];
+  for (const chain of chains) {
+    const bal = await client(chain).getBalance({ address: w.evm_address as Hex }).catch(() => 0n);
+    const keep = asset === "BNB" ? 500_000_000_000_000n : 300_000_000_000_000n;
+    if (bal < want + keep) continue;
+    const r = await sweep(chain, w as EvmWalletRow, asset, want, true);
+    if (!r.ok) return { ok: false, message: r.error };
+    return { ok: true, txHash: r.hash, explorer: `${SWEEP_CHAINS[chain].explorer}/tx/${r.hash}`, message: `Bridging ${amount} ${asset} from ${chain === "bsc" ? "BNB Chain" : chain}.` };
+  }
+  return { ok: false, message: `Not enough ${asset}. Keep ${asset === "BNB" ? "0.0005 BNB" : "0.0003 ETH"} extra for network fees${asset === "ETH" ? " (Base or Arbitrum)" : ""}.` };
 }

@@ -1584,6 +1584,66 @@ export type Database = {
         }
         Relationships: []
       }
+      funded_launches: {
+        Row: {
+          amount: number
+          asset: string
+          bridge_tx: string | null
+          bridged_at: string | null
+          created_at: string
+          expires_at: string
+          id: string
+          launch_request_id: string
+          launchpad: string
+          notice: string | null
+          status: string
+          sui_address: string
+          symbol: string
+          updated_at: string
+          user_id: string
+          x_post_id: string
+          x_username: string
+        }
+        Insert: {
+          amount: number
+          asset: string
+          bridge_tx?: string | null
+          bridged_at?: string | null
+          created_at?: string
+          expires_at: string
+          id?: string
+          launch_request_id: string
+          launchpad: string
+          notice?: string | null
+          status?: string
+          sui_address: string
+          symbol: string
+          updated_at?: string
+          user_id: string
+          x_post_id: string
+          x_username: string
+        }
+        Update: {
+          amount?: number
+          asset?: string
+          bridge_tx?: string | null
+          bridged_at?: string | null
+          created_at?: string
+          expires_at?: string
+          id?: string
+          launch_request_id?: string
+          launchpad?: string
+          notice?: string | null
+          status?: string
+          sui_address?: string
+          symbol?: string
+          updated_at?: string
+          user_id?: string
+          x_post_id?: string
+          x_username?: string
+        }
+        Relationships: []
+      }
       game_sessions: {
         Row: {
           clicks: number
