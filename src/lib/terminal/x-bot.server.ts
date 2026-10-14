@@ -107,7 +107,9 @@ async function processClaimedMention(
   // wallet can approve in the terminal — the bot never moves anyone's funds.
   const { handleFeeClaimMention, handleFeeCheckMention } = await import("./xClaim.server");
   const { handleEscrowMention } = await import("./escrow.server");
+  const { handleFundedLaunchMention } = await import("./fundedLaunch.server");
   const claimReply =
+    (await handleFundedLaunchMention(payload.postId, username, text, payload.imageUrl ?? imageFieldInText(text) ?? imageUrlInText(text) ?? null)) ??
     (await handleEscrowMention(payload.postId, username, text)) ??
     (await handleFeeCheckMention(username, text)) ??
     (await handleFeeClaimMention(username, text));
