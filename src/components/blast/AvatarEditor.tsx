@@ -73,8 +73,14 @@ export function AvatarEditor({
 
   const onFile = async (file: File | undefined) => {
     if (!file) return;
-    if (!file.type.startsWith("image/")) return toast.error("Pick an image file");
-    if (file.size > 15 * 1024 * 1024) return toast.error("That image is too large (max 15 MB)");
+    if (!file.type.startsWith("image/")) {
+      toast.error("Pick an image file");
+      return;
+    }
+    if (file.size > 15 * 1024 * 1024) {
+      toast.error("That image is too large (max 15 MB)");
+      return;
+    }
     try {
       setBusy(true);
       const dataUrl = await shrinkImage(file);
