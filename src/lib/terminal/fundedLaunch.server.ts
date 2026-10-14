@@ -60,7 +60,7 @@ export async function stageFundedLaunch(opts: {
   const { wallet: w, fund, request } = opts;
   if (!w.user_id) return { ok: false, message: "Sign in at https://ourblast.xyz/terminal once to activate funded launches." };
   const pad = resolveLaunchpad(request.launchpad);
-  if (!pad.integrated) return { ok: false, message: `${pad.name} launches aren't connected yet.` };
+  if (!pad.integrated) return { ok: false, message: `${pad.label} launches aren't connected yet.` };
   if (fund.amount < FUND_MIN[fund.asset]) return { ok: false, message: `Minimum is ${FUND_MIN[fund.asset]} ${fund.asset}.` };
   if (fund.asset === "SOL" && !w.sol_address) return { ok: false, message: "You don't have an OurBank Solana address yet. Open the OurBank card first." };
   if (fund.asset !== "SOL" && !w.evm_address) return { ok: false, message: "You don't have an OurBank EVM address yet. Open the OurBank card first." };
@@ -83,7 +83,7 @@ export async function stageFundedLaunch(opts: {
   const need = requiredBalanceMist(pad.id);
   const after = current + BigInt(Math.floor(estSui * 1e9));
   if (after < need) {
-    return { ok: false, message: `≈${estSui.toFixed(2)} SUI would arrive, but a ${pad.name} launch needs ${formatSui(need)} SUI in your wallet (you have ${formatSui(current)}). Send a bigger amount.` };
+    return { ok: false, message: `≈${estSui.toFixed(2)} SUI would arrive, but a ${pad.label} launch needs ${formatSui(need)} SUI in your wallet (you have ${formatSui(current)}). Send a bigger amount.` };
   }
 
   const { createLaunchRequest } = await import("./xLauncher.server");
@@ -100,12 +100,12 @@ export async function stageFundedLaunch(opts: {
   return {
     ok: true,
     id: data.id,
-    message: `Review: bridge ${fund.amount} ${fund.asset} (≈${estSui.toFixed(2)} SUI) → Sui wallet ${dest}, then launch $${request.symbol} on ${pad.name} (${formatSui(launchFeeMist(pad.id))} SUI fee + gas). Leftover SUI stays in your wallet.`,
+    message: `Review: bridge ${fund.amount} ${fund.asset} (≈${estSui.toFixed(2)} SUI) → Sui wallet ${dest}, then launch $${request.symbol} on ${pad.label} (${formatSui(launchFeeMist(pad.id))} SUI fee + gas). Leftover SUI stays in your wallet.`,
   };
 }
 
 /** Confirms a staged launch and starts the bridge. Only one confirm can ever act on it. */
-export async function confirmFundedLaunch(id: string, userId?: string): Promise<{ ok: boolean; message: string; link?: string }> {
+export async function confirmFundedLaunch(id: string, userId?: string): Promise<{ ok: boolean; message: string; link?: string | undefined }> {
   const db = await admin();
   let q = db.from("funded_launches").update({ status: "bridging", updated_at: new Date().toISOString() })
     .eq("id", id).eq("status", "staged").gt("expires_at", new Date().toISOString());

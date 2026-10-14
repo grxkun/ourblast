@@ -6,3 +6,4 @@
 - Each OurBank wallet gets one lazily-created Solana deposit address (bank-sol.server.ts), Turnkey-first with encrypted local fallback; never replaced once set — funds could be stranded. No Solana sweeper yet, so the UI says "don't send funds".
 - OurBank Solana deposits (SOL, USDC) are swept by sol-sweep.server.ts via NEAR Intents 1Click (no Solana SDK — hand-built legacy txs) into SUI on the Sui wallet, then auto-bought via cross_chain_orders; same gate as EVM sweeps, one in-flight sweep per address.
 - Background EVM/SOL deposit sweeps are off unless AUTO_SWEEP_BACKGROUND=1; deposits only bridge on an explicit user command — users must control when funds move.
+- Funded launches (pay with SOL/ETH/BNB) live in fundedLaunch*.ts: review+confirm, bridge with no auto-buy order, launch via executeLaunchRequest once SUI arrives; refused while an auto-buy order is open so arriving SUI is never swapped.
