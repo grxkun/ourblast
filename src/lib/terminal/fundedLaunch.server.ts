@@ -168,8 +168,10 @@ export async function handleFundedLaunchMention(postId: string, handle: string, 
   const { data: w } = await db.from("bank_wallets").select(COLS).ilike("x_username", handle).maybeSingle();
   if (!w) return `@${handle} you don't have an OurBank wallet yet. Sign in at https://ourblast.xyz/terminal to get one.`;
   const r = await stageFundedLaunch({ postId, wallet: w as Wallet, handle, fund: parsed.fund, request, iconUrl, tweetText: text });
-  if (!r.ok) return r.message ? `@${handle} ${r.message}`.slice(0, 280) : "";
-  return `@${handle} ${r.message} Reply "confirm launch" within 10 min, or "cancel launch". Nothing moves until you confirm.`.slice(0, 280);
+  if (!r.ok || !r.id) return r.message ? `@${handle} ${r.message}`.slice(0, 280) : "";
+  // The command itself is the instruction: start right away, no confirm reply.
+  const c = await confirmFundedLaunch(r.id);
+  return `@${handle} ${c.message}${c.link ? ` ${c.link}` : ""}`.slice(0, 280);
 }
 
 /** Poll job: launches funded requests whose SUI has arrived; times out the rest. */
