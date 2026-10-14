@@ -16,7 +16,7 @@ export function WalletButton({ className }: { className?: string }) {
           to="/profile"
           className="panel flex items-center gap-3 px-3 py-2 transition-transform hover:-translate-y-0.5"
         >
-          <PlayerAvatar address={playerAvatarSeed(profile)} size={32} />
+          <PlayerAvatar address={playerAvatarSeed(profile)} avatarUrl={profile.avatar_url} size={32} />
           <span className="hidden leading-tight sm:block">
             <span className="block font-body text-xs text-muted-foreground">
               {playerLabel(profile)}
