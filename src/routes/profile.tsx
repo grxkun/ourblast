@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { SectionTitle } from "@/components/blast/AppShell";
 import { MyTokensCard } from "@/components/blast/MyTokensCard";
 import { PlayerAvatar } from "@/components/blast/PlayerBadge";
+import { AvatarEditor } from "@/components/blast/AvatarEditor";
 import { useBlast } from "@/components/blast/session";
 import { supabase } from "@/integrations/supabase/client";
 import { formatNumber, playerAvatarSeed, playerLabel, timeAgo } from "@/lib/blast";
@@ -135,7 +136,7 @@ function ProfilePage() {
   return (
     <div className="space-y-10">
       <section className="panel flex flex-wrap items-center gap-4 p-5 sm:gap-5 sm:p-6">
-        <PlayerAvatar address={playerAvatarSeed(profile)} size={64} className="glow-blast sm:size-[78px]" />
+        <PlayerAvatar address={playerAvatarSeed(profile)} avatarUrl={profile.avatar_url} size={64} className="glow-blast sm:size-[78px]" />
         <div className="min-w-0 flex-1 basis-40">
           <h1 className="font-display text-2xl sm:text-3xl">
             {playerLabel(profile)}
@@ -158,6 +159,9 @@ function ProfilePage() {
             </span>
           </p>
           ) : null}
+          <div className="mt-3">
+            <AvatarEditor userId={userId} hasAvatar={Boolean(profile.avatar_url)} onSaved={refresh} />
+          </div>
         </div>
         <div className="flex flex-wrap gap-2">
           {staff.data?.staff ? (
