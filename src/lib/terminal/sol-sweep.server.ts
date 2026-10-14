@@ -118,7 +118,7 @@ async function intentsDeposit(token: "SOL" | "USDC", amount: bigint, w: SolWalle
 type SweepResult = { ok: true; txSig: string } | { ok: false; error: string };
 
 /** Claims, sends and records one sweep. Never throws; reports whether a transaction was actually sent. */
-async function sweep(w: SolWalletRow, token: "SOL" | "USDC", amount: bigint, buyBlast = false): Promise<SweepResult> {
+async function sweep(w: SolWalletRow, token: "SOL" | "USDC", amount: bigint, buyBlast: boolean | "keep" = false): Promise<SweepResult> {
   const db = await admin();
   const { data: claimed, error } = await db
     .from("sol_sweeps")
@@ -127,7 +127,8 @@ async function sweep(w: SolWalletRow, token: "SOL" | "USDC", amount: bigint, buy
   if (error || !claimed) return { ok: false, error: "An earlier bridge from this address is still in progress. Check \"bridge status\" and try again once it finishes." };
   try {
     const { ensureOrder } = await import("./evm-sweep.server");
-    const orderId = await ensureOrder(w, buyBlast);
+    // "keep": funding a launch — the SUI must arrive untouched, so no auto-buy order.
+    const orderId = buyBlast === "keep" ? null : await ensureOrder(w, buyBlast);
     const dep = await intentsDeposit(token, amount, w);
     await db.from("sol_sweeps").update({ deposit_address: dep, order_id: orderId }).eq("id", claimed.id);
     const { value } = await rpc<{ value: { blockhash: string } }>("getLatestBlockhash", [{ commitment: "confirmed" }]);
@@ -164,7 +165,7 @@ export async function confirmSubmitted() {
   }
 }
 
-async function scanWallet(w: SolWalletRow, buyBlast = false): Promise<{ token: string; amount: string; result: SweepResult } | null> {
+async function scanWallet(w: SolWalletRow, buyBlast: boolean | "keep" = false): Promise<{ token: string; amount: string; result: SweepResult } | null> {
   const plan = planSolSweep(...Object.values(await balances(w.sol_address)) as [bigint, bigint]);
   if (!plan) return null;
   const result = await sweep(w, plan.token, plan.amount, buyBlast);
@@ -197,7 +198,7 @@ export async function maintainSolSweeps(): Promise<void> {
  * Manual "bridge now" for the signed-in user's own OurBank Solana address.
  * With amountSol, bridges only that much SOL and switches auto-sweep off so the rest stays on Solana.
  */
-export async function bridgeSolNowForUser(userId: string, amountSol?: number, buyBlast = false): Promise<{ ok: boolean; message: string; txSig?: string | undefined }> {
+export async function bridgeSolNowForUser(userId: string, amountSol?: number, buyBlast: boolean | "keep" = false): Promise<{ ok: boolean; message: string; txSig?: string | undefined }> {
   const db = await admin();
   const { data: w } = await db.from("bank_wallets").select(COLS).eq("user_id", userId).not("sol_address", "is", null).maybeSingle();
   if (!w) return { ok: false, message: "No OurBank Solana address yet." };
