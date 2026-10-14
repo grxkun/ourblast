@@ -28,3 +28,9 @@ describe("X bot pause", () => {
     expect(pauseEnd("48 hour", new Date("2026-10-11T11:25:00Z"))?.toISOString()).toBe("2026-10-13T11:25:00.000Z");
   });
 });
+
+import { ethSweepAmount as nativeSweep } from "./evm-sweep";
+describe("BNB sweep rules", () => {
+  it("leaves BNB under 0.01 alone", () => expect(nativeSweep(9_999_999_999_999_999n, "BNB")).toBe(0n));
+  it("keeps 0.0005 BNB for fees", () => expect(nativeSweep(20_000_000_000_000_000n, "BNB")).toBe(19_500_000_000_000_000n));
+});
