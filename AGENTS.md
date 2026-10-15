@@ -8,3 +8,5 @@
 - Background EVM/SOL deposit sweeps are off unless AUTO_SWEEP_BACKGROUND=1; deposits only bridge on an explicit user command — users must control when funds move.
 - Funded launches (pay with SOL/ETH/BNB) live in fundedLaunch*.ts: review+confirm, bridge with no auto-buy order, launch via executeLaunchRequest once SUI arrives; refused while an auto-buy order is open so arriving SUI is never swapped.
 - BNB bridges fall back to BNB→SOL (Relay, into the user's own OurBank Solana address) when 1Click refuses; maintainBnbSolHops then bridges that SOL to Sui once per sweep row (status sent→hopping→hopped, hop note kept in evm_sweeps.approve_tx) so funds are never sent twice.
+- Terminal-attached token pictures are uploaded to the private `token-icons` bucket and served via /api/public/icon/<userId>/<uuid>.<ext> — public buckets are blocked and data URLs are too long for on-chain icon URLs.
+- Perpsplexity funded launches swap bridged SUI above launch cost + 2 SUI gas reserve into USDC and set it as the creator's first buy — the curve trades in USDC; a failed swap never blocks the launch.
