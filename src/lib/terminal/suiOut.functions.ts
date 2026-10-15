@@ -8,7 +8,9 @@ export const bridgeSuiOut = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: { amountSui: number; target: string; destination?: string | undefined }) => {
     if (typeof d?.amountSui !== "number" || !Number.isFinite(d.amountSui) || d.amountSui <= 0) throw new Error("Invalid amount.");
-    return { amountSui: d.amountSui, target: (["SOL", "ETH_BASE", "ETH_ARB", "BNB"].includes(d.target) ? d.target : "SOL") as "SOL" | "ETH_BASE" | "ETH_ARB" | "BNB", destination: typeof d.destination === "string" ? d.destination : undefined };
+    // Unknown targets are rejected, never silently turned into a different chain.
+    if (!["SOL", "ETH_BASE", "ETH_ARB", "ETH_RH", "BNB"].includes(d.target)) throw new Error("Unsupported bridge target.");
+    return { amountSui: d.amountSui, target: d.target as "SOL" | "ETH_BASE" | "ETH_ARB" | "ETH_RH" | "BNB", destination: typeof d.destination === "string" ? d.destination : undefined };
   })
   .handler(async ({ context, data }) => {
     const { bridgeSuiOutForUser } = await import("./suiOut.server");
