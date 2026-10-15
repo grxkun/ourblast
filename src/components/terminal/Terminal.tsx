@@ -19,6 +19,8 @@ import { runBankCommand } from "@/lib/terminal/bank.functions";
 import { launchFromTerminal } from "@/lib/terminal/xLauncher.functions";
 import { bridgeNow, bridgeSolNow, previewSolBridge } from "@/lib/terminal/evm-sweep.functions";
 import { parseSolCommand } from "@/lib/terminal/solCommand";
+import { parseSuiOutCommand } from "@/lib/terminal/suiOut";
+import { bridgeSuiOut } from "@/lib/terminal/suiOut.functions";
 import { parseFundWith } from "@/lib/terminal/fundedLaunch";
 import { resolveFundedLaunchTerminal, stageFundedLaunchTerminal } from "@/lib/terminal/fundedLaunch.functions";
 import { uploadTokenIcon } from "@/lib/terminal/tokenIcon.functions";
@@ -58,6 +60,7 @@ export function Terminal({ tryCommand }: { tryCommand?: { command: string; nonce
   const bridgeSol = useServerFn(bridgeSolNow);
   const previewSol = useServerFn(previewSolBridge);
   const stageFunded = useServerFn(stageFundedLaunchTerminal);
+  const bridgeOut = useServerFn(bridgeSuiOut);
   const uploadIcon = useServerFn(uploadTokenIcon);
   const resolveFunded = useServerFn(resolveFundedLaunchTerminal);
   const pendingFunded = useRef<string | null>(null);
@@ -176,6 +179,18 @@ export function Terminal({ tryCommand }: { tryCommand?: { command: string; nonce
           await saveEntry({ id: makeId(), command: clean, intent: "launchToken", result: { tool: "launchToken", status: out.ok ? "SUBMITTING" : "FAILED", message: `${out.message}${link}` }, createdAt: new Date().toISOString() });
           return;
         }
+      }
+      const outCmd = parseSuiOutCommand(clean);
+      if (outCmd) {
+        if (!userId) {
+          await saveEntry({ id: makeId(), command: clean, intent: "getWallet", result: { tool: "getWallet", status: "NOT_CONNECTED", message: "Sign in first to bridge from your OurBank Sui wallet." }, createdAt: new Date().toISOString() });
+          return;
+        }
+        const out = await bridgeOut({ data: outCmd }).catch((e: Error) => ({ ok: false, message: e.message, link: undefined }));
+        const link = "link" in out && out.link ? `\n${out.link}` : "";
+        await saveEntry({ id: makeId(), command: clean, intent: "getWallet", result: { tool: "getWallet", status: out.ok ? "SUBMITTING" : "FAILED", message: `${out.message}${link}` }, createdAt: new Date().toISOString() });
+        void queryClient.invalidateQueries({ queryKey: ["bank-wallet", userId] });
+        return;
       }
       const solCmd = parseSolCommand(clean);
       if (solCmd) {

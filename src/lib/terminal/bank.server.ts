@@ -467,6 +467,12 @@ export async function handleBankMention(postId: string, username: string, text: 
   const solSweep = await import("./sol-sweep.server");
   const solReply = await solSweep.resolveSolBridgeReply(postId, username, text);
   if (solReply !== null) return solReply;
+  const { parseSuiOutCommand } = await import("./suiOut");
+  const outCmd = parseSuiOutCommand(text);
+  if (outCmd) {
+    const { bridgeSuiOutForXHandle } = await import("./suiOut.server");
+    return bridgeSuiOutForXHandle(username, outCmd.amountSui, outCmd.target, outCmd.destination);
+  }
   const { parseSolCommand } = await import("./solCommand");
   const solCmd = parseSolCommand(text);
   if (solCmd) return solSweep.bridgeSolForXHandle(username, solCmd.amountSol, solCmd.buyBlast === true);
