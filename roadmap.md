@@ -13,3 +13,4 @@
 - [x] BNB Chain: show BNB balance on the OurBank EVM address; bridge BNB → SUI via NEAR Intents on user command
 - [x] Launch Sui tokens paid with SOL/ETH/BNB (X + terminal): review → confirm → bridge (no auto-buy) → launch on arrival
 - [x] BNB → SOL → SUI fallback route via Relay when 1Click refuses BNB
+- [x] Bridge SUI → SOL (terminal + X); SUI → ETH/BNB blocked by provider
