@@ -10,3 +10,4 @@
 - BNB bridges fall back to BNB→SOL (Relay, into the user's own OurBank Solana address) when 1Click refuses; maintainBnbSolHops then bridges that SOL to Sui once per sweep row (status sent→hopping→hopped, hop note kept in evm_sweeps.approve_tx) so funds are never sent twice.
 - Terminal-attached token pictures are uploaded to the private `token-icons` bucket and served via /api/public/icon/<userId>/<uuid>.<ext> — public buckets are blocked and data URLs are too long for on-chain icon URLs.
 - Perpsplexity funded launches swap bridged SUI above launch cost + 2 SUI gas reserve into USDC and set it as the creator's first buy — the curve trades in USDC; a failed swap never blocks the launch.
+- SUI → ETH/BNB hops through the user's own OurBank Solana address (sui_out_hops: leg 1 SUI→SOL via 1Click, leg 2 by maintainSuiOutHops via 1Click for ETH / Relay for BNB, claimed sent→hopping so leg 2 is sent once) — direct SUI→EVM corridors are refused or have a $1,000 floor.
