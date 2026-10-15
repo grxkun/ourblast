@@ -248,18 +248,14 @@ async function sweep(chain: SweepChain, w: EvmWalletRow, token: SweepToken, amou
       for (const t of txs) hash = await sendTx(chain, w, t);
       hash = hash!;
     } else if (route === "intents") {
-      orderId = keep ? null : await ensureOrder(w);
       const direct = await intentsBnbDeposit(w, amount).then((to) => ({ to }), (e: Error) => ({ err: e }));
       if ("to" in direct) {
+        orderId = keep ? null : await ensureOrder(w);
         hash = await sendTx(chain, w, { to: direct.to, value: amount });
       } else {
         // 1Click refuses small BNB swaps at times: hop BNB → SOL (Relay) into the
         // user's own OurBank Solana address; maintainBnbSolHops sends it on to Sui.
         if (!w.sol_address) throw direct.err;
-        if (orderId) {
-          await db.from("cross_chain_orders").update({ status: "cancelled" }).eq("id", orderId).eq("status", "pending");
-          orderId = null; // the Solana hop opens its own order
-        }
         const hop = await relayBnbToSol(w, amount);
         for (const t of hop.txs) hash = await sendTx(chain, w, t);
         hash = hash!;

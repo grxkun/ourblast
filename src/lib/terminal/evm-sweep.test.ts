@@ -34,3 +34,23 @@ describe("BNB sweep rules", () => {
   it("leaves BNB under 0.01 alone", () => expect(nativeSweep(9_999_999_999_999_999n, "BNB")).toBe(0n));
   it("keeps 0.0005 BNB for fees", () => expect(nativeSweep(20_000_000_000_000_000n, "BNB")).toBe(19_500_000_000_000_000n));
 });
+
+import { decodeSolHop, encodeSolHop, solHopAmount } from "./evm-sweep";
+describe("BNB → SOL → SUI hop", () => {
+  it("waits until Relay's SOL has arrived", () => {
+    expect(solHopAmount(340_000_000n, 100_000_000n)).toBe(0n);
+  });
+  it("sends exactly the Relay output when it has landed", () => {
+    expect(solHopAmount(340_000_000n, 400_000_000n)).toBe(340_000_000n);
+  });
+  it("keeps 0.003 SOL for fees when only the hop amount is there", () => {
+    expect(solHopAmount(340_000_000n, 340_000_000n)).toBe(337_000_000n);
+  });
+  it("skips hops under the 0.02 SOL minimum", () => {
+    expect(solHopAmount(15_000_000n, 50_000_000n)).toBe(0n);
+  });
+  it("round-trips the hop note", () => {
+    expect(decodeSolHop(encodeSolHop(5n, true))).toEqual({ lamports: 5n, keep: true });
+    expect(decodeSolHop("0xabc")).toBeNull();
+  });
+});
