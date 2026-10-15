@@ -127,7 +127,7 @@ export function XLaunchQueue() {
                   ) : null}
 
                   {parked && pad.id !== "suipump" ? (
-                    <p className="mt-3 text-sm text-muted-foreground">{pad.label} launch is not ready yet.</p>
+                    <p className="mt-3 text-sm text-muted-foreground">{row.notice ?? `${pad.label} launch is not ready yet.`}</p>
                   ) : (
                     <dl className="mt-3 space-y-1 text-sm">
                       <div className="flex justify-between"><dt className="text-muted-foreground">Launchpad</dt><dd>{pad.label}</dd></div>
