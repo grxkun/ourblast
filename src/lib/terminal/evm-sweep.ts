@@ -37,6 +37,25 @@ export function usdcSweepAmount(usdc: bigint, eth: bigint): { amount: bigint; re
 }
 
 /** EVM_SWEEP_ALLOW: unset = off, "*" = everyone, else comma-separated handles. */
+/** BNB → SOL → SUI fallback: SOL to send on from Solana once Relay delivers. 0n = not there yet. */
+export const SOL_HOP_MIN = 20_000_000n; // 0.02 SOL — the Solana bridge minimum
+export const SOL_HOP_KEEP = 3_000_000n; // 0.003 SOL stays for fees + rent
+export function solHopAmount(expected: bigint, balance: bigint): bigint {
+  if (balance < (expected * 97n) / 100n) return 0n; // Relay hasn't filled yet
+  const room = balance - SOL_HOP_KEEP;
+  const amt = expected < room ? expected : room;
+  return amt >= SOL_HOP_MIN ? amt : 0n;
+}
+
+/** Hop bookkeeping kept on the sweep row: "sol:<lamports>:<keep|default>". */
+export function encodeSolHop(lamports: bigint, keep: boolean): string {
+  return `sol:${lamports}:${keep ? "keep" : "default"}`;
+}
+export function decodeSolHop(s: string | null): { lamports: bigint; keep: boolean } | null {
+  const m = s?.match(/^sol:(\d+):(keep|default)$/);
+  return m ? { lamports: BigInt(m[1]!), keep: m[2] === "keep" } : null;
+}
+
 export function sweepAllowed(setting: string | undefined, handle: string): boolean {
   const raw = setting?.trim();
   if (!raw) return false;

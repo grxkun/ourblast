@@ -59,7 +59,7 @@ async function rpc<T>(method: string, params: unknown[]): Promise<T> {
   throw new Error("Solana network is congested right now — please try again in a moment.");
 }
 
-async function balances(addr: string): Promise<{ lamports: bigint; usdc: bigint }> {
+export async function balances(addr: string): Promise<{ lamports: bigint; usdc: bigint }> {
   const bal = await rpc<{ value: number }>("getBalance", [addr, { commitment: "confirmed" }]);
   const toks = await rpc<{ value: { account: { data: { parsed: { info: { tokenAmount: { amount: string } } } } } }[] }>(
     "getTokenAccountsByOwner", [addr, { mint: SOL_USDC_MINT }, { encoding: "jsonParsed", commitment: "confirmed" }],
