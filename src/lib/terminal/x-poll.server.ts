@@ -292,6 +292,13 @@ async function runWalletJobs() {
     console.error(`BNB→SOL hop failed: ${error instanceof Error ? error.message : "unknown"}`);
   }
   try {
+    // SUI → SOL → ETH/BNB: send leg-1 SOL on to the user's EVM address.
+    const { maintainSuiOutHops } = await import("./suiOut.server");
+    await maintainSuiOutHops();
+  } catch (error) {
+    console.error(`SUI→EVM hop failed: ${error instanceof Error ? error.message : "unknown"}`);
+  }
+  try {
     const { maintainFundedLaunches } = await import("./fundedLaunch.server");
     await maintainFundedLaunches();
   } catch (error) {
