@@ -277,8 +277,7 @@ async function sweep(chain: SweepChain, w: EvmWalletRow, token: SweepToken, amou
     }
     // Never overwrite approve_tx with null: the relay_sol route stores its SOL
     // hop note there, and wiping it would strand the second leg forever.
-    const done: Record<string, unknown> = { status: "submitted", tx_hash: hash, order_id: orderId, updated_at: new Date().toISOString() };
-    if (approveTx) done.approve_tx = approveTx;
+    const done = { status: "submitted", tx_hash: hash, order_id: orderId, updated_at: new Date().toISOString(), ...(approveTx ? { approve_tx: approveTx } : {}) };
     await db.from("evm_sweeps").update(done).eq("id", claimed.id);
     return { ok: true, hash };
   } catch (e) {
