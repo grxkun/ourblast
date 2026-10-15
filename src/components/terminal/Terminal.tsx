@@ -190,7 +190,7 @@ export function Terminal({ tryCommand }: { tryCommand?: { command: string; nonce
         const outStarted = new Date().toISOString();
         const out = await bridgeOut({ data: outCmd }).catch((e: Error) => ({ ok: false, message: e.message, link: undefined }));
         const link = "link" in out && out.link ? `\n${out.link}` : "";
-        await saveEntry({ id: makeId(), command: clean, intent: "getWallet", result: { tool: "getWallet", status: out.ok ? "SUBMITTING" : "FAILED", message: `${out.message}${link}`, data: out.ok ? { txTrack: { kind: "suiout", since: outStarted } } : {} }, createdAt: new Date().toISOString() });
+        await saveEntry({ id: makeId(), command: clean, intent: "getWallet", result: { tool: "getWallet", status: out.ok ? "SUBMITTING" : "FAILED", message: `${out.message}${link}`, data: out.ok && outCmd.target !== "SOL" ? { txTrack: { kind: "suiout", since: outStarted } } : {} }, createdAt: new Date().toISOString() });
         void queryClient.invalidateQueries({ queryKey: ["bank-wallet", userId] });
         return;
       }
