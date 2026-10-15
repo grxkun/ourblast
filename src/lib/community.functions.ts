@@ -309,7 +309,7 @@ export const roastToken = createServerFn({ method: "POST" })
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
       body: JSON.stringify({
-        model: "google/gemini-3.6-flash",
+        model: "google/gemini-3.8-flash",
         messages: [
           {
             role: "system",

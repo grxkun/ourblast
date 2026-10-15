@@ -8,7 +8,7 @@
  * unexpected, we return null and the terminal replies with its usual help.
  */
 
-const MODEL = "google/gemini-2.5-flash";
+const MODEL = "google/gemini-3.8-flash";
 const GATEWAY = "https://ai.gateway.lovable.dev/v1/chat/completions";
 
 const SYSTEM = `You translate a crypto user's free-form message into EXACTLY ONE canonical command for the OURBLAST Sui terminal, or the single word NONE.
