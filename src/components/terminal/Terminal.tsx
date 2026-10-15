@@ -21,6 +21,7 @@ import { bridgeNow, bridgeSolNow, previewSolBridge } from "@/lib/terminal/evm-sw
 import { parseSolCommand } from "@/lib/terminal/solCommand";
 import { parseFundWith } from "@/lib/terminal/fundedLaunch";
 import { resolveFundedLaunchTerminal, stageFundedLaunchTerminal } from "@/lib/terminal/fundedLaunch.functions";
+import { uploadTokenIcon } from "@/lib/terminal/tokenIcon.functions";
 import { parseBankCommand, parseSwapCommand } from "@/lib/terminal/bank";
 import { useBankApprovals } from "./useBankApprovals";
 import type { LaunchConfiguration, TerminalEntry, TerminalIntentName, TerminalStatus } from "@/lib/terminal/types";
@@ -57,6 +58,7 @@ export function Terminal({ tryCommand }: { tryCommand?: { command: string; nonce
   const bridgeSol = useServerFn(bridgeSolNow);
   const previewSol = useServerFn(previewSolBridge);
   const stageFunded = useServerFn(stageFundedLaunchTerminal);
+  const uploadIcon = useServerFn(uploadTokenIcon);
   const resolveFunded = useServerFn(resolveFundedLaunchTerminal);
   const pendingFunded = useRef<string | null>(null);
   // SOL bridge waiting for "confirm" (10 min).
@@ -162,7 +164,8 @@ export function Terminal({ tryCommand }: { tryCommand?: { command: string; nonce
           await saveEntry({ id: makeId(), command: clean, intent: "launchToken", result: { tool: "launchToken", status: "NOT_CONNECTED", message: "Sign in first to launch with SOL, ETH or BNB." }, createdAt: new Date().toISOString() });
           return;
         }
-        const review = await stageFunded({ data: { text: clean } }).catch((e: Error) => ({ ok: false, message: e.message, id: undefined }));
+        const iconUrl = image?.url.startsWith("https://") ? image.url : null;
+        const review = await stageFunded({ data: { text: clean, iconUrl } }).catch((e: Error) => ({ ok: false, message: e.message, id: undefined }));
         if (review) {
           if (!review.ok || !review.id) {
             await saveEntry({ id: makeId(), command: clean, intent: "launchToken", result: { tool: "launchToken", status: "FAILED", message: review.message }, createdAt: new Date().toISOString() });
@@ -266,7 +269,10 @@ export function Terminal({ tryCommand }: { tryCommand?: { command: string; nonce
         reader.onerror = () => reject(new Error("Image could not be read."));
         reader.readAsDataURL(blob);
       });
-      stableImage = { url, ...(image.filename ? { filename: image.filename } : {}) };
+      // Host the picture so launches get a short public URL for on-chain metadata.
+      const hosted = userId ? await uploadIcon({ data: { dataUrl: url } }).catch(() => null) : null;
+      if (userId && !hosted) toast.error("Couldn't save the picture — the launch would use the default icon.");
+      stableImage = { url: hosted?.url ?? url, ...(image.filename ? { filename: image.filename } : {}) };
     }
     await run(message.text || (stableImage ? "launch $TOKEN Token Name" : ""), stableImage);
     setDraft("");
