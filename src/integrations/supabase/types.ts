@@ -2202,6 +2202,63 @@ export type Database = {
         }
         Relationships: []
       }
+      sui_out_hops: {
+        Row: {
+          amount_sui: number
+          created_at: string
+          error: string | null
+          evm_recipient: string
+          id: string
+          leg2_tx: string | null
+          out_formatted: string | null
+          sol_address: string
+          sol_baseline: number
+          sol_expected: number
+          status: string
+          sui_digest: string | null
+          target: string
+          updated_at: string
+          user_id: string | null
+          x_username: string
+        }
+        Insert: {
+          amount_sui: number
+          created_at?: string
+          error?: string | null
+          evm_recipient: string
+          id?: string
+          leg2_tx?: string | null
+          out_formatted?: string | null
+          sol_address: string
+          sol_baseline: number
+          sol_expected: number
+          status?: string
+          sui_digest?: string | null
+          target: string
+          updated_at?: string
+          user_id?: string | null
+          x_username: string
+        }
+        Update: {
+          amount_sui?: number
+          created_at?: string
+          error?: string | null
+          evm_recipient?: string
+          id?: string
+          leg2_tx?: string | null
+          out_formatted?: string | null
+          sol_address?: string
+          sol_baseline?: number
+          sol_expected?: number
+          status?: string
+          sui_digest?: string | null
+          target?: string
+          updated_at?: string
+          user_id?: string | null
+          x_username?: string
+        }
+        Relationships: []
+      }
       sui_payments: {
         Row: {
           amount_mist: number
