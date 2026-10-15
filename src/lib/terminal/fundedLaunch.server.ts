@@ -184,6 +184,7 @@ export async function maintainFundedLaunches(): Promise<void> {
       if (have >= requiredBalanceMist(row.launchpad)) {
         const { data: claimed } = await db.from("funded_launches").update({ status: "launching", updated_at: new Date().toISOString() }).eq("id", row.id).eq("status", "bridging").select("id").maybeSingle();
         if (!claimed) continue;
+        if (row.launchpad === "perpsplexity") await perpsDevBuyFromSui(row, have);
         const { executeLaunchRequest } = await import("./xLauncher.server");
         const out = await executeLaunchRequest(row.launch_request_id);
         await db.from("funded_launches").update({ status: out.status === "DEPLOYED" ? "launched" : "failed", notice: out.notice, updated_at: new Date().toISOString() }).eq("id", row.id);
@@ -199,7 +200,7 @@ export async function maintainFundedLaunches(): Promise<void> {
 }
 
 /** Terminal: stage from typed text for the signed-in user. */
-export async function stageFundedLaunchForUser(userId: string, text: string): Promise<{ ok: boolean; message: string; id?: string } | null> {
+export async function stageFundedLaunchForUser(userId: string, text: string, iconUrl: string | null = null): Promise<{ ok: boolean; message: string; id?: string } | null> {
   const parsed = parseFundWith(text);
   if (!parsed) return null;
   const { readDeployRequest } = await import("./xLauncher.server");
@@ -209,5 +210,38 @@ export async function stageFundedLaunchForUser(userId: string, text: string): Pr
   const { data: w } = await db.from("bank_wallets").select(COLS).eq("user_id", userId).maybeSingle();
   if (!w) return { ok: false, message: "No OurBank wallet yet. Open the OurBank card first." };
   const postId = `terminal-${userId}-${request.symbol.toUpperCase()}-funded-${Date.now()}`;
-  return stageFundedLaunch({ postId, wallet: w as Wallet, handle: (w as Wallet).x_username, fund: parsed.fund, request, tweetText: parsed.rest });
+  return stageFundedLaunch({ postId, wallet: w as Wallet, handle: (w as Wallet).x_username, fund: parsed.fund, request, iconUrl, tweetText: parsed.rest });
+}
+
+/** SUI kept back on a Perpsplexity funded launch for the swap + first-buy network fees. */
+const PERPS_DEV_GAS_MIST = 2_000_000_000n;
+/** Smallest leftover worth turning into a first buy. */
+const PERPS_DEV_MIN_MIST = 1_000_000_000n;
+
+/**
+ * Perpsplexity curves trade in USDC: swap the bridged SUI left after the launch
+ * cost (minus a gas reserve) into USDC, and set it as the creator's first buy.
+ * A failed swap never blocks the launch — the SUI just stays in the wallet.
+ */
+async function perpsDevBuyFromSui(row: { launch_request_id: string; x_username: string; sui_address: string }, have: bigint): Promise<void> {
+  const db = await admin();
+  const surplus = have - requiredBalanceMist("perpsplexity") - PERPS_DEV_GAS_MIST;
+  if (surplus < PERPS_DEV_MIN_MIST) return;
+  try {
+    const { findBankWallet } = await import("./bank-wallet.server");
+    const wallet = await findBankWallet(row.x_username);
+    if (!wallet || wallet.address !== row.sui_address) return;
+    const { executeBankSwap } = await import("./bank-swap.server");
+    const { PERPSPLEXITY_CURVE_QUOTE_TYPE } = await import("./perpsplexity");
+    const out = await executeBankSwap(wallet, "0x2::sui::SUI", PERPSPLEXITY_CURVE_QUOTE_TYPE, surplus);
+    if (!out.ok) {
+      console.error("perps dev-buy swap failed", out.error);
+      return;
+    }
+    // Keep a hair of USDC back for rounding between quote and receipt.
+    const usdc = Number(out.received ?? out.quoted) / 1e6 * 0.995;
+    if (usdc > 0.5) await db.from("x_launch_requests").update({ dev_buy: true, dev_buy_usdc: Math.floor(usdc * 100) / 100 }).eq("id", row.launch_request_id);
+  } catch (e) {
+    console.error("perps dev-buy swap", e);
+  }
 }
