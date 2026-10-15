@@ -301,3 +301,14 @@ export async function bridgeSolForXHandle(handle: string, amountSol?: number, bu
     return `@${handle} couldn't bridge right now: ${e instanceof Error ? e.message : "unknown error"}`.slice(0, 280);
   }
 }
+
+/** Signs and sends one legacy message from the user's OurBank Solana address. Returns the signature. */
+export async function sendFromOurBankSol(solAddress: string, build: (blockhash: string) => Uint8Array): Promise<string> {
+  const db = await admin();
+  const { data: w } = await db.from("bank_wallets").select(COLS).eq("sol_address", solAddress).maybeSingle();
+  if (!w) throw new Error("No OurBank Solana wallet.");
+  const { value } = await rpc<{ value: { blockhash: string } }>("getLatestBlockhash", [{ commitment: "confirmed" }]);
+  const msg = build(value.blockhash);
+  const tx = signedTxBase64(await sign(w as SolWalletRow, msg), msg);
+  return rpc<string>("sendTransaction", [tx, { encoding: "base64", preflightCommitment: "confirmed" }]);
+}

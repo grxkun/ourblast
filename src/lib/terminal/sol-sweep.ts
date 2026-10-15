@@ -114,3 +114,30 @@ export function signedTxBase64(signature: Uint8Array, msg: Uint8Array): string {
   out.set(msg, 65);
   return Buffer.from(out).toString("base64");
 }
+
+export interface GenericIx { programId: string; keys: { pubkey: string; isSigner: boolean; isWritable: boolean }[]; data: Uint8Array }
+
+/**
+ * Compiles arbitrary instructions into a legacy message with `payer` as the only signer.
+ * Lookup tables are not used — every account is listed inline, so the tx stays legacy.
+ */
+export function compileLegacyMessage(payer: string, ixs: GenericIx[], blockhash: string): Uint8Array {
+  const meta = new Map<string, { s: boolean; w: boolean }>([[payer, { s: true, w: true }]]);
+  const touch = (k: string, s: boolean, w: boolean) => {
+    const m = meta.get(k) ?? { s: false, w: false };
+    meta.set(k, { s: m.s || s, w: m.w || w });
+  };
+  for (const ix of ixs) {
+    for (const k of ix.keys) touch(k.pubkey, k.isSigner, k.isWritable);
+    touch(ix.programId, false, false);
+  }
+  for (const [k, m] of meta) if (m.s && k !== payer) throw new Error("Instruction needs a second signer.");
+  const all = [...meta.entries()];
+  const order = (s: boolean, w: boolean) => all.filter(([k, m]) => m.s === s && m.w === w && k !== payer).map(([k]) => k);
+  const keys = [payer, ...order(true, false), ...order(false, true), ...order(false, false)];
+  const ro = order(false, false).length;
+  const idx = new Map(keys.map((k, i) => [k, i]));
+  const compiled = ixs.map((ix) => ({ program: idx.get(ix.programId)!, accounts: ix.keys.map((k) => idx.get(k.pubkey)!), data: [...ix.data] }));
+  if (keys.length > 255) throw new Error("Too many accounts.");
+  return message([1, 0, ro], keys, blockhash, compiled);
+}
