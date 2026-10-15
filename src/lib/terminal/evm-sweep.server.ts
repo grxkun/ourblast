@@ -14,7 +14,7 @@ import {
 import { privateKeyToAccount } from "viem/accounts";
 
 import { decryptConnectionKey } from "@/lib/connection-key.server";
-import { ethSweepAmount, NATIVE, SWEEP_CHAINS, sweepAllowed, usdcSweepAmount, type SweepChain, type SweepToken } from "./evm-sweep";
+import { decodeSolHop, encodeSolHop, ethSweepAmount, NATIVE, solHopAmount, SWEEP_CHAINS, sweepAllowed, usdcSweepAmount, type SweepChain, type SweepToken } from "./evm-sweep";
 
 /**
  * Phase 3 of multi-chain OurBank: moves ETH/USDC that lands on a user's OurBank
@@ -44,6 +44,7 @@ interface EvmWalletRow {
   evm_address: string;
   evm_secret_ciphertext: string | null;
   evm_signing_backend: string | null;
+  sol_address?: string | null;
 }
 
 /** Signs and broadcasts one EVM transaction from an OurBank EVM address. */
@@ -168,6 +169,65 @@ async function intentsBnbDeposit(w: EvmWalletRow, amount: bigint): Promise<Hex> 
   return dep as Hex;
 }
 
+/** Relay: native BNB on BSC → native SOL at the user's OurBank Solana address. */
+async function relayBnbToSol(w: EvmWalletRow, amount: bigint): Promise<{ txs: { to: Hex; data: Hex; value: bigint }[]; outLamports: bigint }> {
+  const headers: Record<string, string> = { "content-type": "application/json" };
+  const key = process.env["RELAY_API_KEY"];
+  if (key) headers["x-api-key"] = key;
+  const res = await fetch("https://api.relay.link/quote", {
+    method: "POST",
+    headers,
+    body: JSON.stringify({
+      user: w.evm_address, recipient: w.sol_address,
+      originChainId: SWEEP_CHAINS.bsc.id, destinationChainId: 792703809,
+      originCurrency: NATIVE, destinationCurrency: "11111111111111111111111111111111",
+      amount: amount.toString(), tradeType: "EXACT_INPUT",
+    }),
+    signal: AbortSignal.timeout(15_000),
+  });
+  const json = (await res.json()) as { message?: string; details?: { currencyOut?: { amount?: string } }; steps?: { kind: string; items: { data: { to: string; data: string; value?: string; chainId: number } }[] }[] };
+  if (!res.ok || !json.steps) throw new Error(`BNB→SOL quote failed: ${json.message ?? res.status}`);
+  const out = BigInt(json.details?.currencyOut?.amount ?? "0");
+  if (out <= 0n) throw new Error("BNB→SOL quote returned nothing.");
+  const txs = json.steps.filter((s) => s.kind === "transaction").flatMap((s) => s.items.map((i) => i.data));
+  if (!txs.length || txs.some((t) => t.chainId !== SWEEP_CHAINS.bsc.id)) throw new Error("BNB→SOL quote returned an unexpected transaction.");
+  return { txs: txs.map((t) => ({ to: t.to as Hex, data: t.data as Hex, value: BigInt(t.value ?? "0") })), outLamports: out };
+}
+
+/**
+ * Second leg of BNB → SOL → SUI: once Relay's SOL lands on the user's OurBank
+ * Solana address, bridge exactly that SOL to Sui. Each row hops at most once
+ * (claimed sent → hopping atomically). Runs on user-started sweeps only.
+ */
+export async function maintainBnbSolHops(): Promise<void> {
+  const db = await admin();
+  await confirmSubmitted();
+  const { data: rows } = await db.from("evm_sweeps").select("id, user_id, approve_tx, updated_at").eq("route", "relay_sol").eq("status", "sent").limit(20);
+  for (const r of rows ?? []) {
+    const hop = decodeSolHop(r.approve_tx);
+    if (!hop || !r.user_id) continue;
+    try {
+      const { data: w } = await db.from("bank_wallets").select("sol_address").eq("user_id", r.user_id).maybeSingle();
+      if (!w?.sol_address) continue;
+      const { balances, bridgeSolNowForUser } = await import("./sol-sweep.server");
+      const { lamports } = await balances(w.sol_address);
+      const amt = solHopAmount(hop.lamports, lamports);
+      if (amt === 0n) {
+        if (Date.now() - Date.parse(r.updated_at) > 3_600_000) {
+          await db.from("evm_sweeps").update({ status: "hop_failed", error: "SOL didn't arrive within 1h — anything that lands stays in your Solana wallet.", updated_at: new Date().toISOString() }).eq("id", r.id);
+        }
+        continue;
+      }
+      const { data: claimed } = await db.from("evm_sweeps").update({ status: "hopping", updated_at: new Date().toISOString() }).eq("id", r.id).eq("status", "sent").select("id").maybeSingle();
+      if (!claimed) continue;
+      const res = await bridgeSolNowForUser(r.user_id, Number(amt) / 1e9, hop.keep ? "keep" : false);
+      await db.from("evm_sweeps").update({ status: res.ok ? "hopped" : "hop_failed", error: res.ok ? null : res.message.slice(0, 300), updated_at: new Date().toISOString() }).eq("id", r.id);
+    } catch (e) {
+      console.error(`BNB→SOL hop ${r.id}`, e);
+    }
+  }
+}
+
 /** Claims, sends and records one sweep. Never throws. */
 async function sweep(chain: SweepChain, w: EvmWalletRow, token: SweepToken, amount: bigint, keep = false): Promise<{ ok: true; hash: string } | { ok: false; error: string }> {
   const db = await admin();
@@ -188,9 +248,19 @@ async function sweep(chain: SweepChain, w: EvmWalletRow, token: SweepToken, amou
       for (const t of txs) hash = await sendTx(chain, w, t);
       hash = hash!;
     } else if (route === "intents") {
-      orderId = keep ? null : await ensureOrder(w);
-      const to = await intentsBnbDeposit(w, amount);
-      hash = await sendTx(chain, w, { to, value: amount });
+      const direct = await intentsBnbDeposit(w, amount).then((to) => ({ to }), (e: Error) => ({ err: e }));
+      if ("to" in direct) {
+        orderId = keep ? null : await ensureOrder(w);
+        hash = await sendTx(chain, w, { to: direct.to, value: amount });
+      } else {
+        // 1Click refuses small BNB swaps at times: hop BNB → SOL (Relay) into the
+        // user's own OurBank Solana address; maintainBnbSolHops sends it on to Sui.
+        if (!w.sol_address) throw direct.err;
+        const hop = await relayBnbToSol(w, amount);
+        for (const t of hop.txs) hash = await sendTx(chain, w, t);
+        hash = hash!;
+        await db.from("evm_sweeps").update({ route: "relay_sol", approve_tx: encodeSolHop(hop.outLamports, keep) }).eq("id", claimed.id);
+      }
     } else {
       orderId = keep ? null : await ensureOrder(w);
       const usdc = SWEEP_CHAINS[chain].usdc!;
@@ -249,7 +319,7 @@ export async function maintainEvmSweeps(): Promise<void> {
   await confirmSubmitted();
   const { data: wallets } = await db
     .from("bank_wallets")
-    .select("x_username, user_id, address, evm_address, evm_secret_ciphertext, evm_signing_backend")
+    .select("x_username, user_id, address, evm_address, evm_secret_ciphertext, evm_signing_backend, sol_address")
     .not("evm_address", "is", null)
     .limit(500);
   for (const w of (wallets ?? []) as EvmWalletRow[]) {
@@ -310,7 +380,7 @@ export async function bridgeNowForUser(userId: string): Promise<{ ok: boolean; m
   const db = await admin();
   const { data: w } = await db
     .from("bank_wallets")
-    .select("x_username, user_id, address, evm_address, evm_secret_ciphertext, evm_signing_backend")
+    .select("x_username, user_id, address, evm_address, evm_secret_ciphertext, evm_signing_backend, sol_address")
     .eq("user_id", userId).not("evm_address", "is", null).maybeSingle();
   if (!w) return { ok: false, message: "No OurBank EVM address yet. Open your OurBank card first.", lines: [] };
   if (!sweepAllowed(sweepSetting(), w.x_username)) return { ok: false, message: "Bridging is invite-only during testing.", lines: [] };
@@ -328,7 +398,7 @@ export async function bridgeEvmAmountForUser(userId: string, asset: "ETH" | "BNB
   const db = await admin();
   const { data: w } = await db
     .from("bank_wallets")
-    .select("x_username, user_id, address, evm_address, evm_secret_ciphertext, evm_signing_backend")
+    .select("x_username, user_id, address, evm_address, evm_secret_ciphertext, evm_signing_backend, sol_address")
     .eq("user_id", userId).not("evm_address", "is", null).maybeSingle();
   if (!w) return { ok: false, message: "No OurBank EVM address yet. Open your OurBank card first." };
   if (!sweepAllowed(sweepSetting(), w.x_username)) return { ok: false, message: "Bridging is invite-only during testing." };

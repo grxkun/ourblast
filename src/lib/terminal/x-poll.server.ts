@@ -285,6 +285,13 @@ async function runWalletJobs() {
     }
   }
   try {
+    // User-started BNB bridges that hopped through Solana: send the SOL on to Sui.
+    const { maintainBnbSolHops } = await import("./evm-sweep.server");
+    await maintainBnbSolHops();
+  } catch (error) {
+    console.error(`BNB→SOL hop failed: ${error instanceof Error ? error.message : "unknown"}`);
+  }
+  try {
     const { maintainFundedLaunches } = await import("./fundedLaunch.server");
     await maintainFundedLaunches();
   } catch (error) {
