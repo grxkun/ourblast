@@ -33,6 +33,7 @@ import { LaunchCard } from "./LaunchCard";
 import { TerminalMessage } from "./TerminalMessage";
 import { TransactionCard } from "./TransactionCard";
 import { BridgeTracker } from "./BridgeTracker";
+import { LiveTxTracker } from "./LiveTxTracker";
 
 const SESSION_KEY = "ourblast-terminal-session-v1";
 const makeId = () => crypto.randomUUID();
@@ -159,7 +160,7 @@ export function Terminal({ tryCommand }: { tryCommand?: { command: string; nonce
         pendingFunded.current = null;
         const out = await resolveFunded({ data: { id, confirm: !/cancel|no/i.test(clean) } }).catch((e: Error) => ({ ok: false, message: e.message, link: undefined }));
         const link = "link" in out && out.link ? `\n${out.link}` : "";
-        await saveEntry({ id: makeId(), command: clean, intent: "launchToken", result: { tool: "launchToken", status: out.ok ? (/cancel/i.test(clean) ? "READY" : "SUBMITTING") : "FAILED", message: `${out.message}${link}` }, createdAt: new Date().toISOString() });
+        await saveEntry({ id: makeId(), command: clean, intent: "launchToken", result: { tool: "launchToken", status: out.ok ? (/cancel/i.test(clean) ? "READY" : "SUBMITTING") : "FAILED", message: `${out.message}${link}`, data: out.ok && !/cancel/i.test(clean) ? { txTrack: { kind: "launch", since: new Date(Date.now() - 900_000).toISOString() } } : {} }, createdAt: new Date().toISOString() });
         return;
       }
       if (parseFundWith(clean) && /^\s*(?:launch|deploy|create|mint)\b/i.test(clean)) {
@@ -176,7 +177,7 @@ export function Terminal({ tryCommand }: { tryCommand?: { command: string; nonce
           }
           const out = await resolveFunded({ data: { id: review.id, confirm: true } }).catch((e: Error) => ({ ok: false, message: e.message, link: undefined }));
           const link = "link" in out && out.link ? `\n${out.link}` : "";
-          await saveEntry({ id: makeId(), command: clean, intent: "launchToken", result: { tool: "launchToken", status: out.ok ? "SUBMITTING" : "FAILED", message: `${out.message}${link}` }, createdAt: new Date().toISOString() });
+          await saveEntry({ id: makeId(), command: clean, intent: "launchToken", result: { tool: "launchToken", status: out.ok ? "SUBMITTING" : "FAILED", message: `${out.message}${link}`, data: out.ok ? { txTrack: { kind: "launch", since: new Date(Date.now() - 120_000).toISOString() } } : {} }, createdAt: new Date().toISOString() });
           return;
         }
       }
@@ -186,9 +187,10 @@ export function Terminal({ tryCommand }: { tryCommand?: { command: string; nonce
           await saveEntry({ id: makeId(), command: clean, intent: "getWallet", result: { tool: "getWallet", status: "NOT_CONNECTED", message: "Sign in first to bridge from your OurBank Sui wallet." }, createdAt: new Date().toISOString() });
           return;
         }
+        const outStarted = new Date().toISOString();
         const out = await bridgeOut({ data: outCmd }).catch((e: Error) => ({ ok: false, message: e.message, link: undefined }));
         const link = "link" in out && out.link ? `\n${out.link}` : "";
-        await saveEntry({ id: makeId(), command: clean, intent: "getWallet", result: { tool: "getWallet", status: out.ok ? "SUBMITTING" : "FAILED", message: `${out.message}${link}` }, createdAt: new Date().toISOString() });
+        await saveEntry({ id: makeId(), command: clean, intent: "getWallet", result: { tool: "getWallet", status: out.ok ? "SUBMITTING" : "FAILED", message: `${out.message}${link}`, data: out.ok ? { txTrack: { kind: "suiout", since: outStarted } } : {} }, createdAt: new Date().toISOString() });
         void queryClient.invalidateQueries({ queryKey: ["bank-wallet", userId] });
         return;
       }
@@ -223,10 +225,11 @@ export function Terminal({ tryCommand }: { tryCommand?: { command: string; nonce
           await saveEntry({ id: makeId(), command: clean, intent: "getWallet", result: { tool: "getWallet", status: "NOT_CONNECTED", message: "Sign in first to bridge from your OurBank EVM address." }, createdAt: new Date().toISOString() });
           return;
         }
+        const evmStarted = new Date().toISOString();
         const out = await bridge();
         const lines = out.lines.map((l) => `${l.chain} ${l.amount} ${l.token}: ${l.status}${l.txHash ? ` ${l.txHash}` : ""}${l.error ? ` (${l.error})` : ""}`);
         const failed = !out.ok || out.lines.some((l) => l.status === "failed");
-        await saveEntry({ id: makeId(), command: clean, intent: "getWallet", result: { tool: "getWallet", status: failed ? "FAILED" : out.lines.length ? "SUBMITTING" : "READY", message: [out.message, ...lines].join("\n") }, createdAt: new Date().toISOString() });
+        await saveEntry({ id: makeId(), command: clean, intent: "getWallet", result: { tool: "getWallet", status: failed ? "FAILED" : out.lines.length ? "SUBMITTING" : "READY", message: [out.message, ...lines].join("\n"), data: out.lines.length ? { txTrack: { kind: "evm", since: evmStarted } } : {} }, createdAt: new Date().toISOString() });
         void queryClient.invalidateQueries({ queryKey: ["bank-wallet", userId] });
         return;
       }
@@ -354,7 +357,7 @@ export function Terminal({ tryCommand }: { tryCommand?: { command: string; nonce
             {!history.length && !cloudHistory.isLoading ? <div className="flex min-h-[24rem] flex-col items-center justify-center text-center"><div className="terminal-agent-mark mb-5">OB<span>_</span></div><p className="font-display text-3xl uppercase">What do you want to do on Sui?</p><p className="mt-2 max-w-md text-sm text-muted-foreground">Describe the action. The terminal maps it to an allowlisted tool and shows the exact state before anything touches your wallet.</p><div className="mt-6"><CommandSuggestions onSelect={setDraft} /></div></div> : null}
             {history.map((entry) => {
               const launch = launchOverrides[entry.id] ?? entry.result.launch;
-              return <TerminalMessage key={entry.id} entry={entry} onCopy={() => void navigator.clipboard.writeText(entry.command)} onRerun={() => void run(entry.command)}>{launch ? <LaunchCard launch={launch} editing={editingId === entry.id} onEdit={() => setEditingId((value) => value === entry.id ? null : entry.id)} onChange={(next) => setLaunchOverrides((current) => ({ ...current, [entry.id]: next }))} onGenerate={() => toast("Image generation is coming soon / not connected.")} onLaunch={() => { if (!userId) { void connect(); return; } void doLaunch(launch); }} /> : null}{["launchToken", "createToken", "buyToken", "sellToken"].includes(entry.intent) ? <TransactionCard status={entry.result.status} /> : null}{typeof entry.result.data?.["bridgeTrack"] === "string" ? <BridgeTracker since={entry.result.data["bridgeTrack"] === "latest" ? undefined : entry.result.data["bridgeTrack"]} /> : null}</TerminalMessage>;
+              return <TerminalMessage key={entry.id} entry={entry} onCopy={() => void navigator.clipboard.writeText(entry.command)} onRerun={() => void run(entry.command)}>{launch ? <LaunchCard launch={launch} editing={editingId === entry.id} onEdit={() => setEditingId((value) => value === entry.id ? null : entry.id)} onChange={(next) => setLaunchOverrides((current) => ({ ...current, [entry.id]: next }))} onGenerate={() => toast("Image generation is coming soon / not connected.")} onLaunch={() => { if (!userId) { void connect(); return; } void doLaunch(launch); }} /> : null}{["launchToken", "createToken", "buyToken", "sellToken"].includes(entry.intent) ? <TransactionCard status={entry.result.status} /> : null}{typeof entry.result.data?.["bridgeTrack"] === "string" ? <BridgeTracker since={entry.result.data["bridgeTrack"] === "latest" ? undefined : entry.result.data["bridgeTrack"]} /> : null}{(() => { const t = entry.result.data?.["txTrack"] as { kind?: string; since?: string } | undefined; return t && (t.kind === "suiout" || t.kind === "launch" || t.kind === "evm") && t.since ? <LiveTxTracker kind={t.kind} since={t.since} /> : null; })()}</TerminalMessage>;
             })}
             {processing ? <div className="space-y-3">{pending ? <div className="ml-auto w-fit max-w-full rounded-lg border border-border bg-card px-3 py-2 font-mono text-sm">&gt; {pending}</div> : null}<div className="flex items-center gap-2 text-sm"><span className="terminal-status-dot" /><Shimmer>Working on it…</Shimmer></div></div> : null}
           </ConversationContent>
