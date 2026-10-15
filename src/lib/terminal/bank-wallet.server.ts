@@ -304,4 +304,46 @@ export async function sendFromBankWallet(
   return { ok: true, digest: executed.digest };
 }
 
+/** Sends several coins to one recipient in a single transaction block (all or nothing). */
+export async function sendManyFromBankWallet(
+  wallet: BankWalletRow,
+  items: { coinType: string; amount: bigint }[],
+  recipient: string,
+): Promise<Result> {
+  const { gasCoins, referenceGasPrice, rpc, withGas, signAndExecute } = await chain();
+  let signer: Awaited<ReturnType<typeof bankSigner>>;
+  try {
+    signer = await bankSigner(wallet);
+  } catch (e) {
+    return { ok: false, error: (e as Error).message };
+  }
+  const sender = signer.address;
+  const to = normalizeSuiAddress(recipient);
+  const gas = await gasCoins(sender);
+  if (gas.length === 0) return { ok: false, error: "Your OurBank wallet has no SUI for network fees." };
+  const tx = new Transaction();
+  withGas(tx, sender, gas, await referenceGasPrice(), Number(GAS_BUDGET));
+
+  const outs: ReturnType<typeof tx.splitCoins>[number][] = [];
+  for (const it of items) {
+    const type = normalizeStructTag(it.coinType);
+    if (type === SUI_TYPE) {
+      outs.push(tx.splitCoins(tx.gas, [tx.pure.u64(it.amount)])[0]!);
+      continue;
+    }
+    const page = await rpc<{ data: { coinObjectId: string; version: string; digest: string }[] }>("suix_getCoins", [sender, type, null, 50]);
+    const coins = page.data ?? [];
+    if (coins.length === 0) return { ok: false, error: `No ${type.split("::").at(-1)} coins in your OurBank wallet.` };
+    const refs = coins.map((c) => tx.objectRef({ objectId: c.coinObjectId, version: String(c.version), digest: c.digest }));
+    const [primary, ...rest] = refs;
+    if (rest.length) tx.mergeCoins(primary!, rest);
+    outs.push(tx.splitCoins(primary!, [tx.pure.u64(it.amount)])[0]!);
+  }
+  tx.transferObjects(outs, tx.pure.address(to));
+
+  const executed = await signAndExecute(tx, signer);
+  if (!executed.ok || !executed.digest) return { ok: false, error: executed.error ?? "Transaction failed." };
+  return { ok: true, digest: executed.digest };
+}
+
 export { GAS_BUDGET, SUI_TYPE };

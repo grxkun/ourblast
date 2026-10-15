@@ -65,6 +65,35 @@ export function parseBankCommand(raw: string): BankCommand | null {
   return { amount, token, isCoinType, recipientKind, recipient };
 }
 
+export interface MultiSendItem { amount: string; token: string; isCoinType: boolean }
+export interface MultiSendCommand { items: MultiSendItem[]; recipientKind: BankRecipientKind; recipient: string }
+
+export const MULTI_SEND_MAX = 8;
+const MULTI = /\b(?:send|tip|pay|transfer|give)\s+(.+?)\s+to\s+(\S+)\s*$/i;
+const ITEM = /^([0-9]+(?:\.[0-9]+)?)\s+(\$?[A-Za-z0-9_]{1,20}|0x[0-9a-fA-F]{1,64}::[A-Za-z0-9_]+::[A-Za-z0-9_]+)$/;
+
+/** "send 22 $HOLMOT, 10 $BLAST & 20 $ONE to adeniyi.sui" → 2+ items in one send; null otherwise. */
+export function parseMultiSendCommand(raw: string): MultiSendCommand | null {
+  const text = stripThousands(raw).replace(/@ourblastbot\b/gi, " ").replace(/\s+/g, " ").trim().replace(/[.!?]+$/, "");
+  const m = MULTI.exec(text);
+  if (!m) return null;
+  const parts = m[1]!.split(/\s*(?:,|&|\+|\band\b)\s*/i).map((p) => p.trim()).filter(Boolean);
+  if (parts.length < 2 || parts.length > MULTI_SEND_MAX) return null;
+  const items: MultiSendItem[] = [];
+  for (const p of parts) {
+    const im = ITEM.exec(p);
+    if (!im || !(Number(im[1]) > 0)) return null;
+    const isCoinType = COIN_TYPE.test(im[2]!);
+    const token = isCoinType ? im[2]! : im[2]!.replace(/^\$/, "").toUpperCase();
+    if (items.some((i) => i.token.toLowerCase() === token.toLowerCase())) return null;
+    items.push({ amount: im[1]!, token, isCoinType });
+  }
+  // Reuse the single-send recipient rules.
+  const single = parseBankCommand(`send ${items[0]!.amount} ${parts[0]!.split(" ")[1]} to ${m[2]}`);
+  if (!single) return null;
+  return { items, recipientKind: single.recipientKind, recipient: single.recipient };
+}
+
 /** "25.5" + 9 decimals → 25500000000n, exact (no floating point). */
 export function toAtomic(amount: string, decimals: number): bigint {
   const [whole = "0", frac = ""] = amount.split(".");

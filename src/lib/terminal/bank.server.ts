@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 import { normalizeStructTag, normalizeSuiAddress } from "@mysten/sui/utils";
 
-import { describeRecipient, isBalanceRequest, isBurnAddress, parseBankCommand, parseChoiceReply, parseSwapCommand, shortCoinType, toAtomic, type BankCommand } from "./bank";
+import { describeRecipient, isBalanceRequest, isBurnAddress, parseBankCommand, parseChoiceReply, parseMultiSendCommand, parseSwapCommand, shortCoinType, toAtomic, type BankCommand, type MultiSendCommand } from "./bank";
 import { X_BOT_SITE } from "./x-bot";
 
 const SUI_TYPE = normalizeStructTag("0x2::sui::SUI");
@@ -67,6 +67,75 @@ export async function matchCoins(wallet: string, command: Pick<BankCommand, "tok
   }
   return out;
 }
+
+/**
+ * Several coins to one recipient from the OurBank wallet in ONE Sui transaction.
+ * All-or-nothing: every coin is checked first; one tweet claims once.
+ */
+async function multiSend(postId: string, username: string, cmd: MultiSendCommand): Promise<string | null> {
+  const { findBankWallet, ensureBankWallet, sendManyFromBankWallet, SUI_TYPE: SUI, GAS_BUDGET } = await import("./bank-wallet.server");
+  const wallet = await findBankWallet(username);
+  if (!wallet) return `@${username} sending several tokens at once needs an OurBank wallet. Sign in at ${X_BOT_SITE}/terminal, or send one token per command.`;
+  const who = describeRecipient(cmd.recipientKind, cmd.recipient);
+  const picks: { coin: CoinMatch; amount: bigint; display: string }[] = [];
+  for (const it of cmd.items) {
+    let matches: CoinMatch[];
+    try {
+      matches = await matchCoins(wallet.address, it);
+    } catch {
+      return `@${username} couldn't read your OurBank wallet right now. Nothing was sent.`;
+    }
+    if (matches.length === 0) return `@${username} no ${it.token} in your OurBank wallet. Nothing was sent.`;
+    if (matches.length > 1) return `@${username} several coins are called ${it.token} — use its full coin type (0x…::coin::COIN). Nothing was sent.`;
+    const coin = matches[0]!;
+    let amount: bigint;
+    try {
+      amount = toAtomic(it.amount, coin.decimals);
+    } catch (e) {
+      return `@${username} ${(e as Error).message}`;
+    }
+    const needed = coin.coinType === SUI ? amount + GAS_BUDGET : amount;
+    if (needed > coin.balance) return `@${username} not enough ${coin.symbol} for ${it.amount}${coin.coinType === SUI ? " plus fees" : ""}. Nothing was sent.`;
+    picks.push({ coin, amount, display: it.amount });
+  }
+  if (!picks.some((p) => p.coin.coinType === SUI)) {
+    const sui = (await matchCoins(wallet.address, { token: SUI, isCoinType: true }).catch(() => []))[0];
+    if (!sui || sui.balance < GAS_BUDGET) return `@${username} your OurBank wallet needs a little SUI for network fees. Nothing was sent.`;
+  }
+
+  let recipient = await resolveRecipient(cmd.recipientKind, cmd.recipient);
+  if (!recipient && cmd.recipientKind === "x") recipient = (await ensureBankWallet(cmd.recipient, null)).address;
+  if (!recipient) return `@${username} ${cmd.recipient} doesn't point to a Sui address. Nothing was sent.`;
+  if (recipient === normalizeSuiAddress(wallet.address)) return `@${username} that's your own wallet.`;
+
+  const db = await admin();
+  const senderUserId = wallet.user_id ?? (await walletForXHandle(username))?.userId;
+  if (!senderUserId) return `@${username} sign in at ${X_BOT_SITE}/terminal first.`;
+  // One row per coin; the first row claims the tweet so it can never send twice.
+  const rows = picks.map((p, i) => ({
+    x_post_id: i === 0 ? postId : `${postId}#${i + 1}`,
+    sender_user_id: senderUserId, sender_x_username: username, sender_wallet: normalizeSuiAddress(wallet.address),
+    recipient_kind: cmd.recipientKind, recipient_input: cmd.recipient, recipient_address: recipient,
+    coin_type: p.coin.coinType, symbol: p.coin.symbol, decimals: p.coin.decimals,
+    amount_atomic: p.amount.toString() as unknown as number, amount_display: Number(p.display),
+    status: "SUBMITTED", instant: true,
+  }));
+  const { data: first, error } = await db.from("bank_transfers").insert(rows[0]!).select("id").single();
+  if (error?.code === "23505") return null;
+  if (error || !first) throw new Error(error?.message ?? "Could not save transfer.");
+  const { data: others } = rows.length > 1 ? await db.from("bank_transfers").insert(rows.slice(1)).select("id") : { data: [] };
+  const ids = [first.id, ...(others ?? []).map((r) => r.id)];
+
+  const sent = await sendManyFromBankWallet(wallet, picks.map((p) => ({ coinType: p.coin.coinType, amount: p.amount })), recipient);
+  if (!sent.ok) {
+    await db.from("bank_transfers").update({ status: "FAILED", error: sent.error }).in("id", ids);
+    return `@${username} transfer failed, nothing was sent: ${sent.error.slice(0, 120)}`;
+  }
+  await db.from("bank_transfers").update({ status: "CONFIRMED", tx_digest: sent.digest }).in("id", ids);
+  const list = picks.map((p) => `${p.display} ${p.coin.symbol}`).join(", ");
+  return `@${username} sent ${list} to ${who} in one tx ✅ https://suiscan.xyz/mainnet/tx/${sent.digest}`;
+}
+
 
 /**
  * Turns an "@ourblastbot send …" tweet into a transfer request that only the
@@ -477,6 +546,8 @@ export async function handleBankMention(postId: string, username: string, text: 
   const solCmd = parseSolCommand(text);
   if (solCmd) return solSweep.bridgeSolForXHandle(username, solCmd.amountSol, solCmd.buyBlast === true);
   if (parseSwapCommand(text)) return handleSwapMention(postId, username, text);
+  const multi = parseMultiSendCommand(text);
+  if (multi) return multiSend(postId, username, multi);
   const transfer = await createBankTransferFromMention(postId, username, text);
   if (transfer !== null) return transfer;
   // A trade we couldn't read must never fall through to the generic "connect your

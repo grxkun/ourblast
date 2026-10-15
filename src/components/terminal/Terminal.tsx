@@ -24,7 +24,7 @@ import { bridgeSuiOut } from "@/lib/terminal/suiOut.functions";
 import { parseFundWith } from "@/lib/terminal/fundedLaunch";
 import { resolveFundedLaunchTerminal, stageFundedLaunchTerminal } from "@/lib/terminal/fundedLaunch.functions";
 import { uploadTokenIcon } from "@/lib/terminal/tokenIcon.functions";
-import { parseBankCommand, parseSwapCommand } from "@/lib/terminal/bank";
+import { parseBankCommand, parseMultiSendCommand, parseSwapCommand } from "@/lib/terminal/bank";
 import { useBankApprovals } from "./useBankApprovals";
 import type { LaunchConfiguration, TerminalEntry, TerminalIntentName, TerminalStatus } from "@/lib/terminal/types";
 
@@ -234,7 +234,7 @@ export function Terminal({ tryCommand }: { tryCommand?: { command: string; nonce
         return;
       }
       const swap = parseSwapCommand(clean);
-      const isBank = Boolean(userId) && (swap || parseBankCommand(clean) || /^\s*#?[1-4]\s*$/.test(clean) || /^\s*(buy|sell|swap)\b/i.test(clean) || /\bfees?\b/i.test(clean));
+      const isBank = Boolean(userId) && (swap || parseBankCommand(clean) || parseMultiSendCommand(clean) || /^\s*#?[1-4]\s*$/.test(clean) || /^\s*(buy|sell|swap)\b/i.test(clean) || /\bfees?\b/i.test(clean));
       if (isBank) {
         const out = await bankCommand({ data: { text: clean } });
         let message = out.reply;
