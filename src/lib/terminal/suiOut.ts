@@ -3,9 +3,9 @@
  * Outbound bridge from the OurBank Sui wallet.
  * SOL: SUI → SOL directly (NEAR Intents 1Click).
  * ETH (Base/Arbitrum) and BNB: SUI → SOL (leg 1) into the user's OurBank Solana
- * address, then the poller sends that SOL on (leg 2: 1Click for ETH, Relay for BNB).
+ * address, then the poller sends that SOL on (leg 2: 1Click for ETH, Relay for BNB and Robinhood Chain ETH).
  */
-export type SuiOutTarget = "SOL" | "ETH_BASE" | "ETH_ARB" | "BNB";
+export type SuiOutTarget = "SOL" | "ETH_BASE" | "ETH_ARB" | "ETH_RH" | "BNB";
 export type SuiOutCommand = { amountSui: number; target: SuiOutTarget; destination?: string };
 
 export const SUI_OUT_MIN = 5; // SUI
@@ -16,13 +16,13 @@ export const HOP_SOL_KEEP = 3_000_000n;
 export const HOP_ARRIVAL_SHARE = 0.9;
 export const HOP_TIMEOUT_MS = 60 * 60_000;
 
-export const TARGET_LABEL: Record<SuiOutTarget, string> = { SOL: "SOL", ETH_BASE: "ETH on Base", ETH_ARB: "ETH on Arbitrum", BNB: "BNB" };
+export const TARGET_LABEL: Record<SuiOutTarget, string> = { SOL: "SOL", ETH_BASE: "ETH on Base", ETH_ARB: "ETH on Arbitrum", ETH_RH: "ETH on Robinhood Chain", BNB: "BNB" };
 
 const NUM = "(\\d+(?:\\.\\d+)?|\\.\\d+)";
 const SOL_ADDR = /^[1-9A-HJ-NP-Za-km-z]{32,44}$/;
 const EVM_ADDR = /^0x[0-9a-fA-F]{40}$/;
 const RE = new RegExp(
-  `^(?:bridge|send|move|swap)\\s+${NUM}\\s+\\$?sui\\s+(?:to|into|on)\\s+(sol|solana|eth|base|arb|arbitrum|bnb|bsc|evm)(?:\\s+(?:on\\s+)?(base|arb|arbitrum))?(?:\\s+(\\S+))?$`,
+  `^(?:bridge|send|move|swap)\\s+${NUM}\\s+\\$?sui\\s+(?:to|into|on)\\s+(sol|solana|eth|base|arb|arbitrum|rh|robinhood|bnb|bsc|evm)(?:\\s+(?:on\\s+)?(base|arb|arbitrum|rh|robinhood)(?:\\s+chain)?)?(?:\\s+(\\S+))?$`,
   "i",
 );
 
@@ -30,6 +30,7 @@ function targetOf(word: string, chain?: string): SuiOutTarget {
   const w = word.toLowerCase();
   if (w.startsWith("sol")) return "SOL";
   if (w === "bnb" || w === "bsc") return "BNB";
+  if (w === "rh" || w === "robinhood" || chain?.toLowerCase() === "rh" || chain?.toLowerCase() === "robinhood") return "ETH_RH";
   if (w.startsWith("arb") || chain?.toLowerCase().startsWith("arb")) return "ETH_ARB";
   return "ETH_BASE";
 }

@@ -9,6 +9,9 @@ describe("SUI outbound bridge", () => {
   it("bnb hops", () => expect(parseSuiOutCommand("bridge 10 sui to bnb")?.target).toBe("BNB"));
   it("eth defaults to Base", () => expect(parseSuiOutCommand("bridge 10 sui to eth")?.target).toBe("ETH_BASE"));
   it("eth on arbitrum", () => expect(parseSuiOutCommand("bridge 10 sui to eth on arbitrum")?.target).toBe("ETH_ARB"));
+  it("eth on rh", () => expect(parseSuiOutCommand("bridge 10 sui to eth on rh")?.target).toBe("ETH_RH"));
+  it("eth on robinhood chain with address", () =>
+    expect(parseSuiOutCommand("bridge 10 sui to eth on robinhood chain 0xb80d720d94ba7365181023872202b9dee37893d5")).toEqual({ amountSui: 10, target: "ETH_RH", destination: "0xb80d720d94ba7365181023872202b9dee37893d5" }));
   it("evm address destination", () =>
     expect(parseSuiOutCommand("bridge 10 sui to bnb 0xb80d720d94ba7365181023872202b9dee37893d5")?.destination).toBe("0xb80d720d94ba7365181023872202b9dee37893d5"));
   it("rejects a Solana address for BNB", () => expect(parseSuiOutCommand("bridge 10 sui to bnb CeUa8AkoeoUZsLWabAio6F4LScxMrx1X5zUpSwrMbEWp")).toBeNull());
