@@ -96,7 +96,7 @@ async function run(wallet: Wallet | null, amountSui: number, target: SuiOutTarge
   };
 }
 
-async function relaySolToBnb(solAddr: string, recipient: string, lamports: bigint) {
+async function relaySolToEvm(solAddr: string, recipient: string, lamports: bigint, destinationChainId: number) {
   const headers: Record<string, string> = { "content-type": "application/json" };
   const key = process.env["RELAY_API_KEY"];
   if (key) headers["x-api-key"] = key;
@@ -104,7 +104,7 @@ async function relaySolToBnb(solAddr: string, recipient: string, lamports: bigin
     method: "POST",
     headers,
     body: JSON.stringify({
-      user: solAddr, recipient, originChainId: SOL_CHAIN, destinationChainId: 56,
+      user: solAddr, recipient, originChainId: SOL_CHAIN, destinationChainId,
       originCurrency: NATIVE_SOL, destinationCurrency: "0x0000000000000000000000000000000000000000",
       amount: lamports.toString(), tradeType: "EXACT_INPUT",
     }),
@@ -113,7 +113,7 @@ async function relaySolToBnb(solAddr: string, recipient: string, lamports: bigin
   type RIx = { programId: string; data: string; keys: { pubkey: string; isSigner: boolean; isWritable: boolean }[] };
   const json = (await res.json().catch(() => ({}))) as { message?: string; details?: { currencyOut?: { amountFormatted?: string } }; steps?: { items: { data: { instructions?: RIx[] } }[] }[] };
   const ixs = json.steps?.flatMap((s) => s.items.flatMap((i) => i.data.instructions ?? [])) ?? [];
-  if (!res.ok || !ixs.length) throw new Error(`SOL→BNB quote failed: ${json.message ?? res.status}`);
+  if (!res.ok || !ixs.length) throw new Error(`SOL→EVM quote failed: ${json.message ?? res.status}`);
   return { ixs: ixs.map((i) => ({ programId: i.programId, keys: i.keys, data: Uint8Array.from(Buffer.from(i.data, "hex")) })), out: json.details?.currencyOut?.amountFormatted ?? "?" };
 }
 
@@ -142,10 +142,10 @@ export async function maintainSuiOutHops(): Promise<void> {
       if (!claimed) continue;
       let sig: string;
       let out: string;
-      if (r.target === "BNB") {
-        const q = await relaySolToBnb(r.sol_address, r.evm_recipient, amt);
+      if (r.target === "BNB" || r.target === "ETH_RH") {
+        const q = await relaySolToEvm(r.sol_address, r.evm_recipient, amt, r.target === "BNB" ? 56 : 4663);
         sig = await sendFromOurBankSol(r.sol_address, (bh) => compileLegacyMessage(r.sol_address, q.ixs, bh));
-        out = `${q.out} BNB`;
+        out = `${q.out} ${r.target === "BNB" ? "BNB" : "ETH"}`;
       } else {
         const q = await oneClickQuote(ONECLICK_ASSET.SOL, ONECLICK_ASSET[r.target as "ETH_BASE" | "ETH_ARB"], amt, r.evm_recipient, r.sol_address);
         sig = await sendFromOurBankSol(r.sol_address, (bh) => solTransferMessage(r.sol_address, q.deposit, amt, bh));
