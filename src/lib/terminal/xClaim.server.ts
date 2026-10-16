@@ -10,19 +10,22 @@ const CLAIM_PATTERN = /\bcla[io]?m\w*\b[^$]*?\bfees?\b|\bcla[io]?m\w*\b\s+\$[a-z
 /** "claim my fees and send it to X" is still a claim — the payout destination is fixed on chain. */
 const CLAIM_FEES_PATTERN = /\bcla[io]?m\w*\b[^$]*?\bfees?\b/i;
 
-export function readFeeClaimRequest(text: string): { symbol: string | null; redirectAsked: boolean } | null {
+const ADDRESS_PATTERN = /0x[a-f0-9]{40,64}/i;
+
+export function readFeeClaimRequest(text: string): { symbol: string | null; address: string | null; redirectAsked: boolean } | null {
   if (!CLAIM_PATTERN.test(text)) return null;
   const claimsFees = CLAIM_FEES_PATTERN.test(text);
   if (/\b(deploy|launch|buy|sell)\b/i.test(text)) return null;
   const transfer = /\b(send|transfer|withdraw)\b/i.test(text);
   if (transfer && !claimsFees) return null;
   const tag = text.match(/\$([a-z][a-z0-9]{0,15})\b/i);
-  return { symbol: tag?.[1] ? tag[1].toUpperCase() : null, redirectAsked: transfer };
+  const addr = text.match(ADDRESS_PATTERN);
+  return { symbol: tag?.[1] ? tag[1].toUpperCase() : null, address: addr?.[0]?.toLowerCase() ?? null, redirectAsked: transfer };
 }
 
 
 /** Read-only: "check fees", "my fees", "fee $X", "how much fees". Never claims. */
-export function readFeeCheckRequest(text: string): { symbol: string | null } | null {
+export function readFeeCheckRequest(text: string): { symbol: string | null; address: string | null } | null {
   const bare = text.replace(/@[a-z0-9_]{1,15}/gi, " ").replace(/\s+/g, " ").trim();
   if (/\bcla[io]?m/i.test(bare)) return null;
   if (/\b(deploy|launch|send|buy|sell|swap)\b/i.test(bare)) return null;
@@ -32,7 +35,8 @@ export function readFeeCheckRequest(text: string): { symbol: string | null } | n
     /^\$[a-z0-9]+\s+fees?\s*[?!.]*$/i.test(bare);
   if (!ask) return null;
   const tag = bare.match(/\$([a-z][a-z0-9]{0,15})\b/i);
-  return { symbol: tag?.[1] ? tag[1].toUpperCase() : null };
+  const addr = bare.match(ADDRESS_PATTERN);
+  return { symbol: tag?.[1] ? tag[1].toUpperCase() : null, address: addr?.[0]?.toLowerCase() ?? null };
 }
 
 const same = (a?: string | null, b?: string | null) =>
