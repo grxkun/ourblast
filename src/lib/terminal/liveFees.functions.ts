@@ -9,6 +9,8 @@ export interface LiveFeeRow {
   /** Creator fees sitting in the curve right now, in SUI. */
   pendingSui: number;
   graduated: boolean;
+  /** Full coin type; its package id is the token address users share. */
+  coinType: string;
   payouts: { recipient: string; bps: number }[];
 }
 
@@ -25,6 +27,7 @@ export const getLiveCreatorFees = createServerFn({ method: "GET" }).handler(asyn
     curveId: vault.curveId,
     pendingSui: vault.pendingSui,
     graduated: vault.graduated,
+    coinType: vault.coinType,
     payouts: vault.payouts,
   }));
   return {
