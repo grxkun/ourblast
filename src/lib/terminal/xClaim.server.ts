@@ -208,3 +208,59 @@ export async function handleFeeCheckMention(username: string, text: string): Pro
   const tail = total > 0 ? ` — reply "claim my fees" to release.` : "";
   return `@${username} ${head}${parts.join(" · ")}${tail}`.slice(0, 280);
 }
+
+/** "generate claim link for @handle on $TICKER" — launcher-only, never moves funds. */
+export function readClaimLinkRequest(text: string): { xUsername: string | null; symbol: string | null } | null {
+  if (!/\bclaim[\s-]*link\b/i.test(text)) return null;
+  const handles = [...text.matchAll(/@([a-z0-9_]{1,15})\b/gi)].map((m) => m[1]!).filter((h) => !/^ourblastbot$/i.test(h));
+  const tag = text.match(/\$([a-z][a-z0-9]{0,15})\b/i);
+  return { xUsername: handles[0] ?? null, symbol: tag?.[1] ? tag[1].toUpperCase() : null };
+}
+
+export async function handleClaimLinkMention(username: string, text: string): Promise<string | null> {
+  const request = readClaimLinkRequest(text);
+  if (!request) return null;
+  if (!request.xUsername || !request.symbol) {
+    return `@${username} Tell me who and which token, e.g. "generate claim link for @friend on $TICKER".`;
+  }
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const { data: launches } = await supabaseAdmin
+    .from("x_launch_requests")
+    .select("symbol, launchpad, x_username, fee_receiver_wallet")
+    .eq("status", "DEPLOYED")
+    .ilike("symbol", request.symbol)
+    .order("created_at", { ascending: false })
+    .limit(20);
+  const launch = (launches ?? []).find((row) => same(row.x_username, username));
+  if (!launch) {
+    return `@${username} Only the X account that launched $${request.symbol} can create its claim link.`;
+  }
+  if (launch.launchpad === "perpsplexity") {
+    return `@${username} $${request.symbol} is on Perpsplexity — its creator fees are paid by Perpsplexity itself, so a claim link can't route them.`;
+  }
+  const target = request.xUsername;
+  const { data: existing } = await supabaseAdmin
+    .from("fee_claim_links")
+    .select("token")
+    .eq("launch_symbol", request.symbol)
+    .ilike("x_username", target)
+    .eq("status", "pending")
+    .maybeSingle();
+  let token = existing?.token ?? null;
+  if (!token) {
+    const bytes = crypto.getRandomValues(new Uint8Array(24));
+    token = Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("");
+    const { error } = await supabaseAdmin.from("fee_claim_links").insert({
+      token,
+      launch_symbol: request.symbol,
+      x_username: target,
+      amount_sui: 0,
+    });
+    if (error) return `@${username} Couldn't create the claim link right now — nothing changed. Try again shortly.`;
+  }
+  const short = (w: string) => `${w.slice(0, 6)}…${w.slice(-4)}`;
+  const onChain = launch.fee_receiver_wallet
+    ? ` Note: the $${request.symbol} contract already pays ${short(launch.fee_receiver_wallet)} directly — this link records @${target}'s wallet but can't change who the contract pays.`
+    : "";
+  return `@${username} Claim link for @${target} on $${request.symbol}: https://ourblast.xyz/claim/${token} — only @${target} can open it, by signing in with X and connecting a Sui wallet.${onChain}`;
+}

@@ -234,7 +234,7 @@ export function Terminal({ tryCommand }: { tryCommand?: { command: string; nonce
         return;
       }
       const swap = parseSwapCommand(clean);
-      const isBank = Boolean(userId) && (swap || parseBankCommand(clean) || parseMultiSendCommand(clean) || /^\s*#?[1-4]\s*$/.test(clean) || /^\s*(buy|sell|swap)\b/i.test(clean) || /\bfees?\b/i.test(clean));
+      const isBank = Boolean(userId) && (swap || parseBankCommand(clean) || parseMultiSendCommand(clean) || /^\s*#?[1-4]\s*$/.test(clean) || /^\s*(buy|sell|swap)\b/i.test(clean) || /\bfees?\b/i.test(clean) || /\bclaim[\s-]*link\b/i.test(clean));
       if (isBank) {
         const out = await bankCommand({ data: { text: clean } });
         let message = out.reply;
