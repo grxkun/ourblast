@@ -12,10 +12,12 @@ test("check", () => {
 test("claim accepts send/transfer phrasing but not bank transfers", () => {
   expect(readFeeClaimRequest("@Ourblastbot Claim my fees and send it to Mjbdran.sui")).toEqual({
     symbol: null,
+    address: null,
     redirectAsked: true,
   });
   expect(readFeeClaimRequest("@Ourblastbot claim fees $HOLMOT and transfer to me")).toEqual({
     symbol: "HOLMOT",
+    address: null,
     redirectAsked: true,
   });
   expect(readFeeClaimRequest("@Ourblastbot send 1 SUI to 0xabc")).toBeNull();
