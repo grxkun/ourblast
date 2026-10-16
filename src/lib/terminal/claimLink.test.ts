@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { readClaimLinkRequest } from "./xClaim.server";
+import { readClaimLinkRequest , matchLaunchesByAddress } from "./xClaim.server";
 import { readFeeClaimRequest } from "./xClaim.server";
 
 describe("claim link command", () => {
@@ -16,5 +16,16 @@ describe("claim link command", () => {
   });
   it("is not treated as a fee release", () => {
     expect(readFeeClaimRequest("generate claim link for @eman_abio on $GROKLET")).toBeNull();
+  });
+});
+
+describe("coin type addresses", () => {
+  const ct = "0x2a7803434c3e35a8d899340aa20cc9d5ddd2e5469a7d21b265ed00fd18bc04f9::suipump::SUIPUMP";
+  it("reads the full coin type, keeping its case", () => {
+    expect(readClaimLinkRequest(`@Ourblastbot generate claim link for @EmanAbio on ${ct}`)).toEqual({ xUsername: "EmanAbio", symbol: null, address: ct });
+  });
+  it("matches a coin type to a launch stored by its coin type package", async () => {
+    const rows = [{ symbol: "CZ", token_address: "0x32a8c091dfbb48c793ad3919114924b87e1dbfef7644b557cb0ca8df65754586::cz::CZ" }];
+    expect(await matchLaunchesByAddress(rows, "0x32a8c091dfbb48c793ad3919114924b87e1dbfef7644b557cb0ca8df65754586::cz::CZ")).toHaveLength(1);
   });
 });
