@@ -377,8 +377,8 @@ export const runBankCommand = createServerFn({ method: "POST" })
     const { ensureBankWallet } = await import("./bank-wallet.server");
     await ensureBankWallet(handle, context.userId);
     const postId = `terminal-${crypto.randomUUID()}`;
-    const { handleFeeCheckMention, handleFeeClaimMention } = await import("./xClaim.server");
-    const feeReply = (await handleFeeCheckMention(handle, data.text)) ?? (await handleFeeClaimMention(handle, data.text));
+    const { handleFeeCheckMention, handleFeeClaimMention, handleClaimLinkMention } = await import("./xClaim.server");
+    const feeReply = (await handleClaimLinkMention(handle, data.text)) ?? (await handleFeeCheckMention(handle, data.text)) ?? (await handleFeeClaimMention(handle, data.text));
     const { handleBankMention } = await import("./bank.server");
     const raw = feeReply ?? (await handleBankMention(postId, handle, data.text)) ?? "";
     const reply = raw.replace(new RegExp(`^@${handle}\\s+`, "i"), "").trim() ||

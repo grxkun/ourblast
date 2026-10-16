@@ -105,12 +105,13 @@ async function processClaimedMention(
 
   // OurBank: "send 25 SUI to @alice". Creates a request only the sender's own
   // wallet can approve in the terminal — the bot never moves anyone's funds.
-  const { handleFeeClaimMention, handleFeeCheckMention } = await import("./xClaim.server");
+  const { handleFeeClaimMention, handleFeeCheckMention, handleClaimLinkMention } = await import("./xClaim.server");
   const { handleEscrowMention } = await import("./escrow.server");
   const { handleFundedLaunchMention } = await import("./fundedLaunch.server");
   const claimReply =
     (await handleFundedLaunchMention(payload.postId, username, text, payload.imageUrl ?? imageFieldInText(text) ?? imageUrlInText(text) ?? null)) ??
     (await handleEscrowMention(payload.postId, username, text)) ??
+    (await handleClaimLinkMention(username, text)) ??
     (await handleFeeCheckMention(username, text)) ??
     (await handleFeeClaimMention(username, text));
   const { handleBankMention } = await import("./bank.server");
