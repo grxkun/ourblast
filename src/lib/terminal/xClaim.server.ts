@@ -10,7 +10,47 @@ const CLAIM_PATTERN = /\bcla[io]?m\w*\b[^$]*?\bfees?\b|\bcla[io]?m\w*\b\s+\$[a-z
 /** "claim my fees and send it to X" is still a claim — the payout destination is fixed on chain. */
 const CLAIM_FEES_PATTERN = /\bcla[io]?m\w*\b[^$]*?\bfees?\b/i;
 
-const ADDRESS_PATTERN = /0x[a-f0-9]{40,64}/i;
+const ADDRESS_PATTERN = /0x[a-f0-9]{40,64}(?:::[a-z_][a-z0-9_]*::[a-z_][a-z0-9_]*)?/i;
+
+/** Full coin type "0x<pkg>::module::TYPE" (vs a bare object/curve id). */
+export function isCoinType(addr: string): boolean {
+  return addr.includes("::");
+}
+
+/** Symbol of a coin type, read from Sui GraphQL coin metadata. */
+async function coinTypeSymbol(coinType: string): Promise<string | null> {
+  try {
+    const res = await fetch("https://graphql.mainnet.sui.io/graphql", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ query: "query($t:String!){coinMetadata(coinType:$t){symbol}}", variables: { t: coinType } }),
+      signal: AbortSignal.timeout(10_000),
+    });
+    const json = (await res.json()) as { data?: { coinMetadata?: { symbol?: string } | null } };
+    return json.data?.coinMetadata?.symbol?.toUpperCase() ?? null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Rows matching a pasted address: exact curve/coin id, the coin's package, or —
+ * for Suipump rows stored by curve id — the coin type's on-chain symbol.
+ */
+export async function matchLaunchesByAddress<T extends { token_address?: string | null; symbol: string }>(
+  rows: T[],
+  addr: string,
+): Promise<T[]> {
+  const a = addr.toLowerCase();
+  const pkg = a.split("::")[0]!;
+  const direct = rows.filter((row) => {
+    const t = row.token_address?.toLowerCase();
+    return Boolean(t && (t === a || t.split("::")[0] === pkg));
+  });
+  if (direct.length > 0 || !isCoinType(addr)) return direct;
+  const symbol = await coinTypeSymbol(addr);
+  return symbol ? rows.filter((row) => row.symbol.toUpperCase() === symbol) : [];
+}
 
 export function readFeeClaimRequest(text: string): { symbol: string | null; address: string | null; redirectAsked: boolean } | null {
   if (!CLAIM_PATTERN.test(text)) return null;
@@ -20,7 +60,7 @@ export function readFeeClaimRequest(text: string): { symbol: string | null; addr
   if (transfer && !claimsFees) return null;
   const tag = text.match(/\$([a-z][a-z0-9]{0,15})\b/i);
   const addr = text.match(ADDRESS_PATTERN);
-  return { symbol: tag?.[1] ? tag[1].toUpperCase() : null, address: addr?.[0]?.toLowerCase() ?? null, redirectAsked: transfer };
+  return { symbol: tag?.[1] ? tag[1].toUpperCase() : null, address: addr?.[0] ?? null, redirectAsked: transfer };
 }
 
 
@@ -36,7 +76,7 @@ export function readFeeCheckRequest(text: string): { symbol: string | null; addr
   if (!ask) return null;
   const tag = bare.match(/\$([a-z][a-z0-9]{0,15})\b/i);
   const addr = bare.match(ADDRESS_PATTERN);
-  return { symbol: tag?.[1] ? tag[1].toUpperCase() : null, address: addr?.[0]?.toLowerCase() ?? null };
+  return { symbol: tag?.[1] ? tag[1].toUpperCase() : null, address: addr?.[0] ?? null };
 }
 
 const same = (a?: string | null, b?: string | null) =>
@@ -62,7 +102,7 @@ export async function handleFeeClaimMention(username: string, text: string): Pro
   }
 
   const targets = request.address
-    ? mine.filter((row) => row.token_address?.toLowerCase() === request.address)
+    ? await matchLaunchesByAddress(mine, request.address)
     : request.symbol
       ? mine.filter((row) => row.symbol.toUpperCase() === request.symbol)
       : mine;
@@ -161,7 +201,7 @@ export async function handleFeeCheckMention(username: string, text: string): Pro
   );
   if (mine.length === 0) return `@${username} no tokens launched from your X account yet, so no creator fees to show.`;
   const targets = request.address
-    ? mine.filter((row) => row.token_address?.toLowerCase() === request.address)
+    ? await matchLaunchesByAddress(mine, request.address)
     : request.symbol
       ? mine.filter((row) => row.symbol.toUpperCase() === request.symbol)
       : mine;
@@ -231,7 +271,7 @@ export function readClaimLinkRequest(text: string): { xUsername: string | null; 
   const handles = [...text.matchAll(/@([a-z0-9_]{1,15})\b/gi)].map((m) => m[1]!).filter((h) => !/^ourblastbot$/i.test(h));
   const tag = text.match(/\$([a-z][a-z0-9]{0,15})\b/i);
   const addr = text.match(ADDRESS_PATTERN);
-  return { xUsername: handles[0] ?? null, symbol: tag?.[1] ? tag[1].toUpperCase() : null, address: addr?.[0]?.toLowerCase() ?? null };
+  return { xUsername: handles[0] ?? null, symbol: tag?.[1] ? tag[1].toUpperCase() : null, address: addr?.[0] ?? null };
 }
 
 export async function handleClaimLinkMention(username: string, text: string): Promise<string | null> {
@@ -247,10 +287,11 @@ export async function handleClaimLinkMention(username: string, text: string): Pr
     .select("symbol, launchpad, x_username, fee_receiver_wallet, token_address")
     .eq("status", "DEPLOYED")
     .order("created_at", { ascending: false })
-    .limit(20);
-  query = request.address ? query.eq("token_address", request.address) : query.ilike("symbol", request.symbol!);
+    .limit(request.address ? 500 : 20);
+  if (!request.address) query = query.ilike("symbol", request.symbol!);
   const { data: launches } = await query;
-  const launch = (launches ?? []).find((row) => same(row.x_username, username));
+  const pool = (launches ?? []).filter((row) => same(row.x_username, username));
+  const launch = (request.address ? await matchLaunchesByAddress(pool, request.address) : pool)[0];
   if (!launch) {
     return `@${username} Only the X account that launched ${named} can create its claim link.`;
   }
