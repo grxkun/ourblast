@@ -255,13 +255,13 @@ export async function handleClaimLinkMention(username: string, text: string): Pr
     return `@${username} Only the X account that launched ${named} can create its claim link.`;
   }
   if (launch.launchpad === "perpsplexity") {
-    return `@${username} $${request.symbol} is on Perpsplexity — its creator fees are paid by Perpsplexity itself, so a claim link can't route them.`;
+    return `@${username} $${launch.symbol} is on Perpsplexity — its creator fees are paid by Perpsplexity itself, so a claim link can't route them.`;
   }
   const target = request.xUsername;
   const { data: existing } = await supabaseAdmin
     .from("fee_claim_links")
     .select("token")
-    .eq("launch_symbol", request.symbol)
+    .eq("launch_symbol", launch.symbol)
     .ilike("x_username", target)
     .eq("status", "pending")
     .maybeSingle();
@@ -271,7 +271,7 @@ export async function handleClaimLinkMention(username: string, text: string): Pr
     token = Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("");
     const { error } = await supabaseAdmin.from("fee_claim_links").insert({
       token,
-      launch_symbol: request.symbol,
+      launch_symbol: launch.symbol,
       x_username: target,
       amount_sui: 0,
     });
@@ -279,7 +279,7 @@ export async function handleClaimLinkMention(username: string, text: string): Pr
   }
   const short = (w: string) => `${w.slice(0, 6)}…${w.slice(-4)}`;
   const onChain = launch.fee_receiver_wallet
-    ? ` Note: the $${request.symbol} contract already pays ${short(launch.fee_receiver_wallet)} directly — this link records @${target}'s wallet but can't change who the contract pays.`
+    ? ` Note: the $${launch.symbol} contract already pays ${short(launch.fee_receiver_wallet)} directly — this link records @${target}'s wallet but can't change who the contract pays.`
     : "";
-  return `@${username} Claim link for @${target} on $${request.symbol}: https://ourblast.xyz/claim/${token} — only @${target} can open it, by signing in with X and connecting a Sui wallet.${onChain}`;
+  return `@${username} Claim link for @${target} on $${launch.symbol}: https://ourblast.xyz/claim/${token} — only @${target} can open it, by signing in with X and connecting a Sui wallet.${onChain}`;
 }
