@@ -226,30 +226,33 @@ export async function handleFeeCheckMention(username: string, text: string): Pro
 }
 
 /** "generate claim link for @handle on $TICKER" — launcher-only, never moves funds. */
-export function readClaimLinkRequest(text: string): { xUsername: string | null; symbol: string | null } | null {
+export function readClaimLinkRequest(text: string): { xUsername: string | null; symbol: string | null; address: string | null } | null {
   if (!/\bclaim[\s-]*link\b/i.test(text)) return null;
   const handles = [...text.matchAll(/@([a-z0-9_]{1,15})\b/gi)].map((m) => m[1]!).filter((h) => !/^ourblastbot$/i.test(h));
   const tag = text.match(/\$([a-z][a-z0-9]{0,15})\b/i);
-  return { xUsername: handles[0] ?? null, symbol: tag?.[1] ? tag[1].toUpperCase() : null };
+  const addr = text.match(ADDRESS_PATTERN);
+  return { xUsername: handles[0] ?? null, symbol: tag?.[1] ? tag[1].toUpperCase() : null, address: addr?.[0]?.toLowerCase() ?? null };
 }
 
 export async function handleClaimLinkMention(username: string, text: string): Promise<string | null> {
   const request = readClaimLinkRequest(text);
   if (!request) return null;
-  if (!request.xUsername || !request.symbol) {
-    return `@${username} Tell me who and which token, e.g. "generate claim link for @friend on $TICKER".`;
+  if (!request.xUsername || (!request.symbol && !request.address)) {
+    return `@${username} Tell me who and which token, e.g. "generate claim link for @friend on $TICKER" or "... on 0x<address>".`;
   }
+  const named = request.address ?? `$${request.symbol}`;
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-  const { data: launches } = await supabaseAdmin
+  let query = supabaseAdmin
     .from("x_launch_requests")
-    .select("symbol, launchpad, x_username, fee_receiver_wallet")
+    .select("symbol, launchpad, x_username, fee_receiver_wallet, token_address")
     .eq("status", "DEPLOYED")
-    .ilike("symbol", request.symbol)
     .order("created_at", { ascending: false })
     .limit(20);
+  query = request.address ? query.eq("token_address", request.address) : query.ilike("symbol", request.symbol!);
+  const { data: launches } = await query;
   const launch = (launches ?? []).find((row) => same(row.x_username, username));
   if (!launch) {
-    return `@${username} Only the X account that launched $${request.symbol} can create its claim link.`;
+    return `@${username} Only the X account that launched ${named} can create its claim link.`;
   }
   if (launch.launchpad === "perpsplexity") {
     return `@${username} $${request.symbol} is on Perpsplexity — its creator fees are paid by Perpsplexity itself, so a claim link can't route them.`;
