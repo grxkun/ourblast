@@ -61,9 +61,14 @@ export async function handleFeeClaimMention(username: string, text: string): Pro
     return `@${username} I can only release creator fees for tokens launched from your X account (or redirected to it). No launches found for you yet.`;
   }
 
-  const targets = request.symbol ? mine.filter((row) => row.symbol.toUpperCase() === request.symbol) : mine;
+  const targets = request.address
+    ? mine.filter((row) => row.token_address?.toLowerCase() === request.address)
+    : request.symbol
+      ? mine.filter((row) => row.symbol.toUpperCase() === request.symbol)
+      : mine;
   if (targets.length === 0) {
-    return `@${username} $${request.symbol} wasn't launched from your account, so I can't claim its fees for you.`;
+    const named = request.address ?? (request.symbol ? `$${request.symbol}` : "that token");
+    return `@${username} ${named} wasn't launched from your account, so I can't claim its fees for you.`;
   }
 
   const { listCreatorFeeVaults, claimCreatorFeeVault } = await import("./creatorClaim.server");
@@ -155,8 +160,15 @@ export async function handleFeeCheckMention(username: string, text: string): Pro
     (row) => same(row.x_username, username) || same(row.fee_receiver_x_username, username),
   );
   if (mine.length === 0) return `@${username} no tokens launched from your X account yet, so no creator fees to show.`;
-  const targets = request.symbol ? mine.filter((row) => row.symbol.toUpperCase() === request.symbol) : mine;
-  if (targets.length === 0) return `@${username} $${request.symbol} wasn't launched from your account.`;
+  const targets = request.address
+    ? mine.filter((row) => row.token_address?.toLowerCase() === request.address)
+    : request.symbol
+      ? mine.filter((row) => row.symbol.toUpperCase() === request.symbol)
+      : mine;
+  if (targets.length === 0) {
+    const named = request.address ?? (request.symbol ? `$${request.symbol}` : "that token");
+    return `@${username} ${named} wasn't launched from your account.`;
+  }
 
   const { listCreatorFeeVaults } = await import("./creatorClaim.server");
   const vaults = await listCreatorFeeVaults().catch(() => null);
