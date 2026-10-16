@@ -10,19 +10,22 @@ const CLAIM_PATTERN = /\bcla[io]?m\w*\b[^$]*?\bfees?\b|\bcla[io]?m\w*\b\s+\$[a-z
 /** "claim my fees and send it to X" is still a claim — the payout destination is fixed on chain. */
 const CLAIM_FEES_PATTERN = /\bcla[io]?m\w*\b[^$]*?\bfees?\b/i;
 
-export function readFeeClaimRequest(text: string): { symbol: string | null; redirectAsked: boolean } | null {
+const ADDRESS_PATTERN = /0x[a-f0-9]{40,64}/i;
+
+export function readFeeClaimRequest(text: string): { symbol: string | null; address: string | null; redirectAsked: boolean } | null {
   if (!CLAIM_PATTERN.test(text)) return null;
   const claimsFees = CLAIM_FEES_PATTERN.test(text);
   if (/\b(deploy|launch|buy|sell)\b/i.test(text)) return null;
   const transfer = /\b(send|transfer|withdraw)\b/i.test(text);
   if (transfer && !claimsFees) return null;
   const tag = text.match(/\$([a-z][a-z0-9]{0,15})\b/i);
-  return { symbol: tag?.[1] ? tag[1].toUpperCase() : null, redirectAsked: transfer };
+  const addr = text.match(ADDRESS_PATTERN);
+  return { symbol: tag?.[1] ? tag[1].toUpperCase() : null, address: addr?.[0]?.toLowerCase() ?? null, redirectAsked: transfer };
 }
 
 
 /** Read-only: "check fees", "my fees", "fee $X", "how much fees". Never claims. */
-export function readFeeCheckRequest(text: string): { symbol: string | null } | null {
+export function readFeeCheckRequest(text: string): { symbol: string | null; address: string | null } | null {
   const bare = text.replace(/@[a-z0-9_]{1,15}/gi, " ").replace(/\s+/g, " ").trim();
   if (/\bcla[io]?m/i.test(bare)) return null;
   if (/\b(deploy|launch|send|buy|sell|swap)\b/i.test(bare)) return null;
@@ -32,7 +35,8 @@ export function readFeeCheckRequest(text: string): { symbol: string | null } | n
     /^\$[a-z0-9]+\s+fees?\s*[?!.]*$/i.test(bare);
   if (!ask) return null;
   const tag = bare.match(/\$([a-z][a-z0-9]{0,15})\b/i);
-  return { symbol: tag?.[1] ? tag[1].toUpperCase() : null };
+  const addr = bare.match(ADDRESS_PATTERN);
+  return { symbol: tag?.[1] ? tag[1].toUpperCase() : null, address: addr?.[0]?.toLowerCase() ?? null };
 }
 
 const same = (a?: string | null, b?: string | null) =>
@@ -57,9 +61,14 @@ export async function handleFeeClaimMention(username: string, text: string): Pro
     return `@${username} I can only release creator fees for tokens launched from your X account (or redirected to it). No launches found for you yet.`;
   }
 
-  const targets = request.symbol ? mine.filter((row) => row.symbol.toUpperCase() === request.symbol) : mine;
+  const targets = request.address
+    ? mine.filter((row) => row.token_address?.toLowerCase() === request.address)
+    : request.symbol
+      ? mine.filter((row) => row.symbol.toUpperCase() === request.symbol)
+      : mine;
   if (targets.length === 0) {
-    return `@${username} $${request.symbol} wasn't launched from your account, so I can't claim its fees for you.`;
+    const named = request.address ?? (request.symbol ? `$${request.symbol}` : "that token");
+    return `@${username} ${named} wasn't launched from your account, so I can't claim its fees for you.`;
   }
 
   const { listCreatorFeeVaults, claimCreatorFeeVault } = await import("./creatorClaim.server");
@@ -151,8 +160,15 @@ export async function handleFeeCheckMention(username: string, text: string): Pro
     (row) => same(row.x_username, username) || same(row.fee_receiver_x_username, username),
   );
   if (mine.length === 0) return `@${username} no tokens launched from your X account yet, so no creator fees to show.`;
-  const targets = request.symbol ? mine.filter((row) => row.symbol.toUpperCase() === request.symbol) : mine;
-  if (targets.length === 0) return `@${username} $${request.symbol} wasn't launched from your account.`;
+  const targets = request.address
+    ? mine.filter((row) => row.token_address?.toLowerCase() === request.address)
+    : request.symbol
+      ? mine.filter((row) => row.symbol.toUpperCase() === request.symbol)
+      : mine;
+  if (targets.length === 0) {
+    const named = request.address ?? (request.symbol ? `$${request.symbol}` : "that token");
+    return `@${username} ${named} wasn't launched from your account.`;
+  }
 
   const { listCreatorFeeVaults } = await import("./creatorClaim.server");
   const vaults = await listCreatorFeeVaults().catch(() => null);
@@ -210,39 +226,42 @@ export async function handleFeeCheckMention(username: string, text: string): Pro
 }
 
 /** "generate claim link for @handle on $TICKER" — launcher-only, never moves funds. */
-export function readClaimLinkRequest(text: string): { xUsername: string | null; symbol: string | null } | null {
+export function readClaimLinkRequest(text: string): { xUsername: string | null; symbol: string | null; address: string | null } | null {
   if (!/\bclaim[\s-]*link\b/i.test(text)) return null;
   const handles = [...text.matchAll(/@([a-z0-9_]{1,15})\b/gi)].map((m) => m[1]!).filter((h) => !/^ourblastbot$/i.test(h));
   const tag = text.match(/\$([a-z][a-z0-9]{0,15})\b/i);
-  return { xUsername: handles[0] ?? null, symbol: tag?.[1] ? tag[1].toUpperCase() : null };
+  const addr = text.match(ADDRESS_PATTERN);
+  return { xUsername: handles[0] ?? null, symbol: tag?.[1] ? tag[1].toUpperCase() : null, address: addr?.[0]?.toLowerCase() ?? null };
 }
 
 export async function handleClaimLinkMention(username: string, text: string): Promise<string | null> {
   const request = readClaimLinkRequest(text);
   if (!request) return null;
-  if (!request.xUsername || !request.symbol) {
-    return `@${username} Tell me who and which token, e.g. "generate claim link for @friend on $TICKER".`;
+  if (!request.xUsername || (!request.symbol && !request.address)) {
+    return `@${username} Tell me who and which token, e.g. "generate claim link for @friend on $TICKER" or "... on 0x<address>".`;
   }
+  const named = request.address ?? `$${request.symbol}`;
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-  const { data: launches } = await supabaseAdmin
+  let query = supabaseAdmin
     .from("x_launch_requests")
-    .select("symbol, launchpad, x_username, fee_receiver_wallet")
+    .select("symbol, launchpad, x_username, fee_receiver_wallet, token_address")
     .eq("status", "DEPLOYED")
-    .ilike("symbol", request.symbol)
     .order("created_at", { ascending: false })
     .limit(20);
+  query = request.address ? query.eq("token_address", request.address) : query.ilike("symbol", request.symbol!);
+  const { data: launches } = await query;
   const launch = (launches ?? []).find((row) => same(row.x_username, username));
   if (!launch) {
-    return `@${username} Only the X account that launched $${request.symbol} can create its claim link.`;
+    return `@${username} Only the X account that launched ${named} can create its claim link.`;
   }
   if (launch.launchpad === "perpsplexity") {
-    return `@${username} $${request.symbol} is on Perpsplexity — its creator fees are paid by Perpsplexity itself, so a claim link can't route them.`;
+    return `@${username} $${launch.symbol} is on Perpsplexity — its creator fees are paid by Perpsplexity itself, so a claim link can't route them.`;
   }
   const target = request.xUsername;
   const { data: existing } = await supabaseAdmin
     .from("fee_claim_links")
     .select("token")
-    .eq("launch_symbol", request.symbol)
+    .eq("launch_symbol", launch.symbol)
     .ilike("x_username", target)
     .eq("status", "pending")
     .maybeSingle();
@@ -252,7 +271,7 @@ export async function handleClaimLinkMention(username: string, text: string): Pr
     token = Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("");
     const { error } = await supabaseAdmin.from("fee_claim_links").insert({
       token,
-      launch_symbol: request.symbol,
+      launch_symbol: launch.symbol,
       x_username: target,
       amount_sui: 0,
     });
@@ -260,7 +279,7 @@ export async function handleClaimLinkMention(username: string, text: string): Pr
   }
   const short = (w: string) => `${w.slice(0, 6)}…${w.slice(-4)}`;
   const onChain = launch.fee_receiver_wallet
-    ? ` Note: the $${request.symbol} contract already pays ${short(launch.fee_receiver_wallet)} directly — this link records @${target}'s wallet but can't change who the contract pays.`
+    ? ` Note: the $${launch.symbol} contract already pays ${short(launch.fee_receiver_wallet)} directly — this link records @${target}'s wallet but can't change who the contract pays.`
     : "";
-  return `@${username} Claim link for @${target} on $${request.symbol}: https://ourblast.xyz/claim/${token} — only @${target} can open it, by signing in with X and connecting a Sui wallet.${onChain}`;
+  return `@${username} Claim link for @${target} on $${launch.symbol}: https://ourblast.xyz/claim/${token} — only @${target} can open it, by signing in with X and connecting a Sui wallet.${onChain}`;
 }
