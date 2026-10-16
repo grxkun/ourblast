@@ -65,6 +65,30 @@ export function DesignationClaim({ tokenAddress }: { tokenAddress: string }) {
   }
 
   if (!row) {
+    const chainOnly = findLiveFee(live.data?.rows, { tokenAddress: address });
+    if (live.isLoading) return <p className="text-sm text-muted-foreground">Reading the fee vault on chain…</p>;
+    if (chainOnly) {
+      return (
+        <div className="space-y-3 border-2 border-border p-4">
+          <p className="font-display text-xl uppercase">${chainOnly.symbol} creator fees</p>
+          <p className="text-sm text-muted-foreground">
+            Recipients were written on chain at launch. Waiting in the vault right now:
+          </p>
+          <p className="font-display text-3xl text-primary">{formatSui(chainOnly.pendingSui)}</p>
+          <ul className="space-y-1 text-sm">
+            {chainOnly.payouts.map((payout) => (
+              <li key={payout.recipient} className="flex justify-between gap-2">
+                <span className="font-mono">{shortWallet(payout.recipient)}</span>
+                <span>{(payout.bps / 100).toFixed(1)}% · {formatSui((chainOnly.pendingSui * payout.bps) / 10_000)}</span>
+              </li>
+            ))}
+          </ul>
+          <p className="text-xs text-muted-foreground">
+            Release them to these wallets from the Terminal: <span className="font-mono">claim my fees on ${chainOnly.symbol}</span>
+          </p>
+        </div>
+      );
+    }
     return (
       <div className="border-2 border-border p-4">
         <p className="font-display text-xl uppercase">No designation found</p>

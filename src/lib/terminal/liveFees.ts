@@ -11,6 +11,8 @@ export function findLiveFee(
   if (address) {
     const byAddress = rows.find((row) => row.curveId.toLowerCase() === address);
     if (byAddress) return byAddress;
+    const byPackage = rows.find((row) => (row.coinType ?? "").toLowerCase().split("::")[0] === address);
+    if (byPackage) return byPackage;
   }
   const symbol = (match.symbol ?? "").replace(/^\$/, "").trim().toUpperCase();
   if (!symbol) return null;
