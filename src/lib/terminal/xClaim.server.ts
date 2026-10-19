@@ -59,7 +59,9 @@ export function readFeeClaimRequest(text: string): { symbol: string | null; addr
   const transfer = /\b(send|transfer|withdraw)\b/i.test(text);
   if (transfer && !claimsFees) return null;
   const tag = text.match(/\$([a-z][a-z0-9]{0,15})\b/i);
-  const addr = text.match(ADDRESS_PATTERN);
+  // A wallet after "to/into" is a payout destination, not the token being claimed.
+  const tokenText = text.replace(new RegExp(`\\b(?:to|into)\\s+${ADDRESS_PATTERN.source}`, "gi"), " ");
+  const addr = tag ? null : tokenText.match(ADDRESS_PATTERN);
   return { symbol: tag?.[1] ? tag[1].toUpperCase() : null, address: addr?.[0] ?? null, redirectAsked: transfer };
 }
 

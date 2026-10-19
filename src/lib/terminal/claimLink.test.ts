@@ -29,3 +29,17 @@ describe("coin type addresses", () => {
     expect(await matchLaunchesByAddress(rows, "0x32a8c091dfbb48c793ad3919114924b87e1dbfef7644b557cb0ca8df65754586::cz::CZ")).toHaveLength(1);
   });
 });
+
+describe("fee claim with payout destination", () => {
+  const w = "0x" + "ab".repeat(32);
+  it("ignores destination wallet", async () => {
+    const { readFeeClaimRequest } = await import("./xClaim.server");
+    expect(readFeeClaimRequest(`@Ourblastbot claim my fees and send to ${w}`)?.address).toBeNull();
+  });
+  it("ticker wins over address", async () => {
+    const { readFeeClaimRequest } = await import("./xClaim.server");
+    const r = readFeeClaimRequest(`claim my fees on $GROKLET and send to ${w}`);
+    expect(r?.symbol).toBe("GROKLET");
+    expect(r?.address).toBeNull();
+  });
+});
