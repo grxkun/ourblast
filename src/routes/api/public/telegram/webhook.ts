@@ -20,14 +20,17 @@ export const Route = createFileRoute("/api/public/telegram/webhook")({
         const update = (await request.json().catch(() => null)) as { message?: { chat?: { id?: number }; text?: string } } | null;
         const chatId = update?.message?.chat?.id;
         const text = (update?.message?.text ?? "").trim().toLowerCase();
-        if (!chatId || !/^\/(start|app|launches)/.test(text)) return Response.json({ ok: true });
+        if (!chatId || !/^\/(start|app|launches|help)/.test(text)) return Response.json({ ok: true });
+        const isHelp = text.startsWith("/help");
 
         const res = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
           method: "POST",
           headers: { "content-type": "application/json" },
           body: JSON.stringify({
             chat_id: chatId,
-            text: "gm 💥 Track live Sui launches from @Ourblastbot and keep a private watchlist.",
+            text: isHelp
+              ? "📖 OURBLAST menu\n\n🏠 Home — newest launches\n🔍 Discover — search + ⭐ watchlist (alerts here)\n⚡ Trade — type commands, nothing moves until you press send\n👛 Wallet — link X, see balances & deposit addresses\n\nTry: balance · buy 1 sui of $BLAST · sell 50% $BLAST · bridge 0.05 sol to sui · send 10 $BLAST to name.sui\n\nTap Guide inside the app for more."
+              : "gm 💥 Track live Sui launches, trade from your OurBank wallet and get alerts.\n\nOpen the app, link X in Wallet, then use Trade. Send /help for the menu guide.",
             reply_markup: { inline_keyboard: [[{ text: "Open OURBLAST", web_app: { url: APP_URL } }]] },
           }),
         });
