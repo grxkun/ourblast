@@ -236,7 +236,7 @@ function TgApp() {
       {tab === "wallet" && (
         <div className="space-y-3">
           {xCard}
-          {session?.xUsername && initData && <WalletView initData={initData} handle={session.xUsername} />}
+          {session?.xUsername && initData && <WalletView initData={initData} handle={session.xUsername} onTrade={() => setTab("trade")} />}
         </div>
       )}
 
@@ -278,7 +278,7 @@ function AddressRow({ label, address, explorer, note }: { label: string; address
   );
 }
 
-function WalletView({ initData, handle }: { initData: string; handle: string }) {
+function WalletView({ initData, handle, onTrade }: { initData: string; handle: string; onTrade: () => void }) {
   const getWallet = useServerFn(tgGetBankWallet);
   const [w, setW] = useState<Awaited<ReturnType<typeof tgGetBankWallet>> | null>(null);
   const [err, setErr] = useState<string | null>(null);
