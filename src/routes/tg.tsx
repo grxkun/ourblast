@@ -221,6 +221,15 @@ function TgApp() {
               </button>
             ))}
           </div>
+          <a href="https://blast.fun" target="_blank" rel="noreferrer"
+            className="block rounded-2xl border border-primary/40 bg-card p-4">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold uppercase tracking-wider text-primary">New · Blast presales</span>
+              <span className="text-xs text-muted-foreground">blast.fun ↗</span>
+            </div>
+            <p className="mt-1 text-sm font-semibold">Join Sui presales on blast.fun</p>
+            <p className="mt-1 text-xs text-muted-foreground">Commit SUI to fixed-term sales. If a raise misses its target, commitments are refunded; if it fills, liquidity opens on Cetus or Bluefin.</p>
+          </a>
           {list(rows)}
         </div>
       )}
