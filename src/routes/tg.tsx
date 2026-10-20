@@ -394,3 +394,57 @@ function TradeTerminal({ initData }: { initData: string }) {
     </div>
   );
 }
+
+const GUIDE: { tab: Tab; title: string; Icon: typeof Home; steps: string[] }[] = [
+  { tab: "home", title: "Home", Icon: Home, steps: ["See the newest launches from @Ourblastbot.", "Tap a card to jump to launches, your watchlist, wallet or trading."] },
+  { tab: "discover", title: "Discover", Icon: Search, steps: ["Search by ticker, creator or launchpad.", "Tap the star to add a token to your watchlist — you get a Telegram alert when it goes live or fails."] },
+  { tab: "trade", title: "Trade", Icon: Zap, steps: ["Link your X account first (Wallet tab).", "Type a command or tap a quick button to fill it in, then press send.", "Nothing moves until you press send."] },
+  { tab: "wallet", title: "Wallet", Icon: Wallet, steps: ["Connect X to open your OurBank wallet.", "Copy your Sui, EVM (BNB/Base/Arbitrum) or Solana address to deposit.", "Deposits stay on their chain until you tell the bot to bridge."] },
+];
+
+const CHEAT = [
+  ["Balance", "balance"],
+  ["Buy", "buy 1 sui of $BLAST"],
+  ["Buy with SOL", "buy 0.03 sol of $BLAST"],
+  ["Sell", "sell 50% $BLAST"],
+  ["Send", "send 10 $BLAST to adeniyi.sui"],
+  ["Multi-send", "send 22 $HOLMOT, 10 $BLAST & 20 $ONE to adeniyi.sui"],
+  ["Bridge in", "bridge 0.05 sol to sui"],
+  ["Bridge out", "bridge 10 sui to bnb"],
+  ["Claim fees", "claim fees for $TICKER"],
+] as const;
+
+function GuideSheet({ onClose, onGo }: { onClose: () => void; onGo: (t: Tab) => void }) {
+  return (
+    <div className="fixed inset-0 z-[60] flex items-end bg-background/70 backdrop-blur-sm" onClick={onClose}>
+      <div className="mx-auto max-h-[85vh] w-full max-w-md overflow-y-auto rounded-t-3xl border border-border bg-card p-4 pb-[calc(1rem+env(safe-area-inset-bottom))]" onClick={(e) => e.stopPropagation()}>
+        <div className="mb-3 flex items-center justify-between">
+          <h2 className="font-display text-xl">HOW TO USE <span className="text-primary">OURBLAST</span></h2>
+          <button onClick={onClose} aria-label="Close"><X className="h-5 w-5" /></button>
+        </div>
+        <div className="space-y-2">
+          {GUIDE.map(({ tab, title, Icon, steps }) => (
+            <button key={tab} onClick={() => onGo(tab)} className="w-full rounded-2xl border border-border bg-surface p-3 text-left">
+              <div className="flex items-center gap-2 font-semibold"><Icon className="h-4 w-4 text-primary" />{title}</div>
+              <ul className="mt-1 list-disc space-y-0.5 pl-5 text-xs text-muted-foreground">{steps.map((s) => <li key={s}>{s}</li>)}</ul>
+            </button>
+          ))}
+        </div>
+        <h3 className="mt-4 mb-2 font-display text-lg">COMMANDS</h3>
+        <p className="mb-2 text-xs text-muted-foreground">Type these in the Trade tab. Tap one to copy.</p>
+        <ul className="space-y-1.5">
+          {CHEAT.map(([label, cmd]) => (
+            <li key={cmd}>
+              <button onClick={() => copy(cmd)} className="flex w-full items-center gap-2 rounded-lg border border-border bg-surface px-3 py-2 text-left">
+                <span className="w-20 shrink-0 text-[0.7rem] font-semibold uppercase text-muted-foreground">{label}</span>
+                <code className="flex-1 break-all font-mono text-xs">{cmd}</code>
+                <Copy className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+              </button>
+            </li>
+          ))}
+        </ul>
+        <p className="mt-3 text-[0.7rem] text-muted-foreground">Launching a token? Tag @Ourblastbot on X or use the web Terminal. Full docs: ourblast.xyz/docs</p>
+      </div>
+    </div>
+  );
+}
