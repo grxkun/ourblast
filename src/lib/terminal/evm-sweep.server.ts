@@ -14,7 +14,7 @@ import {
 import { privateKeyToAccount } from "viem/accounts";
 
 import { decryptConnectionKey } from "@/lib/connection-key.server";
-import { decodeSolHop, encodeSolHop, ethSweepAmount, NATIVE, solHopAmount, SWEEP_CHAINS, sweepAllowed, usdcSweepAmount, type SweepChain, type SweepToken } from "./evm-sweep";
+import { BNB_GAS_KEEP, BNB_MIN, ETH_GAS_KEEP, ETH_MIN, decodeSolHop, encodeSolHop, ethSweepAmount, NATIVE, solHopAmount, SWEEP_CHAINS, sweepAllowed, usdcSweepAmount, type SweepChain, type SweepToken } from "./evm-sweep";
 
 /**
  * Phase 3 of multi-chain OurBank: moves ETH/USDC that lands on a user's OurBank
