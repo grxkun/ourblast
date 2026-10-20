@@ -310,4 +310,10 @@ async function runWalletJobs() {
   } catch (error) {
     console.error(`Cross-chain auto-swap failed: ${error instanceof Error ? error.message : "unknown"}`);
   }
+  try {
+    const { maintainTgAlerts } = await import("@/lib/tg/alerts.server");
+    await maintainTgAlerts();
+  } catch (error) {
+    console.error(`Telegram alerts failed: ${error instanceof Error ? error.message : "unknown"}`);
+  }
 }
