@@ -2328,6 +2328,68 @@ export type Database = {
         }
         Relationships: []
       }
+      tg_users: {
+        Row: {
+          created_at: string
+          first_name: string | null
+          last_seen_at: string
+          photo_url: string | null
+          privy_user_id: string | null
+          tg_user_id: number
+          username: string | null
+          x_username: string | null
+        }
+        Insert: {
+          created_at?: string
+          first_name?: string | null
+          last_seen_at?: string
+          photo_url?: string | null
+          privy_user_id?: string | null
+          tg_user_id: number
+          username?: string | null
+          x_username?: string | null
+        }
+        Update: {
+          created_at?: string
+          first_name?: string | null
+          last_seen_at?: string
+          photo_url?: string | null
+          privy_user_id?: string | null
+          tg_user_id?: number
+          username?: string | null
+          x_username?: string | null
+        }
+        Relationships: []
+      }
+      tg_watchlist: {
+        Row: {
+          created_at: string
+          id: string
+          launch_id: string
+          tg_user_id: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          launch_id: string
+          tg_user_id: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          launch_id?: string
+          tg_user_id?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tg_watchlist_tg_user_id_fkey"
+            columns: ["tg_user_id"]
+            isOneToOne: false
+            referencedRelation: "tg_users"
+            referencedColumns: ["tg_user_id"]
+          },
+        ]
+      }
       user_achievements: {
         Row: {
           achievement_key: string

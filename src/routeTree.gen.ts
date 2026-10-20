@@ -32,6 +32,7 @@ import { Route as RoastRouteImport } from './routes/roast'
 import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
 import { Route as TerminalRouteImport } from './routes/terminal'
 import { Route as TermsRouteImport } from './routes/terms'
+import { Route as TgRouteImport } from './routes/tg'
 import { Route as Char91DotwellKnownChar93OauthProtectedResourceRouteImport } from './routes/[.well-known]/oauth-protected-resource'
 import { Route as BuilderUsernameRouteImport } from './routes/builder/$username'
 import { Route as ClaimTokenRouteImport } from './routes/claim.$token'
@@ -158,6 +159,11 @@ const TermsRoute = TermsRouteImport.update({
   path: '/terms',
   getParentRoute: () => rootRouteImport,
 } as any)
+const TgRoute = TgRouteImport.update({
+  id: '/tg',
+  path: '/tg',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const Char91DotwellKnownChar93OauthProtectedResourceRoute =
   Char91DotwellKnownChar93OauthProtectedResourceRouteImport.update({
     id: '/.well-known/oauth-protected-resource',
@@ -234,6 +240,7 @@ export interface FileRoutesByFullPath {
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/terminal': typeof TerminalRoute
   '/terms': typeof TermsRoute
+  '/tg': typeof TgRoute
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   '/builder/$username': typeof BuilderUsernameRoute
   '/claim/$token': typeof ClaimTokenRoute
@@ -269,6 +276,7 @@ export interface FileRoutesByTo {
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/terminal': typeof TerminalRoute
   '/terms': typeof TermsRoute
+  '/tg': typeof TgRoute
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   '/builder/$username': typeof BuilderUsernameRoute
   '/claim/$token': typeof ClaimTokenRoute
@@ -305,6 +313,7 @@ export interface FileRoutesById {
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/terminal': typeof TerminalRoute
   '/terms': typeof TermsRoute
+  '/tg': typeof TgRoute
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   '/builder/$username': typeof BuilderUsernameRoute
   '/claim/$token': typeof ClaimTokenRoute
@@ -342,6 +351,7 @@ export interface FileRouteTypes {
     | '/sitemap.xml'
     | '/terminal'
     | '/terms'
+    | '/tg'
     | '/.well-known/oauth-protected-resource'
     | '/builder/$username'
     | '/claim/$token'
@@ -377,6 +387,7 @@ export interface FileRouteTypes {
     | '/sitemap.xml'
     | '/terminal'
     | '/terms'
+    | '/tg'
     | '/.well-known/oauth-protected-resource'
     | '/builder/$username'
     | '/claim/$token'
@@ -412,6 +423,7 @@ export interface FileRouteTypes {
     | '/sitemap.xml'
     | '/terminal'
     | '/terms'
+    | '/tg'
     | '/.well-known/oauth-protected-resource'
     | '/builder/$username'
     | '/claim/$token'
@@ -448,6 +460,7 @@ export interface RootRouteChildren {
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
   TerminalRoute: typeof TerminalRoute
   TermsRoute: typeof TermsRoute
+  TgRoute: typeof TgRoute
   Char91DotwellKnownChar93OauthProtectedResourceRoute: typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   BuilderUsernameRoute: typeof BuilderUsernameRoute
   ClaimTokenRoute: typeof ClaimTokenRoute
@@ -623,6 +636,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof TermsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/tg': {
+      id: '/tg'
+      path: '/tg'
+      fullPath: '/tg'
+      preLoaderRoute: typeof TgRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/.well-known/oauth-protected-resource': {
       id: '/.well-known/oauth-protected-resource'
       path: '/.well-known/oauth-protected-resource'
@@ -720,6 +740,7 @@ const rootRouteChildren: RootRouteChildren = {
   SitemapDotxmlRoute: SitemapDotxmlRoute,
   TerminalRoute: TerminalRoute,
   TermsRoute: TermsRoute,
+  TgRoute: TgRoute,
   Char91DotwellKnownChar93OauthProtectedResourceRoute:
     Char91DotwellKnownChar93OauthProtectedResourceRoute,
   BuilderUsernameRoute: BuilderUsernameRoute,
