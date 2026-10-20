@@ -343,10 +343,78 @@ function linkify(text: string) {
   );
 }
 
-function TradeTerminal({ initData }: { initData: string }) {
+export type TradePreset = { side: "buy" | "sell"; token: string; key: number };
+
+export function buildTradeCommand(side: "buy" | "sell", token: string, amount: string): string | null {
+  const t = token.trim().replace(/^\$/, "").toUpperCase();
+  const a = amount.trim();
+  if (!/^[A-Z0-9]{1,16}$/.test(t)) return null;
+  if (side === "buy") return /^\d*\.?\d+$/.test(a) && Number(a) > 0 ? `buy ${a} sui of $${t}` : null;
+  const pct = a.replace(/%$/, "");
+  return /^\d*\.?\d+$/.test(pct) && Number(pct) > 0 && Number(pct) <= 100 ? `sell ${pct}% $${t}` : null;
+}
+
+function SwapCard({ preset, busy, onRun }: { preset: TradePreset | null; busy: boolean; onRun: (cmd: string) => void }) {
+  const [side, setSide] = useState<"buy" | "sell">(preset?.side ?? "buy");
+  const [token, setToken] = useState(preset?.token ?? "BLAST");
+  const [amount, setAmount] = useState(preset?.side === "sell" ? "50" : "1");
+  const [review, setReview] = useState(false);
+  useEffect(() => {
+    if (!preset) return;
+    setSide(preset.side); setToken(preset.token); setAmount(preset.side === "sell" ? "50" : "1"); setReview(false);
+  }, [preset]);
+  const cmd = buildTradeCommand(side, token, amount);
+  const presets = side === "buy" ? ["0.5", "1", "5", "10"] : ["25", "50", "75", "100"];
+  return (
+    <div className="space-y-3 rounded-3xl border border-border bg-surface p-3">
+      <div className="grid grid-cols-2 gap-1 rounded-full bg-surface-2 p-1">
+        {(["buy", "sell"] as const).map((s) => (
+          <button key={s} onClick={() => { setSide(s); setAmount(s === "sell" ? "50" : "1"); setReview(false); }}
+            className={`rounded-full py-2 text-sm font-semibold uppercase ${side === s ? (s === "buy" ? "bg-primary text-primary-foreground" : "bg-destructive text-destructive-foreground") : "text-muted-foreground"}`}>{s}</button>
+        ))}
+      </div>
+      <label className="block rounded-2xl border border-border bg-card p-3">
+        <span className="text-[0.7rem] text-muted-foreground">Token</span>
+        <div className="flex items-center gap-1 font-display text-xl"><span className="text-primary">$</span>
+          <input value={token} onChange={(e) => { setToken(e.target.value.toUpperCase()); setReview(false); }} className="w-full bg-transparent outline-none" placeholder="BLAST" />
+        </div>
+      </label>
+      <label className="block rounded-2xl border border-border bg-card p-3">
+        <span className="text-[0.7rem] text-muted-foreground">{side === "buy" ? "Pay with SUI" : "Sell % of your balance"}</span>
+        <div className="flex items-center gap-2 font-display text-xl">
+          <input inputMode="decimal" value={amount} onChange={(e) => { setAmount(e.target.value); setReview(false); }} className="w-full bg-transparent outline-none" />
+          <span className="text-sm text-muted-foreground">{side === "buy" ? "SUI" : "%"}</span>
+        </div>
+        <div className="mt-2 flex gap-1.5">
+          {presets.map((p) => (
+            <button key={p} type="button" onClick={() => { setAmount(p); setReview(false); }}
+              className={`flex-1 rounded-full py-1 text-xs font-semibold ${amount === p ? "bg-primary/20 text-primary" : "bg-surface-2 text-muted-foreground"}`}>{side === "buy" ? p : p === "100" ? "MAX" : `${p}%`}</button>
+          ))}
+        </div>
+      </label>
+      {review && cmd ? (
+        <div className="space-y-2 rounded-2xl border border-primary/40 bg-card p-3 text-sm">
+          <p className="font-semibold">Review</p>
+          <p className="text-muted-foreground">{side === "buy" ? `Spend ${amount} SUI from your OurBank wallet on $${token.replace(/^\$/, "")}.` : `Sell ${amount}% of your $${token.replace(/^\$/, "")} for SUI.`} Best route is picked when it runs; the final amount shows in the receipt.</p>
+          <div className="grid grid-cols-2 gap-2">
+            <button onClick={() => setReview(false)} className="rounded-full bg-surface-2 py-2 font-semibold">Back</button>
+            <button disabled={busy} onClick={() => { setReview(false); onRun(cmd); }} className="rounded-full bg-primary py-2 font-semibold text-primary-foreground disabled:opacity-50">Confirm {side}</button>
+          </div>
+        </div>
+      ) : (
+        <button disabled={!cmd || busy} onClick={() => setReview(true)}
+          className="flex w-full items-center justify-center gap-2 rounded-full bg-primary py-3 font-semibold text-primary-foreground disabled:opacity-50">
+          <Repeat className="h-4 w-4" />{cmd ? `Review ${side}` : "Enter a token and amount"}
+        </button>
+      )}
+    </div>
+  );
+}
+
+function TradeTerminal({ initData, preset }: { initData: string; preset: TradePreset | null }) {
   const run = useServerFn(tgRunCommand);
   const [log, setLog] = useState<{ id: string; who: "me" | "bot"; text: string }[]>([
-    { id: "hi", who: "bot", text: "Trade right here. Type a command or tap one below — it runs on your OurBank wallet." },
+    { id: "hi", who: "bot", text: "Use the swap card, or type any command below — it runs on your OurBank wallet." },
   ]);
   const [draft, setDraft] = useState("");
   const [busy, setBusy] = useState(false);
@@ -367,6 +435,7 @@ function TradeTerminal({ initData }: { initData: string }) {
   };
   return (
     <div className="flex flex-col gap-3 pb-20">
+      <SwapCard preset={preset} busy={busy} onRun={(c) => void send(c)} />
       <div className="space-y-2">
         {log.map((m) => (
           <div key={m.id} className={`max-w-[85%] whitespace-pre-wrap rounded-2xl px-3 py-2 text-sm ${m.who === "me" ? "ml-auto bg-primary text-primary-foreground" : "border border-border bg-card"}`}>
