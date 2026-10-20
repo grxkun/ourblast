@@ -122,6 +122,6 @@ export const tgRunCommand = createServerFn({ method: "POST" })
     const { handleBankMention } = await import("@/lib/terminal/bank.server");
     const raw = feeReply ?? (await handleBankMention(postId, handle, data.text)) ?? "";
     const reply = raw.replace(new RegExp(`^@${handle}\\s+`, "i"), "").trim() ||
-      "I couldn't read that. Try: buy 1 sui of $BLAST · sell 50% $BLAST · send 5 sui to @friend · bridge 0.05 sol to sui · balance";
+      "I couldn't read that. Try: buy 1 sui of $BLAST · sell 50% $BLAST · send 5 sui to @friend · bridge 0.05 sol to sui · bridge 0.02 bnb to sui · balance";
     return { reply };
   });

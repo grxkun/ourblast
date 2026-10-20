@@ -542,6 +542,12 @@ export async function handleBankMention(postId: string, username: string, text: 
     const { bridgeSuiOutForXHandle } = await import("./suiOut.server");
     return bridgeSuiOutForXHandle(username, outCmd.amountSui, outCmd.target, outCmd.destination);
   }
+  const { parseEvmBridgeCommand } = await import("./evmBridge");
+  const evmCmd = parseEvmBridgeCommand(text);
+  if (evmCmd) {
+    const { bridgeEvmForXHandle } = await import("./evm-sweep.server");
+    return bridgeEvmForXHandle(username, evmCmd.asset, evmCmd.amount, evmCmd.chain);
+  }
   const { parseSolCommand } = await import("./solCommand");
   const solCmd = parseSolCommand(text);
   if (solCmd) return solSweep.bridgeSolForXHandle(username, solCmd.amountSol, solCmd.buyBlast === true);

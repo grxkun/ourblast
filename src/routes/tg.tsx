@@ -410,6 +410,7 @@ const CHEAT = [
   ["Send", "send 10 $BLAST to adeniyi.sui"],
   ["Multi-send", "send 22 $HOLMOT, 10 $BLAST & 20 $ONE to adeniyi.sui"],
   ["Bridge in", "bridge 0.05 sol to sui"],
+  ["Bridge BNB", "bridge 0.02 bnb to sui"],
   ["Bridge out", "bridge 10 sui to bnb"],
   ["Claim fees", "claim fees for $TICKER"],
 ] as const;

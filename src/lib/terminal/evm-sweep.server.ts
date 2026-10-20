@@ -14,7 +14,7 @@ import {
 import { privateKeyToAccount } from "viem/accounts";
 
 import { decryptConnectionKey } from "@/lib/connection-key.server";
-import { decodeSolHop, encodeSolHop, ethSweepAmount, NATIVE, solHopAmount, SWEEP_CHAINS, sweepAllowed, usdcSweepAmount, type SweepChain, type SweepToken } from "./evm-sweep";
+import { BNB_GAS_KEEP, BNB_MIN, ETH_GAS_KEEP, ETH_MIN, decodeSolHop, encodeSolHop, ethSweepAmount, NATIVE, solHopAmount, SWEEP_CHAINS, sweepAllowed, usdcSweepAmount, type SweepChain, type SweepToken } from "./evm-sweep";
 
 /**
  * Phase 3 of multi-chain OurBank: moves ETH/USDC that lands on a user's OurBank
@@ -417,4 +417,39 @@ export async function bridgeEvmAmountForUser(userId: string, asset: "ETH" | "BNB
     return { ok: true, txHash: r.hash, explorer: `${SWEEP_CHAINS[chain].explorer}/tx/${r.hash}`, message: `Bridging ${amount} ${asset} from ${chain === "bsc" ? "BNB Chain" : chain}.` };
   }
   return { ok: false, message: `Not enough ${asset}. Keep ${asset === "BNB" ? "0.0005 BNB" : "0.0003 ETH"} extra for network fees${asset === "ETH" ? " (Base or Arbitrum)" : ""}.` };
+}
+
+/**
+ * Chat command "bridge 0.013 bnb to sui" / "bridge all bnb": exact (or all minus the
+ * gas reserve) native amount from the handle's OurBank EVM address to its Sui wallet.
+ * Keeps the SUI (no auto-buy). Returns a reply that says plainly whether anything moved.
+ */
+export async function bridgeEvmForXHandle(handle: string, asset: "ETH" | "BNB", amount: number | "all", only?: "base" | "arbitrum"): Promise<string> {
+  const db = await admin();
+  const { data: w } = await db
+    .from("bank_wallets")
+    .select("x_username, user_id, address, evm_address, evm_secret_ciphertext, evm_signing_backend, sol_address")
+    .ilike("x_username", handle).not("evm_address", "is", null).maybeSingle();
+  if (!w) return "No OurBank EVM address yet — open your wallet to create one. Nothing was sent.";
+  if (!sweepAllowed(sweepSetting(), w.x_username)) return "Bridging is invite-only during testing. Nothing was sent.";
+  await confirmSubmitted();
+  const keep = asset === "BNB" ? BNB_GAS_KEEP : ETH_GAS_KEEP;
+  const min = asset === "BNB" ? BNB_MIN : ETH_MIN;
+  const chains: SweepChain[] = asset === "BNB" ? ["bsc"] : only ? [only] : ["base", "arbitrum"];
+  let best = 0n;
+  for (const chain of chains) {
+    const bal = await client(chain).getBalance({ address: w.evm_address as Hex }).catch(() => 0n);
+    if (bal > best) best = bal;
+    const want = amount === "all" ? bal - keep : BigInt(Math.round(amount * 1e18));
+    if (want < min || bal < want + keep) continue;
+    const r = await sweep(chain, w as EvmWalletRow, asset, want, true);
+    const name = chain === "bsc" ? "BNB Chain" : chain === "base" ? "Base" : "Arbitrum";
+    const human = Number(want) / 1e18;
+    if (!r.ok) return `Bridge failed — nothing was sent. ${r.error}`;
+    return `Bridging ${human} ${asset} from ${name} → SUI in your OurBank wallet (kept as SUI). ${SWEEP_CHAINS[chain].explorer}/tx/${r.hash}\nArrives in a few minutes${asset === "BNB" ? " (may hop via Solana)" : ""}. Type balance to check.`;
+  }
+  const have = (Number(best) / 1e18).toFixed(5);
+  const minH = asset === "BNB" ? "0.01 BNB" : "0.0015 ETH";
+  const keepH = asset === "BNB" ? "0.0005 BNB" : "0.0003 ETH";
+  return `Not enough ${asset} — you have ${have}. Minimum bridge is ${minH}, plus ${keepH} kept for network fees. Nothing was sent.`;
 }

@@ -19,6 +19,7 @@ import { runBankCommand } from "@/lib/terminal/bank.functions";
 import { launchFromTerminal } from "@/lib/terminal/xLauncher.functions";
 import { bridgeNow, bridgeSolNow, previewSolBridge } from "@/lib/terminal/evm-sweep.functions";
 import { parseSolCommand } from "@/lib/terminal/solCommand";
+import { parseEvmBridgeCommand } from "@/lib/terminal/evmBridge";
 import { parseSuiOutCommand } from "@/lib/terminal/suiOut";
 import { bridgeSuiOut } from "@/lib/terminal/suiOut.functions";
 import { parseFundWith } from "@/lib/terminal/fundedLaunch";
@@ -234,7 +235,7 @@ export function Terminal({ tryCommand }: { tryCommand?: { command: string; nonce
         return;
       }
       const swap = parseSwapCommand(clean);
-      const isBank = Boolean(userId) && (swap || parseBankCommand(clean) || parseMultiSendCommand(clean) || /^\s*#?[1-4]\s*$/.test(clean) || /^\s*(buy|sell|swap)\b/i.test(clean) || /\bfees?\b/i.test(clean) || /\bclaim[\s-]*link\b/i.test(clean));
+      const isBank = Boolean(userId) && (swap || parseEvmBridgeCommand(clean) || parseBankCommand(clean) || parseMultiSendCommand(clean) || /^\s*#?[1-4]\s*$/.test(clean) || /^\s*(buy|sell|swap)\b/i.test(clean) || /\bfees?\b/i.test(clean) || /\bclaim[\s-]*link\b/i.test(clean));
       if (isBank) {
         const out = await bankCommand({ data: { text: clean } });
         let message = out.reply;
