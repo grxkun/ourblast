@@ -2366,18 +2366,21 @@ export type Database = {
           created_at: string
           id: string
           launch_id: string
+          notified_status: string | null
           tg_user_id: number
         }
         Insert: {
           created_at?: string
           id?: string
           launch_id: string
+          notified_status?: string | null
           tg_user_id: number
         }
         Update: {
           created_at?: string
           id?: string
           launch_id?: string
+          notified_status?: string | null
           tg_user_id?: number
         }
         Relationships: [
