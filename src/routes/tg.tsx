@@ -8,6 +8,7 @@ import logo from "@/assets/blast-logo.jpg.asset.json";
 import mascot from "@/assets/blast-cool.png.asset.json";
 import { toast } from "sonner";
 
+import { buildTradeCommand } from "@/lib/tg/tradeCommand";
 import { listPublicLaunches } from "@/lib/terminal/launch-status.functions";
 import { tgGetBankWallet, tgLinkX, tgRunCommand, tgSession, tgToggleWatch, tgUnlinkX } from "@/lib/tg/tg.functions";
 
@@ -53,6 +54,9 @@ function TgApp() {
   const [filter, setFilter] = useState<"live" | "watch">("live");
   const [q, setQ] = useState("");
   const [help, setHelp] = useState(false);
+  const [openId, setOpenId] = useState<string | null>(null);
+  const [preset, setPreset] = useState<TradePreset | null>(null);
+  const open = openId ? launches.find((l) => l.id === openId) ?? null : null;
 
   useEffect(() => {
     let tries = 0;
@@ -127,10 +131,10 @@ function TgApp() {
       {items.map((l, i) => (
         <li key={l.id} className="flex items-center gap-3 rounded-2xl border border-border bg-surface p-3">
           {ranked && <span className="w-4 text-center font-display text-sm text-muted-foreground">{i + 1}</span>}
-          <div className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-surface-2 font-display text-sm text-primary">
+          <button onClick={() => setOpenId(l.id)} aria-label={`Open $${l.symbol ?? "token"}`} className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-surface-2 font-display text-sm text-primary">
             {(l.symbol ?? "?").slice(0, 3)}
-          </div>
-          <div className="min-w-0 flex-1">
+          </button>
+          <div className="min-w-0 flex-1 cursor-pointer" onClick={() => setOpenId(l.id)}>
             <div className="truncate font-semibold">${l.symbol ?? "?"} <span className="text-xs font-normal text-muted-foreground">{l.name}</span></div>
             <div className="mt-0.5 flex items-center gap-1.5 text-[0.7rem] text-muted-foreground">
               <span className="rounded-full bg-surface-2 px-2 py-0.5 uppercase">{l.launchpad}</span>
@@ -221,9 +225,14 @@ function TgApp() {
         </div>
       )}
 
+      {open && (
+        <TokenSheet l={open} watching={watch.has(open.id)} onStar={() => onStar(open.id)} onClose={() => setOpenId(null)}
+          onTrade={(side) => { setPreset({ side, token: open.symbol ?? "", key: Date.now() }); setOpenId(null); setTab("trade"); }} />
+      )}
+
       {tab === "trade" && (
         session?.xUsername && initData
-          ? <TradeTerminal initData={initData} />
+          ? <TradeTerminal initData={initData} preset={preset} />
           : <div className="space-y-3"><p className="text-sm text-muted-foreground">Link your X account to trade from your OurBank wallet.</p>{xCard}</div>
       )}
 
@@ -248,6 +257,58 @@ function TgApp() {
 }
 
 type Tab = "home" | "discover" | "trade" | "wallet";
+
+type LaunchRow = Awaited<ReturnType<typeof listPublicLaunches>>[number];
+
+function TokenSheet({ l, watching, onStar, onClose, onTrade }: {
+  l: LaunchRow; watching: boolean; onStar: () => void; onClose: () => void; onTrade: (side: "buy" | "sell") => void;
+}) {
+  const live = /deploy|live|success/i.test(l.status) && !!l.symbol;
+  const rows: [string, string][] = [
+    ["Launchpad", l.launchpad ?? "—"],
+    ["Creator", `@${l.xUsername}`],
+    ["Status", l.status],
+    ["Dev buy", l.devBuyLabel || "—"],
+    ["Launched", new Date(l.createdAt).toLocaleString()],
+  ];
+  return (
+    <div className="fixed inset-0 z-[60] flex items-end bg-background/70 backdrop-blur-sm" onClick={onClose}>
+      <div className="mx-auto max-h-[88vh] w-full max-w-md overflow-y-auto rounded-t-3xl border border-border bg-card p-4 pb-[calc(1rem+env(safe-area-inset-bottom))]" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center gap-3">
+          <div className="grid h-14 w-14 place-items-center rounded-full bg-surface-2 font-display text-lg text-primary">{(l.symbol ?? "?").slice(0, 3)}</div>
+          <div className="min-w-0 flex-1">
+            <h2 className="truncate font-display text-2xl">${l.symbol ?? "?"}</h2>
+            <p className="truncate text-sm text-muted-foreground">{l.name}</p>
+          </div>
+          <button aria-label="Toggle watchlist" onClick={onStar}><Star className={`h-5 w-5 ${watching ? "fill-primary text-primary" : "text-muted-foreground"}`} /></button>
+          <button aria-label="Close" onClick={onClose}><X className="h-5 w-5" /></button>
+        </div>
+        <dl className="mt-4 grid grid-cols-2 gap-2">
+          {rows.map(([k, v]) => (
+            <div key={k} className="rounded-2xl bg-surface p-2.5"><dt className="text-[0.65rem] uppercase text-muted-foreground">{k}</dt><dd className="truncate text-sm font-semibold">{v}</dd></div>
+          ))}
+        </dl>
+        {l.tokenAddress && (
+          <button onClick={() => copy(l.tokenAddress!)} className="mt-3 flex w-full items-center justify-between rounded-2xl bg-surface p-3 text-left">
+            <span className="min-w-0"><span className="block text-[0.65rem] uppercase text-muted-foreground">Contract</span><span className="block truncate font-mono text-xs">{l.tokenAddress}</span></span>
+            <Copy className="h-4 w-4 shrink-0 text-muted-foreground" />
+          </button>
+        )}
+        {l.notice && <p className="mt-3 text-xs text-muted-foreground">{l.notice}</p>}
+        <div className="mt-3 flex flex-wrap gap-2 text-xs">
+          {l.tokenUrl && <a href={l.tokenUrl} target="_blank" rel="noreferrer" className="flex items-center gap-1 rounded-full bg-surface px-3 py-1.5">Chart & token <ExternalLink className="h-3 w-3" /></a>}
+          {l.txDigest && <a href={`https://suiscan.xyz/mainnet/tx/${l.txDigest}`} target="_blank" rel="noreferrer" className="flex items-center gap-1 rounded-full bg-surface px-3 py-1.5">Launch tx <ExternalLink className="h-3 w-3" /></a>}
+          <a href={`https://x.com/i/status/${l.xPostId}`} target="_blank" rel="noreferrer" className="flex items-center gap-1 rounded-full bg-surface px-3 py-1.5">X post <ExternalLink className="h-3 w-3" /></a>
+        </div>
+        <div className="mt-4 grid grid-cols-2 gap-2">
+          <button disabled={!live} onClick={() => onTrade("buy")} className="rounded-full bg-primary py-3 font-semibold text-primary-foreground disabled:opacity-40">Buy</button>
+          <button disabled={!live} onClick={() => onTrade("sell")} className="rounded-full bg-surface-2 py-3 font-semibold disabled:opacity-40">Sell</button>
+        </div>
+        {!live && <p className="mt-2 text-center text-xs text-muted-foreground">Trading opens once this token is live.</p>}
+      </div>
+    </div>
+  );
+}
 
 function copy(text: string) {
   navigator.clipboard?.writeText(text).then(() => toast.success("Copied"), () => toast.error("Couldn't copy"));
@@ -343,10 +404,69 @@ function linkify(text: string) {
   );
 }
 
-function TradeTerminal({ initData }: { initData: string }) {
+type TradePreset = { side: "buy" | "sell"; token: string; key: number };
+
+function SwapCard({ preset, busy, onRun }: { preset: TradePreset | null; busy: boolean; onRun: (cmd: string) => void }) {
+  const [side, setSide] = useState<"buy" | "sell">(preset?.side ?? "buy");
+  const [token, setToken] = useState(preset?.token ?? "BLAST");
+  const [amount, setAmount] = useState(preset?.side === "sell" ? "50" : "1");
+  const [review, setReview] = useState(false);
+  useEffect(() => {
+    if (!preset) return;
+    setSide(preset.side); setToken(preset.token); setAmount(preset.side === "sell" ? "50" : "1"); setReview(false);
+  }, [preset]);
+  const cmd = buildTradeCommand(side, token, amount);
+  const presets = side === "buy" ? ["0.5", "1", "5", "10"] : ["25", "50", "75", "100"];
+  return (
+    <div className="space-y-3 rounded-3xl border border-border bg-surface p-3">
+      <div className="grid grid-cols-2 gap-1 rounded-full bg-surface-2 p-1">
+        {(["buy", "sell"] as const).map((s) => (
+          <button key={s} onClick={() => { setSide(s); setAmount(s === "sell" ? "50" : "1"); setReview(false); }}
+            className={`rounded-full py-2 text-sm font-semibold uppercase ${side === s ? (s === "buy" ? "bg-primary text-primary-foreground" : "bg-destructive text-destructive-foreground") : "text-muted-foreground"}`}>{s}</button>
+        ))}
+      </div>
+      <label className="block rounded-2xl border border-border bg-card p-3">
+        <span className="text-[0.7rem] text-muted-foreground">Token</span>
+        <div className="flex items-center gap-1 font-display text-xl"><span className="text-primary">$</span>
+          <input value={token} onChange={(e) => { setToken(e.target.value.toUpperCase()); setReview(false); }} className="w-full bg-transparent outline-none" placeholder="BLAST" />
+        </div>
+      </label>
+      <label className="block rounded-2xl border border-border bg-card p-3">
+        <span className="text-[0.7rem] text-muted-foreground">{side === "buy" ? "Pay with SUI" : "Sell % of your balance"}</span>
+        <div className="flex items-center gap-2 font-display text-xl">
+          <input inputMode="decimal" value={amount} onChange={(e) => { setAmount(e.target.value); setReview(false); }} className="w-full bg-transparent outline-none" />
+          <span className="text-sm text-muted-foreground">{side === "buy" ? "SUI" : "%"}</span>
+        </div>
+        <div className="mt-2 flex gap-1.5">
+          {presets.map((p) => (
+            <button key={p} type="button" onClick={() => { setAmount(p); setReview(false); }}
+              className={`flex-1 rounded-full py-1 text-xs font-semibold ${amount === p ? "bg-primary/20 text-primary" : "bg-surface-2 text-muted-foreground"}`}>{side === "buy" ? p : p === "100" ? "MAX" : `${p}%`}</button>
+          ))}
+        </div>
+      </label>
+      {review && cmd ? (
+        <div className="space-y-2 rounded-2xl border border-primary/40 bg-card p-3 text-sm">
+          <p className="font-semibold">Review</p>
+          <p className="text-muted-foreground">{side === "buy" ? `Spend ${amount} SUI from your OurBank wallet on $${token.replace(/^\$/, "")}.` : `Sell ${amount}% of your $${token.replace(/^\$/, "")} for SUI.`} Best route is picked when it runs; the final amount shows in the receipt.</p>
+          <div className="grid grid-cols-2 gap-2">
+            <button onClick={() => setReview(false)} className="rounded-full bg-surface-2 py-2 font-semibold">Back</button>
+            <button disabled={busy} onClick={() => { setReview(false); onRun(cmd); }} className="rounded-full bg-primary py-2 font-semibold text-primary-foreground disabled:opacity-50">Confirm {side}</button>
+          </div>
+        </div>
+      ) : (
+        <button disabled={!cmd || busy} onClick={() => setReview(true)}
+          className="flex w-full items-center justify-center gap-2 rounded-full bg-primary py-3 font-semibold text-primary-foreground disabled:opacity-50">
+          <Repeat className="h-4 w-4" />{cmd ? `Review ${side}` : "Enter a token and amount"}
+        </button>
+      )}
+    </div>
+  );
+}
+
+function TradeTerminal({ initData, preset }: { initData: string; preset: TradePreset | null }) {
   const run = useServerFn(tgRunCommand);
   const [log, setLog] = useState<{ id: string; who: "me" | "bot"; text: string }[]>([
-    { id: "hi", who: "bot", text: "Trade right here. Type a command or tap one below — it runs on your OurBank wallet." },
+    { id: "hi", who: "bot", text: "Use the swap card, or type any command below — it runs on your OurBank wallet." },
   ]);
   const [draft, setDraft] = useState("");
   const [busy, setBusy] = useState(false);
@@ -367,6 +487,7 @@ function TradeTerminal({ initData }: { initData: string }) {
   };
   return (
     <div className="flex flex-col gap-3 pb-20">
+      <SwapCard preset={preset} busy={busy} onRun={(c) => void send(c)} />
       <div className="space-y-2">
         {log.map((m) => (
           <div key={m.id} className={`max-w-[85%] whitespace-pre-wrap rounded-2xl px-3 py-2 text-sm ${m.who === "me" ? "ml-auto bg-primary text-primary-foreground" : "border border-border bg-card"}`}>
