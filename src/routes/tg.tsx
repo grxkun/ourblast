@@ -298,25 +298,43 @@ function WalletView({ initData, handle }: { initData: string; handle: string }) 
   ].filter((r) => r.amount > 0);
 
   return (
-    <div className="space-y-3">
-      <div className="rounded-lg border border-primary bg-card p-4">
-        <div className="flex items-center justify-between">
-          <span className="text-xs font-semibold uppercase text-muted-foreground">OurBank · @{w.handle}</span>
-          <button className="text-xs underline text-muted-foreground" onClick={load}>Refresh</button>
-        </div>
-        <ul className="mt-2 space-y-1">
-          {chainRows.length === 0 && <li className="text-sm text-muted-foreground">No balances yet. Deposit to an address below.</li>}
+    <div className="space-y-4">
+      <div className="relative overflow-hidden rounded-3xl border border-border bg-gradient-to-br from-primary/30 via-surface to-cyber/20 p-4 shadow-glow">
+        <img src={mascot.url} alt="" className="absolute -right-3 -bottom-3 h-28 w-28 object-contain" />
+        <div className="text-xs font-semibold uppercase text-muted-foreground">OurBank · @{w.handle}</div>
+        <div className="mt-1 font-display text-3xl">{chainRows.length} <span className="text-base text-muted-foreground">assets</span></div>
+        <button className="mt-1 flex items-center gap-1 text-xs text-cyber" onClick={load}><RefreshCw className="h-3 w-3" />Refresh</button>
+      </div>
+      <div className="grid grid-cols-3 gap-2">
+        {([
+          ["Receive", ArrowDownToLine, () => document.getElementById("tg-addresses")?.scrollIntoView({ behavior: "smooth" })],
+          ["Send", Send, onTrade],
+          ["Swap", Repeat, onTrade],
+        ] as const).map(([label, Icon, fn]) => (
+          <button key={label} onClick={fn} className="flex flex-col items-center gap-1.5 text-xs font-semibold">
+            <span className="grid h-12 w-12 place-items-center rounded-full bg-primary text-primary-foreground shadow-glow"><Icon className="h-5 w-5" /></span>
+            {label}
+          </button>
+        ))}
+      </div>
+      <div className="rounded-2xl border border-border bg-surface p-2">
+        <div className="mb-1 rounded-xl bg-primary py-1.5 text-center text-sm font-semibold text-primary-foreground">Tokens</div>
+        <ul>
+          {chainRows.length === 0 && <li className="p-3 text-sm text-muted-foreground">No balances yet. Deposit to an address below.</li>}
           {chainRows.map((r) => (
-            <li key={r.k} className="flex justify-between text-sm">
-              <span>{r.label} <span className="text-xs text-muted-foreground">{r.chain}</span></span>
-              <span className="font-mono">{fmt(r.amount)}</span>
+            <li key={r.k} className="flex items-center gap-3 p-2.5">
+              <span className="grid h-9 w-9 place-items-center rounded-full bg-surface-2 font-display text-xs text-cyber">{r.label.slice(0, 3)}</span>
+              <span className="flex-1"><b className="text-sm">{r.label}</b><br /><span className="text-xs text-muted-foreground">{r.chain}</span></span>
+              <span className="font-mono text-sm">{fmt(r.amount)}</span>
             </li>
           ))}
         </ul>
       </div>
-      <AddressRow label="Sui wallet" address={w.address} explorer={`https://suiscan.xyz/mainnet/account/${w.address}`} note="Send SUI or any Sui token here." />
-      <AddressRow label="EVM deposit (BNB, Base, Arbitrum)" address={w.evmAddress} note="Funds stay here until you ask the bot to bridge them." />
-      <AddressRow label="Solana deposit (SOL, USDC)" address={w.solAddress} explorer={w.solAddress ? `https://solscan.io/account/${w.solAddress}` : undefined} note="Funds stay here until you ask the bot to bridge them." />
+      <div id="tg-addresses" className="space-y-3">
+        <AddressRow label="Sui wallet" address={w.address} explorer={`https://suiscan.xyz/mainnet/account/${w.address}`} note="Send SUI or any Sui token here." />
+        <AddressRow label="EVM deposit (BNB, Base, Arbitrum)" address={w.evmAddress} note="Funds stay here until you ask the bot to bridge them." />
+        <AddressRow label="Solana deposit (SOL, USDC)" address={w.solAddress} explorer={w.solAddress ? `https://solscan.io/account/${w.solAddress}` : undefined} note="Funds stay here until you ask the bot to bridge them." />
+      </div>
     </div>
   );
 }
