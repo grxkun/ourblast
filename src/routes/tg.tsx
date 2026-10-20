@@ -53,6 +53,9 @@ function TgApp() {
   const [filter, setFilter] = useState<"live" | "watch">("live");
   const [q, setQ] = useState("");
   const [help, setHelp] = useState(false);
+  const [openId, setOpenId] = useState<string | null>(null);
+  const [preset, setPreset] = useState<TradePreset | null>(null);
+  const open = openId ? launches.find((l) => l.id === openId) ?? null : null;
 
   useEffect(() => {
     let tries = 0;
@@ -127,10 +130,10 @@ function TgApp() {
       {items.map((l, i) => (
         <li key={l.id} className="flex items-center gap-3 rounded-2xl border border-border bg-surface p-3">
           {ranked && <span className="w-4 text-center font-display text-sm text-muted-foreground">{i + 1}</span>}
-          <div className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-surface-2 font-display text-sm text-primary">
+          <button onClick={() => setOpenId(l.id)} aria-label={`Open $${l.symbol ?? "token"}`} className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-surface-2 font-display text-sm text-primary">
             {(l.symbol ?? "?").slice(0, 3)}
-          </div>
-          <div className="min-w-0 flex-1">
+          </button>
+          <div className="min-w-0 flex-1 cursor-pointer" onClick={() => setOpenId(l.id)}>
             <div className="truncate font-semibold">${l.symbol ?? "?"} <span className="text-xs font-normal text-muted-foreground">{l.name}</span></div>
             <div className="mt-0.5 flex items-center gap-1.5 text-[0.7rem] text-muted-foreground">
               <span className="rounded-full bg-surface-2 px-2 py-0.5 uppercase">{l.launchpad}</span>
@@ -221,9 +224,14 @@ function TgApp() {
         </div>
       )}
 
+      {open && (
+        <TokenSheet l={open} watching={watch.has(open.id)} onStar={() => onStar(open.id)} onClose={() => setOpenId(null)}
+          onTrade={(side) => { setPreset({ side, token: open.symbol ?? "", key: Date.now() }); setOpenId(null); setTab("trade"); }} />
+      )}
+
       {tab === "trade" && (
         session?.xUsername && initData
-          ? <TradeTerminal initData={initData} />
+          ? <TradeTerminal initData={initData} preset={preset} />
           : <div className="space-y-3"><p className="text-sm text-muted-foreground">Link your X account to trade from your OurBank wallet.</p>{xCard}</div>
       )}
 
@@ -248,6 +256,58 @@ function TgApp() {
 }
 
 type Tab = "home" | "discover" | "trade" | "wallet";
+
+type LaunchRow = Awaited<ReturnType<typeof listPublicLaunches>>[number];
+
+function TokenSheet({ l, watching, onStar, onClose, onTrade }: {
+  l: LaunchRow; watching: boolean; onStar: () => void; onClose: () => void; onTrade: (side: "buy" | "sell") => void;
+}) {
+  const live = /deploy|live|success/i.test(l.status) && !!l.symbol;
+  const rows: [string, string][] = [
+    ["Launchpad", l.launchpad ?? "—"],
+    ["Creator", `@${l.xUsername}`],
+    ["Status", l.status],
+    ["Dev buy", l.devBuyLabel || "—"],
+    ["Launched", new Date(l.createdAt).toLocaleString()],
+  ];
+  return (
+    <div className="fixed inset-0 z-[60] flex items-end bg-background/70 backdrop-blur-sm" onClick={onClose}>
+      <div className="mx-auto max-h-[88vh] w-full max-w-md overflow-y-auto rounded-t-3xl border border-border bg-card p-4 pb-[calc(1rem+env(safe-area-inset-bottom))]" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center gap-3">
+          <div className="grid h-14 w-14 place-items-center rounded-full bg-surface-2 font-display text-lg text-primary">{(l.symbol ?? "?").slice(0, 3)}</div>
+          <div className="min-w-0 flex-1">
+            <h2 className="truncate font-display text-2xl">${l.symbol ?? "?"}</h2>
+            <p className="truncate text-sm text-muted-foreground">{l.name}</p>
+          </div>
+          <button aria-label="Toggle watchlist" onClick={onStar}><Star className={`h-5 w-5 ${watching ? "fill-primary text-primary" : "text-muted-foreground"}`} /></button>
+          <button aria-label="Close" onClick={onClose}><X className="h-5 w-5" /></button>
+        </div>
+        <dl className="mt-4 grid grid-cols-2 gap-2">
+          {rows.map(([k, v]) => (
+            <div key={k} className="rounded-2xl bg-surface p-2.5"><dt className="text-[0.65rem] uppercase text-muted-foreground">{k}</dt><dd className="truncate text-sm font-semibold">{v}</dd></div>
+          ))}
+        </dl>
+        {l.tokenAddress && (
+          <button onClick={() => copy(l.tokenAddress!)} className="mt-3 flex w-full items-center justify-between rounded-2xl bg-surface p-3 text-left">
+            <span className="min-w-0"><span className="block text-[0.65rem] uppercase text-muted-foreground">Contract</span><span className="block truncate font-mono text-xs">{l.tokenAddress}</span></span>
+            <Copy className="h-4 w-4 shrink-0 text-muted-foreground" />
+          </button>
+        )}
+        {l.notice && <p className="mt-3 text-xs text-muted-foreground">{l.notice}</p>}
+        <div className="mt-3 flex flex-wrap gap-2 text-xs">
+          {l.tokenUrl && <a href={l.tokenUrl} target="_blank" rel="noreferrer" className="flex items-center gap-1 rounded-full bg-surface px-3 py-1.5">Chart & token <ExternalLink className="h-3 w-3" /></a>}
+          {l.txDigest && <a href={`https://suiscan.xyz/mainnet/tx/${l.txDigest}`} target="_blank" rel="noreferrer" className="flex items-center gap-1 rounded-full bg-surface px-3 py-1.5">Launch tx <ExternalLink className="h-3 w-3" /></a>}
+          <a href={`https://x.com/i/status/${l.xPostId}`} target="_blank" rel="noreferrer" className="flex items-center gap-1 rounded-full bg-surface px-3 py-1.5">X post <ExternalLink className="h-3 w-3" /></a>
+        </div>
+        <div className="mt-4 grid grid-cols-2 gap-2">
+          <button disabled={!live} onClick={() => onTrade("buy")} className="rounded-full bg-primary py-3 font-semibold text-primary-foreground disabled:opacity-40">Buy</button>
+          <button disabled={!live} onClick={() => onTrade("sell")} className="rounded-full bg-surface-2 py-3 font-semibold disabled:opacity-40">Sell</button>
+        </div>
+        {!live && <p className="mt-2 text-center text-xs text-muted-foreground">Trading opens once this token is live.</p>}
+      </div>
+    </div>
+  );
+}
 
 function copy(text: string) {
   navigator.clipboard?.writeText(text).then(() => toast.success("Copied"), () => toast.error("Couldn't copy"));
