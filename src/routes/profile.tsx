@@ -36,7 +36,7 @@ export const Route = createFileRoute("/profile")({
 });
 
 function ProfilePage() {
-  const { profile, userId, connect, connecting, disconnect, refresh } = useBlast();
+  const { profile, userId, connect, connecting, disconnect, refresh, loginWithX, loginWithGoogle } = useBlast();
   const staffCheck = useServerFn(amIStaff);
   const bankWalletFn = useServerFn(getMyBankWallet);
   const [nickname, setNickname] = useState("");
@@ -54,7 +54,7 @@ function ProfilePage() {
 
   const bankWallet = useQuery({
     queryKey: ["bank-wallet", userId],
-    enabled: Boolean(userId) && !profile?.wallet_address,
+    enabled: Boolean(userId),
     queryFn: () => bankWalletFn({}),
   });
 
@@ -105,16 +105,35 @@ function ProfilePage() {
         </span>
         <h1 className="mt-4 font-display text-3xl">Your player card</h1>
         <p className="mt-3 font-body text-muted-foreground">
-          Connect your Slush wallet to claim a card, bank points and appear on the leaderboard.
+          Sign in with X or Google to open your OurBank wallet — no extension needed. Works on mobile
+          and inside Telegram.
         </p>
-        <button
-          type="button"
-          onClick={() => void connect()}
-          disabled={connecting}
-          className="glow-blast mt-6 rounded-full bg-primary px-8 py-3 font-display text-lg tracking-wide text-primary-foreground uppercase disabled:opacity-60"
-        >
-          {connecting ? "Connecting…" : "Connect Slush"}
-        </button>
+        <div className="mt-6 flex flex-col gap-2">
+          <button
+            type="button"
+            onClick={() => void loginWithX()}
+            disabled={connecting}
+            className="glow-blast rounded-full bg-primary px-8 py-3 font-display text-lg tracking-wide text-primary-foreground uppercase disabled:opacity-60"
+          >
+            {connecting ? "Connecting…" : "Continue with X"}
+          </button>
+          <button
+            type="button"
+            onClick={() => void loginWithGoogle()}
+            disabled={connecting}
+            className="rounded-full border border-border px-8 py-2.5 font-display tracking-wide uppercase disabled:opacity-60"
+          >
+            Continue with Google
+          </button>
+          <button
+            type="button"
+            onClick={() => void connect()}
+            disabled={connecting}
+            className="mt-2 font-body text-xs text-muted-foreground underline disabled:opacity-60"
+          >
+            Have a Sui wallet extension (Slush)? Connect it instead
+          </button>
+        </div>
       </div>
     );
   }
