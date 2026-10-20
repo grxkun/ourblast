@@ -70,3 +70,35 @@ export const tgUnlinkX = createServerFn({ method: "POST" })
     await db.from("tg_users").update({ x_username: null, privy_user_id: null }).eq("tg_user_id", user.id);
     return { ok: true };
   });
+
+/** Read-only OurBank view for the X account this Telegram user verified via Privy. */
+export const tgGetBankWallet = createServerFn({ method: "POST" })
+  .inputValidator((d) => z.object({ initData: z.string().min(1).max(4096) }).parse(d))
+  .handler(async ({ data }) => {
+    const { user, db } = await authed(data.initData);
+    const { data: row } = await db.from("tg_users").select("x_username").eq("tg_user_id", user.id).maybeSingle();
+    const handle = row?.x_username;
+    if (!handle) return { linked: false as const };
+    const { ensureBankWallet, bankBalances } = await import("@/lib/terminal/bank-wallet.server");
+    const wallet = await ensureBankWallet(handle, null);
+    const { rpc } = await import("@/lib/terminal/suipump-launch.server");
+    const raw = await bankBalances(wallet.address).catch(() => []);
+    const sui = await Promise.all(
+      raw.map(async (b) => {
+        const meta = await rpc<{ symbol: string; decimals: number } | null>("suix_getCoinMetadata", [b.coinType]).catch(() => null);
+        return { coinType: b.coinType, symbol: meta?.symbol ?? b.coinType.split("::").at(-1)!, amount: Number(b.balance) / 10 ** (meta?.decimals ?? 9) };
+      }),
+    );
+    const { ensureEvmDepositAddress } = await import("@/lib/terminal/bank-evm.server");
+    const { ensureSolDepositAddress } = await import("@/lib/terminal/bank-sol.server");
+    const [evmAddress, solAddress] = await Promise.all([
+      ensureEvmDepositAddress(handle).catch(() => null),
+      ensureSolDepositAddress(handle).catch(() => null),
+    ]);
+    const { evmBalances, solBalances } = await import("@/lib/terminal/chain-balances.server");
+    const [evm, sol] = await Promise.all([
+      evmAddress ? evmBalances(evmAddress).catch(() => []) : Promise.resolve([]),
+      solAddress ? solBalances(solAddress).catch(() => null) : Promise.resolve(null),
+    ]);
+    return { linked: true as const, handle, address: wallet.address, evmAddress, solAddress, sui, evm, sol };
+  });
