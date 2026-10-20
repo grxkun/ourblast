@@ -90,6 +90,20 @@ function Home() {
         </div>
       </section>
 
+      <a
+        href="https://t.me/ourblastsuibot"
+        target="_blank"
+        rel="noreferrer"
+        className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border-[3px] border-primary bg-card p-4 shadow-[var(--shadow-sticker)] transition-transform hover:-translate-y-0.5"
+      >
+        <div>
+          <p className="font-body text-xs font-bold tracking-[0.2em] text-primary uppercase">New · Telegram Mini App</p>
+          <p className="mt-1 font-display text-xl uppercase">Unleash the new feature — connect your Telegram</p>
+          <p className="font-body text-sm text-muted-foreground">Trade, check your OurBank wallet and follow launches without leaving Telegram.</p>
+        </div>
+        <span className="rounded-full bg-primary px-4 py-2 font-body text-sm font-bold text-primary-foreground">Open @ourblastsuibot →</span>
+      </a>
+
       <div className="space-y-4">
         <SocialSignIn />
         {ready ? <OurBankCard /> : null}
