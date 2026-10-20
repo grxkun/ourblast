@@ -226,7 +226,7 @@ function copy(text: string) {
 
 const fmt = (n: number) => n.toLocaleString(undefined, { maximumFractionDigits: n < 1 ? 6 : 4 });
 
-function AddressRow({ label, address, explorer, note }: { label: string; address: string | null; explorer?: string; note: string }) {
+function AddressRow({ label, address, explorer, note }: { label: string; address: string | null; explorer?: string | undefined; note: string }) {
   return (
     <div className="rounded-lg border border-border bg-card p-3">
       <div className="flex items-center justify-between text-xs font-semibold uppercase text-muted-foreground">
