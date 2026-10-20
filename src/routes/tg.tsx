@@ -8,7 +8,7 @@ import mascot from "@/assets/blast-cool.png.asset.json";
 import { toast } from "sonner";
 
 import { listPublicLaunches } from "@/lib/terminal/launch-status.functions";
-import { tgGetBankWallet, tgLinkX, tgSession, tgToggleWatch, tgUnlinkX } from "@/lib/tg/tg.functions";
+import { tgGetBankWallet, tgLinkX, tgRunCommand, tgSession, tgToggleWatch, tgUnlinkX } from "@/lib/tg/tg.functions";
 
 const launchesQuery = queryOptions({
   queryKey: ["public-launches"],
@@ -216,21 +216,9 @@ function TgApp() {
       )}
 
       {tab === "trade" && (
-        <div className="space-y-3">
-          <p className="text-sm text-muted-foreground">Trading and launching run through @Ourblastbot. Tap a command to copy it, then post it on X or paste it in the web Terminal.</p>
-          {[
-            "@Ourblastbot buy 1 sui of $BLAST",
-            "@Ourblastbot sell all $BLAST",
-            "@Ourblastbot launch $TICKER, Name, on suipump",
-            "@Ourblastbot bridge 0.05 sol to sui",
-            "@Ourblastbot bridge 10 sui to bnb",
-          ].map((c) => (
-            <button key={c} onClick={() => copy(c)} className="flex w-full items-center justify-between gap-2 rounded-lg border border-border bg-card p-3 text-left font-mono text-xs">
-              <span className="truncate">{c}</span><Copy className="h-4 w-4 shrink-0 text-muted-foreground" />
-            </button>
-          ))}
-          <a href="https://ourblast.xyz/" target="_blank" rel="noreferrer" className="block rounded-md bg-primary px-3 py-2 text-center text-sm font-semibold text-primary-foreground">Open the Terminal</a>
-        </div>
+        session?.xUsername && initData
+          ? <TradeTerminal initData={initData} />
+          : <div className="space-y-3"><p className="text-sm text-muted-foreground">Link your X account to trade from your OurBank wallet.</p>{xCard}</div>
       )}
 
       {tab === "wallet" && (
@@ -334,6 +322,68 @@ function WalletView({ initData, handle, onTrade }: { initData: string; handle: s
         <AddressRow label="Sui wallet" address={w.address} explorer={`https://suiscan.xyz/mainnet/account/${w.address}`} note="Send SUI or any Sui token here." />
         <AddressRow label="EVM deposit (BNB, Base, Arbitrum)" address={w.evmAddress} note="Funds stay here until you ask the bot to bridge them." />
         <AddressRow label="Solana deposit (SOL, USDC)" address={w.solAddress} explorer={w.solAddress ? `https://solscan.io/account/${w.solAddress}` : undefined} note="Funds stay here until you ask the bot to bridge them." />
+      </div>
+    </div>
+  );
+}
+
+const QUICK = ["balance", "buy 1 sui of $BLAST", "sell 50% $BLAST", "bridge 0.05 sol to sui", "bridge 10 sui to bnb"];
+
+function linkify(text: string) {
+  return text.split(/(https?:\/\/\S+)/g).map((part, i) =>
+    /^https?:\/\//.test(part)
+      ? <a key={i} href={part} target="_blank" rel="noreferrer" className="break-all text-cyber underline">{part}</a>
+      : <span key={i}>{part}</span>,
+  );
+}
+
+function TradeTerminal({ initData }: { initData: string }) {
+  const run = useServerFn(tgRunCommand);
+  const [log, setLog] = useState<{ id: string; who: "me" | "bot"; text: string }[]>([
+    { id: "hi", who: "bot", text: "Trade right here. Type a command or tap one below — it runs on your OurBank wallet." },
+  ]);
+  const [draft, setDraft] = useState("");
+  const [busy, setBusy] = useState(false);
+  const send = async (text: string) => {
+    const t = text.trim();
+    if (!t || busy) return;
+    setDraft("");
+    setBusy(true);
+    setLog((l) => [...l, { id: crypto.randomUUID(), who: "me", text: t }]);
+    try {
+      const r = await run({ data: { initData, text: t } });
+      setLog((l) => [...l, { id: crypto.randomUUID(), who: "bot", text: r.reply }]);
+    } catch (e) {
+      setLog((l) => [...l, { id: crypto.randomUUID(), who: "bot", text: `Nothing was sent: ${(e as Error).message}` }]);
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <div className="flex flex-col gap-3 pb-20">
+      <div className="space-y-2">
+        {log.map((m) => (
+          <div key={m.id} className={`max-w-[85%] whitespace-pre-wrap rounded-2xl px-3 py-2 text-sm ${m.who === "me" ? "ml-auto bg-primary text-primary-foreground" : "border border-border bg-card"}`}>
+            {linkify(m.text)}
+          </div>
+        ))}
+        {busy && <div className="w-fit rounded-2xl border border-border bg-card px-3 py-2 text-sm text-muted-foreground">Working…</div>}
+      </div>
+      <div className="fixed bottom-[calc(3.5rem+env(safe-area-inset-bottom))] left-0 z-40 w-full border-t border-border bg-background/95 p-2 backdrop-blur">
+        <div className="mx-auto max-w-md space-y-2">
+          <div className="flex gap-2 overflow-x-auto">
+            {QUICK.map((c) => (
+              <button key={c} disabled={busy} onClick={() => setDraft(c)} className="shrink-0 rounded-full bg-surface px-3 py-1 text-xs font-semibold">{c}</button>
+            ))}
+          </div>
+          <form onSubmit={(e) => { e.preventDefault(); void send(draft); }} className="flex gap-2">
+            <input value={draft} onChange={(e) => setDraft(e.target.value)} placeholder="buy 1 sui of $BLAST"
+              className="flex-1 rounded-full border border-border bg-surface px-4 py-2 text-sm outline-none" />
+            <button disabled={busy || !draft.trim()} className="grid h-10 w-10 place-items-center rounded-full bg-primary text-primary-foreground disabled:opacity-50" aria-label="Run">
+              <Send className="h-4 w-4" />
+            </button>
+          </form>
+        </div>
       </div>
     </div>
   );
