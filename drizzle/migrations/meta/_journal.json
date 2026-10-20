@@ -113,6 +113,13 @@
       "when": 1792511004952,
       "tag": "0015_telegram_mini_app",
       "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1792511676377,
+      "tag": "0016_tg_watch_alerts",
+      "breakpoints": true
     }
   ]
 }

@@ -1,0 +1,1 @@
+ALTER TABLE public.tg_watchlist ADD COLUMN notified_status text;
