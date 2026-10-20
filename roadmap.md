@@ -14,3 +14,4 @@
 - [x] Launch Sui tokens paid with SOL/ETH/BNB (X + terminal): review → confirm → bridge (no auto-buy) → launch on arrival
 - [x] BNB → SOL → SUI fallback route via Relay when 1Click refuses BNB
 - [x] Bridge SUI → SOL (terminal + X); SUI → ETH/BNB blocked by provider
+- [ ] TG mini app: mockup layout (home hero, discover cards, token detail, wallet balance card) in existing OURBLAST colors
