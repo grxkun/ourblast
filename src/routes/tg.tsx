@@ -3,7 +3,7 @@ import { Suspense, lazy, useCallback, useEffect, useMemo, useState } from "react
 import { ClientOnly, createFileRoute } from "@tanstack/react-router";
 import { queryOptions, useSuspenseQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { ArrowDownToLine, Copy, ExternalLink, Home, RefreshCw, Repeat, Rocket, Search, Send, Star, Wallet, Zap } from "lucide-react";
+import { ArrowDownToLine, Copy, ExternalLink, HelpCircle, Home, RefreshCw, Repeat, Rocket, Search, Send, Star, Wallet, X, Zap } from "lucide-react";
 import logo from "@/assets/blast-logo.jpg.asset.json";
 import mascot from "@/assets/blast-cool.png.asset.json";
 import { toast } from "sonner";
@@ -52,6 +52,7 @@ function TgApp() {
   const [tab, setTab] = useState<Tab>("home");
   const [filter, setFilter] = useState<"live" | "watch">("live");
   const [q, setQ] = useState("");
+  const [help, setHelp] = useState(false);
 
   useEffect(() => {
     let tries = 0;
@@ -154,11 +155,15 @@ function TgApp() {
     <main className="mx-auto min-h-screen max-w-md bg-background px-4 pt-4 pb-24 text-foreground">
       <header className="mb-4 flex items-center gap-3">
         <img src={logo.url} alt="OURBLAST logo" width={40} height={40} className="size-10 rounded-xl border-2 border-border object-cover" />
-        <div className="min-w-0">
+        <div className="min-w-0 flex-1">
           <h1 className="font-display text-2xl leading-none">OUR<span className="text-primary">BLAST</span></h1>
           <p className="truncate text-xs text-muted-foreground">{session ? `gm ${session.name}` : (error ?? "Connecting to Telegram…")}</p>
         </div>
+        <button onClick={() => setHelp(true)} aria-label="How to use" className="flex items-center gap-1 rounded-full border border-border bg-surface px-3 py-1.5 text-xs font-semibold">
+          <HelpCircle className="h-4 w-4 text-primary" />Guide
+        </button>
       </header>
+      {help && <GuideSheet onClose={() => setHelp(false)} onGo={(t) => { setTab(t); setHelp(false); }} />}
 
       {tab === "home" && (
         <div className="space-y-4">
