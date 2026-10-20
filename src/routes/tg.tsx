@@ -414,6 +414,12 @@ const CHEAT = [
   ["Claim fees", "claim fees for $TICKER"],
 ] as const;
 
+const TROUBLE = [
+  ["Can't see my wallet?", "Open the Wallet tab and tap Connect X. Use the same X account you use with @Ourblastbot — your OurBank wallet is tied to it. Close and reopen the app if it still looks empty."],
+  ["Trade failed or \"couldn't read that\"?", "Check the command format in the list above (amount, coin, $TICKER). Make sure you hold enough of the coin plus a little SUI for gas. If it failed, nothing was sent — just try again."],
+  ["Where is my transaction?", "Each reply includes an explorer link (Suiscan / Solscan). Bridges take a few minutes and can arrive in two steps. Type balance to see what has landed."],
+] as const;
+
 function GuideSheet({ onClose, onGo }: { onClose: () => void; onGo: (t: Tab) => void }) {
   return (
     <div className="fixed inset-0 z-[60] flex items-end bg-background/70 backdrop-blur-sm" onClick={onClose}>
@@ -443,6 +449,15 @@ function GuideSheet({ onClose, onGo }: { onClose: () => void; onGo: (t: Tab) => 
             </li>
           ))}
         </ul>
+        <h3 className="mt-4 mb-2 font-display text-lg">TROUBLESHOOTING</h3>
+        <div className="space-y-2">
+          {TROUBLE.map(([q, a]) => (
+            <div key={q} className="rounded-2xl border border-border bg-surface p-3">
+              <div className="text-sm font-semibold">{q}</div>
+              <p className="mt-1 text-xs text-muted-foreground">{a}</p>
+            </div>
+          ))}
+        </div>
         <p className="mt-3 text-[0.7rem] text-muted-foreground">Launching a token? Tag @Ourblastbot on X or use the web Terminal. Full docs: ourblast.xyz/docs</p>
       </div>
     </div>
