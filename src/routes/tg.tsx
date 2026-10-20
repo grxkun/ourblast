@@ -4,6 +4,7 @@ import { ClientOnly, createFileRoute } from "@tanstack/react-router";
 import { queryOptions, useSuspenseQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { ArrowDownToLine, Copy, ExternalLink, Home, RefreshCw, Repeat, Rocket, Search, Send, Star, Wallet, Zap } from "lucide-react";
+import logo from "@/assets/blast-logo.jpg.asset.json";
 import mascot from "@/assets/blast-cool.png.asset.json";
 import { toast } from "sonner";
 
