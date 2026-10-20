@@ -152,7 +152,7 @@ function TgApp() {
   return (
     <main className="mx-auto min-h-screen max-w-md bg-background px-4 pt-4 pb-24 text-foreground">
       <header className="mb-4 flex items-center gap-3">
-        <img src={mascot.url} alt="" className="h-10 w-10 rounded-full object-cover" />
+        <img src={logo.url} alt="OURBLAST logo" width={40} height={40} className="size-10 rounded-xl border-2 border-border object-cover" />
         <div className="min-w-0">
           <h1 className="font-display text-2xl leading-none">OUR<span className="text-primary">BLAST</span></h1>
           <p className="truncate text-xs text-muted-foreground">{session ? `gm ${session.name}` : (error ?? "Connecting to Telegram…")}</p>
