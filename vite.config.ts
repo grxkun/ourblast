@@ -15,6 +15,19 @@ export default defineConfig({
   },
   vite: {
     plugins: [mcpPlugin()],
+    // lodash-es is shared by app code and the lazy mermaid/dagre chunks; left alone the
+    // bundler folds it into "graphlib", creating a chunk cycle that crashed on load
+    // ("Cannot read properties of undefined (reading 'for')"). Keep it standalone.
+    build: {
+      rollupOptions: {
+        output: {
+          manualChunks(id: string) {
+            if (id.includes("/node_modules/lodash-es/")) return "vendor-lodash";
+            return undefined;
+          },
+        },
+      },
+    },
     // Public backend values baked in so production builds work even when .env
     // is absent from the repo (it is gitignored). Publishable key only — safe.
     define: {
