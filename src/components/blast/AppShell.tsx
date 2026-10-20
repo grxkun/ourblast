@@ -27,7 +27,7 @@ const NAV = [
 ] as const;
 
 export function AppShell({ children }: { children: ReactNode }) {
-  useRouterState({ select: (state) => state.location.pathname });
+  const pathname = useRouterState({ select: (state) => state.location.pathname });
   const { userId } = useBlast();
   const staffFn = useServerFn(amIStaff);
   const staff = useQuery({
@@ -38,6 +38,8 @@ export function AppShell({ children }: { children: ReactNode }) {
   });
   const isStaff = Boolean(staff.data?.staff);
 
+  // The Telegram Mini App has its own header and bottom dock.
+  if (pathname === "/tg") return <div className="theme-paper min-h-screen">{children}</div>;
 
   return (
     <div className="theme-paper min-h-screen">
