@@ -8,6 +8,7 @@ import logo from "@/assets/blast-logo.jpg.asset.json";
 import mascot from "@/assets/blast-cool.png.asset.json";
 import { toast } from "sonner";
 
+import { buildTradeCommand } from "@/lib/tg/tradeCommand";
 import { listPublicLaunches } from "@/lib/terminal/launch-status.functions";
 import { tgGetBankWallet, tgLinkX, tgRunCommand, tgSession, tgToggleWatch, tgUnlinkX } from "@/lib/tg/tg.functions";
 
@@ -403,16 +404,7 @@ function linkify(text: string) {
   );
 }
 
-export type TradePreset = { side: "buy" | "sell"; token: string; key: number };
-
-export function buildTradeCommand(side: "buy" | "sell", token: string, amount: string): string | null {
-  const t = token.trim().replace(/^\$/, "").toUpperCase();
-  const a = amount.trim();
-  if (!/^[A-Z0-9]{1,16}$/.test(t)) return null;
-  if (side === "buy") return /^\d*\.?\d+$/.test(a) && Number(a) > 0 ? `buy ${a} sui of $${t}` : null;
-  const pct = a.replace(/%$/, "");
-  return /^\d*\.?\d+$/.test(pct) && Number(pct) > 0 && Number(pct) <= 100 ? `sell ${pct}% $${t}` : null;
-}
+type TradePreset = { side: "buy" | "sell"; token: string; key: number };
 
 function SwapCard({ preset, busy, onRun }: { preset: TradePreset | null; busy: boolean; onRun: (cmd: string) => void }) {
   const [side, setSide] = useState<"buy" | "sell">(preset?.side ?? "buy");
