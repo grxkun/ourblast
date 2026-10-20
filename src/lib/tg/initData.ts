@@ -12,7 +12,7 @@ export interface TgUser {
 const enc = new TextEncoder();
 const hex = (b: ArrayBuffer) => [...new Uint8Array(b)].map((x) => x.toString(16).padStart(2, "0")).join("");
 
-async function hmac(key: ArrayBuffer | Uint8Array, msg: string): Promise<ArrayBuffer> {
+async function hmac(key: BufferSource, msg: string): Promise<ArrayBuffer> {
   const k = await crypto.subtle.importKey("raw", key, { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
   return crypto.subtle.sign("HMAC", k, enc.encode(msg));
 }
