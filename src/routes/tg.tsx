@@ -10,7 +10,7 @@ import { toast } from "sonner";
 
 import { buildSwapCommand, normalizeSwapToken, swapTokenSymbol } from "@/lib/tg/tradeCommand";
 import { listPublicLaunches } from "@/lib/terminal/launch-status.functions";
-import { tgBlastPresales, tgCreateWallet, tgExportWalletKey, tgGetBankWallet, tgListWallets, tgSetTradeSlots, tgLinkX, tgRunCommand, tgSession, tgToggleWatch, tgUnlinkX } from "@/lib/tg/tg.functions";
+import { tgBlastPresales, tgConsolidate, tgCreateWallet, tgExportWalletKey, tgWalletTokens, tgWalletTransfer, tgGetBankWallet, tgListWallets, tgSetTradeSlots, tgLinkX, tgRunCommand, tgSession, tgToggleWatch, tgUnlinkX } from "@/lib/tg/tg.functions";
 
 const launchesQuery = queryOptions({
   queryKey: ["public-launches"],
@@ -898,6 +898,7 @@ function WalletManager({ initData }: { initData: string }) {
   const [busy, setBusy] = useState(false);
   const [name, setName] = useState("");
   const [msg, setMsg] = useState<string | null>(null);
+  const [tab, setTab] = useState<"wallets" | "move" | "withdraw" | "merge">("wallets");
   const load = useCallback(() => { list({ data: { initData } }).then(setD).catch((e) => setMsg((e as Error).message)); }, [list, initData]);
   useEffect(() => { load(); }, [load]);
   const act = async (fn: () => Promise<unknown>, ok: string) => {
@@ -916,6 +917,15 @@ function WalletManager({ initData }: { initData: string }) {
         <b className="font-display text-lg">Sui wallets</b>
         <span className="text-xs text-muted-foreground">{d ? `${d.wallets.length}/6` : "…"}</span>
       </div>
+      <div className="mb-3 grid grid-cols-4 gap-1 rounded-xl bg-card p-1 text-xs font-semibold">
+        {(["wallets", "move", "withdraw", "merge"] as const).map((t) => (
+          <button key={t} onClick={() => { setTab(t); setMsg(null); }} className={`rounded-lg py-1.5 ${tab === t ? "bg-primary text-primary-foreground" : "text-muted-foreground"}`}>
+            {t === "wallets" ? "Wallets" : t === "move" ? "Distribute" : t === "withdraw" ? "Withdraw" : "Consolidate"}
+          </button>
+        ))}
+      </div>
+      {tab !== "wallets" && d && <MoveFunds initData={initData} mode={tab} wallets={d.wallets} onDone={load} />}
+      {tab === "wallets" && <>
       <p className="mb-2 text-xs text-muted-foreground">Tap to choose which wallets trades run from. Buys spend the amount from each selected wallet.</p>
       <ul className="space-y-2">
         {d?.wallets.map((w) => {
@@ -941,6 +951,7 @@ function WalletManager({ initData }: { initData: string }) {
           <button disabled={busy} onClick={() => act(() => create({ data: { initData, label: name || null } }).then(() => setName("")), "New wallet created. Send SUI to its address to fund it.")} className="rounded-xl bg-primary px-3 py-2 text-sm font-semibold text-primary-foreground">Add wallet</button>
         </div>
       )}
+      </>}
       {msg && <p className="mt-2 text-xs text-muted-foreground">{msg}</p>}
       {bk && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 p-4" onClick={() => setBk(null)}>
@@ -970,6 +981,129 @@ function WalletManager({ initData }: { initData: string }) {
             <button onClick={() => setBk(null)} className="ml-2 mt-3 rounded-xl border border-border px-3 py-2 text-sm">Close</button>
           </div>
         </div>
+      )}
+    </div>
+  );
+}
+
+type WRow = { slot: number; label: string; address: string; sui: number | null };
+type Tok = { coinType: string; symbol: string; amount: number };
+
+function MoveFunds({ initData, mode, wallets, onDone }: { initData: string; mode: "move" | "withdraw" | "merge"; wallets: WRow[]; onDone: () => void }) {
+  const getTokens = useServerFn(tgWalletTokens);
+  const transfer = useServerFn(tgWalletTransfer);
+  const consolidate = useServerFn(tgConsolidate);
+  const [from, setFrom] = useState(1);
+  const [toks, setToks] = useState<Tok[] | null>(null);
+  const [coin, setCoin] = useState<string>("");
+  const [amount, setAmount] = useState("");
+  const [targets, setTargets] = useState<number[]>([]);
+  const [addr, setAddr] = useState("");
+  const [only, setOnly] = useState<"sui" | "all">("all");
+  const [review, setReview] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [out, setOut] = useState<{ ok: boolean; text: string; digest?: string }[] | null>(null);
+  const [err, setErr] = useState<string | null>(null);
+  useEffect(() => { setReview(false); setOut(null); setErr(null); }, [mode]);
+  useEffect(() => {
+    if (mode === "merge") return;
+    setToks(null); setCoin("");
+    getTokens({ data: { initData, slot: from } }).then((r) => { setToks(r.tokens); setCoin(r.tokens[0]?.coinType ?? ""); }).catch((e) => setErr((e as Error).message));
+  }, [from, mode, initData, getTokens]);
+  const tok = toks?.find((t) => t.coinType === coin);
+  const validAddr = /^0x[0-9a-fA-F]{1,64}$/.test(addr.trim());
+  const canReview = mode === "merge" ? wallets.length > 1 : !!tok && (amount === "max" || Number(amount) > 0) && (mode === "move" ? targets.length > 0 : validAddr) && !(amount === "max" && mode === "move" && targets.length > 1);
+  const chip = (on: boolean) => `rounded-lg border px-2.5 py-1 text-xs ${on ? "border-primary bg-primary/15 text-primary" : "border-border bg-card"}`;
+  const run = async () => {
+    setBusy(true); setErr(null);
+    try {
+      if (mode === "merge") {
+        const r = await consolidate({ data: { initData, toSlot: from, only } });
+        setOut(r.results.length ? r.results.map((x) => ({ ok: x.ok, text: `${x.from} → ${r.to} · ${x.symbol}${x.ok ? "" : ` — ${x.error}`}`, digest: x.digest })) : [{ ok: true, text: "Nothing to move — the other wallets are empty." }]);
+      } else {
+        const r = await transfer({ data: { initData, fromSlot: from, coinType: coin, amount: amount.trim(), toSlots: mode === "move" ? targets : [], toAddress: mode === "withdraw" ? addr.trim() : null } });
+        setOut(r.results.map((x) => ({ ok: x.ok, text: `${amount === "max" ? "All" : amount} ${r.symbol} → ${x.to}${x.ok ? "" : ` — ${x.error}`}`, digest: x.digest })));
+      }
+      setReview(false); onDone();
+    } catch (e) { setErr((e as Error).message); } finally { setBusy(false); }
+  };
+  const wname = (s: number) => { const w = wallets.find((x) => x.slot === s); return w ? `w${s} · ${w.label}` : `w${s}`; };
+  return (
+    <div className="space-y-3 text-sm">
+      <div>
+        <div className="mb-1 text-xs text-muted-foreground">{mode === "merge" ? "Gather everything into" : "From wallet"}</div>
+        <div className="flex flex-wrap gap-1.5">
+          {wallets.map((w) => <button key={w.slot} onClick={() => { setFrom(w.slot); setTargets((t) => t.filter((x) => x !== w.slot)); setReview(false); }} className={chip(from === w.slot)}>w{w.slot} · {w.label}</button>)}
+        </div>
+      </div>
+      {mode === "merge" ? (
+        <div>
+          <div className="mb-1 text-xs text-muted-foreground">What to gather</div>
+          <div className="flex gap-1.5">
+            <button onClick={() => setOnly("all")} className={chip(only === "all")}>All tokens + SUI</button>
+            <button onClick={() => setOnly("sui")} className={chip(only === "sui")}>SUI only</button>
+          </div>
+          <p className="mt-1 text-xs text-muted-foreground">Each other wallet keeps 0.02 SUI for network fees. A wallet with less SUI than that is skipped.</p>
+        </div>
+      ) : (
+        <>
+          <div>
+            <div className="mb-1 text-xs text-muted-foreground">Token</div>
+            {!toks ? <p className="text-xs text-muted-foreground">Loading…</p> : toks.length === 0 ? <p className="text-xs text-muted-foreground">This wallet is empty.</p> : (
+              <select value={coin} onChange={(e) => setCoin(e.target.value)} className="w-full rounded-xl border border-border bg-card px-3 py-2">
+                {toks.map((t) => <option key={t.coinType} value={t.coinType}>{t.symbol} — {fmt(t.amount)}</option>)}
+              </select>
+            )}
+          </div>
+          <div>
+            <div className="mb-1 text-xs text-muted-foreground">{mode === "move" ? "Amount to each wallet" : "Amount"}</div>
+            <div className="flex gap-2">
+              <input value={amount} onChange={(e) => setAmount(e.target.value.replace(/[^\d.]/g, ""))} inputMode="decimal" placeholder="0.0" className="min-w-0 flex-1 rounded-xl border border-border bg-card px-3 py-2 font-mono" />
+              <button onClick={() => setAmount("max")} className={chip(amount === "max")}>MAX</button>
+            </div>
+            {amount === "max" && <p className="mt-1 text-xs text-muted-foreground">Sends all of it{tok?.symbol === "SUI" ? ", keeping 0.02 SUI for fees" : ""}. One destination only.</p>}
+          </div>
+          {mode === "move" ? (
+            <div>
+              <div className="mb-1 text-xs text-muted-foreground">To wallets</div>
+              <div className="flex flex-wrap gap-1.5">
+                {wallets.filter((w) => w.slot !== from).map((w) => <button key={w.slot} onClick={() => setTargets((t) => t.includes(w.slot) ? t.filter((x) => x !== w.slot) : [...t, w.slot])} className={chip(targets.includes(w.slot))}>w{w.slot} · {w.label}</button>)}
+                {wallets.length < 2 && <p className="text-xs text-muted-foreground">Add a second wallet first.</p>}
+              </div>
+            </div>
+          ) : (
+            <div>
+              <div className="mb-1 text-xs text-muted-foreground">External Sui address</div>
+              <input value={addr} onChange={(e) => setAddr(e.target.value)} placeholder="0x…" className="w-full rounded-xl border border-border bg-card px-3 py-2 font-mono text-xs" />
+              {addr && !validAddr && <p className="mt-1 text-xs text-destructive">That doesn't look like a Sui address (0x…).</p>}
+            </div>
+          )}
+        </>
+      )}
+      {review ? (
+        <div className="rounded-xl border border-primary bg-primary/10 p-3 text-xs">
+          <b className="text-sm">Review</b>
+          <p className="mt-1">{mode === "merge"
+            ? `Move ${only === "all" ? "all tokens and SUI" : "all SUI"} from every other wallet into ${wname(from)}.`
+            : `Send ${amount === "max" ? "all" : amount} ${tok?.symbol} from ${wname(from)} to ${mode === "move" ? targets.map(wname).join(", ") : addr.trim()}.`}</p>
+          {mode === "withdraw" && <p className="mt-1 text-muted-foreground">Transfers to an outside address can't be undone. Check it carefully.</p>}
+          <div className="mt-2 flex gap-2">
+            <button disabled={busy} onClick={run} className="rounded-xl bg-primary px-3 py-2 text-sm font-semibold text-primary-foreground disabled:opacity-50">{busy ? "Sending…" : "Confirm"}</button>
+            <button disabled={busy} onClick={() => setReview(false)} className="rounded-xl border border-border px-3 py-2 text-sm">Back</button>
+          </div>
+        </div>
+      ) : (
+        <button disabled={!canReview} onClick={() => { setOut(null); setErr(null); setReview(true); }} className="w-full rounded-xl bg-primary py-2 font-semibold text-primary-foreground disabled:opacity-50">Review</button>
+      )}
+      {err && <p className="text-xs text-destructive">{err}</p>}
+      {out && (
+        <ul className="space-y-1 text-xs">
+          {out.map((o, i) => (
+            <li key={i} className={o.ok ? "text-foreground" : "text-destructive"}>
+              {o.ok ? "✅" : "❌"} {o.text}{o.digest && <> · <a className="text-cyber underline" href={`https://suiscan.xyz/mainnet/tx/${o.digest}`} target="_blank" rel="noreferrer">Suiscan</a></>}
+            </li>
+          ))}
+        </ul>
       )}
     </div>
   );
