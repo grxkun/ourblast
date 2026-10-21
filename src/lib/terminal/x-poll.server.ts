@@ -313,6 +313,8 @@ async function runWalletJobs() {
   try {
     const { maintainTgAlerts } = await import("@/lib/tg/alerts.server");
     await maintainTgAlerts();
+    const { maintainWalletFollows } = await import("@/lib/tg/alerts.server");
+    await maintainWalletFollows();
   } catch (error) {
     console.error(`Telegram alerts failed: ${error instanceof Error ? error.message : "unknown"}`);
   }
