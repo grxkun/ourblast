@@ -385,7 +385,12 @@ async function resolvePendingChoice(postId: string, username: string, text: stri
 }
 
 /** Buy / sell inside the OurBank wallet via the Aftermath aggregator. */
-async function handleSwapMention(postId: string, username: string, text: string, chosenCoinType?: string): Promise<string | null> {
+async function handleSwapMention(postId: string, username: string, rawText: string, chosenCoinType?: string): Promise<string | null> {
+  // Optional "slippage N%" suffix (0.1–50%). Default stays the house 5%.
+  const slipMatch = rawText.match(/\s+(?:max\s+)?slippage\s+(\d*\.?\d+)\s*%?\s*$/i);
+  const slippagePct = slipMatch ? Number(slipMatch[1]) : null;
+  if (slippagePct !== null && !(slippagePct >= 0.1 && slippagePct <= 50)) return `@${username} slippage must be between 0.1% and 50%.`;
+  const text = slipMatch ? rawText.slice(0, slipMatch.index) : rawText;
   const parsed = parseSwapCommand(text);
   if (!parsed) return null;
   const command = chosenCoinType ? { ...parsed, token: chosenCoinType, isCoinType: true } : parsed;
@@ -471,7 +476,7 @@ async function handleSwapMention(postId: string, username: string, text: string,
 
   let result: Awaited<ReturnType<typeof executeBankSwap>>;
   try {
-    result = await executeBankSwap(wallet, coinIn, coinOut, amountIn);
+    result = await executeBankSwap(wallet, coinIn, coinOut, amountIn, ...(slippagePct !== null ? [slippagePct / 100] : []));
   } catch (error) {
     const message = error instanceof Error ? error.message : "Trade service failed.";
     await db.from("bank_swaps").update({ status: "FAILED", error: message.slice(0, 500) }).eq("id", row.id);
@@ -487,7 +492,7 @@ async function handleSwapMention(postId: string, username: string, text: string,
   const detail = command.side === "buy"
     ? `${got} ${symbolOut} for ${formatUnits(amountIn, 9)} SUI`
     : `${formatUnits(amountIn, decimalsIn)} ${symbolIn} for ${got} SUI`;
-  const done = `@${username} ${verb} ${detail} via ${result.venue} ✅ https://suiscan.xyz/mainnet/tx/${result.digest}`;
+  const done = `@${username} ${verb} ${detail} via ${result.venue}${slippagePct !== null ? ` (max slippage ${slippagePct}%)` : ""} ✅ https://suiscan.xyz/mainnet/tx/${result.digest}`;
   if (!command.sendTo) return done;
 
   // Second step: forward tokens, only after the swap confirmed. Either the whole
@@ -551,7 +556,7 @@ export async function handleBankMention(postId: string, username: string, text: 
   const { parseSolCommand } = await import("./solCommand");
   const solCmd = parseSolCommand(text);
   if (solCmd) return solSweep.bridgeSolForXHandle(username, solCmd.amountSol, solCmd.buyBlast === true);
-  if (parseSwapCommand(text)) return handleSwapMention(postId, username, text);
+  if (parseSwapCommand(text.replace(/\s+(?:max\s+)?slippage\s+\d*\.?\d+\s*%?\s*$/i, ""))) return handleSwapMention(postId, username, text);
   const multi = parseMultiSendCommand(text);
   if (multi) return multiSend(postId, username, multi);
   const transfer = await createBankTransferFromMention(postId, username, text);

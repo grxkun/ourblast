@@ -2,7 +2,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 
 import { MAX_FOLLOWS, parseFollowCommand } from "@/lib/tg/walletWatch";
-import { actionCoinType, actionCommand, BUY_PRESETS, decodeAction, detectToken, encodeAction, SELL_PRESETS } from "@/lib/tg/chatTrade";
+import { actionCoinType, actionCommand, BUY_PRESETS, decodeAction, detectToken, encodeAction, parseSnipeCommand, SELL_PRESETS } from "@/lib/tg/chatTrade";
 
 const APP_URL = "https://ourblast.xyz/tg";
 const LINK_URL = "https://ourblast.xyz/tg?tab=wallet";
@@ -63,7 +63,8 @@ export const Route = createFileRoute("/api/public/telegram/webhook")({
           // Telegram returns the bot-authored message on each tap. Keep the full
           // contract in that message, not callback_data (limited to 64 bytes).
           const coinType = actionCoinType(cq.message.text ?? "", action.symbol);
-          const what = action.side === "buy" ? `Spend ${action.amount} SUI on $${action.symbol}` : `Sell ${action.amount}% of your $${action.symbol} for SUI`;
+          const slipNote = action.slippage ? ` (max slippage ${action.slippage}%)` : "";
+          const what = (action.side === "buy" ? `Spend ${action.amount} SUI on $${action.symbol}` : `Sell ${action.amount}% of your $${action.symbol} for SUI`) + slipNote;
           if (action.kind === "ask") {
             await tg("sendMessage", {
               chat_id,
@@ -117,7 +118,7 @@ export const Route = createFileRoute("/api/public/telegram/webhook")({
           await tg("sendMessage", {
             chat_id: chatId,
             text: (isHelp
-              ? "📖 OURBLAST menu\n\nIn this chat:\n• /link — bind or check your X account\n• follow 0x… name — dev-wallet alerts · /following · unfollow 0x…\n• Paste a token address or $TICKER → buy/sell buttons\n• Type any command: balance · wallet · buy 1 sui of $BLAST · sell 50% $BLAST · bridge 0.05 sol to sui · send 10 $BLAST to name.sui\nBuys and sells always ask you to confirm first.\n\nIn the app:\n🏠 Home · 🔍 Discover · ⚡ Trade · 👛 Wallet"
+              ? "📖 OURBLAST menu\n\nIn this chat:\n• /link — bind or check your X account\n• follow 0x… name — dev-wallet alerts · /following · unfollow 0x…\n• Paste a token address or $TICKER → buy/sell buttons\n• snipe 0x…::coin::COIN 5 sui slippage 10% — review, then confirm\n• Type any command: balance · wallet · buy 1 sui of $BLAST · sell 50% $BLAST · bridge 0.05 sol to sui · send 10 $BLAST to name.sui\nBuys and sells always ask you to confirm first.\n\nIn the app:\n🏠 Home · 🔍 Discover · ⚡ Trade · 👛 Wallet"
               : "gm 💥 Trade Sui tokens right here from your OurBank wallet — paste any token address or $TICKER. Send /help for more.") + status,
             reply_markup: { inline_keyboard: [
               ...(isPrivate && !h ? [[{ text: "🔗 Link X account", web_app: { url: LINK_URL } }]] : []),
@@ -155,6 +156,27 @@ export const Route = createFileRoute("/api/public/telegram/webhook")({
             }
           }
           await tg("sendMessage", { chat_id: chatId, text: out, disable_web_page_preview: true });
+          return Response.json({ ok: true });
+        }
+
+        // Snipe: contract + SUI amount + slippage cap → always a Confirm card first.
+        const snipe = isPrivate ? parseSnipeCommand(original) : null;
+        if (snipe) {
+          if (!snipe.ok) {
+            await tg("sendMessage", { chat_id: chatId, text: snipe.error });
+            return Response.json({ ok: true });
+          }
+          if (!(await linkedHandle())) {
+            await tg("sendMessage", { chat_id: chatId, text: "🔗 Link your X account first so the snipe uses your OurBank wallet.", reply_markup: linkKb });
+            return Response.json({ ok: true });
+          }
+          const a = { kind: "go" as const, side: "buy" as const, amount: snipe.amount, symbol: snipe.symbol, slippage: snipe.slippage };
+          await tg("sendMessage", {
+            chat_id: chatId,
+            text: `🎯 Snipe review\nToken: $${snipe.symbol}\n${snipe.coinType}\nSpend: ${snipe.amount} SUI from your OurBank wallet\nMax slippage: ${snipe.slippage}% — the trade fails on-chain (nothing spent but gas) if the fill is worse.\n\nNothing is sent until you tap Confirm.`,
+            disable_web_page_preview: true,
+            reply_markup: { inline_keyboard: [[{ text: "✅ Confirm snipe", callback_data: encodeAction(a) }, { text: "Cancel", callback_data: "x" }]] },
+          });
           return Response.json({ ok: true });
         }
 
