@@ -100,7 +100,10 @@ export const tgGetBankWallet = createServerFn({ method: "POST" })
       evmAddress ? evmBalances(evmAddress).catch(() => []) : Promise.resolve([]),
       solAddress ? solBalances(solAddress).catch(() => null) : Promise.resolve(null),
     ]);
-    return { linked: true as const, handle, address: wallet.address, evmAddress, solAddress, sui, evm, sol };
+    const { aftermathPrices } = await import("./runCommand.server");
+    const prices = await aftermathPrices(sui.map((b) => b.coinType));
+    const suiPriced = sui.map((b) => ({ ...b, usd: prices[b.coinType] != null ? prices[b.coinType]! * b.amount : null }));
+    return { linked: true as const, handle, address: wallet.address, evmAddress, solAddress, sui: suiPriced, evm, sol };
   });
 
 /**
@@ -110,19 +113,9 @@ export const tgGetBankWallet = createServerFn({ method: "POST" })
 export const tgRunCommand = createServerFn({ method: "POST" })
   .inputValidator((d) => z.object({ initData: z.string().min(1).max(4096), text: z.string().min(1).max(500) }).parse(d))
   .handler(async ({ data }) => {
-    const { user, db } = await authed(data.initData);
-    const { data: row } = await db.from("tg_users").select("x_username").eq("tg_user_id", user.id).maybeSingle();
-    const handle = row?.x_username;
-    if (!handle) return { reply: "Link your X account first (Wallet tab) — trades use your OurBank wallet." };
-    const { ensureBankWallet } = await import("@/lib/terminal/bank-wallet.server");
-    await ensureBankWallet(handle, null);
-    const postId = `terminal-tg-${crypto.randomUUID()}`;
-    const { handleFeeCheckMention, handleFeeClaimMention, handleClaimLinkMention } = await import("@/lib/terminal/xClaim.server");
-    const feeReply = (await handleClaimLinkMention(handle, data.text)) ?? (await handleFeeCheckMention(handle, data.text)) ?? (await handleFeeClaimMention(handle, data.text));
-    const { handleBankMention } = await import("@/lib/terminal/bank.server");
-    const raw = feeReply ?? (await handleBankMention(postId, handle, data.text)) ?? "";
-    const reply = raw.replace(new RegExp(`^@${handle}\\s+`, "i"), "").trim() ||
-      "I couldn't read that. Try: buy 1 sui of $BLAST · sell 50% $BLAST · send 5 sui to @friend · bridge 0.05 sol to sui · bridge 0.02 bnb to sui · balance";
+    const { user } = await authed(data.initData);
+    const { runTgCommand } = await import("./runCommand.server");
+    const { reply } = await runTgCommand(user.id, data.text);
     return { reply };
   });
 
