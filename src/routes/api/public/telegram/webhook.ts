@@ -37,13 +37,30 @@ export const Route = createFileRoute("/api/public/telegram/webhook")({
         if (got !== (await webhookSecret(token))) return new Response("Unauthorized", { status: 401 });
 
         let threadId: number | undefined;
-        const tg = async (method: string, body: Record<string, unknown>) => {
+        const tg = async (method: string, body: Record<string, unknown>): Promise<number | undefined> => {
           // Threaded bot chats: reply inside the same topic or Telegram hides it.
           if (threadId && (method === "sendMessage" || method === "sendChatAction")) body = { ...body, message_thread_id: threadId };
           const res = await fetch(`https://api.telegram.org/bot${token}/${method}`, {
             method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body),
           });
-          if (!res.ok) console.error(`Telegram ${method} failed [${res.status}]: ${(await res.text()).slice(0, 300)}`);
+          if (!res.ok) {
+            console.error(`Telegram ${method} failed [${res.status}]: ${(await res.text()).slice(0, 300)}`);
+            return undefined;
+          }
+          const j = (await res.json().catch(() => null)) as { result?: { message_id?: number } } | null;
+          return j?.result?.message_id;
+        };
+        /** Shows "⏳ note" right away, then replaces it with the final reply (falls back to a new message). */
+        const replyWithProgress = async (chat_id: number, note: string, work: () => Promise<string>) => {
+          const [pid] = await Promise.all([tg("sendMessage", { chat_id, text: `⏳ ${note}…` }), tg("sendChatAction", { chat_id, action: "typing" })]);
+          const started = Date.now();
+          const text = await work().catch((e) => `❌ Failed: ${(e as Error).message}. Nothing was sent unless a transaction link is shown.`);
+          console.log(`tg command done in ${Date.now() - started}ms`);
+          const body = { chat_id, text: text.slice(0, 4000), disable_web_page_preview: true };
+          if (pid && (await fetch(`https://api.telegram.org/bot${token}/editMessageText`, {
+            method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ ...body, message_id: pid }),
+          })).ok) return;
+          await tg("sendMessage", body);
         };
         const update = (await request.json().catch(() => null)) as Update | null;
 
