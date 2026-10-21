@@ -127,6 +127,13 @@
       "when": 1792592232583,
       "tag": "0017_tg_wallet_follows",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1792594037071,
+      "tag": "0018_tg_copy_trade",
+      "breakpoints": true
     }
   ]
 }

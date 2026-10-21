@@ -23,6 +23,7 @@
 - [x] Dev wallet alerts (follow/unfollow/following, alert only)
 - [x] Token sniping (confirm-first, slippage cap)
 - [x] Presale buys in TG chat (confirm-first; live once BLAST_PARTNER_KEY added)
-- [ ] Copy trading
+- [x] Copy trading (bot chat)
 - [ ] Presale buys (Blast)
-- [ ] Copy trading
+- [x] Copy trading (bot chat)
+- [ ] Limit orders

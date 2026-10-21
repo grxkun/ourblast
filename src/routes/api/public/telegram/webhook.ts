@@ -70,6 +70,27 @@ export const Route = createFileRoute("/api/public/telegram/webhook")({
           threadId = (cq.message as { message_thread_id?: number }).message_thread_id;
           const chat_id = cq.message.chat.id;
           const message_id = cq.message.message_id;
+          if (cq.data === "cc") {
+            await tg("answerCallbackQuery", { callback_query_id: cq.id, text: "Starting…" });
+            const { parseCopyCommand } = await import("@/lib/tg/copyTrade");
+            const line = (cq.message.text ?? "").split("\n").reverse().find((l) => l.startsWith("copy "));
+            const c = line ? parseCopyCommand(line) : null;
+            if (c?.op !== "start") return Response.json({ ok: true });
+            const { supabaseAdmin: db } = await import("@/integrations/supabase/client.server");
+            const { data: u } = await db.from("tg_users").select("x_username").eq("tg_user_id", cq.from.id).maybeSingle();
+            if (!u?.x_username) {
+              await tg("sendMessage", { chat_id, text: "🔗 Link your X account first.", reply_markup: { inline_keyboard: [[{ text: "🔗 Link X account", web_app: { url: LINK_URL } }]] } });
+              return Response.json({ ok: true });
+            }
+            const { count } = await db.from("tg_wallet_follows").select("id", { count: "exact", head: true }).eq("tg_user_id", cq.from.id).neq("address", c.address);
+            if ((count ?? 0) >= MAX_FOLLOWS) {
+              await tg("sendMessage", { chat_id, text: `Limit is ${MAX_FOLLOWS} wallets. Unfollow one first.` });
+              return Response.json({ ok: true });
+            }
+            const { error } = await db.from("tg_wallet_follows").upsert({ tg_user_id: cq.from.id, address: c.address, copy_sui: Number(c.perTrade), copy_daily_cap: Number(c.dailyCap), copy_slippage: Number(c.slippage) }, { onConflict: "tg_user_id,address" });
+            await tg("editMessageText", { chat_id, message_id, disable_web_page_preview: true, text: error ? `Couldn't start: ${error.message}` : `🪞 Copying ${c.address}\n${c.perTrade} SUI per buy · max ${c.dailyCap} SUI/day · slippage ${c.slippage}%\nStarts from its next trade. Stop: stopcopy all` });
+            return Response.json({ ok: true });
+          }
           const pAct = decodePresaleAction(cq.data ?? "");
           const presaleId = pAct ? presaleIdFromText(cq.message.text ?? "") : null;
           if (pAct) {
@@ -167,7 +188,7 @@ export const Route = createFileRoute("/api/public/telegram/webhook")({
           await tg("sendMessage", {
             chat_id: chatId,
             text: (isHelp
-              ? "📖 OURBLAST menu\n\nIn this chat:\n• /link — bind or check your X account\n• follow 0x… name — dev-wallet alerts · /following · unfollow 0x…\n• Paste a token address or $TICKER → buy/sell buttons\n• snipe 0x…::coin::COIN 5 sui slippage 10% — review, then confirm\n• presales · presale 0x… · commit 5 sui to 0x… — Blast.fun presale buys, confirm first\n• Type any command: balance · wallet · buy 1 sui of $BLAST · sell 50% $BLAST · bridge 0.05 sol to sui · send 10 $BLAST to name.sui\nBuys and sells always ask you to confirm first.\n\nIn the app:\n🏠 Home · 🔍 Discover · ⚡ Trade · 👛 Wallet"
+              ? "📖 OURBLAST menu\n\nIn this chat:\n• /link — bind or check your X account\n• follow 0x… name — dev-wallet alerts · /following · unfollow 0x…\n• copy 0x… 2 sui max 10 sui — copy a wallet's buys/sells with a daily cap · stopcopy all\n• Paste a token address or $TICKER → buy/sell buttons\n• snipe 0x…::coin::COIN 5 sui slippage 10% — review, then confirm\n• presales · presale 0x… · commit 5 sui to 0x… — Blast.fun presale buys, confirm first\n• Type any command: balance · wallet · buy 1 sui of $BLAST · sell 50% $BLAST · bridge 0.05 sol to sui · send 10 $BLAST to name.sui\nBuys and sells always ask you to confirm first.\n\nIn the app:\n🏠 Home · 🔍 Discover · ⚡ Trade · 👛 Wallet"
               : "gm 💥 Trade Sui tokens right here from your OurBank wallet — paste any token address or $TICKER. Send /help for more.") + status,
             reply_markup: { inline_keyboard: [
               ...(isPrivate && !h ? [[{ text: "🔗 Link X account", web_app: { url: LINK_URL } }]] : []),
@@ -177,7 +198,7 @@ export const Route = createFileRoute("/api/public/telegram/webhook")({
           return Response.json({ ok: true });
         }
         // Trading in chat is private-only so group messages never touch anyone's wallet.
-        if (!isPrivate || !msg?.from?.id || (original.startsWith("/") && !/^\/(follow|unfollow|following)\b/i.test(original))) return Response.json({ ok: true });
+        if (!isPrivate || !msg?.from?.id || (original.startsWith("/") && !/^\/(follow|unfollow|following|copy|stopcopy)\b/i.test(original))) return Response.json({ ok: true });
         // Every wallet action requires a bound X account; show the link button instead of a dead end.
         if (!(await linkedHandle())) {
           await tg("sendMessage", { chat_id: chatId, text: "🔗 Link your X account first — trades use your OurBank wallet tied to X.", reply_markup: linkKb });
@@ -193,6 +214,26 @@ export const Route = createFileRoute("/api/public/telegram/webhook")({
             const snap = await srv.walletSnapshot(h!, { sui: kind !== "wallet", other: kind === "balance" });
             return kind === "wallet" ? fmt.formatWallet(snap) : kind === "positions" ? fmt.formatPositions(snap) : fmt.formatBalance(snap);
           });
+          return Response.json({ ok: true });
+        }
+
+        // Copy trading: opt-in per wallet, capped, confirm-first to turn on, one command to stop.
+        const { parseCopyCommand, copyLine } = await import("@/lib/tg/copyTrade");
+        const cc = parseCopyCommand(original);
+        if (cc) {
+          const { supabaseAdmin: db } = await import("@/integrations/supabase/client.server");
+          if (cc.op === "error") await tg("sendMessage", { chat_id: chatId, text: cc.error });
+          else if (cc.op === "stop") {
+            const q = db.from("tg_wallet_follows").update({ copy_sui: null }).eq("tg_user_id", msg.from.id).not("copy_sui", "is", null);
+            const { data } = await (cc.address === "all" ? q : q.eq("address", cc.address)).select("id");
+            await tg("sendMessage", { chat_id: chatId, text: data?.length ? `🛑 Copy trading stopped for ${data.length} wallet(s). Alerts continue — unfollow to stop them.` : "No active copy trades matched." });
+          } else {
+            await tg("sendMessage", {
+              chat_id: chatId, disable_web_page_preview: true,
+              text: `🪞 Copy trade review\nWallet: ${cc.address}\nEach time it buys a token, you buy ${cc.perTrade} SUI of it.\nWhen it sells, you sell all of that token.\nDaily max: ${cc.dailyCap} SUI · slippage ${cc.slippage}%\nTrades run automatically from your OurBank wallet. Stop anytime: stopcopy all\n\n${copyLine(cc)}`,
+              reply_markup: { inline_keyboard: [[{ text: "✅ Start copying", callback_data: "cc" }, { text: "Cancel", callback_data: "x" }]] },
+            });
+          }
           return Response.json({ ok: true });
         }
 
