@@ -342,6 +342,11 @@ export const Route = createFileRoute("/api/public/telegram/webhook")({
           await tg("sendMessage", { chat_id: chatId, text: "🔗 Link your X account first — trades use your OurBank wallet tied to X.", reply_markup: linkKb });
           return Response.json({ ok: true });
         }
+        if (/^\/?wallets(@\w+)?$/i.test(original.trim())) {
+          const p = await walletPicker(msg.from.id, (await linkedHandle())!);
+          await tg("sendMessage", { chat_id: chatId, text: p.text, disable_web_page_preview: true, reply_markup: { inline_keyboard: p.kb } });
+          return Response.json({ ok: true });
+        }
 
         // Wallet views — each command answers a different question, read-only.
         const view = text.match(/^(balance|balances|bal|wallet|address|addresses|deposit|positions|pos|portfolio)$/)?.[1];
