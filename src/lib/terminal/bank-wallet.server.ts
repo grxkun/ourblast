@@ -346,4 +346,37 @@ export async function sendManyFromBankWallet(
   return { ok: true, digest: executed.digest };
 }
 
+/**
+ * Commits SUI to an open Blast.fun presale (blast_presale::commit_open).
+ * The caller must have verified the presale object and its package first.
+ * Any part a hard cap refuses comes back as a coin and is returned to the wallet.
+ */
+export async function commitPresaleFromBankWallet(
+  wallet: BankWalletRow,
+  p: { pkg: string; presaleId: string; memeType: string; amount: bigint },
+): Promise<Result> {
+  const { gasCoins, referenceGasPrice, withGas, signAndExecute } = await chain();
+  let signer: Awaited<ReturnType<typeof bankSigner>>;
+  try {
+    signer = await bankSigner(wallet);
+  } catch (e) {
+    return { ok: false, error: (e as Error).message };
+  }
+  const sender = signer.address;
+  const gas = await gasCoins(sender);
+  if (gas.length === 0) return { ok: false, error: "Your OurBank wallet has no SUI for network fees." };
+  const tx = new Transaction();
+  withGas(tx, sender, gas, await referenceGasPrice(), Number(GAS_BUDGET));
+  const [payment] = tx.splitCoins(tx.gas, [tx.pure.u64(p.amount)]);
+  const [unused] = tx.moveCall({
+    target: `${p.pkg}::blast_presale::commit_open`,
+    typeArguments: [p.memeType, SUI_TYPE],
+    arguments: [tx.object(p.presaleId), payment!, tx.object.clock()],
+  });
+  tx.transferObjects([unused!], tx.pure.address(sender));
+  const executed = await signAndExecute(tx, signer);
+  if (!executed.ok || !executed.digest) return { ok: false, error: executed.error ?? "Transaction failed." };
+  return { ok: true, digest: executed.digest };
+}
+
 export { GAS_BUDGET, SUI_TYPE };
