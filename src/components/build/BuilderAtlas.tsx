@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: BUSL-1.1
 import { Link } from "@tanstack/react-router";
 import { ArrowUpRight, Building2, Github, Minus, Plus, Rotate3D, RotateCcw } from "lucide-react";
 import { lazy, Suspense, useEffect, useState } from "react";

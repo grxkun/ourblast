@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: BUSL-1.1
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { HandCoins } from "lucide-react";

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: BUSL-1.1
 import { AtSign, Loader2, Wallet } from "lucide-react";
 
 import { useBlast } from "@/components/blast/session";

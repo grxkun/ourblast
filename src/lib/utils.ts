@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: BUSL-1.1
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
 

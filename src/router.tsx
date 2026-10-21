@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: BUSL-1.1
 import { QueryClient } from "@tanstack/react-query";
 import { createRouter } from "@tanstack/react-router";
 import { routeTree } from "./routeTree.gen";

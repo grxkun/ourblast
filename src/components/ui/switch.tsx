@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: BUSL-1.1
 import * as React from "react";
 import * as SwitchPrimitives from "@radix-ui/react-switch";
 

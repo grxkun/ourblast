@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: BUSL-1.1
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { Copy, History, ImagePlus, RotateCcw, Trash2, WandSparkles } from "lucide-react";

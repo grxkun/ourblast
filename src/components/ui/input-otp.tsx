@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: BUSL-1.1
 import * as React from "react";
 import { OTPInput, OTPInputContext } from "input-otp";
 import { Minus } from "lucide-react";

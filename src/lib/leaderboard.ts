@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: BUSL-1.1
 import { supabase } from "@/integrations/supabase/client";
 
 export type Period = "today" | "week" | "season" | "all";

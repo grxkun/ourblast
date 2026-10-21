@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: BUSL-1.1
 import * as React from "react";
 import useEmblaCarousel, { type UseEmblaCarouselType } from "embla-carousel-react";
 import { ArrowLeft, ArrowRight } from "lucide-react";

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: BUSL-1.1
 import { useServerFn } from "@tanstack/react-start";
 import { Link } from "@tanstack/react-router";
 import { useCallback, useEffect, useRef, useState } from "react";

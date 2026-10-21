@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: BUSL-1.1
 import { CircleCheck, CircleDashed, LockKeyhole } from "lucide-react";
 
 import type { TerminalStatus } from "@/lib/terminal/types";

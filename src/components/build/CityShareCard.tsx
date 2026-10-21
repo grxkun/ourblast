@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: BUSL-1.1
 import { Download, Link2, Share2 } from "lucide-react";
 import { toast } from "sonner";
 

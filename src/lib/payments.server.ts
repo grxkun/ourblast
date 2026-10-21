@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: BUSL-1.1
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 import type { PaymentPurpose } from "./ourblast.config";

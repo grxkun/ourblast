@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: BUSL-1.1
 const COIN =
   "0x577a8addf60a34d4c705914ad066a3b28c3fc40d365ed0d9dfc408f29b4725d3::blast::BLAST";
 

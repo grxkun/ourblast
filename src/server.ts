@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: BUSL-1.1
 import "./lib/error-capture";
 
 import { consumeLastCapturedError } from "./lib/error-capture";

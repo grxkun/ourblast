@@ -125,3 +125,9 @@ export const tgRunCommand = createServerFn({ method: "POST" })
       "I couldn't read that. Try: buy 1 sui of $BLAST · sell 50% $BLAST · send 5 sui to @friend · bridge 0.05 sol to sui · bridge 0.02 bnb to sui · balance";
     return { reply };
   });
+
+/** Public read: live Blast.fun presales (server-proxied, partner key stays server-side). */
+export const tgBlastPresales = createServerFn({ method: "GET" }).handler(async () => {
+  const { getBlastPresales } = await import("@/lib/blast/blast.server");
+  return getBlastPresales();
+});

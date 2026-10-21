@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: BUSL-1.1
 import { MIST_PER_SUI } from "./ourblast.config";
 
 /**

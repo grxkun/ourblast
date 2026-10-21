@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: BUSL-1.1
 import { createFileRoute, Link, notFound } from "@tanstack/react-router";
 import { Award, Github, Zap } from "lucide-react";
 

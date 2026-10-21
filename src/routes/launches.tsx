@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: BUSL-1.1
 import { useMemo, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { queryOptions, useSuspenseQuery } from "@tanstack/react-query";

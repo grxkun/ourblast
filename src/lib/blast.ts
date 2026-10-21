@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: BUSL-1.1
 /** Shared, browser-safe helpers for OURBLAST. */
 
 export const POINTS = {

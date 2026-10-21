@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: BUSL-1.1
 import { useMutation } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";

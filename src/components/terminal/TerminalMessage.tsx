@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: BUSL-1.1
 import { Copy, RotateCcw, Wrench } from "lucide-react";
 
 import { Message, MessageAction, MessageActions, MessageContent, MessageResponse } from "@/components/ai-elements/message";

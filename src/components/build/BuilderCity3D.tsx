@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: BUSL-1.1
 import { Environment, Html, Lightformer, OrbitControls, RoundedBox, Sky } from "@react-three/drei";
 import { Canvas, type ThreeEvent, useFrame, useThree } from "@react-three/fiber";
 import { useEffect, useMemo, useRef, useState } from "react";

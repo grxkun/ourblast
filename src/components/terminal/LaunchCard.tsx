@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: BUSL-1.1
 import { ImageIcon, Link2, Pencil, Rocket, WandSparkles } from "lucide-react";
 import { useState } from "react";
 import { useServerFn } from "@tanstack/react-start";

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: BUSL-1.1
 /**
  * Shared profile bootstrap for players who sign in with a social account
  * instead of a Sui wallet. Server-only.

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: BUSL-1.1
 /**
  * The first ("dev") buy must always be paid by the creator's own OurBank wallet
  * and delivered to that wallet. The bot's operating wallet only ever covers gas,

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: BUSL-1.1
 type LovableErrorOptions = {
   mechanism?: "manual" | "onerror" | "unhandledrejection" | "react_error_boundary";
   handled?: boolean;

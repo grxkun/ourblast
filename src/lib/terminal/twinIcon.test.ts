@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: BUSL-1.1
 import { describe, expect, it, vi, beforeEach } from "vitest";
 type Row = Record<string, any>;
 const tables: Record<string, Row[]> = {};

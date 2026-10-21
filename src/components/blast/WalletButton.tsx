@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: BUSL-1.1
 import { Link } from "@tanstack/react-router";
 
 import { PlayerAvatar } from "@/components/blast/PlayerBadge";

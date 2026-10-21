@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: BUSL-1.1
 import { useState } from "react";
 
 import { avatarFromAddress, shortAddress } from "@/lib/blast";

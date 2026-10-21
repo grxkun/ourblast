@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: BUSL-1.1
 import { useEffect, useRef, useState } from "react";
 
 import { FEES } from "@/lib/ourblast.config";

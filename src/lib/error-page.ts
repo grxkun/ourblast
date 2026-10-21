@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: BUSL-1.1
 export function renderErrorPage(): string {
   return `<!doctype html>
 <html lang="en">
