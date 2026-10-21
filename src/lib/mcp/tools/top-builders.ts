@@ -1,4 +1,3 @@
-// SPDX-License-Identifier: BUSL-1.1
 import { defineTool, ToolError } from "@lovable.dev/mcp-js";
 import { z } from "zod";
 
