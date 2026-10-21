@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: BUSL-1.1
 import { describe, expect, it } from "vitest";
 import { parseDeployTweet } from "@/lib/terminal/xLauncher";
 import { parseTerminalCommand } from "@/lib/terminal/commandParser";

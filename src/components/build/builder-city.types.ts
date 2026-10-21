@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: BUSL-1.1
 export type CityBuilding = {
   id: string;
   building_type: string;

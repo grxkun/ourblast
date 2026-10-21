@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: BUSL-1.1
 import { Toaster as Sonner } from "sonner";
 
 type ToasterProps = React.ComponentProps<typeof Sonner>;

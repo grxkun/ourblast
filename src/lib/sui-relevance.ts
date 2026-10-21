@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: BUSL-1.1
 import { BLAST_BUILD, type BuildingType } from "./blast-build.config";
 
 export type RepoSignal = {

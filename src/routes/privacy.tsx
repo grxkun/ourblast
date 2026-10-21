@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: BUSL-1.1
 import { createFileRoute, Link } from "@tanstack/react-router";
 
 import { SectionTitle } from "@/components/blast/AppShell";

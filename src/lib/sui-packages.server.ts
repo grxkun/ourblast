@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: BUSL-1.1
 const SUI_GRAPHQL = "https://graphql.mainnet.sui.io/graphql";
 
 type PackageProof = { packageId: string; moduleNames: string[]; version: number; digest: string | null; publisher: string | null; timestamp: string | null };

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: BUSL-1.1
 import { ChartNoAxesCombined, Handshake, CircleDollarSign, Coins, Search, WalletCards, Zap } from "lucide-react";
 
 import { Suggestion } from "@/components/ai-elements/suggestion";

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: BUSL-1.1
 import { decryptConnectionKey, encryptConnectionKey } from "./connection-key.server";
 
 export async function saveConnectionKey(userId: string, value: string) {

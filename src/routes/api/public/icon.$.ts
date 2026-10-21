@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: BUSL-1.1
 import { createFileRoute } from "@tanstack/react-router";
 
 /** Public token picture: /api/public/icon/<userId>/<uuid>.<ext> (read-only, unguessable path). */

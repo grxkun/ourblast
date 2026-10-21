@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: BUSL-1.1
 /**
  * Single source of truth for the OURBLAST treasury and activity pricing.
  *

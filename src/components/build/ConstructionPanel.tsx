@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: BUSL-1.1
 import { Building2, Check, Hammer, LockKeyhole, Map, ShieldCheck } from "lucide-react";
 import { useMutation } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: BUSL-1.1
 import { Loader2Icon } from "lucide-react"
 
 import { cn } from "@/lib/utils"

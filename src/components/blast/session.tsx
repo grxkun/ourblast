@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: BUSL-1.1
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";

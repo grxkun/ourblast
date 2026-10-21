@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: BUSL-1.1
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { GAME_DURATION_MS, formatNumber, msToClock } from "@/lib/blast";

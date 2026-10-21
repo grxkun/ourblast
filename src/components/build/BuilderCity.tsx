@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: BUSL-1.1
 import { Building2, Eye, Minus, Plus, Rotate3D, RotateCcw } from "lucide-react";
 import { lazy, Suspense, useEffect, useMemo, useState } from "react";
 

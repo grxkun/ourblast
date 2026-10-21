@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: BUSL-1.1
 export const BLAST_BUILD = {
   suiRelevanceThreshold: 60,
   suiNetwork: "mainnet",

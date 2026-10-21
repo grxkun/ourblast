@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: BUSL-1.1
 import { cn } from "@/lib/utils";
 
 function Skeleton({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) {

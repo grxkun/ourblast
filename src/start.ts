@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: BUSL-1.1
 import { createStart, createCsrfMiddleware, createMiddleware } from "@tanstack/react-start";
 
 import { renderErrorPage } from "./lib/error-page";

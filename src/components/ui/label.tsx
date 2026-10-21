@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: BUSL-1.1
 "use client";
 
 import * as React from "react";

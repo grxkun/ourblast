@@ -10,7 +10,7 @@ import { toast } from "sonner";
 
 import { buildTradeCommand } from "@/lib/tg/tradeCommand";
 import { listPublicLaunches } from "@/lib/terminal/launch-status.functions";
-import { tgGetBankWallet, tgLinkX, tgRunCommand, tgSession, tgToggleWatch, tgUnlinkX } from "@/lib/tg/tg.functions";
+import { tgBlastPresales, tgGetBankWallet, tgLinkX, tgRunCommand, tgSession, tgToggleWatch, tgUnlinkX } from "@/lib/tg/tg.functions";
 
 const launchesQuery = queryOptions({
   queryKey: ["public-launches"],
@@ -221,15 +221,7 @@ function TgApp() {
               </button>
             ))}
           </div>
-          <a href="https://blast.fun" target="_blank" rel="noreferrer"
-            className="block rounded-2xl border border-primary/40 bg-card p-4">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-bold uppercase tracking-wider text-primary">New · Blast presales</span>
-              <span className="text-xs text-muted-foreground">blast.fun ↗</span>
-            </div>
-            <p className="mt-1 text-sm font-semibold">Join Sui presales on blast.fun</p>
-            <p className="mt-1 text-xs text-muted-foreground">Commit SUI to fixed-term sales. If a raise misses its target, commitments are refunded; if it fills, liquidity opens on Cetus or Bluefin.</p>
-          </a>
+          <BlastPresales />
           {list(rows)}
         </div>
       )}
@@ -591,6 +583,41 @@ function GuideSheet({ onClose, onGo }: { onClose: () => void; onGo: (t: Tab) => 
         </div>
         <p className="mt-3 text-[0.7rem] text-muted-foreground">Launching a token? Tag @Ourblastbot on X or use the web Terminal. Full docs: ourblast.xyz/docs</p>
       </div>
+    </div>
+  );
+}
+
+function BlastPresales() {
+  const fetchFeed = useServerFn(tgBlastPresales);
+  const [feed, setFeed] = useState<Awaited<ReturnType<typeof tgBlastPresales>> | null>(null);
+  useEffect(() => { fetchFeed().then(setFeed).catch(() => setFeed({ ok: false, reason: "unavailable", presales: [] })); }, [fetchFeed]);
+  return (
+    <div className="rounded-2xl border border-primary/40 bg-card p-4">
+      <div className="flex items-center justify-between">
+        <span className="text-xs font-bold uppercase tracking-wider text-primary">Blast presales</span>
+        <a href="https://blast.fun" target="_blank" rel="noreferrer" className="text-xs text-muted-foreground">blast.fun ↗</a>
+      </div>
+      {feed?.ok && feed.presales.length > 0 ? (
+        <div className="mt-2 space-y-2">
+          {feed.presales.slice(0, 8).map((p) => (
+            <a key={p.id} href={p.url} target="_blank" rel="noreferrer" className="flex items-center gap-3 rounded-xl bg-surface p-2">
+              {p.image ? <img src={p.image} alt="" className="h-9 w-9 rounded-lg object-cover" /> : <div className="h-9 w-9 rounded-lg bg-muted" />}
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-semibold">{p.symbol ? `$${p.symbol}` : p.name ?? "Presale"}</p>
+                <p className="truncate text-xs text-muted-foreground">
+                  {[p.status, p.raised && p.target ? `${p.raised} / ${p.target} SUI` : null].filter(Boolean).join(" · ") || "Open on blast.fun"}
+                </p>
+              </div>
+              <ExternalLink className="h-4 w-4 text-muted-foreground" />
+            </a>
+          ))}
+        </div>
+      ) : (
+        <>
+          <p className="mt-1 text-sm font-semibold">{feed === null ? "Loading presales…" : "Join Sui presales on blast.fun"}</p>
+          <p className="mt-1 text-xs text-muted-foreground">Commit SUI to fixed-term sales. If a raise misses its target, commitments are refunded; if it fills, liquidity opens on Cetus or Bluefin.</p>
+        </>
+      )}
     </div>
   );
 }

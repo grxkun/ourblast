@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: BUSL-1.1
 import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
 

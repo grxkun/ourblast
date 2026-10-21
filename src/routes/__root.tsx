@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: BUSL-1.1
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
   Outlet,

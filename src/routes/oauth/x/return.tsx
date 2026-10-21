@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: BUSL-1.1
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useQueryClient } from "@tanstack/react-query";

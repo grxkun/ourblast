@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: BUSL-1.1
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { Activity, MessageSquareReply, Radar, Search } from "lucide-react";

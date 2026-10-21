@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: BUSL-1.1
 import * as React from "react";
 
 const MOBILE_BREAKPOINT = 768;
