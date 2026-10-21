@@ -8,7 +8,7 @@ import logo from "@/assets/blast-logo.jpg.asset.json";
 import mascot from "@/assets/blast-cool.png.asset.json";
 import { toast } from "sonner";
 
-import { buildSwapCommand } from "@/lib/tg/tradeCommand";
+import { buildSwapCommand, normalizeSwapToken, swapTokenSymbol } from "@/lib/tg/tradeCommand";
 import { listPublicLaunches } from "@/lib/terminal/launch-status.functions";
 import { tgBlastPresales, tgGetBankWallet, tgLinkX, tgRunCommand, tgSession, tgToggleWatch, tgUnlinkX } from "@/lib/tg/tg.functions";
 
@@ -228,7 +228,7 @@ function TgApp() {
 
       {open && (
         <TokenSheet l={open} watching={watch.has(open.id)} onStar={() => onStar(open.id)} onClose={() => setOpenId(null)}
-          onTrade={(side) => { setPreset({ side, token: open.symbol ?? "", key: Date.now() }); setOpenId(null); setTab("trade"); }} />
+          onTrade={(side) => { setPreset({ side, token: open.tokenAddress ?? open.symbol ?? "", key: Date.now() }); setOpenId(null); setTab("trade"); }} />
       )}
 
       {tab === "trade" && (
@@ -406,7 +406,7 @@ function WalletView({ initData, handle, onTrade, onSell }: { initData: string; h
                   </div>
                   <div className="mt-2 grid grid-cols-3 gap-1.5">
                     {["25", "50", "100"].map((pct) => (
-                      <button key={pct} onClick={() => onSell(p.symbol, pct)} className="rounded-full bg-surface-2 py-1 text-xs font-semibold">{pct === "100" ? "Sell MAX" : `Sell ${pct}%`}</button>
+                      <button key={pct} onClick={() => onSell(p.coinType, pct)} className="rounded-full bg-surface-2 py-1 text-xs font-semibold">{pct === "100" ? "Sell MAX" : `Sell ${pct}%`}</button>
                     ))}
                   </div>
                 </li>
@@ -447,12 +447,12 @@ function SwapCard({ preset, busy, onRun, holdings, onRefresh }: { preset: TradeP
   const [review, setReview] = useState(false);
   const [picking, setPicking] = useState<"pay" | "receive" | null>(null);
   const [search, setSearch] = useState("");
-  const bal = (sym: string) => holdings.find((h) => h.symbol.toUpperCase() === sym.toUpperCase());
+  const bal = (sym: string) => holdings.find((h) => h.coinType === sym) ?? holdings.find((h) => !sym.includes("::") && h.symbol.toUpperCase() === sym.toUpperCase());
   const unitUsd = (sym: string) => { const h = bal(sym); return h && h.usd != null && h.amount > 0 ? h.usd / h.amount : null; };
 
   useEffect(() => {
     if (!preset) return;
-    const t = preset.token.replace(/^\$/, "").toUpperCase();
+    const t = normalizeSwapToken(preset.token);
     setReview(false); setIsMax(false);
     if (preset.side === "buy") { setPay("SUI"); setReceive(t); setAmount(preset.amount ?? "1"); return; }
     setPay(t); setReceive("SUI");
@@ -464,7 +464,7 @@ function SwapCard({ preset, busy, onRun, holdings, onRefresh }: { preset: TradeP
 
   const flip = () => { setPay(receive); setReceive(pay); setAmount(""); setIsMax(false); setReview(false); };
   const choose = (sym: string) => {
-    const s = sym.replace(/^\$/, "").toUpperCase();
+    const s = normalizeSwapToken(sym);
     if (!s) return;
     if (picking === "pay") { if (s === receive) setReceive(pay); setPay(s); if (s !== "SUI" && receive !== "SUI" && s !== receive) setReceive("SUI"); }
     if (picking === "receive") { if (s === pay) setPay(receive); setReceive(s); if (s !== "SUI" && pay !== "SUI" && s !== pay) setPay("SUI"); }
@@ -472,20 +472,20 @@ function SwapCard({ preset, busy, onRun, holdings, onRefresh }: { preset: TradeP
   };
   const payBal = bal(pay)?.amount ?? 0;
   const maxAmount = pay === "SUI" ? Math.max(0, payBal - 0.2) : payBal;
-  const cmd = buildSwapCommand(pay, receive, isMax && pay !== "SUI" ? "all" : amount);
+  const cmd = buildSwapCommand(bal(pay)?.coinType && pay !== "SUI" ? bal(pay)?.coinType ?? pay : pay, bal(receive)?.coinType && receive !== "SUI" ? bal(receive)?.coinType ?? receive : receive, isMax && pay !== "SUI" ? "all" : amount);
   const over = Number(amount) > payBal + 1e-12;
   const payUsd = unitUsd(pay);
   const estOut = (() => { const a = Number(amount), up = unitUsd(pay), ur = unitUsd(receive); return a > 0 && up && ur ? (a * up) / ur : null; })();
   const pickList = useMemo(() => {
-    const syms = Array.from(new Set(["SUI", "BLAST", ...holdings.map((h) => h.symbol.toUpperCase())]));
+    const syms = Array.from(new Set(["SUI", "BLAST", ...holdings.filter((h) => h.symbol.toUpperCase() !== "SUI").map((h) => h.coinType)]));
     const q = search.trim().replace(/^\$/, "").toUpperCase();
-    return syms.filter((s) => !q || s.includes(q));
+    return syms.filter((s) => !q || swapTokenSymbol(s).toUpperCase().includes(q) || s.toUpperCase().includes(q));
   }, [holdings, search]);
 
   const TokenBtn = ({ sym, side }: { sym: string; side: "pay" | "receive" }) => (
     <button type="button" onClick={() => setPicking(side)} className="flex shrink-0 items-center gap-1.5 rounded-full bg-surface-2 py-1 pl-1 pr-2.5 text-sm font-semibold">
-      <span className="grid h-6 w-6 place-items-center rounded-full bg-primary/20 font-display text-[0.6rem] text-primary">{sym.slice(0, 3)}</span>
-      {sym}<span className="text-muted-foreground">▾</span>
+      <span className="grid h-6 w-6 place-items-center rounded-full bg-primary/20 font-display text-[0.6rem] text-primary">{swapTokenSymbol(sym).slice(0, 3)}</span>
+      {swapTokenSymbol(sym)}<span className="text-muted-foreground">▾</span>
     </button>
   );
 
@@ -526,7 +526,7 @@ function SwapCard({ preset, busy, onRun, holdings, onRefresh }: { preset: TradeP
       {review && cmd ? (
         <div className="mt-2 space-y-2 rounded-2xl border border-primary/40 bg-card p-3 text-sm">
           <p className="font-semibold">Review swap</p>
-          <p className="text-muted-foreground">Pay {isMax && pay !== "SUI" ? `all your ${pay}` : `${amount} ${pay}`} from your OurBank wallet for {receive}. Nothing moves until you confirm.</p>
+          <p className="text-muted-foreground">Pay {isMax && pay !== "SUI" ? `all your ${swapTokenSymbol(pay)}` : `${amount} ${swapTokenSymbol(pay)}`} from your OurBank wallet for {swapTokenSymbol(receive)}. Nothing moves until you confirm.</p>
           <div className="grid grid-cols-2 gap-2">
             <button onClick={() => setReview(false)} className="rounded-full bg-surface-2 py-2 font-semibold">Back</button>
             <button disabled={busy} onClick={() => { setReview(false); onRun(cmd); setAmount(""); setIsMax(false); }} className="rounded-full bg-primary py-2 font-semibold text-primary-foreground disabled:opacity-50">Confirm swap</button>
@@ -535,7 +535,7 @@ function SwapCard({ preset, busy, onRun, holdings, onRefresh }: { preset: TradeP
       ) : (
         <button disabled={!cmd || busy || over} onClick={() => setReview(true)}
           className="mt-2 flex w-full items-center justify-center gap-2 rounded-full bg-primary py-3 font-semibold text-primary-foreground disabled:opacity-50">
-          <Repeat className="h-4 w-4" />{over ? `Not enough ${pay}` : cmd ? "Review swap" : "Enter an amount"}
+          <Repeat className="h-4 w-4" />{over ? `Not enough ${swapTokenSymbol(pay)}` : cmd ? "Review swap" : "Enter an amount"}
         </button>
       )}
 
@@ -545,21 +545,21 @@ function SwapCard({ preset, busy, onRun, holdings, onRefresh }: { preset: TradeP
             <b className="font-display text-lg">Select token</b>
             <button onClick={() => { setPicking(null); setSearch(""); }} aria-label="Close"><X className="h-5 w-5" /></button>
           </div>
-          <input autoFocus value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search or type a ticker"
+          <input autoFocus value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search ticker or paste contract"
             onKeyDown={(e) => { if (e.key === "Enter") choose(search); }}
             className="mb-2 rounded-full border border-border bg-card px-4 py-2 text-sm outline-none" />
           <ul className="flex-1 overflow-y-auto">
             {pickList.map((s) => (
               <li key={s}>
                 <button onClick={() => choose(s)} className="flex w-full items-center gap-3 rounded-xl p-2 text-left hover:bg-card">
-                  <span className="grid h-8 w-8 place-items-center rounded-full bg-surface-2 font-display text-[0.6rem] text-cyber">{s.slice(0, 3)}</span>
-                  <b className="flex-1 text-sm">{s}</b>
+                  <span className="grid h-8 w-8 place-items-center rounded-full bg-surface-2 font-display text-[0.6rem] text-cyber">{swapTokenSymbol(s).slice(0, 3)}</span>
+                  <b className="flex-1 text-sm">{swapTokenSymbol(s)}</b>
                   <span className="font-mono text-xs text-muted-foreground">{fmt(bal(s)?.amount ?? 0)}</span>
                 </button>
               </li>
             ))}
             {search.trim() && !pickList.includes(search.trim().replace(/^\$/, "").toUpperCase()) && (
-              <li><button onClick={() => choose(search)} className="w-full rounded-xl p-2 text-left text-sm text-primary">Use ${search.trim().replace(/^\$/, "").toUpperCase()}</button></li>
+              <li><button onClick={() => choose(search)} className="w-full rounded-xl p-2 text-left text-sm text-primary">Use {swapTokenSymbol(normalizeSwapToken(search))}</button></li>
             )}
           </ul>
           <p className="text-[0.7rem] text-muted-foreground">Swaps go between SUI and a Sui token.</p>
