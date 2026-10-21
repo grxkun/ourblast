@@ -240,7 +240,8 @@ function TgApp() {
       {tab === "wallet" && (
         <div className="space-y-3">
           {xCard}
-          {session?.xUsername && initData && <WalletView initData={initData} handle={session.xUsername} onTrade={() => setTab("trade")} />}
+          {session?.xUsername && initData && <WalletView initData={initData} handle={session.xUsername} onTrade={() => setTab("trade")}
+            onSell={(token, amount) => { setPreset({ side: "sell", token, amount, key: Date.now() }); setTab("trade"); }} />}
         </div>
       )}
 
@@ -334,7 +335,7 @@ function AddressRow({ label, address, explorer, note }: { label: string; address
   );
 }
 
-function WalletView({ initData, handle, onTrade }: { initData: string; handle: string; onTrade: () => void }) {
+function WalletView({ initData, handle, onTrade, onSell }: { initData: string; handle: string; onTrade: () => void; onSell: (token: string, pct: string) => void }) {
   const getWallet = useServerFn(tgGetBankWallet);
   const [w, setW] = useState<Awaited<ReturnType<typeof tgGetBankWallet>> | null>(null);
   const [err, setErr] = useState<string | null>(null);
@@ -386,6 +387,35 @@ function WalletView({ initData, handle, onTrade }: { initData: string; handle: s
           ))}
         </ul>
       </div>
+      {(() => {
+        const positions = w.sui.filter((b) => b.amount > 0 && !/^0x0*2::sui::SUI$/i.test(b.coinType));
+        const total = w.sui.reduce((t, b) => t + (b.usd ?? 0), 0);
+        return (
+          <div className="rounded-2xl border border-border bg-surface p-3">
+            <div className="mb-2 flex items-baseline justify-between">
+              <b className="font-display text-lg">Positions</b>
+              {total > 0 && <span className="text-xs text-muted-foreground">Sui total ≈ ${total.toFixed(2)}</span>}
+            </div>
+            {positions.length === 0 && <p className="text-sm text-muted-foreground">No Sui token positions yet.</p>}
+            <ul className="space-y-2">
+              {positions.map((p) => (
+                <li key={p.coinType} className="rounded-xl bg-card p-2.5">
+                  <div className="flex items-center justify-between text-sm">
+                    <b>${p.symbol}</b>
+                    <span className="font-mono">{fmt(p.amount)}{p.usd != null && <span className="ml-1 text-muted-foreground">≈ ${p.usd.toFixed(2)}</span>}</span>
+                  </div>
+                  <div className="mt-2 grid grid-cols-3 gap-1.5">
+                    {["25", "50", "100"].map((pct) => (
+                      <button key={pct} onClick={() => onSell(p.symbol, pct)} className="rounded-full bg-surface-2 py-1 text-xs font-semibold">{pct === "100" ? "Sell MAX" : `Sell ${pct}%`}</button>
+                    ))}
+                  </div>
+                </li>
+              ))}
+            </ul>
+            <p className="mt-2 text-[0.7rem] text-muted-foreground">Values from Aftermath when a price exists. Profit/loss needs your buy prices, which aren't tracked yet. Sell buttons open a review first.</p>
+          </div>
+        );
+      })()}
       <div id="tg-addresses" className="space-y-3">
         <AddressRow label="Sui wallet" address={w.address} explorer={`https://suiscan.xyz/mainnet/account/${w.address}`} note="Send SUI or any Sui token here." />
         <AddressRow label="EVM deposit (BNB, Base, Arbitrum)" address={w.evmAddress} note="Funds stay here until you ask the bot to bridge them." />
@@ -405,7 +435,7 @@ function linkify(text: string) {
   );
 }
 
-type TradePreset = { side: "buy" | "sell"; token: string; key: number };
+type TradePreset = { side: "buy" | "sell"; token: string; key: number; amount?: string };
 
 function SwapCard({ preset, busy, onRun }: { preset: TradePreset | null; busy: boolean; onRun: (cmd: string) => void }) {
   const [side, setSide] = useState<"buy" | "sell">(preset?.side ?? "buy");
@@ -414,7 +444,7 @@ function SwapCard({ preset, busy, onRun }: { preset: TradePreset | null; busy: b
   const [review, setReview] = useState(false);
   useEffect(() => {
     if (!preset) return;
-    setSide(preset.side); setToken(preset.token); setAmount(preset.side === "sell" ? "50" : "1"); setReview(false);
+    setSide(preset.side); setToken(preset.token); setAmount(preset.amount ?? (preset.side === "sell" ? "50" : "1")); setReview(false);
   }, [preset]);
   const cmd = buildTradeCommand(side, token, amount);
   const presets = side === "buy" ? ["0.5", "1", "5", "10"] : ["25", "50", "75", "100"];
