@@ -134,11 +134,17 @@ export const Route = createFileRoute("/api/public/telegram/webhook")({
         if (!chatId || !original) return Response.json({ ok: true });
 
         const isPrivate = msg?.chat?.type === "private" && !!msg.from?.id;
-        const linkedHandle = async (): Promise<string | null> => {
-          if (!msg?.from?.id) return null;
-          const { supabaseAdmin: db } = await import("@/integrations/supabase/client.server");
-          const { data } = await db.from("tg_users").select("x_username").eq("tg_user_id", msg.from.id).maybeSingle();
-          return data?.x_username ?? null;
+        // Looked up once per message, then reused by every branch below.
+        let handleLookup: Promise<string | null> | null = null;
+        const linkedHandle = (): Promise<string | null> => {
+          if (!msg?.from?.id) return Promise.resolve(null);
+          const uid = msg.from.id;
+          handleLookup ??= (async () => {
+            const { supabaseAdmin: db } = await import("@/integrations/supabase/client.server");
+            const { data } = await db.from("tg_users").select("x_username").eq("tg_user_id", uid).maybeSingle();
+            return data?.x_username ?? null;
+          })();
+          return handleLookup;
         };
         const linkKb = { inline_keyboard: [[{ text: "🔗 Link X account", web_app: { url: LINK_URL } }]] };
 
