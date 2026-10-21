@@ -10,7 +10,7 @@ import { toast } from "sonner";
 
 import { buildSwapCommand, normalizeSwapToken, swapTokenSymbol } from "@/lib/tg/tradeCommand";
 import { listPublicLaunches } from "@/lib/terminal/launch-status.functions";
-import { tgBlastPresales, tgConsolidate, tgCreateWallet, tgExportWalletKey, tgWalletTokens, tgWalletTransfer, tgGetBankWallet, tgListWallets, tgSetTradeSlots, tgLinkX, tgRunCommand, tgSession, tgToggleWatch, tgUnlinkX } from "@/lib/tg/tg.functions";
+import { tgBlastPresales, tgBridgeHistory, tgConsolidate, tgCreateWallet, tgExportWalletKey, tgWalletTokens, tgWalletTransfer, tgGetBankWallet, tgListWallets, tgSetTradeSlots, tgLinkX, tgRunCommand, tgSession, tgToggleWatch, tgUnlinkX } from "@/lib/tg/tg.functions";
 
 const launchesQuery = queryOptions({
   queryKey: ["public-launches"],
@@ -387,6 +387,7 @@ function WalletView({ initData, handle, onTrade, onSell }: { initData: string; h
         ))}
       </div>
       <WalletManager initData={initData} />
+      <BridgeHistory initData={initData} />
       <div className="rounded-2xl border border-border bg-surface p-2">
         <div className="mb-1 rounded-xl bg-primary py-1.5 text-center text-sm font-semibold text-primary-foreground">Tokens</div>
         <ul>
@@ -1105,6 +1106,49 @@ function MoveFunds({ initData, mode, wallets, onDone }: { initData: string; mode
           ))}
         </ul>
       )}
+    </div>
+  );
+}
+
+function BridgeHistory({ initData }: { initData: string }) {
+  const load = useServerFn(tgBridgeHistory);
+  const [items, setItems] = useState<Awaited<ReturnType<typeof tgBridgeHistory>> | null>(null);
+  const [err, setErr] = useState<string | null>(null);
+  useEffect(() => {
+    let alive = true;
+    const run = () => load({ data: { initData } }).then((r) => { if (alive) { setItems(r); setErr(null); } }).catch((e) => alive && setErr(e instanceof Error ? e.message : "Couldn't load"));
+    void run();
+    const t = setInterval(run, 8000);
+    return () => { alive = false; clearInterval(t); };
+  }, [initData, load]);
+  const pending = items?.some((i) => i.state === "pending");
+  return (
+    <div className="rounded-2xl border border-border bg-surface p-3">
+      <div className="mb-2 flex items-center justify-between">
+        <span className="text-sm font-semibold">Bridge history</span>
+        {pending && <span className="text-xs text-primary">● live</span>}
+      </div>
+      {err && <p className="text-xs text-muted-foreground">{err}</p>}
+      {!err && !items && <p className="text-xs text-muted-foreground">Loading…</p>}
+      {items?.length === 0 && <p className="text-xs text-muted-foreground">No bridges yet. Bridges in or out of Sui show here with live progress.</p>}
+      <ul className="space-y-2">
+        {items?.map((i) => (
+          <li key={i.id} className="rounded-xl border border-border p-2.5 text-xs">
+            <div className="flex items-center justify-between gap-2">
+              <span className="font-semibold">{i.dir === "in" ? "⬇ In" : "⬆ Out"} · {i.label}</span>
+              <span className={i.state === "done" ? "text-primary" : i.state === "failed" ? "text-destructive" : "text-muted-foreground"}>
+                {i.state === "done" ? "Done" : i.state === "failed" ? "Failed" : "In progress"}
+              </span>
+            </div>
+            <div className="mt-1 text-muted-foreground">{i.detail} · {new Date(i.createdAt).toLocaleString()}</div>
+            {i.links.length > 0 && (
+              <div className="mt-1 flex gap-3">
+                {i.links.map((l) => <a key={l.href} href={l.href} target="_blank" rel="noreferrer" className="text-primary underline">{l.text}</a>)}
+              </div>
+            )}
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }

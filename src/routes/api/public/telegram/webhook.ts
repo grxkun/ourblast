@@ -35,7 +35,7 @@ function dashboardKeyboard(handle: string | null): Btn[][] {
     [{ text: "🟢 Buy", callback_data: "m:buy" }, { text: "🔴 Sell", callback_data: "m:sell" }, { text: "🎯 Snipe", callback_data: "m:snipe" }],
     [{ text: "🪞 Copy", callback_data: "m:copy" }, { text: "👀 Alerts", callback_data: "m:alerts" }, { text: "⏱ Limit", callback_data: "m:limit" }],
     [{ text: "🚀 Presales", callback_data: "m:presales" }, { text: "🌉 Bridge", callback_data: "m:bridge" }, { text: "📤 Send", callback_data: "m:send" }],
-    [{ text: "👛 Wallets", callback_data: "m:wallets" }, { text: "📋 Orders", callback_data: "m:orders" }],
+    [{ text: "👛 Wallets", callback_data: "m:wallets" }, { text: "📋 Orders", callback_data: "m:orders" }, { text: "🌉 Bridges", callback_data: "m:bridges" }],
     [{ text: "⚡ Open OURBLAST app", web_app: { url: APP_URL } }],
   ];
 }
@@ -146,6 +146,13 @@ export const Route = createFileRoute("/api/public/telegram/webhook")({
             if (key === "wallets" && h) {
               const p = await walletPicker(cq.from.id, h);
               await tg("sendMessage", { chat_id, text: p.text, disable_web_page_preview: true, reply_markup: { inline_keyboard: p.kb } });
+              return Response.json({ ok: true });
+            }
+            if (key === "bridges" && h) {
+              await replyWithProgress(chat_id, "Loading bridges", async () => {
+                const b = await import("@/lib/tg/bridgeHistory.server");
+                return b.formatBridgeHistory(await b.bridgeHistory(h));
+              });
               return Response.json({ ok: true });
             }
             if ((key === "wallets" || key === "orders") && h) {
@@ -346,10 +353,17 @@ export const Route = createFileRoute("/api/public/telegram/webhook")({
           return Response.json({ ok: true });
         }
         // Trading in chat is private-only so group messages never touch anyone's wallet.
-        if (!isPrivate || !msg?.from?.id || (original.startsWith("/") && !/^\/(follow|unfollow|following|copy|stopcopy|wallets|orders|newwallet)\b/i.test(original))) return Response.json({ ok: true });
+        if (!isPrivate || !msg?.from?.id || (original.startsWith("/") && !/^\/(follow|unfollow|following|copy|stopcopy|wallets|orders|newwallet|bridges|history)\b/i.test(original))) return Response.json({ ok: true });
         // Every wallet action requires a bound X account; show the link button instead of a dead end.
         if (!(await linkedHandle())) {
           await tg("sendMessage", { chat_id: chatId, text: "🔗 Link your X account first — trades use your OurBank wallet tied to X.", reply_markup: linkKb });
+          return Response.json({ ok: true });
+        }
+        if (/^\/?(bridges|bridge history|history)(@\w+)?$/i.test(original.trim())) {
+          await replyWithProgress(chatId, "Loading bridges", async () => {
+            const b = await import("@/lib/tg/bridgeHistory.server");
+            return b.formatBridgeHistory(await b.bridgeHistory((await linkedHandle())!));
+          });
           return Response.json({ ok: true });
         }
         if (/^\/?wallets(@\w+)?$/i.test(original.trim())) {
