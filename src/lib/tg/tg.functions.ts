@@ -169,3 +169,22 @@ export const tgSetTradeSlots = createServerFn({ method: "POST" })
     if (!r.ok) throw new Error(r.error ?? "Couldn't save.");
     return { selected: r.selected };
   });
+
+/** Reveals one Sui wallet's private key to its Telegram owner. Enclave (Turnkey) keys can't be exported. */
+export const tgExportWalletKey = createServerFn({ method: "POST" })
+  .inputValidator((d) => z.object({ initData: z.string().min(1).max(4096), slot: z.number().int().min(1).max(6) }).parse(d))
+  .handler(async ({ data }) => {
+    const { user, handle } = await linkedHandle(data.initData);
+    const { listTgWallets } = await import("./tgWallets.server");
+    const { wallets } = await listTgWallets(user.id, handle);
+    const w = wallets.find((x) => x.slot === data.slot);
+    if (!w) throw new Error(`You don't have wallet ${data.slot}.`);
+    const { findBankWallet } = await import("@/lib/terminal/bank-wallet.server");
+    const row = await findBankWallet(w.handle);
+    if (!row) throw new Error("Wallet not found.");
+    if (row.signing_backend === "turnkey" || !row.secret_ciphertext) {
+      throw new Error("This wallet's key lives in a secure enclave and can't be exported.");
+    }
+    const { decryptConnectionKey } = await import("@/lib/connection-key.server");
+    return { address: row.address, secretKey: decryptConnectionKey(row.secret_ciphertext) };
+  });
