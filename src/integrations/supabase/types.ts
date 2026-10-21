@@ -2361,6 +2361,33 @@ export type Database = {
         }
         Relationships: []
       }
+      tg_wallet_follows: {
+        Row: {
+          address: string
+          created_at: string
+          id: string
+          label: string | null
+          last_digest: string | null
+          tg_user_id: number
+        }
+        Insert: {
+          address: string
+          created_at?: string
+          id?: string
+          label?: string | null
+          last_digest?: string | null
+          tg_user_id: number
+        }
+        Update: {
+          address?: string
+          created_at?: string
+          id?: string
+          label?: string | null
+          last_digest?: string | null
+          tg_user_id?: number
+        }
+        Relationships: []
+      }
       tg_watchlist: {
         Row: {
           created_at: string

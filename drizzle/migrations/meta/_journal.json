@@ -120,6 +120,13 @@
       "when": 1792511676377,
       "tag": "0016_tg_watch_alerts",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1792592232583,
+      "tag": "0017_tg_wallet_follows",
+      "breakpoints": true
     }
   ]
 }
