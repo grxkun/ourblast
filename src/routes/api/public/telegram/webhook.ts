@@ -129,7 +129,7 @@ export const Route = createFileRoute("/api/public/telegram/webhook")({
         let original = (msg?.text ?? "").trim();
         // Menu commands map to plain chat commands.
         const slash = original.match(/^\/(balance|wallet|positions)(?:@\w+)?\s*$/i);
-        if (slash) original = slash[1]!.toLowerCase() === "wallet" ? "wallet" : "balance";
+        if (slash) original = slash[1]!.toLowerCase();
         const text = original.toLowerCase();
         if (!chatId || !original) return Response.json({ ok: true });
 
@@ -181,6 +181,18 @@ export const Route = createFileRoute("/api/public/telegram/webhook")({
         // Every wallet action requires a bound X account; show the link button instead of a dead end.
         if (!(await linkedHandle())) {
           await tg("sendMessage", { chat_id: chatId, text: "🔗 Link your X account first — trades use your OurBank wallet tied to X.", reply_markup: linkKb });
+          return Response.json({ ok: true });
+        }
+
+        // Wallet views — each command answers a different question, read-only.
+        const view = text.match(/^(balance|balances|bal|wallet|address|addresses|deposit|positions|pos|portfolio)$/)?.[1];
+        if (view) {
+          const kind = /^(wallet|address|addresses|deposit)$/.test(view) ? "wallet" : /^(positions|pos|portfolio)$/.test(view) ? "positions" : "balance";
+          await replyWithProgress(chatId, kind === "wallet" ? "Loading addresses" : "Reading balances", async () => {
+            const [h, srv, fmt] = await Promise.all([linkedHandle(), import("@/lib/tg/walletChat.server"), import("@/lib/tg/walletChat")]);
+            const snap = await srv.walletSnapshot(h!, { sui: kind !== "wallet", other: kind === "balance" });
+            return kind === "wallet" ? fmt.formatWallet(snap) : kind === "positions" ? fmt.formatPositions(snap) : fmt.formatBalance(snap);
+          });
           return Response.json({ ok: true });
         }
 
