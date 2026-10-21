@@ -5,6 +5,10 @@ import { actionCoinType } from "./chatTrade";
 vi.mock("@tanstack/react-router", () => ({ createFileRoute: () => (config: unknown) => config }));
 const run = vi.hoisted(() => vi.fn(async () => ({ reply: "Test-only receipt", linked: true })));
 vi.mock("@/lib/tg/runCommand.server", () => ({ runTgCommand: run }));
+const linked = vi.hoisted(() => ({ handle: "tester" as string | null }));
+vi.mock("@/integrations/supabase/client.server", () => ({
+  supabaseAdmin: { from: () => ({ select: () => ({ eq: () => ({ maybeSingle: async () => ({ data: linked.handle ? { x_username: linked.handle } : null }) }) }) }) },
+}));
 import { Route } from "@/routes/api/public/telegram/webhook";
 
 afterEach(() => { vi.unstubAllGlobals(); vi.unstubAllEnvs(); vi.clearAllMocks(); });
