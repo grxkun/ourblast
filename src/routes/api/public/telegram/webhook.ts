@@ -37,13 +37,30 @@ export const Route = createFileRoute("/api/public/telegram/webhook")({
         if (got !== (await webhookSecret(token))) return new Response("Unauthorized", { status: 401 });
 
         let threadId: number | undefined;
-        const tg = async (method: string, body: Record<string, unknown>) => {
+        const tg = async (method: string, body: Record<string, unknown>): Promise<number | undefined> => {
           // Threaded bot chats: reply inside the same topic or Telegram hides it.
           if (threadId && (method === "sendMessage" || method === "sendChatAction")) body = { ...body, message_thread_id: threadId };
           const res = await fetch(`https://api.telegram.org/bot${token}/${method}`, {
             method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body),
           });
-          if (!res.ok) console.error(`Telegram ${method} failed [${res.status}]: ${(await res.text()).slice(0, 300)}`);
+          if (!res.ok) {
+            console.error(`Telegram ${method} failed [${res.status}]: ${(await res.text()).slice(0, 300)}`);
+            return undefined;
+          }
+          const j = (await res.json().catch(() => null)) as { result?: { message_id?: number } } | null;
+          return j?.result?.message_id;
+        };
+        /** Shows "⏳ note" right away, then replaces it with the final reply (falls back to a new message). */
+        const replyWithProgress = async (chat_id: number, note: string, work: () => Promise<string>) => {
+          const [pid] = await Promise.all([tg("sendMessage", { chat_id, text: `⏳ ${note}…` }), tg("sendChatAction", { chat_id, action: "typing" })]);
+          const started = Date.now();
+          const text = await work().catch((e) => `❌ Failed: ${(e as Error).message}. Nothing was sent unless a transaction link is shown.`);
+          console.log(`tg command done in ${Date.now() - started}ms`);
+          const body = { chat_id, text: text.slice(0, 4000), disable_web_page_preview: true };
+          if (pid && (await fetch(`https://api.telegram.org/bot${token}/editMessageText`, {
+            method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ ...body, message_id: pid }),
+          })).ok) return;
+          await tg("sendMessage", body);
         };
         const update = (await request.json().catch(() => null)) as Update | null;
 
@@ -101,7 +118,7 @@ export const Route = createFileRoute("/api/public/telegram/webhook")({
           }
           await tg("editMessageText", { chat_id, message_id, text: `⏳ ${what}…` });
           const { runTgCommand } = await import("@/lib/tg/runCommand.server");
-          const { reply } = await runTgCommand(cq.from.id, actionCommand(action, coinType)).catch((e) => ({ reply: `Failed: ${(e as Error).message}` }));
+          const { reply } = await runTgCommand(cq.from.id, actionCommand(action, coinType)).catch((e) => ({ reply: `❌ Failed: ${(e as Error).message}. Nothing was sent unless a transaction link is shown.` }));
           await tg("sendMessage", { chat_id, text: reply, disable_web_page_preview: true });
           return Response.json({ ok: true });
         }
@@ -117,11 +134,17 @@ export const Route = createFileRoute("/api/public/telegram/webhook")({
         if (!chatId || !original) return Response.json({ ok: true });
 
         const isPrivate = msg?.chat?.type === "private" && !!msg.from?.id;
-        const linkedHandle = async (): Promise<string | null> => {
-          if (!msg?.from?.id) return null;
-          const { supabaseAdmin: db } = await import("@/integrations/supabase/client.server");
-          const { data } = await db.from("tg_users").select("x_username").eq("tg_user_id", msg.from.id).maybeSingle();
-          return data?.x_username ?? null;
+        // Looked up once per message, then reused by every branch below.
+        let handleLookup: Promise<string | null> | null = null;
+        const linkedHandle = (): Promise<string | null> => {
+          if (!msg?.from?.id) return Promise.resolve(null);
+          const uid = msg.from.id;
+          handleLookup ??= (async () => {
+            const { supabaseAdmin: db } = await import("@/integrations/supabase/client.server");
+            const { data } = await db.from("tg_users").select("x_username").eq("tg_user_id", uid).maybeSingle();
+            return data?.x_username ?? null;
+          })();
+          return handleLookup;
         };
         const linkKb = { inline_keyboard: [[{ text: "🔗 Link X account", web_app: { url: LINK_URL } }]] };
 
@@ -280,10 +303,12 @@ export const Route = createFileRoute("/api/public/telegram/webhook")({
             return Response.json({ ok: true });
           }
         }
-        await tg("sendChatAction", { chat_id: chatId, action: "typing" });
-        const { runTgCommand } = await import("@/lib/tg/runCommand.server");
-        const { reply } = await runTgCommand(msg.from.id, original).catch((e) => ({ reply: `Failed: ${(e as Error).message}` }));
-        await tg("sendMessage", { chat_id: chatId, text: reply, disable_web_page_preview: true });
+        const uid = msg.from.id;
+        const note = /^(bridge|send|launch|claim|withdraw)\b/i.test(original) ? "Working on it — chain steps can take a moment" : "Checking";
+        await replyWithProgress(chatId, note, async () => {
+          const [{ runTgCommand }, h] = await Promise.all([import("@/lib/tg/runCommand.server"), linkedHandle()]);
+          return (await runTgCommand(uid, original, h)).reply;
+        });
         return Response.json({ ok: true });
       },
     },
