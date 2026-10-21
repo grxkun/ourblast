@@ -671,7 +671,7 @@ function TradeTerminal({ initData, preset }: { initData: string; preset: TradePr
       {mode === "swap" && <SwapCard preset={preset} busy={busy} onRun={(c) => void send(c)} holdings={holdings} onRefresh={loadHoldings} />}
       {mode === "snipe" && <SnipeCard busy={busy} onRun={(c) => void send(c)} />}
       {mode === "limit" && <SoonCard title="Limit orders" text="Set a target price and the bot buys or sells when it's hit. Not live yet — use Swap for instant trades." />}
-      {mode === "copy" && <SoonCard title="Copy trading" text="Copying wallets with budgets and a stop switch is coming. Today you can get alerts: send “follow 0x… name” to @ourblastsuibot." />}
+      {mode === "copy" && <SoonCard title="Copy trading" text="Copy a wallet's buys and sells with a per-trade size and daily max. In the bot chat send “copy 0x… 2 sui max 10 sui” — review, confirm, and stop anytime with “stopcopy all”." />}
       <div className="space-y-2">
         {log.map((m) => (
           <div key={m.id} className={`max-w-[85%] whitespace-pre-wrap rounded-2xl px-3 py-2 text-sm ${m.who === "me" ? "ml-auto bg-primary text-primary-foreground" : "border border-border bg-card"}`}>
