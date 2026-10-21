@@ -27,18 +27,18 @@ const num = (v: unknown): number | null => {
 };
 
 function normalize(raw: Record<string, unknown>): BlastPresale | null {
-  const id = str(raw.id ?? raw.presale_id ?? raw.presaleId);
+  const id = str(raw["id"] ?? raw["presale_id"] ?? raw["presaleId"]);
   if (!id) return null;
-  const token = (raw.token ?? {}) as Record<string, unknown>;
+  const token = (raw["token"] ?? {}) as Record<string, unknown>;
   return {
     id,
-    name: str(raw.name ?? token.name),
-    symbol: str(raw.symbol ?? raw.ticker ?? token.symbol),
-    image: str(raw.image_url ?? raw.imageUrl ?? raw.image ?? token.image_url ?? token.icon_url),
-    status: str(raw.status ?? raw.state),
-    raised: str(raw.raised ?? raw.total_committed ?? raw.totalCommitted),
-    target: str(raw.target ?? raw.soft_cap ?? raw.raise_target),
-    endsAtMs: num(raw.end_ms ?? raw.endMs ?? raw.ends_at_ms ?? raw.endsAtMs),
+    name: str(raw["name"] ?? token["name"]),
+    symbol: str(raw["symbol"] ?? raw["ticker"] ?? token["symbol"]),
+    image: str(raw["image_url"] ?? raw["imageUrl"] ?? raw["image"] ?? token["image_url"] ?? token["icon_url"]),
+    status: str(raw["status"] ?? raw["state"]),
+    raised: str(raw["raised"] ?? raw["total_committed"] ?? raw["totalCommitted"]),
+    target: str(raw["target"] ?? raw["soft_cap"] ?? raw["raise_target"]),
+    endsAtMs: num(raw["end_ms"] ?? raw["endMs"] ?? raw["ends_at_ms"] ?? raw["endsAtMs"]),
     url: `https://blast.fun/presale/${encodeURIComponent(id)}`,
   };
 }
