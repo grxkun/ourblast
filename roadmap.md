@@ -1,4 +1,5 @@
 # Roadmap
+- [ ] Fix Telegram buy address preservation in bot buttons and Mini App swaps; verify without live trades
 - [x] Pay out QLONG 21.88 USDC 80/10/10 to Willie (OBB4ever)
 - [x] Fee routing falls back to OurBank wallet
 - [x] Publish routing fix
