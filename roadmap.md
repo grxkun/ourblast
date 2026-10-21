@@ -21,6 +21,6 @@
 
 ## Telegram trading bot (one by one)
 - [x] Dev wallet alerts (follow/unfollow/following, alert only)
-- [ ] Token sniping
+- [x] Token sniping (confirm-first, slippage cap)
 - [ ] Presale buys (Blast)
 - [ ] Copy trading
