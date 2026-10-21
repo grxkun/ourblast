@@ -118,7 +118,7 @@ export const Route = createFileRoute("/api/public/telegram/webhook")({
           }
           await tg("editMessageText", { chat_id, message_id, text: `⏳ ${what}…` });
           const { runTgCommand } = await import("@/lib/tg/runCommand.server");
-          const { reply } = await runTgCommand(cq.from.id, actionCommand(action, coinType)).catch((e) => ({ reply: `Failed: ${(e as Error).message}` }));
+          const { reply } = await runTgCommand(cq.from.id, actionCommand(action, coinType)).catch((e) => ({ reply: `❌ Failed: ${(e as Error).message}. Nothing was sent unless a transaction link is shown.` }));
           await tg("sendMessage", { chat_id, text: reply, disable_web_page_preview: true });
           return Response.json({ ok: true });
         }
@@ -303,10 +303,12 @@ export const Route = createFileRoute("/api/public/telegram/webhook")({
             return Response.json({ ok: true });
           }
         }
-        await tg("sendChatAction", { chat_id: chatId, action: "typing" });
-        const { runTgCommand } = await import("@/lib/tg/runCommand.server");
-        const { reply } = await runTgCommand(msg.from.id, original).catch((e) => ({ reply: `Failed: ${(e as Error).message}` }));
-        await tg("sendMessage", { chat_id: chatId, text: reply, disable_web_page_preview: true });
+        const uid = msg.from.id;
+        const note = /^(bridge|send|launch|claim|withdraw)\b/i.test(original) ? "Working on it — chain steps can take a moment" : "Checking";
+        await replyWithProgress(chatId, note, async () => {
+          const [{ runTgCommand }, h] = await Promise.all([import("@/lib/tg/runCommand.server"), linkedHandle()]);
+          return (await runTgCommand(uid, original, h)).reply;
+        });
         return Response.json({ ok: true });
       },
     },
