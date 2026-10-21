@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 import { createFileRoute } from "@tanstack/react-router";
 
+import { MAX_FOLLOWS, parseFollowCommand } from "@/lib/tg/walletWatch";
 import { actionCoinType, actionCommand, BUY_PRESETS, decodeAction, detectToken, encodeAction, SELL_PRESETS } from "@/lib/tg/chatTrade";
 
 const APP_URL = "https://ourblast.xyz/tg";
@@ -116,7 +117,7 @@ export const Route = createFileRoute("/api/public/telegram/webhook")({
           await tg("sendMessage", {
             chat_id: chatId,
             text: (isHelp
-              ? "📖 OURBLAST menu\n\nIn this chat:\n• /link — bind or check your X account\n• Paste a token address or $TICKER → buy/sell buttons\n• Type any command: balance · wallet · buy 1 sui of $BLAST · sell 50% $BLAST · bridge 0.05 sol to sui · send 10 $BLAST to name.sui\nBuys and sells always ask you to confirm first.\n\nIn the app:\n🏠 Home · 🔍 Discover · ⚡ Trade · 👛 Wallet"
+              ? "📖 OURBLAST menu\n\nIn this chat:\n• /link — bind or check your X account\n• follow 0x… name — dev-wallet alerts · /following · unfollow 0x…\n• Paste a token address or $TICKER → buy/sell buttons\n• Type any command: balance · wallet · buy 1 sui of $BLAST · sell 50% $BLAST · bridge 0.05 sol to sui · send 10 $BLAST to name.sui\nBuys and sells always ask you to confirm first.\n\nIn the app:\n🏠 Home · 🔍 Discover · ⚡ Trade · 👛 Wallet"
               : "gm 💥 Trade Sui tokens right here from your OurBank wallet — paste any token address or $TICKER. Send /help for more.") + status,
             reply_markup: { inline_keyboard: [
               ...(isPrivate && !h ? [[{ text: "🔗 Link X account", web_app: { url: LINK_URL } }]] : []),
@@ -126,10 +127,34 @@ export const Route = createFileRoute("/api/public/telegram/webhook")({
           return Response.json({ ok: true });
         }
         // Trading in chat is private-only so group messages never touch anyone's wallet.
-        if (!isPrivate || !msg?.from?.id || original.startsWith("/")) return Response.json({ ok: true });
+        if (!isPrivate || !msg?.from?.id || (original.startsWith("/") && !/^\/(follow|unfollow|following)\b/i.test(original))) return Response.json({ ok: true });
         // Every wallet action requires a bound X account; show the link button instead of a dead end.
         if (!(await linkedHandle())) {
           await tg("sendMessage", { chat_id: chatId, text: "🔗 Link your X account first — trades use your OurBank wallet tied to X.", reply_markup: linkKb });
+          return Response.json({ ok: true });
+        }
+
+        // Dev-wallet alerts: follow/unfollow/list. Alert only; nothing is ever traded.
+        const fc = parseFollowCommand(original);
+        if (fc) {
+          const { supabaseAdmin: db } = await import("@/integrations/supabase/client.server");
+          const uid = msg.from.id;
+          let out: string;
+          if (fc.op === "list") {
+            const { data } = await db.from("tg_wallet_follows").select("address, label").eq("tg_user_id", uid).order("created_at");
+            out = data?.length ? `👀 Following ${data.length}/${MAX_FOLLOWS}:\n${data.map((d) => `• ${d.label ? `${d.label} — ` : ""}${d.address}`).join("\n")}\n\nStop with: unfollow 0x…` : "You're not following any wallet. Try: follow 0x… devname";
+          } else if (fc.op === "unfollow") {
+            const { data } = await db.from("tg_wallet_follows").delete().eq("tg_user_id", uid).eq("address", fc.address).select("id");
+            out = data?.length ? "🔕 Stopped following that wallet." : "You weren't following that wallet.";
+          } else {
+            const { count } = await db.from("tg_wallet_follows").select("id", { count: "exact", head: true }).eq("tg_user_id", uid);
+            if ((count ?? 0) >= MAX_FOLLOWS) out = `Limit is ${MAX_FOLLOWS} wallets. Unfollow one first.`;
+            else {
+              const { error } = await db.from("tg_wallet_follows").upsert({ tg_user_id: uid, address: fc.address, label: fc.label ?? null }, { onConflict: "tg_user_id,address" });
+              out = error ? `Couldn't save: ${error.message}` : `👀 Following ${fc.label ?? fc.address}.\nYou'll get alerts for its new launches, buys, sells and transfers. Alerts only — nothing is traded for you.`;
+            }
+          }
+          await tg("sendMessage", { chat_id: chatId, text: out, disable_web_page_preview: true });
           return Response.json({ ok: true });
         }
 
