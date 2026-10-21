@@ -3,12 +3,12 @@ import { Suspense, lazy, useCallback, useEffect, useMemo, useState } from "react
 import { ClientOnly, createFileRoute } from "@tanstack/react-router";
 import { queryOptions, useSuspenseQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { ArrowDownToLine, Copy, ExternalLink, HelpCircle, Home, RefreshCw, Repeat, Rocket, Search, Send, Star, Wallet, X, Zap } from "lucide-react";
+import { ArrowDownToLine, ArrowDownUp, Copy, ExternalLink, HelpCircle, Home, RefreshCw, Repeat, Rocket, Search, Send, Star, Wallet, X, Zap } from "lucide-react";
 import logo from "@/assets/blast-logo.jpg.asset.json";
 import mascot from "@/assets/blast-cool.png.asset.json";
 import { toast } from "sonner";
 
-import { buildTradeCommand } from "@/lib/tg/tradeCommand";
+import { buildSwapCommand } from "@/lib/tg/tradeCommand";
 import { listPublicLaunches } from "@/lib/terminal/launch-status.functions";
 import { tgBlastPresales, tgGetBankWallet, tgLinkX, tgRunCommand, tgSession, tgToggleWatch, tgUnlinkX } from "@/lib/tg/tg.functions";
 
@@ -437,58 +437,133 @@ function linkify(text: string) {
 
 type TradePreset = { side: "buy" | "sell"; token: string; key: number; amount?: string };
 
-function SwapCard({ preset, busy, onRun }: { preset: TradePreset | null; busy: boolean; onRun: (cmd: string) => void }) {
-  const [side, setSide] = useState<"buy" | "sell">(preset?.side ?? "buy");
-  const [token, setToken] = useState(preset?.token ?? "BLAST");
-  const [amount, setAmount] = useState(preset?.side === "sell" ? "50" : "1");
+type Holding = { coinType: string; symbol: string; amount: number; usd: number | null };
+
+function SwapCard({ preset, busy, onRun, holdings, onRefresh }: { preset: TradePreset | null; busy: boolean; onRun: (cmd: string) => void; holdings: Holding[]; onRefresh: () => void }) {
+  const [pay, setPay] = useState("SUI");
+  const [receive, setReceive] = useState("BLAST");
+  const [amount, setAmount] = useState("");
+  const [isMax, setIsMax] = useState(false);
   const [review, setReview] = useState(false);
+  const [picking, setPicking] = useState<"pay" | "receive" | null>(null);
+  const [search, setSearch] = useState("");
+  const bal = (sym: string) => holdings.find((h) => h.symbol.toUpperCase() === sym.toUpperCase());
+  const unitUsd = (sym: string) => { const h = bal(sym); return h && h.usd != null && h.amount > 0 ? h.usd / h.amount : null; };
+
   useEffect(() => {
     if (!preset) return;
-    setSide(preset.side); setToken(preset.token); setAmount(preset.amount ?? (preset.side === "sell" ? "50" : "1")); setReview(false);
+    const t = preset.token.replace(/^\$/, "").toUpperCase();
+    setReview(false); setIsMax(false);
+    if (preset.side === "buy") { setPay("SUI"); setReceive(t); setAmount(preset.amount ?? "1"); return; }
+    setPay(t); setReceive("SUI");
+    const pct = Number(preset.amount ?? "50");
+    if (pct >= 100) { setIsMax(true); setAmount(String(bal(t)?.amount ?? "")); }
+    else { const b = bal(t)?.amount; setAmount(b ? String(+(b * pct / 100).toPrecision(6)) : ""); }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [preset]);
-  const cmd = buildTradeCommand(side, token, amount);
-  const presets = side === "buy" ? ["0.5", "1", "5", "10"] : ["25", "50", "75", "100"];
+
+  const flip = () => { setPay(receive); setReceive(pay); setAmount(""); setIsMax(false); setReview(false); };
+  const choose = (sym: string) => {
+    const s = sym.replace(/^\$/, "").toUpperCase();
+    if (!s) return;
+    if (picking === "pay") { if (s === receive) setReceive(pay); setPay(s); if (s !== "SUI" && receive !== "SUI" && s !== receive) setReceive("SUI"); }
+    if (picking === "receive") { if (s === pay) setPay(receive); setReceive(s); if (s !== "SUI" && pay !== "SUI" && s !== pay) setPay("SUI"); }
+    setPicking(null); setSearch(""); setAmount(""); setIsMax(false); setReview(false);
+  };
+  const payBal = bal(pay)?.amount ?? 0;
+  const maxAmount = pay === "SUI" ? Math.max(0, payBal - 0.2) : payBal;
+  const cmd = buildSwapCommand(pay, receive, isMax && pay !== "SUI" ? "all" : amount);
+  const over = Number(amount) > payBal + 1e-12;
+  const payUsd = unitUsd(pay);
+  const estOut = (() => { const a = Number(amount), up = unitUsd(pay), ur = unitUsd(receive); return a > 0 && up && ur ? (a * up) / ur : null; })();
+  const pickList = useMemo(() => {
+    const syms = Array.from(new Set(["SUI", "BLAST", ...holdings.map((h) => h.symbol.toUpperCase())]));
+    const q = search.trim().replace(/^\$/, "").toUpperCase();
+    return syms.filter((s) => !q || s.includes(q));
+  }, [holdings, search]);
+
+  const TokenBtn = ({ sym, side }: { sym: string; side: "pay" | "receive" }) => (
+    <button type="button" onClick={() => setPicking(side)} className="flex shrink-0 items-center gap-1.5 rounded-full bg-surface-2 py-1 pl-1 pr-2.5 text-sm font-semibold">
+      <span className="grid h-6 w-6 place-items-center rounded-full bg-primary/20 font-display text-[0.6rem] text-primary">{sym.slice(0, 3)}</span>
+      {sym}<span className="text-muted-foreground">▾</span>
+    </button>
+  );
+
   return (
-    <div className="space-y-3 rounded-3xl border border-border bg-surface p-3">
-      <div className="grid grid-cols-2 gap-1 rounded-full bg-surface-2 p-1">
-        {(["buy", "sell"] as const).map((s) => (
-          <button key={s} onClick={() => { setSide(s); setAmount(s === "sell" ? "50" : "1"); setReview(false); }}
-            className={`rounded-full py-2 text-sm font-semibold uppercase ${side === s ? (s === "buy" ? "bg-primary text-primary-foreground" : "bg-destructive text-destructive-foreground") : "text-muted-foreground"}`}>{s}</button>
-        ))}
+    <div className="relative space-y-1 rounded-3xl border border-border bg-surface p-3">
+      <div className="mb-2 flex items-center justify-between">
+        <b className="font-display text-lg">Swap</b>
+        <button onClick={onRefresh} className="flex items-center gap-1 text-xs text-cyber"><RefreshCw className="h-3 w-3" />Balances</button>
       </div>
-      <label className="block rounded-2xl border border-border bg-card p-3">
-        <span className="text-[0.7rem] text-muted-foreground">Token</span>
-        <div className="flex items-center gap-1 font-display text-xl"><span className="text-primary">$</span>
-          <input value={token} onChange={(e) => { setToken(e.target.value.toUpperCase()); setReview(false); }} className="w-full bg-transparent outline-none" placeholder="BLAST" />
+      <div className="rounded-2xl border border-border bg-card p-3">
+        <div className="flex items-center justify-between text-[0.7rem] text-muted-foreground">
+          <span>You pay</span>
+          <span>Balance {fmt(payBal)}
+            {maxAmount > 0 && <button className="ml-2 rounded-full bg-primary/20 px-2 font-semibold text-primary" onClick={() => { setAmount(String(+maxAmount.toPrecision(8))); setIsMax(pay !== "SUI"); setReview(false); }}>MAX</button>}
+          </span>
         </div>
-      </label>
-      <label className="block rounded-2xl border border-border bg-card p-3">
-        <span className="text-[0.7rem] text-muted-foreground">{side === "buy" ? "Pay with SUI" : "Sell % of your balance"}</span>
-        <div className="flex items-center gap-2 font-display text-xl">
-          <input inputMode="decimal" value={amount} onChange={(e) => { setAmount(e.target.value); setReview(false); }} className="w-full bg-transparent outline-none" />
-          <span className="text-sm text-muted-foreground">{side === "buy" ? "SUI" : "%"}</span>
+        <div className="mt-1 flex items-center gap-2">
+          <input inputMode="decimal" placeholder="0" value={amount} onChange={(e) => { setAmount(e.target.value.replace(/[^\d.]/g, "")); setIsMax(false); setReview(false); }}
+            className="w-full min-w-0 bg-transparent font-display text-3xl outline-none" />
+          <TokenBtn sym={pay} side="pay" />
         </div>
-        <div className="mt-2 flex gap-1.5">
-          {presets.map((p) => (
-            <button key={p} type="button" onClick={() => { setAmount(p); setReview(false); }}
-              className={`flex-1 rounded-full py-1 text-xs font-semibold ${amount === p ? "bg-primary/20 text-primary" : "bg-surface-2 text-muted-foreground"}`}>{side === "buy" ? p : p === "100" ? "MAX" : `${p}%`}</button>
-          ))}
+        <div className="mt-1 h-4 text-[0.7rem] text-muted-foreground">{payUsd && Number(amount) > 0 ? `≈ $${(payUsd * Number(amount)).toFixed(2)}` : ""}</div>
+      </div>
+      <div className="relative z-10 -my-3 flex justify-center">
+        <button onClick={flip} aria-label="Flip" className="grid h-9 w-9 place-items-center rounded-full border-4 border-surface bg-primary text-primary-foreground"><ArrowDownUp className="h-4 w-4" /></button>
+      </div>
+      <div className="rounded-2xl border border-border bg-card p-3">
+        <div className="flex items-center justify-between text-[0.7rem] text-muted-foreground">
+          <span>You receive</span><span>Balance {fmt(bal(receive)?.amount ?? 0)}</span>
         </div>
-      </label>
+        <div className="mt-1 flex items-center gap-2">
+          <div className="w-full min-w-0 truncate font-display text-3xl text-muted-foreground">{estOut != null ? `~${fmt(estOut)}` : "—"}</div>
+          <TokenBtn sym={receive} side="receive" />
+        </div>
+        <div className="mt-1 text-[0.7rem] text-muted-foreground">{estOut != null ? "Estimate from Aftermath prices; final amount in the receipt." : "Best route is picked when it runs; final amount in the receipt."}</div>
+      </div>
+
       {review && cmd ? (
-        <div className="space-y-2 rounded-2xl border border-primary/40 bg-card p-3 text-sm">
-          <p className="font-semibold">Review</p>
-          <p className="text-muted-foreground">{side === "buy" ? `Spend ${amount} SUI from your OurBank wallet on $${token.replace(/^\$/, "")}.` : `Sell ${amount}% of your $${token.replace(/^\$/, "")} for SUI.`} Best route is picked when it runs; the final amount shows in the receipt.</p>
+        <div className="mt-2 space-y-2 rounded-2xl border border-primary/40 bg-card p-3 text-sm">
+          <p className="font-semibold">Review swap</p>
+          <p className="text-muted-foreground">Pay {isMax && pay !== "SUI" ? `all your ${pay}` : `${amount} ${pay}`} from your OurBank wallet for {receive}. Nothing moves until you confirm.</p>
           <div className="grid grid-cols-2 gap-2">
             <button onClick={() => setReview(false)} className="rounded-full bg-surface-2 py-2 font-semibold">Back</button>
-            <button disabled={busy} onClick={() => { setReview(false); onRun(cmd); }} className="rounded-full bg-primary py-2 font-semibold text-primary-foreground disabled:opacity-50">Confirm {side}</button>
+            <button disabled={busy} onClick={() => { setReview(false); onRun(cmd); setAmount(""); setIsMax(false); }} className="rounded-full bg-primary py-2 font-semibold text-primary-foreground disabled:opacity-50">Confirm swap</button>
           </div>
         </div>
       ) : (
-        <button disabled={!cmd || busy} onClick={() => setReview(true)}
-          className="flex w-full items-center justify-center gap-2 rounded-full bg-primary py-3 font-semibold text-primary-foreground disabled:opacity-50">
-          <Repeat className="h-4 w-4" />{cmd ? `Review ${side}` : "Enter a token and amount"}
+        <button disabled={!cmd || busy || over} onClick={() => setReview(true)}
+          className="mt-2 flex w-full items-center justify-center gap-2 rounded-full bg-primary py-3 font-semibold text-primary-foreground disabled:opacity-50">
+          <Repeat className="h-4 w-4" />{over ? `Not enough ${pay}` : cmd ? "Review swap" : "Enter an amount"}
         </button>
+      )}
+
+      {picking && (
+        <div className="absolute inset-0 z-20 flex flex-col rounded-3xl bg-surface p-3">
+          <div className="mb-2 flex items-center justify-between">
+            <b className="font-display text-lg">Select token</b>
+            <button onClick={() => { setPicking(null); setSearch(""); }} aria-label="Close"><X className="h-5 w-5" /></button>
+          </div>
+          <input autoFocus value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search or type a ticker"
+            onKeyDown={(e) => { if (e.key === "Enter") choose(search); }}
+            className="mb-2 rounded-full border border-border bg-card px-4 py-2 text-sm outline-none" />
+          <ul className="flex-1 overflow-y-auto">
+            {pickList.map((s) => (
+              <li key={s}>
+                <button onClick={() => choose(s)} className="flex w-full items-center gap-3 rounded-xl p-2 text-left hover:bg-card">
+                  <span className="grid h-8 w-8 place-items-center rounded-full bg-surface-2 font-display text-[0.6rem] text-cyber">{s.slice(0, 3)}</span>
+                  <b className="flex-1 text-sm">{s}</b>
+                  <span className="font-mono text-xs text-muted-foreground">{fmt(bal(s)?.amount ?? 0)}</span>
+                </button>
+              </li>
+            ))}
+            {search.trim() && !pickList.includes(search.trim().replace(/^\$/, "").toUpperCase()) && (
+              <li><button onClick={() => choose(search)} className="w-full rounded-xl p-2 text-left text-sm text-primary">Use ${search.trim().replace(/^\$/, "").toUpperCase()}</button></li>
+            )}
+          </ul>
+          <p className="text-[0.7rem] text-muted-foreground">Swaps go between SUI and a Sui token.</p>
+        </div>
       )}
     </div>
   );
@@ -496,6 +571,12 @@ function SwapCard({ preset, busy, onRun }: { preset: TradePreset | null; busy: b
 
 function TradeTerminal({ initData, preset }: { initData: string; preset: TradePreset | null }) {
   const run = useServerFn(tgRunCommand);
+  const getWallet = useServerFn(tgGetBankWallet);
+  const [holdings, setHoldings] = useState<Holding[]>([]);
+  const loadHoldings = useCallback(() => {
+    getWallet({ data: { initData } }).then((w) => setHoldings(w.linked ? w.sui.map((b) => ({ ...b, symbol: /^0x0*2::sui::SUI$/i.test(b.coinType) ? "SUI" : b.symbol })) : [])).catch(() => {});
+  }, [getWallet, initData]);
+  useEffect(() => { loadHoldings(); }, [loadHoldings]);
   const [log, setLog] = useState<{ id: string; who: "me" | "bot"; text: string }[]>([
     { id: "hi", who: "bot", text: "Use the swap card, or type any command below — it runs on your OurBank wallet." },
   ]);
@@ -510,6 +591,7 @@ function TradeTerminal({ initData, preset }: { initData: string; preset: TradePr
     try {
       const r = await run({ data: { initData, text: t } });
       setLog((l) => [...l, { id: crypto.randomUUID(), who: "bot", text: r.reply }]);
+      loadHoldings();
     } catch (e) {
       setLog((l) => [...l, { id: crypto.randomUUID(), who: "bot", text: `Nothing was sent: ${(e as Error).message}` }]);
     } finally {
@@ -518,7 +600,7 @@ function TradeTerminal({ initData, preset }: { initData: string; preset: TradePr
   };
   return (
     <div className="flex flex-col gap-3 pb-20">
-      <SwapCard preset={preset} busy={busy} onRun={(c) => void send(c)} />
+      <SwapCard preset={preset} busy={busy} onRun={(c) => void send(c)} holdings={holdings} onRefresh={loadHoldings} />
       <div className="space-y-2">
         {log.map((m) => (
           <div key={m.id} className={`max-w-[85%] whitespace-pre-wrap rounded-2xl px-3 py-2 text-sm ${m.who === "me" ? "ml-auto bg-primary text-primary-foreground" : "border border-border bg-card"}`}>
