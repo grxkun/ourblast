@@ -9,7 +9,7 @@ describe("buildTradeCommand", () => {
 });
 
 import { buildSwapCommand } from "./tradeCommand";
-import { parseSwapCommand } from "@/lib/terminal/bank.server";
+import { parseSwapCommand } from "@/lib/terminal/bank";
 describe("buildSwapCommand", () => {
   it("SUI → token is a buy of that many SUI", () => expect(buildSwapCommand("SUI", "blast", "2.5")).toBe("buy 2.5 sui of $BLAST"));
   it("token → SUI sells that exact token amount", () => {
