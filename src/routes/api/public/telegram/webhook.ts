@@ -44,6 +44,25 @@ function dashboardText(handle: string | null): string {
   return `💥 OURBLAST dashboard\nTap a button to use it. Anything that spends asks you to confirm first.\n\n${handle ? `✅ Linked to X @${handle}` : "⚠️ X not linked yet — tap Link X account."}`;
 }
 
+/** BasedBot-style wallet grid: tap W2…W6 to toggle which wallets trade, ✅ marks selected, All selects every wallet. */
+async function walletPicker(tgUserId: number, handle: string): Promise<{ text: string; kb: Btn[][] }> {
+  const { walletsReply, listTgWallets } = await import("@/lib/tg/tgWallets.server");
+  const [text, { wallets, selected }] = await Promise.all([walletsReply(tgUserId, handle), listTgWallets(tgUserId, handle)]);
+  const cells: Btn[] = wallets.map((w) => ({ text: `${selected.includes(w.slot) ? "✅ " : ""}W${w.slot}`, callback_data: `ws:${w.slot}` }));
+  if (wallets.length < 6) cells.push({ text: "➕ New", callback_data: "ws:new" });
+  cells.push({ text: "All", callback_data: "ws:all" });
+  const rows: Btn[][] = [];
+  for (let i = 0; i < cells.length; i += 4) rows.push(cells.slice(i, i + 4));
+  return {
+    text: text.split("\n\n✅ = ")[0] + "\n\nTap a wallet to turn trading on/off for it. ✅ = trades run from it.",
+    kb: [
+      [{ text: "🔀 Move", callback_data: "ws:move" }, { text: "📤 Withdraw", callback_data: "ws:out" }, { text: "🧲 Consolidate", callback_data: "ws:merge" }],
+      ...rows,
+      [{ text: "⬅️ Menu", callback_data: "m:home" }],
+    ],
+  };
+}
+
 const MENU_HOWTO: Record<string, string> = {
   buy: "🟢 Buy\nPaste a token contract (0x…::coin::COIN) or $TICKER — I'll show Buy buttons.\nOr type: buy 1 sui of $BLAST",
   sell: "🔴 Sell\nType: sell 50% $BLAST · sell all $BLAST\nOr paste a token contract to get Sell buttons.",
@@ -123,6 +142,11 @@ export const Route = createFileRoute("/api/public/telegram/webhook")({
               });
               return Response.json({ ok: true });
             }
+            if (key === "wallets" && h) {
+              const p = await walletPicker(cq.from.id, h);
+              await tg("sendMessage", { chat_id, text: p.text, disable_web_page_preview: true, reply_markup: { inline_keyboard: p.kb } });
+              return Response.json({ ok: true });
+            }
             if ((key === "wallets" || key === "orders") && h) {
               await replyWithProgress(chat_id, "Loading", async () => {
                 const { runTgCommand } = await import("@/lib/tg/runCommand.server");
@@ -132,6 +156,44 @@ export const Route = createFileRoute("/api/public/telegram/webhook")({
             }
             const how = MENU_HOWTO[key];
             if (how) await tg("sendMessage", { chat_id, text: how, disable_web_page_preview: true, reply_markup: { inline_keyboard: [[{ text: "⬅️ Menu", callback_data: "m:home" }]] } });
+            return Response.json({ ok: true });
+          }
+          if (cq.data?.startsWith("ws:")) {
+            const k = cq.data.slice(3);
+            const { supabaseAdmin: db } = await import("@/integrations/supabase/client.server");
+            const { data: u } = await db.from("tg_users").select("x_username").eq("tg_user_id", cq.from.id).maybeSingle();
+            const h = u?.x_username;
+            if (!h) {
+              await tg("answerCallbackQuery", { callback_query_id: cq.id, text: "Link your X account first." });
+              return Response.json({ ok: true });
+            }
+            if (k === "move" || k === "out" || k === "merge") {
+              await tg("answerCallbackQuery", { callback_query_id: cq.id });
+              const label = k === "move" ? "🔀 Move between wallets" : k === "out" ? "📤 Withdraw to an outside address" : "🧲 Consolidate into one wallet";
+              const how = k === "move"
+                ? "Pick the from-wallet, token (SUI, USDC or any token) and amount, then the wallets to send to. Or type: w1 send 5 sui to 0x… (the other wallet's address)."
+                : k === "out" ? "Pick the wallet, token, amount and paste a Sui address. Or type: w2 send 10 $BLAST to 0x…"
+                : "Pick the wallet to gather into — every other wallet's tokens and SUI move there (0.02 SUI kept in each for fees).";
+              await tg("sendMessage", { chat_id, text: `${label}\n${how}\nYou review and confirm before anything moves.`, reply_markup: { inline_keyboard: [[{ text: "Open wallet manager", web_app: { url: LINK_URL } }], [{ text: "⬅️ Wallets", callback_data: "m:wallets" }]] } });
+              return Response.json({ ok: true });
+            }
+            const w = await import("@/lib/tg/tgWallets.server");
+            let note = "";
+            if (k === "new") {
+              const r = await w.createTgWallet(cq.from.id, null);
+              note = r.ok ? `W${r.wallet.slot} created` : r.error;
+            } else if (k === "all") {
+              await w.setTradeSlots(cq.from.id, h, "all"); note = "All wallets trade";
+            } else if (/^[1-6]$/.test(k)) {
+              const slot = Number(k);
+              const { selected } = await w.listTgWallets(cq.from.id, h);
+              const next = selected.includes(slot) ? selected.filter((x) => x !== slot) : [...selected, slot].sort();
+              if (!next.length) note = "Keep at least one wallet on";
+              else { const r = await w.setTradeSlots(cq.from.id, h, next); note = r.ok ? `W${slot} ${selected.includes(slot) ? "off" : "on"}` : (r.error ?? "Couldn't save"); }
+            }
+            await tg("answerCallbackQuery", { callback_query_id: cq.id, text: note.slice(0, 190) });
+            const p = await walletPicker(cq.from.id, h);
+            await tg("editMessageText", { chat_id, message_id, text: p.text, disable_web_page_preview: true, reply_markup: { inline_keyboard: p.kb } });
             return Response.json({ ok: true });
           }
           if (cq.data === "lp" || cq.data === "wp") {
@@ -278,6 +340,11 @@ export const Route = createFileRoute("/api/public/telegram/webhook")({
         // Every wallet action requires a bound X account; show the link button instead of a dead end.
         if (!(await linkedHandle())) {
           await tg("sendMessage", { chat_id: chatId, text: "🔗 Link your X account first — trades use your OurBank wallet tied to X.", reply_markup: linkKb });
+          return Response.json({ ok: true });
+        }
+        if (/^\/?wallets(@\w+)?$/i.test(original.trim())) {
+          const p = await walletPicker(msg.from.id, (await linkedHandle())!);
+          await tg("sendMessage", { chat_id: chatId, text: p.text, disable_web_page_preview: true, reply_markup: { inline_keyboard: p.kb } });
           return Response.json({ ok: true });
         }
 
