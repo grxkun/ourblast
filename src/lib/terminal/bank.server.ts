@@ -556,7 +556,7 @@ export async function handleBankMention(postId: string, username: string, text: 
   const { parseSolCommand } = await import("./solCommand");
   const solCmd = parseSolCommand(text);
   if (solCmd) return solSweep.bridgeSolForXHandle(username, solCmd.amountSol, solCmd.buyBlast === true);
-  if (parseSwapCommand(text)) return handleSwapMention(postId, username, text);
+  if (parseSwapCommand(text.replace(/\s+(?:max\s+)?slippage\s+\d*\.?\d+\s*%?\s*$/i, ""))) return handleSwapMention(postId, username, text);
   const multi = parseMultiSendCommand(text);
   if (multi) return multiSend(postId, username, multi);
   const transfer = await createBankTransferFromMention(postId, username, text);
