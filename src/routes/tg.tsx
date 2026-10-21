@@ -3,12 +3,12 @@ import { Suspense, lazy, useCallback, useEffect, useMemo, useState } from "react
 import { ClientOnly, createFileRoute } from "@tanstack/react-router";
 import { queryOptions, useSuspenseQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { ArrowDownToLine, Copy, ExternalLink, HelpCircle, Home, RefreshCw, Repeat, Rocket, Search, Send, Star, Wallet, X, Zap } from "lucide-react";
+import { ArrowDownToLine, ArrowDownUp, Copy, ExternalLink, HelpCircle, Home, RefreshCw, Repeat, Rocket, Search, Send, Star, Wallet, X, Zap } from "lucide-react";
 import logo from "@/assets/blast-logo.jpg.asset.json";
 import mascot from "@/assets/blast-cool.png.asset.json";
 import { toast } from "sonner";
 
-import { buildTradeCommand } from "@/lib/tg/tradeCommand";
+import { buildSwapCommand } from "@/lib/tg/tradeCommand";
 import { listPublicLaunches } from "@/lib/terminal/launch-status.functions";
 import { tgBlastPresales, tgGetBankWallet, tgLinkX, tgRunCommand, tgSession, tgToggleWatch, tgUnlinkX } from "@/lib/tg/tg.functions";
 
@@ -571,6 +571,12 @@ function SwapCard({ preset, busy, onRun, holdings, onRefresh }: { preset: TradeP
 
 function TradeTerminal({ initData, preset }: { initData: string; preset: TradePreset | null }) {
   const run = useServerFn(tgRunCommand);
+  const getWallet = useServerFn(tgGetBankWallet);
+  const [holdings, setHoldings] = useState<Holding[]>([]);
+  const loadHoldings = useCallback(() => {
+    getWallet({ data: { initData } }).then((w) => setHoldings(w.linked ? w.sui.map((b) => ({ ...b, symbol: /^0x0*2::sui::SUI$/i.test(b.coinType) ? "SUI" : b.symbol })) : [])).catch(() => {});
+  }, [getWallet, initData]);
+  useEffect(() => { loadHoldings(); }, [loadHoldings]);
   const [log, setLog] = useState<{ id: string; who: "me" | "bot"; text: string }[]>([
     { id: "hi", who: "bot", text: "Use the swap card, or type any command below — it runs on your OurBank wallet." },
   ]);
@@ -585,6 +591,7 @@ function TradeTerminal({ initData, preset }: { initData: string; preset: TradePr
     try {
       const r = await run({ data: { initData, text: t } });
       setLog((l) => [...l, { id: crypto.randomUUID(), who: "bot", text: r.reply }]);
+      loadHoldings();
     } catch (e) {
       setLog((l) => [...l, { id: crypto.randomUUID(), who: "bot", text: `Nothing was sent: ${(e as Error).message}` }]);
     } finally {
@@ -593,7 +600,7 @@ function TradeTerminal({ initData, preset }: { initData: string; preset: TradePr
   };
   return (
     <div className="flex flex-col gap-3 pb-20">
-      <SwapCard preset={preset} busy={busy} onRun={(c) => void send(c)} />
+      <SwapCard preset={preset} busy={busy} onRun={(c) => void send(c)} holdings={holdings} onRefresh={loadHoldings} />
       <div className="space-y-2">
         {log.map((m) => (
           <div key={m.id} className={`max-w-[85%] whitespace-pre-wrap rounded-2xl px-3 py-2 text-sm ${m.who === "me" ? "ml-auto bg-primary text-primary-foreground" : "border border-border bg-card"}`}>
