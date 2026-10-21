@@ -144,7 +144,7 @@ export const Route = createFileRoute("/api/public/telegram/webhook")({
           await tg("sendMessage", {
             chat_id: chatId,
             text: (isHelp
-              ? "📖 OURBLAST menu\n\nIn this chat:\n• /link — bind or check your X account\n• follow 0x… name — dev-wallet alerts · /following · unfollow 0x…\n• Paste a token address or $TICKER → buy/sell buttons\n• snipe 0x…::coin::COIN 5 sui slippage 10% — review, then confirm\n• Type any command: balance · wallet · buy 1 sui of $BLAST · sell 50% $BLAST · bridge 0.05 sol to sui · send 10 $BLAST to name.sui\nBuys and sells always ask you to confirm first.\n\nIn the app:\n🏠 Home · 🔍 Discover · ⚡ Trade · 👛 Wallet"
+              ? "📖 OURBLAST menu\n\nIn this chat:\n• /link — bind or check your X account\n• follow 0x… name — dev-wallet alerts · /following · unfollow 0x…\n• Paste a token address or $TICKER → buy/sell buttons\n• snipe 0x…::coin::COIN 5 sui slippage 10% — review, then confirm\n• presales · presale 0x… · commit 5 sui to 0x… — Blast.fun presale buys, confirm first\n• Type any command: balance · wallet · buy 1 sui of $BLAST · sell 50% $BLAST · bridge 0.05 sol to sui · send 10 $BLAST to name.sui\nBuys and sells always ask you to confirm first.\n\nIn the app:\n🏠 Home · 🔍 Discover · ⚡ Trade · 👛 Wallet"
               : "gm 💥 Trade Sui tokens right here from your OurBank wallet — paste any token address or $TICKER. Send /help for more.") + status,
             reply_markup: { inline_keyboard: [
               ...(isPrivate && !h ? [[{ text: "🔗 Link X account", web_app: { url: LINK_URL } }]] : []),
