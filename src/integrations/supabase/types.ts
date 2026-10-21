@@ -2328,6 +2328,81 @@ export type Database = {
         }
         Relationships: []
       }
+      tg_limit_orders: {
+        Row: {
+          amount: string
+          coin_type: string
+          created_at: string
+          expires_at: string
+          filled_at: string | null
+          id: string
+          result: string | null
+          side: string
+          slippage: number
+          slots: number[]
+          status: string
+          tg_user_id: number
+          trigger_usd: number
+        }
+        Insert: {
+          amount: string
+          coin_type: string
+          created_at?: string
+          expires_at?: string
+          filled_at?: string | null
+          id?: string
+          result?: string | null
+          side: string
+          slippage?: number
+          slots?: number[]
+          status?: string
+          tg_user_id: number
+          trigger_usd: number
+        }
+        Update: {
+          amount?: string
+          coin_type?: string
+          created_at?: string
+          expires_at?: string
+          filled_at?: string | null
+          id?: string
+          result?: string | null
+          side?: string
+          slippage?: number
+          slots?: number[]
+          status?: string
+          tg_user_id?: number
+          trigger_usd?: number
+        }
+        Relationships: []
+      }
+      tg_sub_wallets: {
+        Row: {
+          bank_handle: string
+          created_at: string
+          id: string
+          label: string | null
+          slot: number
+          tg_user_id: number
+        }
+        Insert: {
+          bank_handle: string
+          created_at?: string
+          id?: string
+          label?: string | null
+          slot: number
+          tg_user_id: number
+        }
+        Update: {
+          bank_handle?: string
+          created_at?: string
+          id?: string
+          label?: string | null
+          slot?: number
+          tg_user_id?: number
+        }
+        Relationships: []
+      }
       tg_users: {
         Row: {
           created_at: string
@@ -2336,6 +2411,7 @@ export type Database = {
           photo_url: string | null
           privy_user_id: string | null
           tg_user_id: number
+          trade_slots: number[]
           username: string | null
           x_username: string | null
         }
@@ -2346,6 +2422,7 @@ export type Database = {
           photo_url?: string | null
           privy_user_id?: string | null
           tg_user_id: number
+          trade_slots?: number[]
           username?: string | null
           x_username?: string | null
         }
@@ -2356,6 +2433,7 @@ export type Database = {
           photo_url?: string | null
           privy_user_id?: string | null
           tg_user_id?: number
+          trade_slots?: number[]
           username?: string | null
           x_username?: string | null
         }
