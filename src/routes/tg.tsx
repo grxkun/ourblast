@@ -575,6 +575,62 @@ function SwapCard({ preset, busy, onRun, holdings, onRefresh }: { preset: TradeP
   );
 }
 
+function SoonCard({ title, text }: { title: string; text: string }) {
+  return (
+    <div className="rounded-2xl border border-border bg-card p-4">
+      <p className="font-display text-lg uppercase">{title} <span className="ml-1 rounded-full bg-surface px-2 py-0.5 text-[10px] text-muted-foreground">soon</span></p>
+      <p className="mt-1 text-sm text-muted-foreground">{text}</p>
+    </div>
+  );
+}
+
+const CA_RE = /^0x[a-f0-9]{1,64}::[a-z_][a-z0-9_]*::[a-z_][a-z0-9_]*$/i;
+function SnipeCard({ busy, onRun }: { busy: boolean; onRun: (cmd: string) => void }) {
+  const [ca, setCa] = useState("");
+  const [amount, setAmount] = useState("1");
+  const [slip, setSlip] = useState("10");
+  const [review, setReview] = useState(false);
+  const caOk = CA_RE.test(ca.trim());
+  const amtOk = Number(amount) > 0 && Number(amount) <= 1000;
+  const slipOk = Number(slip) >= 0.1 && Number(slip) <= 50;
+  const ok = caOk && amtOk && slipOk;
+  const cmd = `buy ${amount} sui of ${ca.trim()} slippage ${slip}%`;
+  return (
+    <div className="space-y-3 rounded-2xl border border-border bg-card p-4">
+      <p className="font-display text-lg uppercase">Snipe a launch</p>
+      <input value={ca} onChange={(e) => { setCa(e.target.value); setReview(false); }} placeholder="0x…::coin::COIN (contract only)"
+        className="w-full rounded-xl border border-border bg-surface px-3 py-2 font-mono text-xs outline-none" />
+      {ca && !caOk && <p className="text-xs text-destructive">Paste the full contract — tickers can be faked by new launches.</p>}
+      <div className="flex gap-2">
+        {["1", "5", "10"].map((a) => (
+          <button key={a} onClick={() => { setAmount(a); setReview(false); }} className={`flex-1 rounded-full py-1.5 text-xs font-bold ${amount === a ? "bg-primary text-primary-foreground" : "bg-surface"}`}>{a} SUI</button>
+        ))}
+        <input value={amount} onChange={(e) => { setAmount(e.target.value); setReview(false); }} inputMode="decimal" className="w-16 rounded-full border border-border bg-surface px-2 text-center text-xs outline-none" />
+      </div>
+      <div className="flex items-center gap-2 text-xs">
+        <span className="text-muted-foreground">Max slippage</span>
+        {["5", "10", "20"].map((s) => (
+          <button key={s} onClick={() => { setSlip(s); setReview(false); }} className={`rounded-full px-3 py-1 font-bold ${slip === s ? "bg-primary text-primary-foreground" : "bg-surface"}`}>{s}%</button>
+        ))}
+        <input value={slip} onChange={(e) => { setSlip(e.target.value); setReview(false); }} inputMode="decimal" className="w-12 rounded-full border border-border bg-surface px-2 py-1 text-center outline-none" />
+      </div>
+      {review && ok ? (
+        <div className="space-y-2 rounded-xl bg-surface p-3 text-xs">
+          <p>Spend <b>{amount} SUI</b> · max slippage <b>{slip}%</b></p>
+          <p className="break-all font-mono">{ca.trim()}</p>
+          <p className="text-muted-foreground">If you'd get less than your limit allows, the trade fails and only gas is spent.</p>
+          <div className="flex gap-2">
+            <button onClick={() => setReview(false)} className="flex-1 rounded-full bg-background py-2 font-bold">Cancel</button>
+            <button disabled={busy} onClick={() => { setReview(false); onRun(cmd); }} className="flex-1 rounded-full bg-primary py-2 font-bold text-primary-foreground disabled:opacity-50">Confirm snipe</button>
+          </div>
+        </div>
+      ) : (
+        <button disabled={!ok || busy} onClick={() => setReview(true)} className="w-full rounded-full bg-primary py-2.5 text-sm font-bold text-primary-foreground disabled:opacity-50">Review snipe</button>
+      )}
+    </div>
+  );
+}
+
 function TradeTerminal({ initData, preset }: { initData: string; preset: TradePreset | null }) {
   const run = useServerFn(tgRunCommand);
   const getWallet = useServerFn(tgGetBankWallet);
@@ -604,9 +660,18 @@ function TradeTerminal({ initData, preset }: { initData: string; preset: TradePr
       setBusy(false);
     }
   };
+  const [mode, setMode] = useState<"swap" | "snipe" | "limit" | "copy">("swap");
   return (
     <div className="flex flex-col gap-3 pb-20">
-      <SwapCard preset={preset} busy={busy} onRun={(c) => void send(c)} holdings={holdings} onRefresh={loadHoldings} />
+      <div className="grid grid-cols-4 gap-1 rounded-full bg-surface p-1">
+        {(["swap", "snipe", "limit", "copy"] as const).map((m) => (
+          <button key={m} onClick={() => setMode(m)} className={`rounded-full py-1.5 text-xs font-bold uppercase ${mode === m ? "bg-primary text-primary-foreground" : "text-muted-foreground"}`}>{m}</button>
+        ))}
+      </div>
+      {mode === "swap" && <SwapCard preset={preset} busy={busy} onRun={(c) => void send(c)} holdings={holdings} onRefresh={loadHoldings} />}
+      {mode === "snipe" && <SnipeCard busy={busy} onRun={(c) => void send(c)} />}
+      {mode === "limit" && <SoonCard title="Limit orders" text="Set a target price and the bot buys or sells when it's hit. Not live yet — use Swap for instant trades." />}
+      {mode === "copy" && <SoonCard title="Copy trading" text="Copying wallets with budgets and a stop switch is coming. Today you can get alerts: send “follow 0x… name” to @ourblastsuibot." />}
       <div className="space-y-2">
         {log.map((m) => (
           <div key={m.id} className={`max-w-[85%] whitespace-pre-wrap rounded-2xl px-3 py-2 text-sm ${m.who === "me" ? "ml-auto bg-primary text-primary-foreground" : "border border-border bg-card"}`}>
