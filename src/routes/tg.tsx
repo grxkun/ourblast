@@ -187,20 +187,26 @@ function TgApp() {
               ))}
             </div>
           </div>
-          <div className="grid grid-cols-2 gap-2">
+          <h2 className="font-display text-lg">DASHBOARD</h2>
+          <div className="grid grid-cols-4 gap-2">
             {([
-              ["discover", "New launches", "Fresh on Sui", Rocket, "text-primary"],
-              ["discover", `Watchlist (${watch.size})`, "Your starred tokens", Star, "text-lime"],
-              ["wallet", "My wallet", "Balance & deposits", Wallet, "text-cyber"],
-              ["trade", "Trade & launch", "Bot commands", Zap, "text-grape"],
-            ] as const).map(([t, title, sub, Icon, tone], i) => (
-              <button key={i} onClick={() => { setTab(t); if (i === 1) setFilter("watch"); else if (i === 0) setFilter("live"); }}
-                className="flex items-center gap-2.5 rounded-2xl border border-border bg-surface p-3 text-left">
-                <Icon className={`h-7 w-7 shrink-0 ${tone}`} />
-                <div className="min-w-0">
-                  <div className="truncate text-sm font-semibold">{title}</div>
-                  <div className="truncate text-[0.7rem] text-muted-foreground">{sub}</div>
-                </div>
+              ["Buy", Zap, "text-primary", () => { setPreset({ side: "buy", token: "", key: Date.now(), mode: "swap" }); setTab("trade"); }],
+              ["Sell", ArrowDownUp, "text-grape", () => { setPreset({ side: "sell", token: "", key: Date.now(), mode: "swap" }); setTab("trade"); }],
+              ["Snipe", Rocket, "text-lime", () => { setPreset({ side: "buy", token: "", key: Date.now(), mode: "snipe" }); setTab("trade"); }],
+              ["Copy", Repeat, "text-cyber", () => { setPreset({ side: "buy", token: "", key: Date.now(), mode: "copy" }); setTab("trade"); }],
+              ["Limit", RefreshCw, "text-muted-foreground", () => { setPreset({ side: "buy", token: "", key: Date.now(), mode: "limit" }); setTab("trade"); }],
+              ["Wallet", Wallet, "text-cyber", () => setTab("wallet")],
+              ["Deposit", ArrowDownToLine, "text-lime", () => setTab("wallet")],
+              ["Launches", Search, "text-primary", () => { setFilter("live"); setTab("discover"); }],
+              [`Watch (${watch.size})`, Star, "text-lime", () => { setFilter("watch"); setTab("discover"); }],
+              ["Presales", Send, "text-grape", () => { setFilter("live"); setTab("discover"); }],
+              ["Guide", HelpCircle, "text-primary", () => setHelp(true)],
+              ["Terminal", Copy, "text-muted-foreground", () => { setPreset({ side: "buy", token: "", key: Date.now(), mode: "swap" }); setTab("trade"); }],
+            ] as const).map(([label, Icon, tone, go]) => (
+              <button key={label} onClick={go}
+                className="flex flex-col items-center gap-1 rounded-2xl border border-border bg-surface px-1 py-3 active:scale-95 transition-transform">
+                <Icon className={`h-6 w-6 ${tone}`} />
+                <span className="truncate text-[0.65rem] font-semibold">{label}</span>
               </button>
             ))}
           </div>
@@ -441,7 +447,8 @@ function linkify(text: string) {
   );
 }
 
-type TradePreset = { side: "buy" | "sell"; token: string; key: number; amount?: string };
+type TradeMode = "swap" | "snipe" | "limit" | "copy";
+type TradePreset = { side: "buy" | "sell"; token: string; key: number; amount?: string; mode?: TradeMode };
 
 type Holding = { coinType: string; symbol: string; amount: number; usd: number | null };
 
@@ -660,7 +667,8 @@ function TradeTerminal({ initData, preset }: { initData: string; preset: TradePr
       setBusy(false);
     }
   };
-  const [mode, setMode] = useState<"swap" | "snipe" | "limit" | "copy">("swap");
+  const [mode, setMode] = useState<TradeMode>(preset?.mode ?? "swap");
+  useEffect(() => { if (preset?.mode) setMode(preset.mode); }, [preset?.key, preset?.mode]);
   return (
     <div className="flex flex-col gap-3 pb-20">
       <div className="grid grid-cols-4 gap-1 rounded-full bg-surface p-1">
