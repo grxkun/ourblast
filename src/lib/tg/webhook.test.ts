@@ -27,12 +27,12 @@ describe("Telegram contract buy webhook", () => {
     await send({ message: { chat: { id: 12, type: "private" }, from: { id: 12 }, text: ca } });
     const card = calls.find((c) => c.method === "sendMessage")?.body;
     if (!card) throw new Error("Missing token card");
-    await send({ callback_query: { id: "ask", data: card.reply_markup.inline_keyboard[0][0].callback_data, from: { id: 12 }, message: { chat: { id: 12 }, message_id: 1, text: card.text } } });
+    await send({ callback_query: { id: "ask", data: card.reply_markup.inline_keyboard[0]?.[0]?.callback_data, from: { id: 12 }, message: { chat: { id: 12 }, message_id: 1, text: card.text } } });
     expect(run).not.toHaveBeenCalled();
     const confirm = calls.filter((c) => c.method === "sendMessage").at(-1)?.body;
     if (!confirm) throw new Error("Missing confirmation");
     expect(actionCoinType(confirm.text, "GROKLET")).toBe(ca);
-    await send({ callback_query: { id: "go", data: confirm.reply_markup.inline_keyboard[0][0].callback_data, from: { id: 12 }, message: { chat: { id: 12 }, message_id: 2, text: confirm.text } } });
+    await send({ callback_query: { id: "go", data: confirm.reply_markup.inline_keyboard[0]?.[0]?.callback_data, from: { id: 12 }, message: { chat: { id: 12 }, message_id: 2, text: confirm.text } } });
     expect(run).toHaveBeenCalledExactlyOnceWith(12, `buy 1 sui of ${ca}`);
   });
 });
