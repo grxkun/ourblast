@@ -2364,6 +2364,11 @@ export type Database = {
       tg_wallet_follows: {
         Row: {
           address: string
+          copy_daily_cap: number | null
+          copy_day: string | null
+          copy_slippage: number
+          copy_spent: number
+          copy_sui: number | null
           created_at: string
           id: string
           label: string | null
@@ -2372,6 +2377,11 @@ export type Database = {
         }
         Insert: {
           address: string
+          copy_daily_cap?: number | null
+          copy_day?: string | null
+          copy_slippage?: number
+          copy_spent?: number
+          copy_sui?: number | null
           created_at?: string
           id?: string
           label?: string | null
@@ -2380,6 +2390,11 @@ export type Database = {
         }
         Update: {
           address?: string
+          copy_daily_cap?: number | null
+          copy_day?: string | null
+          copy_slippage?: number
+          copy_spent?: number
+          copy_sui?: number | null
           created_at?: string
           id?: string
           label?: string | null
