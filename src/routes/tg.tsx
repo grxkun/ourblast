@@ -59,6 +59,12 @@ function TgApp() {
   const open = openId ? launches.find((l) => l.id === openId) ?? null : null;
 
   useEffect(() => {
+    // Bot chat "Link X" button opens /tg?tab=wallet.
+    const want = new URLSearchParams(window.location.search).get("tab");
+    if (want === "wallet" || want === "trade" || want === "discover") setTab(want as Tab);
+  }, []);
+
+  useEffect(() => {
     let tries = 0;
     const t = setInterval(() => {
       const wa = window.Telegram?.WebApp;

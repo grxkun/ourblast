@@ -4,6 +4,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { actionCoinType, actionCommand, BUY_PRESETS, decodeAction, detectToken, encodeAction, SELL_PRESETS } from "@/lib/tg/chatTrade";
 
 const APP_URL = "https://ourblast.xyz/tg";
+const LINK_URL = "https://ourblast.xyz/tg?tab=wallet";
 
 async function webhookSecret(token: string) {
   const d = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(`telegram-webhook:${token}`));
@@ -87,19 +88,50 @@ export const Route = createFileRoute("/api/public/telegram/webhook")({
         const text = original.toLowerCase();
         if (!chatId || !original) return Response.json({ ok: true });
 
-        if (/^\/(start|app|launches|help)/.test(text)) {
-          const isHelp = text.startsWith("/help");
+        const isPrivate = msg?.chat?.type === "private" && !!msg.from?.id;
+        const linkedHandle = async (): Promise<string | null> => {
+          if (!msg?.from?.id) return null;
+          const { supabaseAdmin: db } = await import("@/integrations/supabase/client.server");
+          const { data } = await db.from("tg_users").select("x_username").eq("tg_user_id", msg.from.id).maybeSingle();
+          return data?.x_username ?? null;
+        };
+        const linkKb = { inline_keyboard: [[{ text: "🔗 Link X account", web_app: { url: LINK_URL } }]] };
+
+        if (/^\/(link|account|me)\b/.test(text) && isPrivate) {
+          const h = await linkedHandle();
           await tg("sendMessage", {
             chat_id: chatId,
-            text: isHelp
-              ? "📖 OURBLAST menu\n\nIn this chat:\n• Paste a token address or $TICKER → buy/sell buttons\n• Type any command: balance · buy 1 sui of $BLAST · sell 50% $BLAST · bridge 0.05 sol to sui · send 10 $BLAST to name.sui\nBuys and sells always ask you to confirm first.\n\nIn the app:\n🏠 Home · 🔍 Discover · ⚡ Trade · 👛 Wallet (positions, balances, deposit addresses)"
-              : "gm 💥 Trade Sui tokens right here from your OurBank wallet.\n\nOpen the app and link X in Wallet once. Then paste any token address or $TICKER in this chat. Send /help for more.",
-            reply_markup: { inline_keyboard: [[{ text: "Open OURBLAST", web_app: { url: APP_URL } }]] },
+            text: h
+              ? `✅ Linked to X @${h}. Trades in this chat use that account's OurBank wallet.\nTo switch accounts, open the app → Wallet → Unlink.`
+              : "🔗 Bind your X account to trade here.\n\nTap the button, sign in with X once. Your existing OurBank wallet (same as on X and the website) is then usable right in this chat.",
+            reply_markup: h ? { inline_keyboard: [[{ text: "Open wallet", web_app: { url: LINK_URL } }]] } : linkKb,
+          });
+          return Response.json({ ok: true });
+        }
+
+        if (/^\/(start|app|launches|help)/.test(text)) {
+          const isHelp = text.startsWith("/help");
+          const h = isPrivate ? await linkedHandle() : null;
+          const status = isPrivate ? (h ? `\n\n✅ Linked to X @${h}` : "\n\n⚠️ X not linked yet — tap Link X account below.") : "";
+          await tg("sendMessage", {
+            chat_id: chatId,
+            text: (isHelp
+              ? "📖 OURBLAST menu\n\nIn this chat:\n• /link — bind or check your X account\n• Paste a token address or $TICKER → buy/sell buttons\n• Type any command: balance · wallet · buy 1 sui of $BLAST · sell 50% $BLAST · bridge 0.05 sol to sui · send 10 $BLAST to name.sui\nBuys and sells always ask you to confirm first.\n\nIn the app:\n🏠 Home · 🔍 Discover · ⚡ Trade · 👛 Wallet"
+              : "gm 💥 Trade Sui tokens right here from your OurBank wallet — paste any token address or $TICKER. Send /help for more.") + status,
+            reply_markup: { inline_keyboard: [
+              ...(isPrivate && !h ? [[{ text: "🔗 Link X account", web_app: { url: LINK_URL } }]] : []),
+              [{ text: "Open OURBLAST", web_app: { url: APP_URL } }],
+            ] },
           });
           return Response.json({ ok: true });
         }
         // Trading in chat is private-only so group messages never touch anyone's wallet.
-        if (msg?.chat?.type !== "private" || !msg.from?.id || original.startsWith("/")) return Response.json({ ok: true });
+        if (!isPrivate || !msg?.from?.id || original.startsWith("/")) return Response.json({ ok: true });
+        // Every wallet action requires a bound X account; show the link button instead of a dead end.
+        if (!(await linkedHandle())) {
+          await tg("sendMessage", { chat_id: chatId, text: "🔗 Link your X account first — trades use your OurBank wallet tied to X.", reply_markup: linkKb });
+          return Response.json({ ok: true });
+        }
 
         const tokenHit = detectToken(original);
         if (tokenHit) {
