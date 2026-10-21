@@ -10,7 +10,7 @@ import { toast } from "sonner";
 
 import { buildSwapCommand, normalizeSwapToken, swapTokenSymbol } from "@/lib/tg/tradeCommand";
 import { listPublicLaunches } from "@/lib/terminal/launch-status.functions";
-import { tgBlastPresales, tgGetBankWallet, tgLinkX, tgRunCommand, tgSession, tgToggleWatch, tgUnlinkX } from "@/lib/tg/tg.functions";
+import { tgBlastPresales, tgCreateWallet, tgGetBankWallet, tgListWallets, tgSetTradeSlots, tgLinkX, tgRunCommand, tgSession, tgToggleWatch, tgUnlinkX } from "@/lib/tg/tg.functions";
 
 const launchesQuery = queryOptions({
   queryKey: ["public-launches"],
@@ -386,6 +386,7 @@ function WalletView({ initData, handle, onTrade, onSell }: { initData: string; h
           </button>
         ))}
       </div>
+      <WalletManager initData={initData} />
       <div className="rounded-2xl border border-border bg-surface p-2">
         <div className="mb-1 rounded-xl bg-primary py-1.5 text-center text-sm font-semibold text-primary-foreground">Tokens</div>
         <ul>
@@ -877,6 +878,61 @@ function BlastPresales() {
           <p className="mt-1 text-xs text-muted-foreground">Commit SUI to fixed-term sales. If a raise misses its target, commitments are refunded; if it fills, liquidity opens on Cetus or Bluefin.</p>
         </>
       )}
+    </div>
+  );
+}
+
+function WalletManager({ initData }: { initData: string }) {
+  const list = useServerFn(tgListWallets);
+  const create = useServerFn(tgCreateWallet);
+  const setSlots = useServerFn(tgSetTradeSlots);
+  const [d, setD] = useState<Awaited<ReturnType<typeof tgListWallets>> | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [name, setName] = useState("");
+  const [msg, setMsg] = useState<string | null>(null);
+  const load = useCallback(() => { list({ data: { initData } }).then(setD).catch((e) => setMsg((e as Error).message)); }, [list, initData]);
+  useEffect(() => { load(); }, [load]);
+  const act = async (fn: () => Promise<unknown>, ok: string) => {
+    setBusy(true); setMsg(null);
+    try { await fn(); setMsg(ok); load(); } catch (e) { setMsg((e as Error).message); } finally { setBusy(false); }
+  };
+  const toggle = (slot: number) => {
+    if (!d) return;
+    const next = d.selected.includes(slot) ? d.selected.filter((s) => s !== slot) : [...d.selected, slot].sort();
+    if (!next.length) { setMsg("At least one wallet must stay selected."); return; }
+    void act(() => setSlots({ data: { initData, slots: next } }), "Trade wallets saved.");
+  };
+  return (
+    <div className="rounded-2xl border border-border bg-surface p-3">
+      <div className="mb-1 flex items-baseline justify-between">
+        <b className="font-display text-lg">Sui wallets</b>
+        <span className="text-xs text-muted-foreground">{d ? `${d.wallets.length}/6` : "…"}</span>
+      </div>
+      <p className="mb-2 text-xs text-muted-foreground">Tap to choose which wallets trades run from. Buys spend the amount from each selected wallet.</p>
+      <ul className="space-y-2">
+        {d?.wallets.map((w) => {
+          const on = d.selected.includes(w.slot);
+          return (
+            <li key={w.slot} className={`rounded-xl border p-2.5 ${on ? "border-primary bg-primary/10" : "border-border bg-card"}`}>
+              <button disabled={busy} onClick={() => toggle(w.slot)} className="flex w-full items-center justify-between text-left text-sm">
+                <span><b>w{w.slot} · {w.label}</b>{on && <span className="ml-2 text-xs text-primary">trading</span>}</span>
+                <span className="font-mono">{w.sui == null ? "?" : fmt(w.sui)} SUI</span>
+              </button>
+              <div className="mt-1 flex items-center gap-2 text-xs text-muted-foreground">
+                <span className="truncate font-mono">{w.address}</span>
+                <button aria-label="Copy address" onClick={() => { void navigator.clipboard.writeText(w.address); setMsg(`w${w.slot} address copied.`); }}><Copy className="h-3.5 w-3.5" /></button>
+              </div>
+            </li>
+          );
+        })}
+      </ul>
+      {d && d.wallets.length < 6 && (
+        <div className="mt-3 flex gap-2">
+          <input value={name} onChange={(e) => setName(e.target.value)} maxLength={20} placeholder="Name (e.g. sniper)" className="min-w-0 flex-1 rounded-xl border border-border bg-card px-3 py-2 text-sm" />
+          <button disabled={busy} onClick={() => act(() => create({ data: { initData, label: name || null } }).then(() => setName("")), "New wallet created. Send SUI to its address to fund it.")} className="rounded-xl bg-primary px-3 py-2 text-sm font-semibold text-primary-foreground">Add wallet</button>
+        </div>
+      )}
+      {msg && <p className="mt-2 text-xs text-muted-foreground">{msg}</p>}
     </div>
   );
 }
