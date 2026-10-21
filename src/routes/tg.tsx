@@ -1002,7 +1002,7 @@ function MoveFunds({ initData, mode, wallets, onDone }: { initData: string; mode
   const [only, setOnly] = useState<"sui" | "all">("all");
   const [review, setReview] = useState(false);
   const [busy, setBusy] = useState(false);
-  const [out, setOut] = useState<{ ok: boolean; text: string; digest?: string }[] | null>(null);
+  const [out, setOut] = useState<{ ok: boolean; text: string; digest?: string | undefined }[] | null>(null);
   const [err, setErr] = useState<string | null>(null);
   useEffect(() => { setReview(false); setOut(null); setErr(null); }, [mode]);
   useEffect(() => {
