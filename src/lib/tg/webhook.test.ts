@@ -12,7 +12,7 @@ afterEach(() => { vi.unstubAllGlobals(); vi.unstubAllEnvs(); vi.clearAllMocks();
 describe("Telegram contract buy webhook", () => {
   it("keeps the pasted contract through both buttons and invokes only the confirmed command", async () => {
     vi.stubEnv("TELEGRAM_BOT_TOKEN", "test-token-not-a-credential");
-    const calls: { method: string; body: Record<string, any> }[] = [];
+    const calls: { method: string; body: { text: string; reply_markup: { inline_keyboard: { callback_data: string }[][] } } }[] = [];
     vi.stubGlobal("fetch", vi.fn(async (url: string, init: RequestInit) => {
       calls.push({ method: url.split("/").at(-1) ?? "", body: JSON.parse(String(init.body)) });
       return Response.json({ ok: true });
