@@ -33,7 +33,10 @@ export const Route = createFileRoute("/api/public/telegram/webhook")({
         const got = request.headers.get("X-Telegram-Bot-Api-Secret-Token") ?? "";
         if (got !== (await webhookSecret(token))) return new Response("Unauthorized", { status: 401 });
 
-        const tg = async (method: string, body: unknown) => {
+        let threadId: number | undefined;
+        const tg = async (method: string, body: Record<string, unknown>) => {
+          // Threaded bot chats: reply inside the same topic or Telegram hides it.
+          if (threadId && (method === "sendMessage" || method === "sendChatAction")) body = { ...body, message_thread_id: threadId };
           const res = await fetch(`https://api.telegram.org/bot${token}/${method}`, {
             method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body),
           });
@@ -44,6 +47,7 @@ export const Route = createFileRoute("/api/public/telegram/webhook")({
         // Button taps: first tap asks, second tap (Confirm) runs. Nothing moves on a single tap.
         const cq = update?.callback_query;
         if (cq?.message) {
+          threadId = (cq.message as { message_thread_id?: number }).message_thread_id;
           const chat_id = cq.message.chat.id;
           const message_id = cq.message.message_id;
           const action = decodeAction(cq.data ?? "");
@@ -75,7 +79,11 @@ export const Route = createFileRoute("/api/public/telegram/webhook")({
 
         const msg = update?.message;
         const chatId = msg?.chat?.id;
-        const original = (msg?.text ?? "").trim();
+        threadId = (msg as { message_thread_id?: number } | undefined)?.message_thread_id;
+        let original = (msg?.text ?? "").trim();
+        // Menu commands map to plain chat commands.
+        const slash = original.match(/^\/(balance|wallet|positions)(?:@\w+)?\s*$/i);
+        if (slash) original = slash[1]!.toLowerCase() === "wallet" ? "wallet" : "balance";
         const text = original.toLowerCase();
         if (!chatId || !original) return Response.json({ ok: true });
 
