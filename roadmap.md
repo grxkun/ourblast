@@ -18,3 +18,9 @@
 - [x] TG mini app: mockup layout (home hero, discover cards, token detail, wallet balance card) in existing OURBLAST colors
 - [x] Blast.fun partner API: presales feed in TG Discover (live once BLAST_PARTNER_KEY added)
 - [x] Add SPDX BUSL-1.1 header to every source file (Blast key requirement)
+
+## Telegram trading bot (one by one)
+- [x] Dev wallet alerts (follow/unfollow/following, alert only)
+- [ ] Token sniping
+- [ ] Presale buys (Blast)
+- [ ] Copy trading
