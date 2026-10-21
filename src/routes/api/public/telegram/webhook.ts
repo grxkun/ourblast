@@ -35,6 +35,7 @@ function dashboardKeyboard(handle: string | null): Btn[][] {
     [{ text: "🟢 Buy", callback_data: "m:buy" }, { text: "🔴 Sell", callback_data: "m:sell" }, { text: "🎯 Snipe", callback_data: "m:snipe" }],
     [{ text: "🪞 Copy", callback_data: "m:copy" }, { text: "👀 Alerts", callback_data: "m:alerts" }, { text: "⏱ Limit", callback_data: "m:limit" }],
     [{ text: "🚀 Presales", callback_data: "m:presales" }, { text: "🌉 Bridge", callback_data: "m:bridge" }, { text: "📤 Send", callback_data: "m:send" }],
+    [{ text: "👛 Wallets", callback_data: "m:wallets" }, { text: "📋 Orders", callback_data: "m:orders" }],
     [{ text: "⚡ Open OURBLAST app", web_app: { url: APP_URL } }],
   ];
 }
@@ -49,7 +50,8 @@ const MENU_HOWTO: Record<string, string> = {
   snipe: "🎯 Snipe\nType: snipe 0x…::coin::COIN 5 sui slippage 10%\nFull contract required. You review, then confirm.",
   copy: "🪞 Copy trade\nType: copy 0x… 2 sui max 10 sui slippage 10%\nRuns automatically after you confirm, within your daily max. Stop: stopcopy all",
   alerts: "👀 Wallet alerts\nfollow 0x… name — get alerts on its trades\n/following — your list · unfollow 0x…",
-  limit: "⏱ Limit orders\nNot live yet. Use Buy/Sell for instant trades.",
+  limit: "⏱ Limit orders\nlimit buy 5 sui of 0x…::coin::COIN at 0.0012 — buys when price ≤ target\nlimit sell 50% 0x…::coin::COIN at 0.002 — sells when price ≥ target\nPrices in USD (Aftermath). You review, then confirm. /orders · cancel <id> · cancel all",
+  wallets: "👛 Multi-wallet\n/wallets — list your Sui wallets\nnewwallet sniper — add one (up to 6)\nuse 1,2 · use all — trades run from each selected wallet\nw2 sell 50% 0x… — one wallet only",
   presales: "🚀 Presales\nType: presales — browse live Blast.fun presales\npresale 0x… — details · commit 5 sui to 0x… (confirm first)",
   bridge: "🌉 Bridge\nbridge 0.05 sol to sui · bridge 0.02 bnb to sui · bridge 10 sui to sol\nDeposits never move without your command.",
   send: "📤 Send\nsend 5 sui to name.sui · send 10 $BLAST to @friend\nMultiple: send 22 $HOLMOT, 10 $BLAST to name.sui",
@@ -121,8 +123,27 @@ export const Route = createFileRoute("/api/public/telegram/webhook")({
               });
               return Response.json({ ok: true });
             }
+            if ((key === "wallets" || key === "orders") && h) {
+              await replyWithProgress(chat_id, "Loading", async () => {
+                const { runTgCommand } = await import("@/lib/tg/runCommand.server");
+                return (await runTgCommand(cq.from.id, key, h)).reply;
+              });
+              return Response.json({ ok: true });
+            }
             const how = MENU_HOWTO[key];
             if (how) await tg("sendMessage", { chat_id, text: how, disable_web_page_preview: true, reply_markup: { inline_keyboard: [[{ text: "⬅️ Menu", callback_data: "m:home" }]] } });
+            return Response.json({ ok: true });
+          }
+          if (cq.data === "lp" || cq.data === "wp") {
+            await tg("answerCallbackQuery", { callback_query_id: cq.id, text: cq.data === "lp" ? "Placing…" : "Running…" });
+            const lines = (cq.message.text ?? "").split("\n").reverse();
+            const line = cq.data === "lp" ? lines.find((l) => l.startsWith("place limit ")) : lines.find((l) => /^w[1-6] /.test(l));
+            if (!line) return Response.json({ ok: true });
+            await tg("editMessageReplyMarkup", { chat_id, message_id, reply_markup: { inline_keyboard: [] } });
+            await replyWithProgress(chat_id, cq.data === "lp" ? "Placing order" : "Running", async () => {
+              const { runTgCommand } = await import("@/lib/tg/runCommand.server");
+              return (await runTgCommand(cq.from.id, line)).reply;
+            });
             return Response.json({ ok: true });
           }
           if (cq.data === "cc") {
@@ -187,7 +208,7 @@ export const Route = createFileRoute("/api/public/telegram/webhook")({
           if (action.kind === "ask") {
             await tg("sendMessage", {
               chat_id,
-              text: `Confirm: ${what} from your OurBank wallet?${coinType ? `\n${coinType}` : ""}\nBest route is picked when it runs; the receipt shows the final amount.`,
+              text: `Confirm: ${what} from your selected OurBank wallet(s) (/wallets)?${coinType ? `\n${coinType}` : ""}\nBest route is picked when it runs; the receipt shows the final amount.`,
               reply_markup: { inline_keyboard: [[{ text: "✅ Confirm", callback_data: encodeAction({ ...action, kind: "go" }) }, { text: "Cancel", callback_data: "x" }]] },
             });
             return Response.json({ ok: true });
@@ -243,7 +264,7 @@ export const Route = createFileRoute("/api/public/telegram/webhook")({
           await tg("sendMessage", {
             chat_id: chatId,
             text: isHelp
-              ? "📖 OURBLAST menu\n\nIn this chat:\n• /menu — tap-to-use dashboard\n• /link — bind or check your X account\n• follow 0x… name — dev-wallet alerts · /following · unfollow 0x…\n• copy 0x… 2 sui max 10 sui — copy a wallet's buys/sells with a daily cap · stopcopy all\n• Paste a token address or $TICKER → buy/sell buttons\n• snipe 0x…::coin::COIN 5 sui slippage 10% — review, then confirm\n• presales · presale 0x… · commit 5 sui to 0x… — Blast.fun presale buys, confirm first\n• Type any command: balance · wallet · buy 1 sui of $BLAST · sell 50% $BLAST · bridge 0.05 sol to sui · send 10 $BLAST to name.sui\nBuys and sells always ask you to confirm first.\n\nIn the app:\n🏠 Home · 🔍 Discover · ⚡ Trade · 👛 Wallet" + status
+              ? "📖 OURBLAST menu\n\nIn this chat:\n• /menu — tap-to-use dashboard\n• /link — bind or check your X account\n• follow 0x… name — dev-wallet alerts · /following · unfollow 0x…\n• copy 0x… 2 sui max 10 sui — copy a wallet's buys/sells with a daily cap · stopcopy all\n• Paste a token address or $TICKER → buy/sell buttons\n• snipe 0x…::coin::COIN 5 sui slippage 10% — review, then confirm\n• limit buy 5 sui of 0x…::coin::COIN at 0.0012 · limit sell 50% 0x… at 0.002 · /orders · cancel all\n• /wallets · newwallet name · use 1,2 · use all · w2 sell 50% 0x… — multiple Sui wallets\n• presales · presale 0x… · commit 5 sui to 0x… — Blast.fun presale buys, confirm first\n• Type any command: balance · wallet · buy 1 sui of $BLAST · sell 50% $BLAST · bridge 0.05 sol to sui · send 10 $BLAST to name.sui\nBuys and sells always ask you to confirm first.\n\nIn the app:\n🏠 Home · 🔍 Discover · ⚡ Trade · 👛 Wallet" + status
               : isPrivate ? dashboardText(h) : "gm 💥 Trade Sui tokens from your OurBank wallet — DM me to start.",
             reply_markup: { inline_keyboard: isPrivate && !isHelp ? dashboardKeyboard(h) : [
               ...(isPrivate && !h ? [[{ text: "🔗 Link X account", web_app: { url: LINK_URL } }]] : []),
@@ -253,7 +274,7 @@ export const Route = createFileRoute("/api/public/telegram/webhook")({
           return Response.json({ ok: true });
         }
         // Trading in chat is private-only so group messages never touch anyone's wallet.
-        if (!isPrivate || !msg?.from?.id || (original.startsWith("/") && !/^\/(follow|unfollow|following|copy|stopcopy)\b/i.test(original))) return Response.json({ ok: true });
+        if (!isPrivate || !msg?.from?.id || (original.startsWith("/") && !/^\/(follow|unfollow|following|copy|stopcopy|wallets|orders|newwallet)\b/i.test(original))) return Response.json({ ok: true });
         // Every wallet action requires a bound X account; show the link button instead of a dead end.
         if (!(await linkedHandle())) {
           await tg("sendMessage", { chat_id: chatId, text: "🔗 Link your X account first — trades use your OurBank wallet tied to X.", reply_markup: linkKb });
@@ -379,6 +400,32 @@ export const Route = createFileRoute("/api/public/telegram/webhook")({
             text: `🎯 Snipe review\nToken: $${snipe.symbol}\n${snipe.coinType}\nSpend: ${snipe.amount} SUI from your OurBank wallet\nMax slippage: ${snipe.slippage}% — the trade fails on-chain (nothing spent but gas) if the fill is worse.\n\nNothing is sent until you tap Confirm.`,
             disable_web_page_preview: true,
             reply_markup: { inline_keyboard: [[{ text: "✅ Confirm snipe", callback_data: encodeAction(a) }, { text: "Cancel", callback_data: "x" }]] },
+          });
+          return Response.json({ ok: true });
+        }
+
+        // Limit orders: review card first; the order is only stored after Confirm.
+        const { parseLimitCommand, limitLine } = await import("@/lib/tg/limitOrder");
+        const lc = parseLimitCommand(original);
+        if (lc?.op === "review" || lc?.op === "place") {
+          await tg("sendChatAction", { chat_id: chatId, action: "typing" });
+          const [{ limitReview }, { listTgWallets }, h] = await Promise.all([import("@/lib/tg/limitOrder.server"), import("@/lib/tg/tgWallets.server"), linkedHandle()]);
+          const { selected } = await listTgWallets(msg.from.id, h!);
+          await tg("sendMessage", {
+            chat_id: chatId, disable_web_page_preview: true,
+            text: `${await limitReview(lc, selected.length)}\nNothing is placed until you tap Confirm.\n\n${limitLine(lc)}`,
+            reply_markup: { inline_keyboard: [[{ text: "✅ Place order", callback_data: "lp" }, { text: "Cancel", callback_data: "x" }]] },
+          });
+          return Response.json({ ok: true });
+        }
+        // One-wallet trades ("w2 sell 50% 0x…") also confirm first.
+        const { parseWalletPrefix } = await import("@/lib/tg/multiWallet");
+        const wp = parseWalletPrefix(original);
+        if (wp) {
+          await tg("sendMessage", {
+            chat_id: chatId, disable_web_page_preview: true,
+            text: `Confirm on wallet w${wp.slot} only:\n${wp.rest}\nNothing is sent until you tap Confirm.\n\nw${wp.slot} ${wp.rest}`,
+            reply_markup: { inline_keyboard: [[{ text: "✅ Confirm", callback_data: "wp" }, { text: "Cancel", callback_data: "x" }]] },
           });
           return Response.json({ ok: true });
         }

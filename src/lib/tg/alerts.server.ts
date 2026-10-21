@@ -89,7 +89,7 @@ export async function maintainWalletFollows() {
           cmd = `buy ${amt} sui of ${lead.coinType} slippage ${f.copy_slippage ?? 10}%`;
         } else cmd = `sell 100% ${lead.coinType}`;
         const { runTgCommand } = await import("./runCommand.server");
-        const out = await runTgCommand(f.tg_user_id, cmd).then((x) => x.reply).catch((e) => `Failed: ${(e as Error).message}. Nothing was sent unless a transaction link is shown.`);
+        const out = await runTgCommand(f.tg_user_id, cmd, null, { mainOnly: true }).then((x) => x.reply).catch((e) => `Failed: ${(e as Error).message}. Nothing was sent unless a transaction link is shown.`);
         await say(f.tg_user_id, `🪞 Copy ${lead.side} of $${lead.coinType.split("::").pop()}\n${out}`);
       }
     }
