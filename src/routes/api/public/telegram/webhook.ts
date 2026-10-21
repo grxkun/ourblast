@@ -3,6 +3,7 @@ import { createFileRoute } from "@tanstack/react-router";
 
 import { MAX_FOLLOWS, parseFollowCommand } from "@/lib/tg/walletWatch";
 import { actionCoinType, actionCommand, BUY_PRESETS, decodeAction, detectToken, encodeAction, parseSnipeCommand, SELL_PRESETS } from "@/lib/tg/chatTrade";
+import { decodePresaleAction, encodePresaleAction, parsePresaleCommand, presaleIdFromText } from "@/lib/tg/presale";
 
 const APP_URL = "https://ourblast.xyz/tg";
 const LINK_URL = "https://ourblast.xyz/tg?tab=wallet";
@@ -52,6 +53,31 @@ export const Route = createFileRoute("/api/public/telegram/webhook")({
           threadId = (cq.message as { message_thread_id?: number }).message_thread_id;
           const chat_id = cq.message.chat.id;
           const message_id = cq.message.message_id;
+          const pAct = decodePresaleAction(cq.data ?? "");
+          const presaleId = pAct ? presaleIdFromText(cq.message.text ?? "") : null;
+          if (pAct) {
+            await tg("answerCallbackQuery", { callback_query_id: cq.id, text: pAct.kind === "go" ? "Committing…" : undefined });
+            if (!presaleId) return Response.json({ ok: true });
+            const card = (cq.message.text ?? "").split("\n\n").slice(0, -1).join("\n\n");
+            if (pAct.kind === "ask") {
+              await tg("sendMessage", {
+                chat_id, text: `${card}\n\nCommit: ${pAct.amount} SUI from your OurBank wallet.\nNothing is sent until you tap Confirm.`, disable_web_page_preview: true,
+                reply_markup: { inline_keyboard: [[{ text: "✅ Confirm commit", callback_data: encodePresaleAction("go", pAct.amount) }, { text: "Cancel", callback_data: "x" }]] },
+              });
+              return Response.json({ ok: true });
+            }
+            const { supabaseAdmin: db } = await import("@/integrations/supabase/client.server");
+            const { data } = await db.from("tg_users").select("x_username").eq("tg_user_id", cq.from.id).maybeSingle();
+            if (!data?.x_username) {
+              await tg("sendMessage", { chat_id, text: "🔗 Link your X account first.", reply_markup: { inline_keyboard: [[{ text: "🔗 Link X account", web_app: { url: LINK_URL } }]] } });
+              return Response.json({ ok: true });
+            }
+            await tg("editMessageText", { chat_id, message_id, text: `⏳ Committing ${pAct.amount} SUI…` });
+            const { commitPresaleForHandle } = await import("@/lib/tg/presale.server");
+            const reply = await commitPresaleForHandle(data.x_username, presaleId, pAct.amount).catch((e) => `Commit failed: ${(e as Error).message}`);
+            await tg("sendMessage", { chat_id, text: reply, disable_web_page_preview: true });
+            return Response.json({ ok: true });
+          }
           const action = decodeAction(cq.data ?? "");
           await tg("answerCallbackQuery", { callback_query_id: cq.id, text: action?.kind === "go" ? "Running…" : undefined });
           if (!action) return Response.json({ ok: true });
@@ -156,6 +182,52 @@ export const Route = createFileRoute("/api/public/telegram/webhook")({
             }
           }
           await tg("sendMessage", { chat_id: chatId, text: out, disable_web_page_preview: true });
+          return Response.json({ ok: true });
+        }
+
+        // Presales: list, view a sale, or review a commit — never commits without Confirm.
+        const pre = isPrivate ? parsePresaleCommand(original) : null;
+        if (pre) {
+          if (pre.kind === "error") {
+            await tg("sendMessage", { chat_id: chatId, text: pre.error });
+            return Response.json({ ok: true });
+          }
+          if (pre.kind === "list") {
+            const { getBlastPresales } = await import("@/lib/blast/blast.server");
+            const feed = await getBlastPresales();
+            const live = feed.presales.slice(0, 8);
+            const out = !feed.ok
+              ? feed.reason === "no_key"
+                ? "🚀 Blast.fun presales are coming to this chat soon. For now browse them at https://blast.fun\nAlready have a sale ID? Send: presale 0x…"
+                : "Blast.fun presales are unavailable right now. Try again shortly."
+              : live.length === 0
+                ? "No presales listed right now."
+                : "🚀 Blast.fun presales\n\n" + live.map((p) => `$${p.symbol ?? "?"}${p.status ? ` · ${p.status}` : ""}${p.raised || p.target ? ` · ${p.raised ?? "?"}/${p.target ?? "?"} SUI` : ""}\npresale ${p.id}`).join("\n\n") + "\n\nSend a line above to view a sale.";
+            await tg("sendMessage", { chat_id: chatId, text: out, disable_web_page_preview: true });
+            return Response.json({ ok: true });
+          }
+          const { loadVerifiedPresale, presaleCard } = await import("@/lib/tg/presale.server");
+          const v = await loadVerifiedPresale(pre.id);
+          if (!v.ok) {
+            await tg("sendMessage", { chat_id: chatId, text: v.error });
+            return Response.json({ ok: true });
+          }
+          const card = presaleCard(v.sale);
+          if (pre.kind === "view") {
+            await tg("sendMessage", {
+              chat_id: chatId, text: `${card}\n\nPick an amount — you'll confirm before anything moves.`, disable_web_page_preview: true,
+              reply_markup: { inline_keyboard: [["1", "5", "10"].map((a) => ({ text: `Commit ${a} SUI`, callback_data: encodePresaleAction("ask", a) }))] },
+            });
+            return Response.json({ ok: true });
+          }
+          if (!(await linkedHandle())) {
+            await tg("sendMessage", { chat_id: chatId, text: "🔗 Link your X account first so the commit uses your OurBank wallet.", reply_markup: linkKb });
+            return Response.json({ ok: true });
+          }
+          await tg("sendMessage", {
+            chat_id: chatId, text: `${card}\n\nCommit: ${pre.amount} SUI from your OurBank wallet.\nNothing is sent until you tap Confirm.`, disable_web_page_preview: true,
+            reply_markup: { inline_keyboard: [[{ text: "✅ Confirm commit", callback_data: encodePresaleAction("go", pre.amount) }, { text: "Cancel", callback_data: "x" }]] },
+          });
           return Response.json({ ok: true });
         }
 
