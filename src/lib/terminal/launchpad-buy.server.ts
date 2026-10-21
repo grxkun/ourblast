@@ -135,9 +135,10 @@ export async function buildLaunchpadBuySwap(
   sender: string,
   plan: LaunchpadBuyPlan,
   amountIn: bigint,
+  minOut: bigint = 0n,
 ): Promise<LaunchpadBuiltSwap | null> {
-  if (plan.pad === "suipump") return buildSuipumpBuy(sender, plan, amountIn);
-  if (plan.pad === "blastfun") return buildBlastfunBuy(sender, plan, amountIn);
+  if (plan.pad === "suipump") return buildSuipumpBuy(sender, plan, amountIn, minOut);
+  if (plan.pad === "blastfun") return buildBlastfunBuy(sender, plan, amountIn, minOut);
   return null;
 }
 
@@ -153,6 +154,7 @@ async function buildSuipumpBuy(
   sender: string,
   plan: LaunchpadBuyPlan,
   amountIn: bigint,
+  minOut: bigint = 0n,
 ): Promise<LaunchpadBuiltSwap> {
   const curveRef = await sharedRef(plan.poolObjectId);
   const priceConfigRef = await sharedRef(plan.priceConfigId!);
@@ -166,7 +168,7 @@ async function buildSuipumpBuy(
     arguments: [
       tx.sharedObjectRef({ ...curveRef, mutable: true }),
       coinIn,
-      tx.pure.u64(0n),
+      tx.pure.u64(minOut),
       tx.pure.option("address", null),
       tx.sharedObjectRef({ ...priceConfigRef, mutable: false }),
       tx.sharedObjectRef({ objectId: CLOCK, initialSharedVersion: "1", mutable: false }),
@@ -181,6 +183,7 @@ async function buildBlastfunBuy(
   sender: string,
   plan: LaunchpadBuyPlan,
   amountIn: bigint,
+  minOut: bigint = 0n,
 ): Promise<LaunchpadBuiltSwap> {
   const poolRef = await sharedRef(plan.poolObjectId);
   const tx = new Transaction();
@@ -198,7 +201,7 @@ async function buildBlastfunBuy(
       coinIn,
       tx.pure.option("address", null),
       tx.pure.option("vector<u8>", null),
-      tx.pure.u64(0n),
+      tx.pure.u64(minOut),
       versions,
     ],
   });

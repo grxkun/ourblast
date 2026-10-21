@@ -22,6 +22,29 @@ const SUI = normalizeStructTag("0x2::sui::SUI");
 // 5%: memecoin pools on Sui move faster than 1% between quote and fill, and
 // Bluefin's quote API runs 2-3% ahead of what its pool can actually pay.
 const SLIPPAGE = 0.05;
+
+/** Dry-runs a buy and returns how much `coinType` the sender would receive, or null. */
+async function simulateReceived(tx: Transaction, sender: string, coinType: string): Promise<bigint | null> {
+  try {
+    const { referenceGasPrice } = await import("./suipump-launch.server");
+    tx.setSender(sender);
+    tx.setGasPrice(await referenceGasPrice());
+    tx.setGasBudget(SWAP_GAS_BUDGET);
+    const client = new SuiJsonRpcClient({ url: BUILD_RPC, network: "mainnet" });
+    const bytes = await withTimeout(tx.build({ client }), BUILD_TIMEOUT_MS, "Simulate build");
+    const dry = await client.dryRunTransactionBlock({ transactionBlock: bytes });
+    if (dry.effects.status.status !== "success") return null;
+    const want = normalizeStructTag(coinType);
+    const change = dry.balanceChanges.find((c) => {
+      const owner = c.owner as { AddressOwner?: string };
+      return owner.AddressOwner && normalizeSuiAddress(owner.AddressOwner) === normalizeSuiAddress(sender) && normalizeStructTag(c.coinType) === want;
+    });
+    const amt = change ? BigInt(change.amount) : 0n;
+    return amt > 0n ? amt : null;
+  } catch {
+    return null;
+  }
+}
 // 0.25% router fee on Aftermath swaps, sent to the community treasury.
 const AFTERMATH_ROUTER_FEE = 0.0025;
 const SWAP_GAS_BUDGET = 50_000_000n; // 0.05 SUI
@@ -93,6 +116,7 @@ export async function executeBankSwap(
   coinIn: string,
   coinOut: string,
   amountIn: bigint,
+  slippage: number = SLIPPAGE,
 ): Promise<SwapResult> {
   const { gasCoins, referenceGasPrice, withGas, signAndExecute, rpc } = await import("./suipump-launch.server");
   const signer = await bankSigner(wallet);
@@ -104,7 +128,7 @@ export async function executeBankSwap(
   if (amountIn <= 0n) return { ok: false, error: "Amount is too small." };
 
   const attempt = async (skipBluefin: boolean, skipAftermath = false, autoGas = false) => {
-    const picked = await pickSwapRoute(sender, inType, outType, amountIn, skipBluefin, skipAftermath);
+    const picked = await pickSwapRoute(sender, inType, outType, amountIn, skipBluefin, skipAftermath, slippage);
     if (!picked.ok) return { picked, executed: null };
     const built = picked.built;
     const gas = await gasCoins(sender);
@@ -187,14 +211,23 @@ function friendlySwapError(error: string): string {
 }
 
 /** Bonding-curve first (unbonded tokens), then Aftermath vs Cetus, then Bluefin. */
-export async function pickSwapRoute(sender: string, inType: string, outType: string, amountIn: bigint, skipBluefin = false, skipAftermath = false): Promise<{ ok: true; built: BuiltSwap } | { ok: false; error: string }> {
+export async function pickSwapRoute(sender: string, inType: string, outType: string, amountIn: bigint, skipBluefin = false, skipAftermath = false, slippage: number = SLIPPAGE): Promise<{ ok: true; built: BuiltSwap } | { ok: false; error: string }> {
   // Unbonded launchpad tokens live on a bonding curve, not a DEX pool, so the
   // aggregators have no route for them. Buy them straight from the launchpad.
   if (inType === SUI) {
     try {
       const plan = await withTimeout(resolveLaunchpadBuy(outType), LAUNCHPAD_LOOKUP_MS, "Launchpad lookup");
       if (plan) {
-        const built = await withTimeout(buildLaunchpadBuySwap(sender, plan, amountIn), BUILD_TIMEOUT_MS, "Launchpad build");
+        let built = await withTimeout(buildLaunchpadBuySwap(sender, plan, amountIn), BUILD_TIMEOUT_MS, "Launchpad build");
+        // Custom slippage on a curve: simulate the buy for the real expected
+        // amount, then rebuild with min_out so the chain rejects a worse fill.
+        if (built && slippage !== SLIPPAGE) {
+          const expected = await simulateReceived(built.tx, sender, outType);
+          if (!expected) return { ok: false, error: "Couldn't simulate the launch-curve buy to apply your slippage limit. Nothing was spent." };
+          const minOut = (expected * BigInt(Math.floor((1 - slippage) * 10_000))) / 10_000n;
+          built = await withTimeout(buildLaunchpadBuySwap(sender, plan, amountIn, minOut), BUILD_TIMEOUT_MS, "Launchpad build");
+          if (built) built.quoted = expected;
+        }
         if (built) return { ok: true, built: { ...built, venue: built.venue as BuiltSwap["venue"] } };
       }
     } catch {
@@ -207,15 +240,15 @@ export async function pickSwapRoute(sender: string, inType: string, outType: str
     // Aggregators are the main route: Aftermath and Cetus (CLMM + other Sui
     // pools) race, first valid route wins. Bluefin's own pool is the fallback.
     built = await Promise.any([
-      skipAftermath ? Promise.reject(new Error("skip")) : buildAftermathSwap(sender, inType, outType, amountIn),
+      skipAftermath ? Promise.reject(new Error("skip")) : buildAftermathSwap(sender, inType, outType, amountIn, slippage),
       (async () => {
         if (!skipAftermath) await new Promise((resolve) => setTimeout(resolve, CETUS_HEAD_START_MS));
-        const result = await buildCetusSwap(sender, inType, outType, amountIn);
+        const result = await buildCetusSwap(sender, inType, outType, amountIn, slippage);
         if (!result.ok) throw new Error(result.error);
         return { ...result, venue: "Cetus" as const };
       })(),
     ]).catch((aggregate: unknown) =>
-      skipBluefin ? Promise.reject(aggregate) : buildBluefinSwap(sender, inType, outType, amountIn).catch((bluefinError: unknown) => {
+      skipBluefin ? Promise.reject(aggregate) : buildBluefinSwap(sender, inType, outType, amountIn, slippage).catch((bluefinError: unknown) => {
         const prior = aggregate instanceof AggregateError ? aggregate.errors : [aggregate];
         throw new AggregateError([...prior, bluefinError], "all routes failed");
       }),
@@ -275,7 +308,7 @@ export async function prepareSwapForAddress(
   }
 }
 
-async function buildBluefinSwap(sender: string, inType: string, outType: string, amountIn: bigint): Promise<BuiltSwap> {
+async function buildBluefinSwap(sender: string, inType: string, outType: string, amountIn: bigint, slippage: number = SLIPPAGE): Promise<BuiltSwap> {
   const quote = await withTimeout(
     getBluefinQuote(
       { tokenIn: inType, tokenOut: outType, amountIn: amountIn.toString(), sources: ["bluefin"] },
@@ -320,7 +353,7 @@ async function buildBluefinSwap(sender: string, inType: string, outType: string,
     buildBluefinTx({
       quoteResponse: quote,
       accountAddress: sender,
-      slippage: SLIPPAGE,
+      slippage,
       commission: { partner: sender, commissionBps: 0 },
       extendTx: { tx, coinIn },
     }),
@@ -332,7 +365,7 @@ async function buildBluefinSwap(sender: string, inType: string, outType: string,
   return { tx: built.tx, quoted, venue: "Bluefin" };
 }
 
-async function buildAftermathSwap(sender: string, inType: string, outType: string, amountIn: bigint): Promise<BuiltSwap> {
+async function buildAftermathSwap(sender: string, inType: string, outType: string, amountIn: bigint, slippage: number = SLIPPAGE): Promise<BuiltSwap> {
   const sdk = await Aftermath.create({ network: "MAINNET" });
   const router = sdk.Router();
   let lastError: unknown = new Error("No Aftermath route.");
@@ -359,7 +392,7 @@ async function buildAftermathSwap(sender: string, inType: string, outType: strin
       const quoted = BigInt(route.coinOut.amount);
       if (quoted <= 0n) throw new Error("No Aftermath liquidity.");
       const tx = await withTimeout(
-        router.getTransactionForCompleteTradeRoute({ walletAddress: sender, completeRoute: route, slippage: SLIPPAGE }),
+        router.getTransactionForCompleteTradeRoute({ walletAddress: sender, completeRoute: route, slippage }),
         AFTERMATH_TIMEOUT_MS,
         "Aftermath transaction",
       );
@@ -382,6 +415,7 @@ async function buildCetusSwap(
   inType: string,
   outType: string,
   amountIn: bigint,
+  slippage: number = SLIPPAGE,
 ): Promise<{ ok: true; tx: Transaction; quoted: bigint } | { ok: false; error: string }> {
   try {
     const client = new AggregatorClient({ signer: sender, env: Env.Mainnet });
@@ -398,7 +432,7 @@ async function buildCetusSwap(
     if (quoted <= 0n) return { ok: false, error: "No liquidity on Cetus." };
     const tx = new Transaction();
     tx.setSender(sender);
-    await withTimeout(client.fastRouterSwap({ router, slippage: SLIPPAGE, txb: tx }), AFTERMATH_TIMEOUT_MS, "Cetus transaction");
+    await withTimeout(client.fastRouterSwap({ router, slippage, txb: tx }), AFTERMATH_TIMEOUT_MS, "Cetus transaction");
     return { ok: true, tx, quoted };
   } catch (error) {
     console.error("cetus route failed", error);
