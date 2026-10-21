@@ -124,3 +124,48 @@ export const tgBlastPresales = createServerFn({ method: "GET" }).handler(async (
   const { getBlastPresales } = await import("@/lib/blast/blast.server");
   return getBlastPresales();
 });
+
+async function linkedHandle(initData: string) {
+  const { user, db } = await authed(initData);
+  const { data: row } = await db.from("tg_users").select("x_username").eq("tg_user_id", user.id).maybeSingle();
+  if (!row?.x_username) throw new Error("Link your X account first.");
+  return { user, handle: row.x_username };
+}
+
+/** Multi-wallet manager: lists the account's Sui wallets with SUI balance and which ones trade. */
+export const tgListWallets = createServerFn({ method: "POST" })
+  .inputValidator((d) => z.object({ initData: z.string().min(1).max(4096) }).parse(d))
+  .handler(async ({ data }) => {
+    const { user, handle } = await linkedHandle(data.initData);
+    const { listTgWallets } = await import("./tgWallets.server");
+    const { ensureBankWallet, bankBalances } = await import("@/lib/terminal/bank-wallet.server");
+    const { wallets, selected } = await listTgWallets(user.id, handle);
+    const rows = await Promise.all(wallets.map(async (w) => {
+      const bw = await ensureBankWallet(w.handle, null);
+      const bal = await bankBalances(bw.address).catch(() => null);
+      const s = bal?.find((b) => /^0x0*2::sui::SUI$/.test(b.coinType));
+      return { slot: w.slot, label: w.label, address: bw.address, sui: bal ? Number(s?.balance ?? 0) / 1e9 : null };
+    }));
+    return { wallets: rows, selected };
+  });
+
+export const tgCreateWallet = createServerFn({ method: "POST" })
+  .inputValidator((d) => z.object({ initData: z.string().min(1).max(4096), label: z.string().max(20).nullable() }).parse(d))
+  .handler(async ({ data }) => {
+    const { user } = await linkedHandle(data.initData);
+    const { createTgWallet } = await import("./tgWallets.server");
+    const label = data.label?.trim().replace(/[^\w .-]/g, "").slice(0, 20) || null;
+    const r = await createTgWallet(user.id, label);
+    if (!r.ok) throw new Error(r.error);
+    return { slot: r.wallet.slot, address: r.address };
+  });
+
+export const tgSetTradeSlots = createServerFn({ method: "POST" })
+  .inputValidator((d) => z.object({ initData: z.string().min(1).max(4096), slots: z.array(z.number().int().min(1).max(6)).min(1).max(6) }).parse(d))
+  .handler(async ({ data }) => {
+    const { user, handle } = await linkedHandle(data.initData);
+    const { setTradeSlots } = await import("./tgWallets.server");
+    const r = await setTradeSlots(user.id, handle, [...new Set(data.slots)]);
+    if (!r.ok) throw new Error(r.error ?? "Couldn't save.");
+    return { selected: r.selected };
+  });
