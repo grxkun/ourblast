@@ -25,3 +25,19 @@ describe("buildSwapCommand", () => {
     expect(buildSwapCommand("SUI", "BLAST", "all")).toBeNull();
   });
 });
+
+describe("contract-backed Mini App swaps", () => {
+  const ca = "0x" + "b".repeat(64) + "::groklet::GROKLET";
+  it("preserves the selected non-BLAST contract and passes the buy safety parser", () => {
+    const cmd = buildSwapCommand("SUI", ca, "1");
+    expect(cmd).toBe(`buy 1 sui of ${ca}`);
+    expect(parseSwapCommand(cmd ?? "")).toMatchObject({ side: "buy", token: ca, isCoinType: true });
+  });
+  it("preserves case-sensitive contract modules", () => {
+    const mixed = "0x2a::MixedModule::MixedCoin";
+    expect(buildTradeCommand("buy", mixed, "5")).toBe(`buy 5 sui of ${mixed}`);
+  });
+  it("sells the exact selected contract", () => {
+    expect(buildSwapCommand(ca, "SUI", "all")).toBe(`sell all ${ca}`);
+  });
+});
