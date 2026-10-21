@@ -10,7 +10,7 @@ import { toast } from "sonner";
 
 import { buildSwapCommand, normalizeSwapToken, swapTokenSymbol } from "@/lib/tg/tradeCommand";
 import { listPublicLaunches } from "@/lib/terminal/launch-status.functions";
-import { tgBlastPresales, tgCreateWallet, tgGetBankWallet, tgListWallets, tgSetTradeSlots, tgLinkX, tgRunCommand, tgSession, tgToggleWatch, tgUnlinkX } from "@/lib/tg/tg.functions";
+import { tgBlastPresales, tgCreateWallet, tgExportWalletKey, tgGetBankWallet, tgListWallets, tgSetTradeSlots, tgLinkX, tgRunCommand, tgSession, tgToggleWatch, tgUnlinkX } from "@/lib/tg/tg.functions";
 
 const launchesQuery = queryOptions({
   queryKey: ["public-launches"],
@@ -886,6 +886,14 @@ function WalletManager({ initData }: { initData: string }) {
   const list = useServerFn(tgListWallets);
   const create = useServerFn(tgCreateWallet);
   const setSlots = useServerFn(tgSetTradeSlots);
+  const exportKey = useServerFn(tgExportWalletKey);
+  const [bk, setBk] = useState<{ slot: number; ack: boolean; key: string | null; left: number } | null>(null);
+  useEffect(() => {
+    if (!bk?.key) return;
+    if (bk.left <= 0) { setBk(null); void navigator.clipboard.writeText("").catch(() => {}); return; }
+    const t = setTimeout(() => setBk((b) => (b ? { ...b, left: b.left - 1 } : b)), 1000);
+    return () => clearTimeout(t);
+  }, [bk]);
   const [d, setD] = useState<Awaited<ReturnType<typeof tgListWallets>> | null>(null);
   const [busy, setBusy] = useState(false);
   const [name, setName] = useState("");
@@ -921,6 +929,7 @@ function WalletManager({ initData }: { initData: string }) {
               <div className="mt-1 flex items-center gap-2 text-xs text-muted-foreground">
                 <span className="truncate font-mono">{w.address}</span>
                 <button aria-label="Copy address" onClick={() => { void navigator.clipboard.writeText(w.address); setMsg(`w${w.slot} address copied.`); }}><Copy className="h-3.5 w-3.5" /></button>
+                <button onClick={() => setBk({ slot: w.slot, ack: false, key: null, left: 0 })} className="ml-auto shrink-0 rounded-lg border border-border px-2 py-0.5 text-foreground">Backup</button>
               </div>
             </li>
           );
@@ -933,6 +942,35 @@ function WalletManager({ initData }: { initData: string }) {
         </div>
       )}
       {msg && <p className="mt-2 text-xs text-muted-foreground">{msg}</p>}
+      {bk && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 p-4" onClick={() => setBk(null)}>
+          <div className="w-full max-w-sm rounded-2xl border border-border bg-surface p-4 text-sm" onClick={(e) => e.stopPropagation()}>
+            <b className="font-display text-lg">Back up wallet w{bk.slot}</b>
+            <p className="mt-1 text-xs text-muted-foreground">Import this key into Slush, Suiet or any Sui wallet. Anyone with it controls this wallet. Never share it — not even with OURBLAST support.</p>
+            {bk.key ? (
+              <>
+                <p className="mt-3 break-all rounded-lg border border-border bg-card p-2 font-mono text-xs">{bk.key}</p>
+                <p className="mt-1 text-xs text-muted-foreground">Hides in {bk.left}s.</p>
+                <button onClick={() => { void navigator.clipboard.writeText(bk.key!); setMsg("Key copied — clipboard clears when it hides."); }} className="mt-2 rounded-xl bg-primary px-3 py-2 text-sm font-semibold text-primary-foreground">Copy key</button>
+              </>
+            ) : (
+              <>
+                <label className="mt-3 flex items-start gap-2 text-xs">
+                  <input type="checkbox" checked={bk.ack} onChange={(e) => setBk({ ...bk, ack: e.target.checked })} />
+                  I understand anyone with this key can take the funds.
+                </label>
+                <button disabled={!bk.ack || busy} onClick={async () => {
+                  setBusy(true);
+                  try { const r = await exportKey({ data: { initData, slot: bk.slot } }); setBk({ ...bk, key: r.secretKey, left: 60 }); }
+                  catch (e) { setMsg((e as Error).message); setBk(null); }
+                  finally { setBusy(false); }
+                }} className="mt-3 rounded-xl bg-primary px-3 py-2 text-sm font-semibold text-primary-foreground disabled:opacity-50">{busy ? "Revealing…" : "Reveal key"}</button>
+              </>
+            )}
+            <button onClick={() => setBk(null)} className="ml-2 mt-3 rounded-xl border border-border px-3 py-2 text-sm">Close</button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
