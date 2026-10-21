@@ -15,3 +15,5 @@
 - [x] BNB → SOL → SUI fallback route via Relay when 1Click refuses BNB
 - [x] Bridge SUI → SOL (terminal + X); SUI → ETH/BNB blocked by provider
 - [x] TG mini app: mockup layout (home hero, discover cards, token detail, wallet balance card) in existing OURBLAST colors
+- [ ] Blast.fun partner API: presales feed in TG Discover (live once BLAST_PARTNER_KEY added)
+- [ ] Add SPDX BUSL-1.1 header to every source file (Blast key requirement)
