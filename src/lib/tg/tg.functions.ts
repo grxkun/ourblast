@@ -188,3 +188,126 @@ export const tgExportWalletKey = createServerFn({ method: "POST" })
     const { decryptConnectionKey } = await import("@/lib/connection-key.server");
     return { address: row.address, secretKey: decryptConnectionKey(row.secret_ciphertext) };
   });
+
+const SUI_T = "0x0000000000000000000000000000000000000000000000000000000000000002::sui::SUI";
+const GAS_KEEP = 20_000_000n; // 0.02 SUI left behind for network fees
+
+function toRaw(amount: string, decimals: number): bigint {
+  const [w, f = ""] = amount.trim().split(".");
+  if (!/^\d+$/.test(w || "0") || !/^\d*$/.test(f)) throw new Error("Enter a valid amount.");
+  return BigInt(w || "0") * 10n ** BigInt(decimals) + BigInt((f + "0".repeat(decimals)).slice(0, decimals) || "0");
+}
+
+async function walletCtx(initData: string) {
+  const { user, handle } = await linkedHandle(initData);
+  const { listTgWallets } = await import("./tgWallets.server");
+  const bw = await import("@/lib/terminal/bank-wallet.server");
+  const { rpc } = await import("@/lib/terminal/suipump-launch.server");
+  const { wallets } = await listTgWallets(user.id, handle);
+  const bySlot = async (slot: number) => {
+    const w = wallets.find((x) => x.slot === slot);
+    if (!w) throw new Error(`You don't have wallet ${slot}.`);
+    const e = await bw.ensureBankWallet(w.handle, null);
+    return { ...w, address: e.address };
+  };
+  const tokens = async (address: string) => {
+    const raw = await bw.bankBalances(address).catch(() => []);
+    return Promise.all(raw.map(async (b) => {
+      const meta = b.coinType === SUI_T ? { symbol: "SUI", decimals: 9 } : await rpc<{ symbol: string; decimals: number } | null>("suix_getCoinMetadata", [b.coinType]).catch(() => null);
+      const decimals = meta?.decimals ?? 9;
+      return { coinType: b.coinType, symbol: meta?.symbol ?? b.coinType.split("::").at(-1)!, decimals, raw: b.balance, amount: Number(b.balance) / 10 ** decimals };
+    }));
+  };
+  return { wallets, bySlot, tokens, bw };
+}
+
+/** Every token one wallet holds, for the transfer picker. */
+export const tgWalletTokens = createServerFn({ method: "POST" })
+  .inputValidator((d) => z.object({ initData: z.string().min(1).max(4096), slot: z.number().int().min(1).max(6) }).parse(d))
+  .handler(async ({ data }) => {
+    const c = await walletCtx(data.initData);
+    const w = await c.bySlot(data.slot);
+    const t = await c.tokens(w.address);
+    return { tokens: t.map(({ raw, ...r }) => ({ ...r, raw: raw.toString() })).sort((a, b) => (a.coinType === SUI_T ? -1 : b.coinType === SUI_T ? 1 : b.amount - a.amount)) };
+  });
+
+/**
+ * Moves one token from a wallet to other wallets (distribute) or to an external Sui address (withdraw).
+ * Each target gets `amount`; "max" (single target only) sends all, keeping 0.02 SUI for fees.
+ */
+export const tgWalletTransfer = createServerFn({ method: "POST" })
+  .inputValidator((d) => z.object({
+    initData: z.string().min(1).max(4096),
+    fromSlot: z.number().int().min(1).max(6),
+    coinType: z.string().min(3).max(300),
+    amount: z.string().max(40),
+    toSlots: z.array(z.number().int().min(1).max(6)).max(5).default([]),
+    toAddress: z.string().regex(/^0x[0-9a-fA-F]{1,64}$/).nullable().default(null),
+  }).parse(d))
+  .handler(async ({ data }) => {
+    const c = await walletCtx(data.initData);
+    const from = await c.bySlot(data.fromSlot);
+    const targets: { label: string; address: string }[] = [];
+    for (const s of new Set(data.toSlots)) {
+      if (s === data.fromSlot) continue;
+      const t = await c.bySlot(s);
+      targets.push({ label: `w${s}`, address: t.address });
+    }
+    if (data.toAddress) targets.push({ label: `${data.toAddress.slice(0, 8)}…${data.toAddress.slice(-4)}`, address: data.toAddress });
+    if (!targets.length) throw new Error("Pick at least one destination.");
+    const tok = (await c.tokens(from.address)).find((t) => t.coinType === data.coinType);
+    if (!tok) throw new Error("That wallet doesn't hold this token.");
+    const suiBal = tok.coinType === SUI_T ? tok.raw : ((await c.bw.bankBalances(from.address)).find((b) => b.coinType === SUI_T)?.balance ?? 0n);
+    let each: bigint | null;
+    if (data.amount === "max") {
+      if (targets.length > 1) throw new Error("Max works with one destination only.");
+      each = tok.coinType === SUI_T ? tok.raw - GAS_KEEP : null;
+      if (each !== null && each <= 0n) throw new Error("Not enough SUI after keeping 0.02 for fees.");
+    } else {
+      each = toRaw(data.amount, tok.decimals);
+      if (each <= 0n) throw new Error("Amount must be above 0.");
+      const total = each * BigInt(targets.length);
+      const need = tok.coinType === SUI_T ? total + GAS_KEEP * BigInt(targets.length) : total;
+      if ((tok.coinType === SUI_T ? suiBal : tok.raw) < need) throw new Error(`w${from.slot} doesn't have enough ${tok.symbol}${tok.coinType === SUI_T ? " (incl. fees)" : ""}.`);
+    }
+    if (suiBal < GAS_KEEP / 2n) throw new Error(`w${from.slot} needs a little SUI for network fees.`);
+    const row = await c.bw.findBankWallet(from.handle);
+    if (!row) throw new Error("Wallet not found.");
+    const results: { to: string; ok: boolean; digest?: string; error?: string }[] = [];
+    for (const t of targets) {
+      const r = await c.bw.sendFromBankWallet(row, tok.coinType, each, t.address);
+      results.push(r.ok ? { to: t.label, ok: true, digest: r.digest } : { to: t.label, ok: false, error: r.error });
+      if (!r.ok) break; // stop on the first failure so nothing unexpected follows
+    }
+    return { symbol: tok.symbol, results };
+  });
+
+/** Sweeps every token (or only SUI) from all other wallets into one. Tokens first, then SUI minus a fee reserve. */
+export const tgConsolidate = createServerFn({ method: "POST" })
+  .inputValidator((d) => z.object({ initData: z.string().min(1).max(4096), toSlot: z.number().int().min(1).max(6), only: z.enum(["sui", "all"]) }).parse(d))
+  .handler(async ({ data }) => {
+    const c = await walletCtx(data.initData);
+    const dest = await c.bySlot(data.toSlot);
+    const results: { from: string; symbol: string; ok: boolean; digest?: string; error?: string }[] = [];
+    for (const w of c.wallets) {
+      if (w.slot === data.toSlot) continue;
+      const src = await c.bySlot(w.slot);
+      const toks = await c.tokens(src.address);
+      const sui = toks.find((t) => t.coinType === SUI_T);
+      if (!sui || sui.raw <= GAS_KEEP) { if (toks.length) results.push({ from: `w${w.slot}`, symbol: "—", ok: false, error: "Not enough SUI for fees" }); continue; }
+      const row = await c.bw.findBankWallet(src.handle);
+      if (!row) continue;
+      if (data.only === "all") {
+        for (const t of toks.filter((x) => x.coinType !== SUI_T)) {
+          const r = await c.bw.sendFromBankWallet(row, t.coinType, null, dest.address);
+          results.push({ from: `w${w.slot}`, symbol: t.symbol, ...(r.ok ? { ok: true, digest: r.digest } : { ok: false, error: r.error }) });
+        }
+      }
+      const left = (await c.bw.bankBalances(src.address)).find((b) => b.coinType === SUI_T)?.balance ?? 0n;
+      if (left > GAS_KEEP) {
+        const r = await c.bw.sendFromBankWallet(row, SUI_T, left - GAS_KEEP, dest.address);
+        results.push({ from: `w${w.slot}`, symbol: "SUI", ...(r.ok ? { ok: true, digest: r.digest } : { ok: false, error: r.error }) });
+      }
+    }
+    return { to: `w${data.toSlot}`, results };
+  });
