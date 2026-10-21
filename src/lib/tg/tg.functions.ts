@@ -311,3 +311,12 @@ export const tgConsolidate = createServerFn({ method: "POST" })
     }
     return { to: `w${data.toSlot}`, results };
   });
+
+/** Bridge in/out of Sui history with live status, read-only. */
+export const tgBridgeHistory = createServerFn({ method: "POST" })
+  .inputValidator((d) => z.object({ initData: z.string().min(1).max(4096) }).parse(d))
+  .handler(async ({ data }) => {
+    const { handle } = await linkedHandle(data.initData);
+    const { bridgeHistory } = await import("./bridgeHistory.server");
+    return bridgeHistory(handle, 20);
+  });
