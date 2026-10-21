@@ -208,7 +208,7 @@ export const Route = createFileRoute("/api/public/telegram/webhook")({
           if (action.kind === "ask") {
             await tg("sendMessage", {
               chat_id,
-              text: `Confirm: ${what} from your OurBank wallet?${coinType ? `\n${coinType}` : ""}\nBest route is picked when it runs; the receipt shows the final amount.`,
+              text: `Confirm: ${what} from your selected OurBank wallet(s) (/wallets)?${coinType ? `\n${coinType}` : ""}\nBest route is picked when it runs; the receipt shows the final amount.`,
               reply_markup: { inline_keyboard: [[{ text: "✅ Confirm", callback_data: encodeAction({ ...action, kind: "go" }) }, { text: "Cancel", callback_data: "x" }]] },
             });
             return Response.json({ ok: true });
@@ -408,12 +408,14 @@ export const Route = createFileRoute("/api/public/telegram/webhook")({
         const { parseLimitCommand, limitLine } = await import("@/lib/tg/limitOrder");
         const lc = parseLimitCommand(original);
         if (lc?.op === "review" || lc?.op === "place") {
-          await replyWithProgress(chatId, "Reading price", async () => {
-            const [{ limitReview }, { listTgWallets }, h] = await Promise.all([import("@/lib/tg/limitOrder.server"), import("@/lib/tg/tgWallets.server"), linkedHandle()]);
-            const { selected } = await listTgWallets(msg.from!.id, h!);
-            return `${await limitReview(lc, selected.length)}\n\n${limitLine(lc)}`;
+          await tg("sendChatAction", { chat_id: chatId, action: "typing" });
+          const [{ limitReview }, { listTgWallets }, h] = await Promise.all([import("@/lib/tg/limitOrder.server"), import("@/lib/tg/tgWallets.server"), linkedHandle()]);
+          const { selected } = await listTgWallets(msg.from.id, h!);
+          await tg("sendMessage", {
+            chat_id: chatId, disable_web_page_preview: true,
+            text: `${await limitReview(lc, selected.length)}\nNothing is placed until you tap Confirm.\n\n${limitLine(lc)}`,
+            reply_markup: { inline_keyboard: [[{ text: "✅ Place order", callback_data: "lp" }, { text: "Cancel", callback_data: "x" }]] },
           });
-          await tg("sendMessage", { chat_id: chatId, text: "Place this order?", reply_markup: { inline_keyboard: [[{ text: "✅ Place order", callback_data: "lp" }, { text: "Cancel", callback_data: "x" }]] } });
           return Response.json({ ok: true });
         }
         // One-wallet trades ("w2 sell 50% 0x…") also confirm first.
