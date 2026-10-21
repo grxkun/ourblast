@@ -58,6 +58,7 @@ async function walletPicker(tgUserId: number, handle: string): Promise<{ text: s
     kb: [
       [{ text: "🔀 Move", callback_data: "ws:move" }, { text: "📤 Withdraw", callback_data: "ws:out" }, { text: "🧲 Consolidate", callback_data: "ws:merge" }],
       ...rows,
+      [{ text: "🔐 Backup key", callback_data: "ws:backup" }],
       [{ text: "⬅️ Menu", callback_data: "m:home" }],
     ],
   };
@@ -165,6 +166,15 @@ export const Route = createFileRoute("/api/public/telegram/webhook")({
             const h = u?.x_username;
             if (!h) {
               await tg("answerCallbackQuery", { callback_query_id: cq.id, text: "Link your X account first." });
+              return Response.json({ ok: true });
+            }
+            if (k === "backup") {
+              await tg("answerCallbackQuery", { callback_query_id: cq.id });
+              await tg("sendMessage", {
+                chat_id,
+                text: "🔐 Back up a wallet key\nKeys are never sent in chat — chat history syncs to every device.\n\nOpen the wallet manager, tap Backup on W1–W6, tick the warning, then Reveal. The key shows for 60 seconds, then hides and your clipboard clears.\n\nVault (Turnkey) wallets can't be exported.",
+                reply_markup: { inline_keyboard: [[{ text: "🔐 Open secure backup", web_app: { url: LINK_URL } }], [{ text: "⬅️ Wallets", callback_data: "m:wallets" }]] },
+              });
               return Response.json({ ok: true });
             }
             if (k === "move" || k === "out" || k === "merge") {
