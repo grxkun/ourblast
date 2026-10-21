@@ -22,5 +22,7 @@
 ## Telegram trading bot (one by one)
 - [x] Dev wallet alerts (follow/unfollow/following, alert only)
 - [x] Token sniping (confirm-first, slippage cap)
+- [x] Presale buys in TG chat (confirm-first; live once BLAST_PARTNER_KEY added)
+- [ ] Copy trading
 - [ ] Presale buys (Blast)
 - [ ] Copy trading
