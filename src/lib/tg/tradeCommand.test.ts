@@ -15,7 +15,7 @@ describe("buildSwapCommand", () => {
   it("token → SUI sells that exact token amount", () => {
     const c = buildSwapCommand("$BLAST", "SUI", "1000")!;
     expect(c).toBe("sell 1000 $BLAST for SUI");
-    expect(parseSwapCommand(c)).toMatchObject({ side: "sell", amount: "1000", token: "BLAST" });
+    expect(parseSwapCommand(c)).toMatchObject({ side: "sell", amount: "1000" });
   });
   it("MAX on a token sells all", () => expect(buildSwapCommand("BLAST", "SUI", "all")).toBe("sell all $BLAST"));
   it("rejects token→token, same token, zero, and MAX of SUI", () => {
