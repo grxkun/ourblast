@@ -14,3 +14,4 @@
 - Telegram Mini App (/tg) authenticates by verifying Telegram initData HMAC server-side on every call (src/lib/tg); tg_* tables are service-role only — no Supabase session exists inside Telegram.
 
 - Telegram swaps preserve full, case-sensitive coin types; bot cards carry contracts in bot-authored message text across confirmation because callback payloads are limited to 64 bytes.
+- SOL → SUI bridges try NEAR Intents first, then Mayan MCTP (mayan-sol.ts, hand-built v0 tx, simulated before sending) — two providers so one solver outage doesn't block bridging, and no Solana SDK in the worker.
