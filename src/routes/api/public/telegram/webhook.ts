@@ -486,6 +486,16 @@ export const Route = createFileRoute("/api/public/telegram/webhook")({
           await tg("sendMessage", { chat_id: chatId, text: "🔗 Link your X account first — trades use your OurBank wallet tied to X.", reply_markup: linkKb });
           return Response.json({ ok: true });
         }
+        if (/^\/?retry\s*(sui\s+)?hop$/i.test(original.trim())) {
+          await replyWithProgress(chatId, "Retrying SOL → SUI hop", async () => {
+            const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+            const { data: w } = await supabaseAdmin.from("bank_wallets").select("user_id").ilike("x_username", (await linkedHandle())!).maybeSingle();
+            if (!w?.user_id) return "Sign in with X at ourblast.xyz/terminal once to activate bridging.";
+            const { retryBnbSolHopsForUser } = await import("@/lib/terminal/evm-sweep.server");
+            return retryBnbSolHopsForUser(w.user_id);
+          });
+          return Response.json({ ok: true });
+        }
         if (/^\/?(bridges|bridge history|history)(@\w+)?$/i.test(original.trim())) {
           await replyWithProgress(chatId, "Loading bridges", async () => {
             const b = await import("@/lib/tg/bridgeHistory.server");
