@@ -77,6 +77,33 @@ const MENU_HOWTO: Record<string, string> = {
   send: "📤 Send\nsend 5 sui to name.sui · send 10 $BLAST to @friend\nMultiple: send 22 $HOLMOT, 10 $BLAST to name.sui",
 };
 
+/** Bridge preset codes → the exact command run after the user taps Confirm (keeps callback data short). */
+const BRIDGE_PRESETS: Record<string, string> = {
+  s05: "bridge 0.05 sol to sui", s1: "bridge 0.1 sol to sui", sall: "bridge all sol to sui",
+  b02: "bridge 0.02 bnb to sui", b05: "bridge 0.05 bnb to sui", ball: "bridge all bnb to sui",
+  os10: "bridge 10 sui to sol", os25: "bridge 25 sui to sol",
+  ob10: "bridge 10 sui to bnb", ob25: "bridge 25 sui to bnb",
+  oe25: "bridge 25 sui to eth on base", oa25: "bridge 25 sui to eth on arbitrum", or25: "bridge 25 sui to eth on robinhood",
+};
+
+function bridgeMenu(tab: "in" | "out"): { text: string; kb: Btn[][] } {
+  const p = (code: string, text: string): Btn => ({ text, callback_data: `br:p:${code}` });
+  const tabs: Btn[] = [
+    { text: `${tab === "in" ? "• " : ""}📥 Bridge in`, callback_data: "br:t:in" },
+    { text: `${tab === "out" ? "• " : ""}📤 Bridge out`, callback_data: "br:t:out" },
+  ];
+  const body: Btn[][] = tab === "in"
+    ? [[p("s05", "0.05 SOL"), p("s1", "0.1 SOL"), p("sall", "All SOL")], [p("b02", "0.02 BNB"), p("b05", "0.05 BNB"), p("ball", "All BNB")]]
+    : [[p("os10", "10 SUI → SOL"), p("os25", "25 SUI → SOL")], [p("ob10", "10 SUI → BNB"), p("ob25", "25 SUI → BNB")], [p("oe25", "25 → ETH Base"), p("oa25", "25 → ETH Arb"), p("or25", "25 → ETH RH")]];
+  const text = tab === "in"
+    ? "🌉 Bridge in → SUI\nFrom your OurBank Solana / BNB deposit addresses. Min 0.01 BNB (0.0005 kept for gas).\nOther amount? Type: bridge 0.07 sol to sui"
+    : "🌉 Bridge out of SUI\nMin 5 SUI to SOL (0.1 kept for gas). ETH/BNB hop via your Solana address.\nOther amount? Type: bridge 12 sui to bnb";
+  return {
+    text: `${text}\n\nTap an amount → review → Confirm. Deposits never move without your command.`,
+    kb: [tabs, ...body, [{ text: "📜 History", callback_data: "br:t:hist" }, { text: "📍 Addresses", callback_data: "br:t:addr" }], [{ text: "⬅️ Menu", callback_data: "m:home" }]],
+  };
+}
+
 
 export const Route = createFileRoute("/api/public/telegram/webhook")({
   server: {
@@ -162,8 +189,61 @@ export const Route = createFileRoute("/api/public/telegram/webhook")({
               });
               return Response.json({ ok: true });
             }
+            if (key === "bridge") {
+              const m = bridgeMenu("in");
+              await tg("sendMessage", { chat_id, text: m.text, reply_markup: { inline_keyboard: m.kb } });
+              return Response.json({ ok: true });
+            }
             const how = MENU_HOWTO[key];
             if (how) await tg("sendMessage", { chat_id, text: how, disable_web_page_preview: true, reply_markup: { inline_keyboard: [[{ text: "⬅️ Menu", callback_data: "m:home" }]] } });
+            return Response.json({ ok: true });
+          }
+          if (cq.data?.startsWith("br:")) {
+            await tg("answerCallbackQuery", { callback_query_id: cq.id });
+            const [, kind, code] = cq.data.split(":");
+            const { supabaseAdmin: db } = await import("@/integrations/supabase/client.server");
+            const { data: u } = await db.from("tg_users").select("x_username").eq("tg_user_id", cq.from.id).maybeSingle();
+            const h = u?.x_username ?? null;
+            if (!h) {
+              await tg("sendMessage", { chat_id, text: "🔗 Link your X account first.", reply_markup: { inline_keyboard: [[{ text: "🔗 Link X account", web_app: { url: LINK_URL } }]] } });
+              return Response.json({ ok: true });
+            }
+            if (kind === "t") {
+              if (code === "hist") {
+                await replyWithProgress(chat_id, "Loading bridges", async () => {
+                  const b = await import("@/lib/tg/bridgeHistory.server");
+                  return b.formatBridgeHistory(await b.bridgeHistory(h));
+                });
+                return Response.json({ ok: true });
+              }
+              if (code === "addr") {
+                await replyWithProgress(chat_id, "Loading addresses", async () => {
+                  const [srv, fmt] = await Promise.all([import("@/lib/tg/walletChat.server"), import("@/lib/tg/walletChat")]);
+                  return fmt.formatWallet(await srv.walletSnapshot(h, { sui: false, other: false }));
+                });
+                return Response.json({ ok: true });
+              }
+              const m = bridgeMenu(code === "out" ? "out" : "in");
+              await tg("editMessageText", { chat_id, message_id, text: m.text, reply_markup: { inline_keyboard: m.kb } });
+              return Response.json({ ok: true });
+            }
+            const cmd = BRIDGE_PRESETS[code ?? ""];
+            if (!cmd) return Response.json({ ok: true });
+            if (kind === "p") {
+              await tg("sendMessage", {
+                chat_id,
+                text: `🌉 Review bridge\n${cmd}\n\nOnly this amount moves. Tap Confirm to send.`,
+                reply_markup: { inline_keyboard: [[{ text: "✅ Confirm bridge", callback_data: `br:x:${code}` }, { text: "✖️ Cancel", callback_data: "br:t:in" }]] },
+              });
+              return Response.json({ ok: true });
+            }
+            if (kind === "x") {
+              await tg("editMessageReplyMarkup", { chat_id, message_id, reply_markup: { inline_keyboard: [] } });
+              await replyWithProgress(chat_id, "Bridging", async () => {
+                const { runTgCommand } = await import("@/lib/tg/runCommand.server");
+                return (await runTgCommand(cq.from.id, cmd, h)).reply;
+              });
+            }
             return Response.json({ ok: true });
           }
           if (cq.data?.startsWith("ws:")) {
