@@ -199,10 +199,30 @@ async function relayBnbToSol(w: EvmWalletRow, amount: bigint): Promise<{ txs: { 
  * Solana address, bridge exactly that SOL to Sui. Each row hops at most once
  * (claimed sent → hopping atomically). Runs on user-started sweeps only.
  */
-export async function maintainBnbSolHops(): Promise<void> {
+/**
+ * User-requested retry of a SOL → SUI second leg that failed (e.g. no quote).
+ * The first leg already delivered SOL to their own Solana address, so this only
+ * re-arms hop_failed rows; the atomic sent → hopping claim still sends once.
+ */
+export async function retryBnbSolHopsForUser(userId: string): Promise<string> {
+  const db = await admin();
+  const { data: rows } = await db.from("evm_sweeps").update({ status: "sent", error: null, updated_at: new Date().toISOString() })
+    .eq("user_id", userId).eq("route", "relay_sol").eq("status", "hop_failed").select("id");
+  if (!rows?.length) return "Nothing to retry — no stalled BNB → SOL → SUI hop.";
+  await maintainBnbSolHops(userId);
+  const { data: after } = await db.from("evm_sweeps").select("status, error").in("id", rows.map((r) => r.id));
+  const ok = (after ?? []).filter((r) => r.status === "hopped").length;
+  const err = (after ?? []).find((r) => r.status === "hop_failed")?.error;
+  if (ok) return `✅ SOL → SUI hop sent for ${ok} bridge(s). Track with /bridges.`;
+  return `⚠️ SOL → SUI still unavailable${err ? `: ${err}` : ""}. Your SOL stays safe in your OurBank Solana wallet — try "retry hop" later.`;
+}
+
+export async function maintainBnbSolHops(onlyUser?: string): Promise<void> {
   const db = await admin();
   await confirmSubmitted();
-  const { data: rows } = await db.from("evm_sweeps").select("id, user_id, approve_tx, updated_at").eq("route", "relay_sol").eq("status", "sent").limit(20);
+  let q = db.from("evm_sweeps").select("id, user_id, approve_tx, updated_at").eq("route", "relay_sol").eq("status", "sent");
+  if (onlyUser) q = q.eq("user_id", onlyUser);
+  const { data: rows } = await q.limit(20);
   for (const r of rows ?? []) {
     const hop = decodeSolHop(r.approve_tx);
     if (!hop || !r.user_id) continue;
@@ -282,8 +302,13 @@ async function sweep(chain: SweepChain, w: EvmWalletRow, token: SweepToken, amou
     return { ok: true, hash };
   } catch (e) {
     const m = (e as Error).message.slice(0, 300);
-    await db.from("evm_sweeps").update({ status: "failed", error: m, updated_at: new Date().toISOString() }).eq("id", claimed.id);
+    // If a transaction already went out, never record it as "nothing was sent".
+    const sent = typeof hashSent === "string";
+    await db.from("evm_sweeps").update(sent
+      ? { status: "submitted", tx_hash: hashSent, error: `Recorded after error: ${m}`.slice(0, 300), updated_at: new Date().toISOString() }
+      : { status: "failed", error: m, updated_at: new Date().toISOString() }).eq("id", claimed.id);
     console.error(`EVM sweep ${claimed.id} failed`, e);
+    if (sent) return { ok: true, hash: hashSent as string };
     return { ok: false, error: `Bridge failed, nothing was sent: ${m}` };
   }
 }
