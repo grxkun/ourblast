@@ -306,7 +306,7 @@ async function sweep(chain: SweepChain, w: EvmWalletRow, token: SweepToken, amou
     // If a transaction already went out, never record it as "nothing was sent".
     const sent = typeof hashSent === "string";
     await db.from("evm_sweeps").update(sent
-      ? { status: "submitted", tx_hash: hashSent, error: `Recorded after error: ${m}`.slice(0, 300), updated_at: new Date().toISOString() }
+      ? { status: "submitted", tx_hash: hashSent ?? null, error: `Recorded after error: ${m}`.slice(0, 300), updated_at: new Date().toISOString() }
       : { status: "failed", error: m, updated_at: new Date().toISOString() }).eq("id", claimed.id);
     console.error(`EVM sweep ${claimed.id} failed`, e);
     if (sent) return { ok: true, hash: hashSent as string };
