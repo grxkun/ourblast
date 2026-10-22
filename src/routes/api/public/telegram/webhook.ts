@@ -90,33 +90,48 @@ const BRIDGE_PRESETS: Record<string, string> = {
   or10: "bridge 10 sui to eth on robinhood", or25: "bridge 25 sui to eth on robinhood",
 };
 
-function bridgeMenu(tab: "in" | "out"): { text: string; kb: Btn[][] } {
-  const p = (code: string, text: string): Btn => ({ text, callback_data: `br:p:${code}` });
-  const tabs: Btn[] = [
-    { text: `${tab === "in" ? "• " : ""}📥 Bridge in`, callback_data: "br:t:in" },
-    { text: `${tab === "out" ? "• " : ""}📤 Bridge out`, callback_data: "br:t:out" },
-  ];
-  const body: Btn[][] = tab === "in"
-    ? [
-        [p("s05", "◎ 0.05 SOL"), p("s1", "◎ 0.1 SOL"), p("sall", "◎ All SOL")],
-        [p("b02", "🟡 0.02 BNB"), p("b05", "🟡 0.05 BNB"), p("ball", "🟡 All BNB")],
-        [p("eb5", "🔵 0.005 ETH Base"), p("eb10", "🔵 0.01 ETH Base"), p("eball", "🔵 All Base")],
-        [p("ea5", "🔷 0.005 ETH Arb"), p("ea10", "🔷 0.01 ETH Arb"), p("eaall", "🔷 All Arb")],
-      ]
-    : [
-        [p("os10", "◎ 10 → SOL"), p("os25", "◎ 25 → SOL")],
-        [p("ob10", "🟡 10 → BNB"), p("ob25", "🟡 25 → BNB")],
-        [p("oe10", "🔵 10 → ETH Base"), p("oe25", "🔵 25 → ETH Base")],
-        [p("oa10", "🔷 10 → ETH Arb"), p("oa25", "🔷 25 → ETH Arb")],
-        [p("or10", "🟢 10 → ETH Robinhood"), p("or25", "🟢 25 → ETH Robinhood")],
-      ];
-  const text = tab === "in"
-    ? "🌉 Bridge in → SUI\nFrom your OurBank deposit addresses: Solana, BNB Chain, Base, Arbitrum.\nMins: 0.02 SOL · 0.01 BNB · 0.0015 ETH (small gas kept on each chain).\nOther amount? Type: bridge 0.07 sol to sui · bridge 0.003 eth on base to sui"
-    : "🌉 Bridge out of SUI (amounts in SUI)\nTo Solana, BNB Chain, Base, Arbitrum, Robinhood Chain. Min 5 SUI (0.1 kept for gas). ETH/BNB hop via your Solana address.\nOther amount? Type: bridge 12 sui to eth on base";
-  return {
-    text: `${text}\n\nTap an amount → review → Confirm. Deposits never move without your command.`,
-    kb: [tabs, ...body, [{ text: "📜 History", callback_data: "br:t:hist" }, { text: "📍 Addresses", callback_data: "br:t:addr" }], [{ text: "⬅️ Menu", callback_data: "m:home" }]],
+const BR_CHAINS: Record<string, { dir: "in" | "out"; label: string; codes: [string, string][] }> = {
+  s: { dir: "in", label: "◎ Solana (SOL)", codes: [["s05", "0.05 SOL"], ["s1", "0.1 SOL"], ["sall", "All SOL"]] },
+  b: { dir: "in", label: "🟡 BNB Chain (BNB)", codes: [["b02", "0.02 BNB"], ["b05", "0.05 BNB"], ["ball", "All BNB"]] },
+  eb: { dir: "in", label: "🔵 Base (ETH)", codes: [["eb5", "0.005 ETH"], ["eb10", "0.01 ETH"], ["eball", "All ETH"]] },
+  ea: { dir: "in", label: "🔷 Arbitrum (ETH)", codes: [["ea5", "0.005 ETH"], ["ea10", "0.01 ETH"], ["eaall", "All ETH"]] },
+  os: { dir: "out", label: "◎ Solana (SOL)", codes: [["os10", "10 SUI"], ["os25", "25 SUI"]] },
+  ob: { dir: "out", label: "🟡 BNB Chain (BNB)", codes: [["ob10", "10 SUI"], ["ob25", "25 SUI"]] },
+  oe: { dir: "out", label: "🔵 Base (ETH)", codes: [["oe10", "10 SUI"], ["oe25", "25 SUI"]] },
+  oa: { dir: "out", label: "🔷 Arbitrum (ETH)", codes: [["oa10", "10 SUI"], ["oa25", "25 SUI"]] },
+  or: { dir: "out", label: "🟢 Robinhood Chain (ETH)", codes: [["or10", "10 SUI"], ["or25", "25 SUI"]] },
+};
+const chainOf = (code: string) => Object.entries(BR_CHAINS).find(([, c]) => c.codes.some(([k]) => k === code))?.[0];
+const NAV = (back: string): Btn[] => [{ text: "⬅️ Back", callback_data: back }, { text: "❌ Cancel", callback_data: "br:home" }];
+
+/** Cascading bridge flow: (1/4) direction → (2/4) chain → (3/4) amount → (4/4) review → confirm. */
+function bridgeStep(step: "home" | "in" | "out" | string): { text: string; kb: Btn[][] } {
+  if (step === "home") return {
+    text: "🌉 Bridge (1/4) — Direction\nMove funds into or out of your OurBank Sui wallet.\nDeposits never move without your command.",
+    kb: [[{ text: "📥 Bridge in → SUI", callback_data: "br:d:in" }, { text: "📤 Bridge out of SUI", callback_data: "br:d:out" }],
+      [{ text: "📡 Live status", callback_data: "br:r" }, { text: "📜 History", callback_data: "br:t:hist" }], [{ text: "📍 Addresses", callback_data: "br:t:addr" }, { text: "⬅️ Menu", callback_data: "m:home" }]],
   };
+  if (step === "in" || step === "out") {
+    const rows = Object.entries(BR_CHAINS).filter(([, c]) => c.dir === step).map(([k, c]) => [{ text: c.label, callback_data: `br:c:${k}` }]);
+    return {
+      text: step === "in" ? "🌉 Bridge in (2/4) — Source chain\nPick where the funds are now (your OurBank deposit address)." : "🌉 Bridge out (2/4) — Destination chain\nSUI → chosen chain. Min 5 SUI, 0.1 kept for gas. ETH/BNB hop via your Solana address.",
+      kb: [...rows, NAV("br:home")],
+    };
+  }
+  const c = BR_CHAINS[step];
+  if (!c) return bridgeStep("home");
+  return {
+    text: `🌉 ${c.dir === "in" ? "Bridge in" : "Bridge out"} (3/4) — Amount\n${c.dir === "in" ? `${c.label} → SUI` : `SUI → ${c.label}`}\n${c.dir === "in" ? "Mins: 0.02 SOL · 0.01 BNB · 0.0015 ETH (gas kept)." : "Amounts in SUI."}\nOther amount? Type e.g. ${BRIDGE_PRESETS[c.codes[0]![0]]!.replace(/[\d.]+|all/, "0.07")}`,
+    kb: [c.codes.map(([k, t]) => ({ text: t, callback_data: `br:p:${k}` })), NAV(`br:d:${c.dir}`)],
+  };
+}
+
+function progressCard(i: { label: string; state: string; detail: string; links: { text: string; href: string }[]; createdAt: string } | undefined): string {
+  if (!i) return "📡 Live status\nNo bridges yet.";
+  const n = i.state === "done" ? 5 : i.state === "failed" ? 5 : /hop|Second|Final|Bridging/i.test(i.detail) ? 3 : 2;
+  const bar = (i.state === "failed" ? "🟥" : "🟩").repeat(n) + "⬜".repeat(5 - n);
+  const head = i.state === "done" ? "✅ Done" : i.state === "failed" ? "❌ Failed" : "⏳ In progress";
+  return `📡 Live status — latest bridge\n${i.label}\n${bar} ${head}\n${i.detail}\nStarted ${new Date(i.createdAt).toISOString().slice(5, 16).replace("T", " ")} UTC\nChecked ${new Date().toISOString().slice(11, 19)} UTC${i.links.map((l) => `\n${l.text}: ${l.href}`).join("")}`;
 }
 
 
@@ -205,7 +220,7 @@ export const Route = createFileRoute("/api/public/telegram/webhook")({
               return Response.json({ ok: true });
             }
             if (key === "bridge") {
-              const m = bridgeMenu("in");
+              const m = bridgeStep("home");
               await tg("sendMessage", { chat_id, text: m.text, reply_markup: { inline_keyboard: m.kb } });
               return Response.json({ ok: true });
             }
@@ -238,8 +253,22 @@ export const Route = createFileRoute("/api/public/telegram/webhook")({
                 });
                 return Response.json({ ok: true });
               }
-              const m = bridgeMenu(code === "out" ? "out" : "in");
+              const m = bridgeStep(code === "out" ? "out" : code === "in" ? "in" : "home");
               await tg("editMessageText", { chat_id, message_id, text: m.text, reply_markup: { inline_keyboard: m.kb } });
+              return Response.json({ ok: true });
+            }
+            if (kind === "home" || kind === "d" || kind === "c") {
+              const m = bridgeStep(kind === "home" ? "home" : code ?? "home");
+              await tg("editMessageText", { chat_id, message_id, text: m.text, reply_markup: { inline_keyboard: m.kb } });
+              return Response.json({ ok: true });
+            }
+            if (kind === "r") {
+              const b = await import("@/lib/tg/bridgeHistory.server");
+              const [latest] = await b.bridgeHistory(h, 1);
+              const kb = { inline_keyboard: [[{ text: "🔄 Refresh", callback_data: "br:r" }, { text: "📜 History", callback_data: "br:t:hist" }], [{ text: "🌉 New bridge", callback_data: "br:home" }]] };
+              const text = progressCard(latest);
+              if (message_id && cq.message?.text?.startsWith("📡")) await tg("editMessageText", { chat_id, message_id, text, disable_web_page_preview: true, reply_markup: kb });
+              else await tg("sendMessage", { chat_id, text, disable_web_page_preview: true, reply_markup: kb });
               return Response.json({ ok: true });
             }
             const cmd = BRIDGE_PRESETS[code ?? ""];
@@ -247,8 +276,8 @@ export const Route = createFileRoute("/api/public/telegram/webhook")({
             if (kind === "p") {
               await tg("sendMessage", {
                 chat_id,
-                text: `🌉 Review bridge\n${cmd}\n\nOnly this amount moves. Tap Confirm to send.`,
-                reply_markup: { inline_keyboard: [[{ text: "✅ Confirm bridge", callback_data: `br:x:${code}` }, { text: "✖️ Cancel", callback_data: "br:t:in" }]] },
+                text: `🌉 Bridge (4/4) — Review\n${cmd}\n\nOnly this amount moves. Tap Confirm to send.`,
+                reply_markup: { inline_keyboard: [[{ text: "✅ Confirm bridge", callback_data: `br:x:${code}` }], NAV(`br:c:${chainOf(code ?? "") ?? "s"}`)] },
               });
               return Response.json({ ok: true });
             }
@@ -258,6 +287,9 @@ export const Route = createFileRoute("/api/public/telegram/webhook")({
                 const { runTgCommand } = await import("@/lib/tg/runCommand.server");
                 return (await runTgCommand(cq.from.id, cmd, h)).reply;
               });
+              const b = await import("@/lib/tg/bridgeHistory.server");
+              const [latest] = await b.bridgeHistory(h, 1).catch(() => []);
+              await tg("sendMessage", { chat_id, text: progressCard(latest), disable_web_page_preview: true, reply_markup: { inline_keyboard: [[{ text: "🔄 Refresh", callback_data: "br:r" }, { text: "📜 History", callback_data: "br:t:hist" }]] } });
             }
             return Response.json({ ok: true });
           }
