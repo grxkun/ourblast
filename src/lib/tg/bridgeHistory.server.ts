@@ -41,11 +41,14 @@ export async function bridgeHistory(handle: string, limit = 15): Promise<BridgeI
   }
   for (const r of evm.data ?? []) {
     const amt = Number(r.amount_atomic) / 10 ** (EVM_DEC[r.token] ?? 18);
-    const st = stateOf(r.status);
+    const hopFailed = r.status === "hop_failed";
+    const st = hopFailed ? "pending" : stateOf(r.status);
     const base = EVM_EXPLORER[r.chain] ?? "https://blockscan.com/tx/";
     items.push({
-      id: r.id, dir: "in", label: `${Number(amt.toFixed(6))} ${r.token} (${r.chain}) → SUI`, state: st, createdAt: r.created_at,
-      detail: st === "failed" ? r.error ?? "Failed — funds stay in your EVM wallet." : st === "done" ? "Arrived on Sui" : r.status === "hopping" ? "Second hop SOL → SUI…" : r.tx_hash ? "Bridging, usually 1–5 min" : "Sending…",
+      id: r.id, dir: "in", label: `${Number(amt.toFixed(6))} ${r.token} (${r.chain}) → ${r.route === "relay_sol" ? "SOL → " : ""}SUI`, state: st, createdAt: r.created_at,
+      detail: hopFailed
+        ? `Leg 1 done: ${r.token} → SOL arrived in your OurBank Solana wallet. Leg 2 SOL → SUI paused (${(r.error ?? "no route").slice(0, 80)}). Send "retry hop" to try again.`
+        : st === "failed" ? r.error ?? "Failed — funds stay in your EVM wallet." : st === "done" ? "Arrived on Sui" : r.status === "hopping" ? "Second hop SOL → SUI…" : r.route === "relay_sol" && r.status === "sent" ? "Leg 1 done, waiting for SOL to send on to Sui" : r.tx_hash ? "Bridging, usually 1–5 min" : "Sending…",
       links: r.tx_hash ? [{ text: "Explorer", href: base + r.tx_hash }] : [],
     });
   }
