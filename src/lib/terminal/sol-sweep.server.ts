@@ -129,7 +129,18 @@ async function sweep(w: SolWalletRow, token: "SOL" | "USDC", amount: bigint, buy
     const { ensureOrder } = await import("./evm-sweep.server");
     // "keep": funding a launch — the SUI must arrive untouched, so no auto-buy order.
     const orderId = buyBlast === "keep" ? null : await ensureOrder(w, buyBlast);
-    const dep = await intentsDeposit(token, amount, w);
+    let dep: string;
+    try {
+      dep = await intentsDeposit(token, amount, w);
+    } catch (e) {
+      // NEAR Intents can't quote: try Mayan for SOL. Nothing is sent unless Mayan's tx simulates cleanly.
+      if (token !== "SOL") throw e;
+      const sigStr = await mayanBridge(w, amount, async (ledger) => {
+        await db.from("sol_sweeps").update({ deposit_address: `mayan:${ledger}`, order_id: orderId }).eq("id", claimed.id);
+      }).catch((m: Error) => { throw new Error(`${(e as Error).message}; Mayan fallback: ${m.message}`); });
+      await db.from("sol_sweeps").update({ status: "submitted", tx_sig: sigStr, updated_at: new Date().toISOString() }).eq("id", claimed.id);
+      return { ok: true, txSig: sigStr };
+    }
     await db.from("sol_sweeps").update({ deposit_address: dep, order_id: orderId }).eq("id", claimed.id);
     const { value } = await rpc<{ value: { blockhash: string } }>("getLatestBlockhash", [{ commitment: "confirmed" }]);
     const msg = token === "SOL" ? solTransferMessage(w.sol_address, dep, amount, value.blockhash) : usdcTransferMessage(w.sol_address, dep, amount, value.blockhash);
