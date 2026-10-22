@@ -117,6 +117,29 @@ async function intentsDeposit(token: "SOL" | "USDC", amount: bigint, w: SolWalle
 
 type SweepResult = { ok: true; txSig: string } | { ok: false; error: string };
 
+/** Builds Mayan's SOL → SUI tx; returns it signed only if Solana's simulation passes. Sends nothing. */
+export async function buildMayanSolTx(w: Pick<SolWalletRow, "address" | "sol_address" | "sol_secret_ciphertext" | "sol_signing_backend">, lamports: bigint): Promise<{ tx: string; ledger: string; expectedSui: number }> {
+  const { planMayanSolBridge, compileV0Message, parseLookupTable, signedV0Base64 } = await import("./mayan-sol");
+  const plan = await planMayanSolBridge(w.sol_address, w.address, lamports);
+  const accts = await rpc<{ value: ({ data: [string, string] } | null)[] }>("getMultipleAccounts", [plan.tableKeys, { encoding: "base64", commitment: "confirmed" }]);
+  const tables = plan.tableKeys.flatMap((k, i) => { const a = accts.value[i]; return a ? [parseLookupTable(k, Buffer.from(a.data[0], "base64"))] : []; });
+  const { value } = await rpc<{ value: { blockhash: string } }>("getLatestBlockhash", [{ commitment: "confirmed" }]);
+  const msg = compileV0Message(w.sol_address, plan.ixs, value.blockhash, tables);
+  const tx = signedV0Base64(await sign(w as SolWalletRow, msg), msg);
+  const sim = await rpc<{ value: { err: unknown; logs?: string[] } }>("simulateTransaction", [tx, { encoding: "base64", commitment: "confirmed", sigVerify: true }]);
+  if (sim.value.err) {
+    console.error("Mayan SOL sim failed", JSON.stringify(sim.value.err), sim.value.logs?.slice(-8));
+    throw new Error("Mayan route failed its safety check, nothing was sent.");
+  }
+  return { tx, ledger: plan.ledger, expectedSui: plan.quote.expectedAmountOut };
+}
+
+async function mayanBridge(w: SolWalletRow, lamports: bigint, beforeSend: (ledger: string) => Promise<void>): Promise<string> {
+  const { tx, ledger } = await buildMayanSolTx(w, lamports);
+  await beforeSend(ledger);
+  return rpc<string>("sendTransaction", [tx, { encoding: "base64", skipPreflight: true }]);
+}
+
 /** Claims, sends and records one sweep. Never throws; reports whether a transaction was actually sent. */
 async function sweep(w: SolWalletRow, token: "SOL" | "USDC", amount: bigint, buyBlast: boolean | "keep" = false): Promise<SweepResult> {
   const db = await admin();
