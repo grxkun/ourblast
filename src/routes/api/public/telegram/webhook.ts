@@ -81,9 +81,13 @@ const MENU_HOWTO: Record<string, string> = {
 const BRIDGE_PRESETS: Record<string, string> = {
   s05: "bridge 0.05 sol to sui", s1: "bridge 0.1 sol to sui", sall: "bridge all sol to sui",
   b02: "bridge 0.02 bnb to sui", b05: "bridge 0.05 bnb to sui", ball: "bridge all bnb to sui",
+  eb5: "bridge 0.005 eth on base to sui", eb10: "bridge 0.01 eth on base to sui", eball: "bridge all eth on base to sui",
+  ea5: "bridge 0.005 eth on arbitrum to sui", ea10: "bridge 0.01 eth on arbitrum to sui", eaall: "bridge all eth on arbitrum to sui",
   os10: "bridge 10 sui to sol", os25: "bridge 25 sui to sol",
   ob10: "bridge 10 sui to bnb", ob25: "bridge 25 sui to bnb",
-  oe25: "bridge 25 sui to eth on base", oa25: "bridge 25 sui to eth on arbitrum", or25: "bridge 25 sui to eth on robinhood",
+  oe10: "bridge 10 sui to eth on base", oe25: "bridge 25 sui to eth on base",
+  oa10: "bridge 10 sui to eth on arbitrum", oa25: "bridge 25 sui to eth on arbitrum",
+  or10: "bridge 10 sui to eth on robinhood", or25: "bridge 25 sui to eth on robinhood",
 };
 
 function bridgeMenu(tab: "in" | "out"): { text: string; kb: Btn[][] } {
@@ -93,11 +97,22 @@ function bridgeMenu(tab: "in" | "out"): { text: string; kb: Btn[][] } {
     { text: `${tab === "out" ? "• " : ""}📤 Bridge out`, callback_data: "br:t:out" },
   ];
   const body: Btn[][] = tab === "in"
-    ? [[p("s05", "0.05 SOL"), p("s1", "0.1 SOL"), p("sall", "All SOL")], [p("b02", "0.02 BNB"), p("b05", "0.05 BNB"), p("ball", "All BNB")]]
-    : [[p("os10", "10 SUI → SOL"), p("os25", "25 SUI → SOL")], [p("ob10", "10 SUI → BNB"), p("ob25", "25 SUI → BNB")], [p("oe25", "25 → ETH Base"), p("oa25", "25 → ETH Arb"), p("or25", "25 → ETH RH")]];
+    ? [
+        [p("s05", "◎ 0.05 SOL"), p("s1", "◎ 0.1 SOL"), p("sall", "◎ All SOL")],
+        [p("b02", "🟡 0.02 BNB"), p("b05", "🟡 0.05 BNB"), p("ball", "🟡 All BNB")],
+        [p("eb5", "🔵 0.005 ETH Base"), p("eb10", "🔵 0.01 ETH Base"), p("eball", "🔵 All Base")],
+        [p("ea5", "🔷 0.005 ETH Arb"), p("ea10", "🔷 0.01 ETH Arb"), p("eaall", "🔷 All Arb")],
+      ]
+    : [
+        [p("os10", "◎ 10 → SOL"), p("os25", "◎ 25 → SOL")],
+        [p("ob10", "🟡 10 → BNB"), p("ob25", "🟡 25 → BNB")],
+        [p("oe10", "🔵 10 → ETH Base"), p("oe25", "🔵 25 → ETH Base")],
+        [p("oa10", "🔷 10 → ETH Arb"), p("oa25", "🔷 25 → ETH Arb")],
+        [p("or10", "🟢 10 → ETH Robinhood"), p("or25", "🟢 25 → ETH Robinhood")],
+      ];
   const text = tab === "in"
-    ? "🌉 Bridge in → SUI\nFrom your OurBank Solana / BNB deposit addresses. Min 0.01 BNB (0.0005 kept for gas).\nOther amount? Type: bridge 0.07 sol to sui"
-    : "🌉 Bridge out of SUI\nMin 5 SUI to SOL (0.1 kept for gas). ETH/BNB hop via your Solana address.\nOther amount? Type: bridge 12 sui to bnb";
+    ? "🌉 Bridge in → SUI\nFrom your OurBank deposit addresses: Solana, BNB Chain, Base, Arbitrum.\nMins: 0.02 SOL · 0.01 BNB · 0.0015 ETH (small gas kept on each chain).\nOther amount? Type: bridge 0.07 sol to sui · bridge 0.003 eth on base to sui"
+    : "🌉 Bridge out of SUI (amounts in SUI)\nTo Solana, BNB Chain, Base, Arbitrum, Robinhood Chain. Min 5 SUI (0.1 kept for gas). ETH/BNB hop via your Solana address.\nOther amount? Type: bridge 12 sui to eth on base";
   return {
     text: `${text}\n\nTap an amount → review → Confirm. Deposits never move without your command.`,
     kb: [tabs, ...body, [{ text: "📜 History", callback_data: "br:t:hist" }, { text: "📍 Addresses", callback_data: "br:t:addr" }], [{ text: "⬅️ Menu", callback_data: "m:home" }]],
