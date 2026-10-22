@@ -258,6 +258,7 @@ async function sweep(chain: SweepChain, w: EvmWalletRow, token: SweepToken, amou
     .select("id")
     .single();
   if (error || !claimed) return { ok: false, error: "An earlier bridge from this address is still in progress." }; // unique in-flight index
+  let hashSent: string | undefined;
   try {
     let approveTx: string | null = null;
     let hash: Hex;
@@ -265,19 +266,19 @@ async function sweep(chain: SweepChain, w: EvmWalletRow, token: SweepToken, amou
     if (route === "relay") {
       const txs = await relayTxs(w, amount);
       if (!txs.length) throw new Error("Relay returned no transaction.");
-      for (const t of txs) hash = await sendTx(chain, w, t);
+      for (const t of txs) hashSent = hash = await sendTx(chain, w, t);
       hash = hash!;
     } else if (route === "intents") {
       const direct = await intentsBnbDeposit(w, amount).then((to) => ({ to }), (e: Error) => ({ err: e }));
       if ("to" in direct) {
         orderId = keep ? null : await ensureOrder(w);
-        hash = await sendTx(chain, w, { to: direct.to, value: amount });
+        hashSent = hash = await sendTx(chain, w, { to: direct.to, value: amount });
       } else {
         // 1Click refuses small BNB swaps at times: hop BNB → SOL (Relay) into the
         // user's own OurBank Solana address; maintainBnbSolHops sends it on to Sui.
         if (!w.sol_address) throw direct.err;
         const hop = await relayBnbToSol(w, amount);
-        for (const t of hop.txs) hash = await sendTx(chain, w, t);
+        for (const t of hop.txs) hashSent = hash = await sendTx(chain, w, t);
         hash = hash!;
         await db.from("evm_sweeps").update({ route: "relay_sol", approve_tx: encodeSolHop(hop.outLamports, keep) }).eq("id", claimed.id);
       }
@@ -293,7 +294,7 @@ async function sweep(chain: SweepChain, w: EvmWalletRow, token: SweepToken, amou
           await pc.waitForTransactionReceipt({ hash: approveTx as Hex, timeout: 60_000 });
         }
       }
-      hash = await sendTx(chain, w, tx);
+      hashSent = hash = await sendTx(chain, w, tx);
     }
     // Never overwrite approve_tx with null: the relay_sol route stores its SOL
     // hop note there, and wiping it would strand the second leg forever.
