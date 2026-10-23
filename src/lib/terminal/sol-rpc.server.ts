@@ -44,3 +44,16 @@ export async function solRpc<T>(method: string, params: unknown[]): Promise<T> {
   // Never expose a configured RPC URL, which can contain credentials.
   throw new Error("Solana connection unavailable — check bridge history before retrying; transaction status may be unavailable.");
 }
+/**
+ * Sends one signed transaction to the first healthy endpoint, then rebroadcasts the
+ * identical bytes to every other endpoint. Same signature everywhere, so it can only
+ * land once — this just keeps a single node from silently dropping it.
+ */
+export async function solBroadcast(txBase64: string, opts: Record<string, unknown> = { encoding: "base64", preflightCommitment: "confirmed" }): Promise<string> {
+  const sig = await solRpc<string>("sendTransaction", [txBase64, opts]);
+  const body = JSON.stringify({ jsonrpc: "2.0", id: 1, method: "sendTransaction", params: [txBase64, { ...opts, skipPreflight: true }] });
+  await Promise.allSettled(solRpcEndpoints().map((url) =>
+    fetch(url, { method: "POST", headers: { "content-type": "application/json" }, body, signal: AbortSignal.timeout(5_000) }).then((r) => r.body?.cancel()),
+  ));
+  return sig;
+}

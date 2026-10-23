@@ -3,7 +3,7 @@ import { ed25519 } from "@noble/curves/ed25519.js";
 import bs58 from "bs58";
 
 import { decryptConnectionKey } from "@/lib/connection-key.server";
-import { solRpc as rpc } from "./sol-rpc.server";
+import { solRpc as rpc, solBroadcast } from "./sol-rpc.server";
 import { sweepAllowed } from "./evm-sweep";
 import { planSolSweep, SOL_FEE_LAMPORTS, SOL_USDC_MINT, signedTxBase64, solTransferMessage, usdcTransferMessage } from "./sol-sweep";
 
@@ -15,6 +15,12 @@ import { planSolSweep, SOL_FEE_LAMPORTS, SOL_USDC_MINT, signedTxBase64, solTrans
  */
 const SCAN_EVERY_MS = 60_000;
 const ONECLICK = "https://1click.chaindefuser.com/v0";
+function oneClickHeaders(): Record<string, string> {
+  const h: Record<string, string> = { "content-type": "application/json", "user-agent": "ourblast-bridge/1.0" };
+  const jwt = process.env["ONECLICK_JWT"];
+  if (jwt) { h["authorization"] = `Bearer ${jwt}`; h["x-api-key"] = jwt; }
+  return h;
+}
 const ASSET = { SOL: "nep141:sol.omft.near", USDC: "nep141:sol-5ce3bf3a31af18be40ba30f721101b4341690186.omft.near" } as const;
 const SUI_OUT = "nep141:sui.omft.near";
 
@@ -110,7 +116,7 @@ export function mayanLamports(requested: bigint, balance: bigint): bigint {
 async function mayanBridge(w: SolWalletRow, lamports: bigint, beforeSend: (ledger: string) => Promise<void>): Promise<string> {
   const { tx, ledger } = await buildMayanSolTx(w, lamports);
   await beforeSend(ledger);
-  return rpc<string>("sendTransaction", [tx, { encoding: "base64", skipPreflight: true }]);
+  return solBroadcast(tx, { encoding: "base64", skipPreflight: true });
 }
 
 /** Claims, sends and records one sweep. Never throws; reports whether a transaction was actually sent. */
@@ -145,10 +151,10 @@ async function sweep(w: SolWalletRow, token: "SOL" | "USDC", amount: bigint, buy
     const { value } = await rpc<{ value: { blockhash: string } }>("getLatestBlockhash", [{ commitment: "confirmed" }]);
     const msg = token === "SOL" ? solTransferMessage(w.sol_address, dep, amount, value.blockhash) : usdcTransferMessage(w.sol_address, dep, amount, value.blockhash);
     const tx = signedTxBase64(await sign(w, msg), msg);
-    const sigStr = await rpc<string>("sendTransaction", [tx, { encoding: "base64", preflightCommitment: "confirmed" }]);
+    const sigStr = await solBroadcast(tx);
     await db.from("sol_sweeps").update({ status: "submitted", tx_sig: sigStr, updated_at: new Date().toISOString() }).eq("id", claimed.id);
     // Speeds up NEAR Intents pickup; harmless if it fails.
-    await fetch(`${ONECLICK}/deposit/submit`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ txHash: sigStr, depositAddress: dep }), signal: AbortSignal.timeout(10_000) }).catch(() => null);
+    await fetch(`${ONECLICK}/deposit/submit`, { method: "POST", headers: oneClickHeaders(), body: JSON.stringify({ txHash: sigStr, depositAddress: dep }), signal: AbortSignal.timeout(10_000) }).catch(() => null);
     return { ok: true, txSig: sigStr };
   } catch (e) {
     const m = (e as Error).message.slice(0, 300);
@@ -321,5 +327,5 @@ export async function sendFromOurBankSol(solAddress: string, build: (blockhash: 
   const { value } = await rpc<{ value: { blockhash: string } }>("getLatestBlockhash", [{ commitment: "confirmed" }]);
   const msg = build(value.blockhash);
   const tx = signedTxBase64(await sign(w as SolWalletRow, msg), msg);
-  return rpc<string>("sendTransaction", [tx, { encoding: "base64", preflightCommitment: "confirmed" }]);
+  return solBroadcast(tx);
 }
