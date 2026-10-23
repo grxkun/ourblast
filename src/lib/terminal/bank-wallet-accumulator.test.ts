@@ -35,11 +35,7 @@ describe("tokenSendSource address accumulator", () => {
     const tx = new Transaction();
     const out = await tokenSendSource(tx, SENDER, ONE, 1_000_000_000n, deps([], 66_141_509_509n));
     expect("error" in out).toBe(false);
-    expect(moveCalls(tx)).toEqual([
-      "balance::withdraw_funds_from_object",
-      "balance::redeem_funds",
-      "coin::from_balance",
-    ]);
+    expect(moveCalls(tx)).toEqual(["coin::redeem_funds"]);
     expect(kinds(tx)).toContain("SplitCoins");
     expect(kinds(tx)).not.toContain("TransferObjects"); // the caller transfers
   });
@@ -48,7 +44,7 @@ describe("tokenSendSource address accumulator", () => {
     const tx = new Transaction();
     const out = await tokenSendSource(tx, SENDER, ONE, 1_000n, deps([{ balance: "400" }], 1_000n));
     expect("error" in out).toBe(false);
-    expect(moveCalls(tx)).toContain("balance::withdraw_funds_from_object");
+    expect(moveCalls(tx)).toContain("coin::redeem_funds");
     expect(kinds(tx)).toContain("MergeCoins");
   });
 
@@ -63,7 +59,7 @@ describe("tokenSendSource address accumulator", () => {
     const tx = new Transaction();
     const out = await tokenSendSource(tx, SENDER, ONE, null, deps([], 500n));
     expect("error" in out).toBe(false);
-    expect(moveCalls(tx)).toContain("balance::withdraw_funds_from_object");
+    expect(moveCalls(tx)).toContain("coin::redeem_funds");
     expect(kinds(tx)).not.toContain("SplitCoins");
   });
 
