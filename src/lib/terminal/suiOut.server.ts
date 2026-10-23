@@ -21,7 +21,8 @@ async function suiBalance(address: string): Promise<number> {
 }
 
 async function oneClickQuote(origin: string, dest: string, amount: bigint, recipient: string, refundTo: string) {
-  const headers: Record<string, string> = { "content-type": "application/json" };
+  // 1Click's bot check rejects requests without a User-Agent.
+  const headers: Record<string, string> = { "content-type": "application/json", "user-agent": "ourblast-bridge/1.0" };
   const jwt = process.env["ONECLICK_JWT"];
   if (jwt) { headers["authorization"] = `Bearer ${jwt}`; headers["x-api-key"] = jwt; }
   const res = await fetch(`${ONECLICK}/quote`, {
