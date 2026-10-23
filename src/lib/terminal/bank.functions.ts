@@ -166,7 +166,7 @@ export const getMyBankWallet = createServerFn({ method: "GET" })
     const out = await Promise.all(
       balances.map(async (b) => {
         const meta = b.decimals == null
-          ? await rpc<{ symbol: string; decimals: number } | null>("suix_getCoinMetadata", [b.coinType]).catch(() => null)
+          ? await (await import("@/lib/terminal/sui-balances.server")).readCoinMetadata(b.coinType).catch(() => null)
           : null;
         const decimals = b.decimals ?? meta?.decimals ?? 9;
         return { coinType: b.coinType, symbol: b.symbol ?? meta?.symbol ?? b.coinType.split("::").at(-1)!, amount: Number(b.balance) / 10 ** decimals };

@@ -53,17 +53,20 @@ interface CoinMatch { coinType: string; symbol: string; decimals: number; balanc
 
 /** Coins in the wallet matching the ticker or coin type the tweet named. */
 export async function matchCoins(wallet: string, command: Pick<BankCommand, "token" | "isCoinType">): Promise<CoinMatch[]> {
-  const balances = await rpc<{ coinType: string; totalBalance: string }[]>("suix_getAllBalances", [wallet]);
+  // Official GraphQL: public JSON-RPC balance/metadata calls are retired.
+  const { readSuiHoldings, readCoinMetadata } = await import("./sui-balances.server");
+  const holdings = await readSuiHoldings(wallet);
   const out: CoinMatch[] = [];
-  for (const b of balances) {
-    if (BigInt(b.totalBalance) <= 0n) continue;
+  for (const b of holdings) {
     const type = normalizeStructTag(b.coinType);
     if (command.isCoinType && type !== normalizeStructTag(command.token)) continue;
-    const meta = await rpc<{ symbol: string; decimals: number } | null>("suix_getCoinMetadata", [b.coinType]).catch(() => null);
+    const meta = b.decimals != null && b.symbol
+      ? { symbol: b.symbol, decimals: b.decimals }
+      : await readCoinMetadata(type).catch(() => null);
     const symbol = (meta?.symbol ?? type.split("::").at(-1) ?? "").toUpperCase();
     if (!command.isCoinType && symbol !== command.token) continue;
     if (!meta && type !== SUI_TYPE) continue;
-    out.push({ coinType: type, symbol, decimals: meta?.decimals ?? 9, balance: BigInt(b.totalBalance) });
+    out.push({ coinType: type, symbol, decimals: meta?.decimals ?? 9, balance: b.balance });
   }
   return out;
 }
