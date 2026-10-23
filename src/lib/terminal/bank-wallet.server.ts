@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 import { decodeSuiPrivateKey } from "@mysten/sui/cryptography";
 import { Ed25519Keypair } from "@mysten/sui/keypairs/ed25519";
-import { Transaction } from "@mysten/sui/transactions";
+import { Transaction, type TransactionResult } from "@mysten/sui/transactions";
 import { normalizeStructTag, normalizeSuiAddress } from "@mysten/sui/utils";
 
 import { decryptConnectionKey, encryptConnectionKey } from "@/lib/connection-key.server";
@@ -261,7 +261,7 @@ export async function bankSigner(wallet: BankWalletRow) {
 type Result = { ok: true; digest: string } | { ok: false; error: string };
 
 type CoinRef = { coinObjectId: string; version: string; digest: string; balance: string };
-type TxCoin = ReturnType<Transaction["splitCoins"]>[number];
+type TxCoin = TransactionResult;
 export interface TokenSourceDeps {
   getCoins: (owner: string, coinType: string) => Promise<CoinRef[]>;
   addressBalance: (owner: string, coinType: string) => Promise<bigint>;
