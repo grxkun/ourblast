@@ -7,8 +7,8 @@ vi.mock("./webhook.server", () => ({ processTelegramUpdate: process }));
 vi.mock("@/integrations/supabase/client.server", () => ({ supabaseAdmin: { from: () => ({
   insert: async (rows: Record<string, unknown>[]) => {
     if (state.fail) return { error: { code: "503" } };
-    if (rows.some((r) => state.rows.has(String(r.delivery_key)))) return { error: { code: "23505" } };
-    for (const r of rows) state.rows.set(String(r.delivery_key), { ...r });
+    if (rows.some((r) => state.rows.has(String(r['delivery_key'])))) return { error: { code: "23505" } };
+    for (const r of rows) state.rows.set(String(r['delivery_key']), { ...r });
     return { error: null };
   },
   update: (values: Record<string, unknown>) => {
@@ -17,13 +17,13 @@ vi.mock("@/integrations/supabase/client.server", () => ({ supabaseAdmin: { from:
       eq: (k: string, v: unknown) => { filters[k] = v; return query; },
       select: () => query,
       maybeSingle: async () => {
-        const row = state.rows.get(String(filters.delivery_key));
+        const row = state.rows.get(String(filters['delivery_key']));
         if (!row || Object.entries(filters).some(([k, v]) => row[k] !== v)) return { data: null, error: null };
         Object.assign(row, values);
-        return { data: { payload: row.payload }, error: null };
+        return { data: { payload: row['payload'] }, error: null };
       },
       then: (resolve: (v: unknown) => unknown) => {
-        const row = state.rows.get(String(filters.delivery_key));
+        const row = state.rows.get(String(filters['delivery_key']));
         if (row) Object.assign(row, values);
         return Promise.resolve(resolve({ error: null }));
       },
@@ -41,7 +41,7 @@ describe("durable Telegram retries", () => {
     expect(await enqueueTelegramUpdate(update)).toBe("ignored");
     await Promise.all([processQueuedTelegramUpdate("update:99", "test-token"), processQueuedTelegramUpdate("update:99", "test-token")]);
     expect(process).toHaveBeenCalledTimes(1);
-    expect(state.rows.get("update:99")?.status).toBe("done");
+    expect(state.rows.get("update:99")?.['status']).toBe("done");
   });
   it("does not submit twice on repeated confirmation taps", async () => {
     const cq = { id: "a", data: "g|b|1|USDC", from: { id: 12 }, message: { chat: { id: 12 }, message_id: 50 } };
@@ -55,7 +55,7 @@ describe("durable Telegram retries", () => {
     await processQueuedTelegramUpdate("update:3", "test-token");
     await processQueuedTelegramUpdate("update:3", "test-token");
     expect(process).toHaveBeenCalledTimes(1);
-    expect(state.rows.get("update:3")?.status).toBe("needs_review");
+    expect(state.rows.get("update:3")?.['status']).toBe("needs_review");
   });
   it("fails closed when the durable claim cannot be saved", async () => {
     state.fail = true;
