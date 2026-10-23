@@ -23,7 +23,7 @@ async function suiBalance(address: string): Promise<number> {
 async function oneClickQuote(origin: string, dest: string, amount: bigint, recipient: string, refundTo: string) {
   const headers: Record<string, string> = { "content-type": "application/json" };
   const jwt = process.env["ONECLICK_JWT"];
-  if (jwt) headers["authorization"] = `Bearer ${jwt}`;
+  if (jwt) { headers["authorization"] = `Bearer ${jwt}`; headers["x-api-key"] = jwt; }
   const res = await fetch(`${ONECLICK}/quote`, {
     method: "POST",
     headers,

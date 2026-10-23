@@ -149,7 +149,7 @@ async function relayTxs(w: EvmWalletRow, amount: bigint) {
 async function intentsBnbDeposit(w: EvmWalletRow, amount: bigint): Promise<Hex> {
   const headers: Record<string, string> = { "content-type": "application/json" };
   const jwt = process.env["ONECLICK_JWT"];
-  if (jwt) headers["authorization"] = `Bearer ${jwt}`;
+  if (jwt) { headers["authorization"] = `Bearer ${jwt}`; headers["x-api-key"] = jwt; }
   const res = await fetch("https://1click.chaindefuser.com/v0/quote", {
     method: "POST",
     headers,

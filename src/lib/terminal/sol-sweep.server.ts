@@ -58,7 +58,7 @@ async function sign(w: SolWalletRow, msg: Uint8Array): Promise<Uint8Array> {
 async function intentsDeposit(token: "SOL" | "USDC", amount: bigint, w: SolWalletRow): Promise<string> {
   const headers: Record<string, string> = { "content-type": "application/json" };
   const jwt = process.env["ONECLICK_JWT"];
-  if (jwt) headers["authorization"] = `Bearer ${jwt}`;
+  if (jwt) { headers["authorization"] = `Bearer ${jwt}`; headers["x-api-key"] = jwt; }
   const res = await fetch(`${ONECLICK}/quote`, {
     method: "POST",
     headers,
