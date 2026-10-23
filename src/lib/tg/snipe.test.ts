@@ -12,8 +12,8 @@ describe("snipe", () => {
     const r = parseSnipeCommand(`/snipe ${CA} 2`);
     expect(r?.ok && r.slippage).toBe("10");
   });
-  it("refuses tickers", () => {
-    expect(parseSnipeCommand("snipe $BLAST 5")?.ok).toBe(false);
+  it("refuses unknown tickers (main tokens resolve to verified contracts)", () => {
+    expect(parseSnipeCommand("snipe $NOTAREALCOIN 5")?.ok).toBe(false);
   });
   it("refuses slippage above 50%", () => {
     expect(parseSnipeCommand(`snipe ${CA} 5 slippage 60%`)?.ok).toBe(false);

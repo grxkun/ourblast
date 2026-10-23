@@ -2,6 +2,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { TradeWalletPanel } from "./TradeWalletPanel";
 import { BridgeTracker } from "./BridgeTracker";
+import { NftPanel } from "./NftPanel";
 import { useServerFn } from "@tanstack/react-start";
 import { Landmark, AlertTriangle, ShieldCheck } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -142,6 +143,7 @@ export function OurBankCard() {
       </p>
 
       {userId ? <BankWalletPanel userId={userId} /> : null}
+      {userId ? <NftPanel userId={userId} /> : null}
       {userId ? <SwapPanel userId={userId} /> : null}
       {userId ? <TradeWalletPanel userId={userId} /> : null}
 

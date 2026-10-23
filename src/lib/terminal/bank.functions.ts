@@ -392,3 +392,20 @@ export const runBankCommand = createServerFn({ method: "POST" })
     ]);
     return { reply, swapId: swap?.id ?? null, transferId: transfer?.coin_type ? transfer.id : null };
   });
+
+/** Read-only: NFTs / collectibles held by the signed-in user's main OurBank Sui wallet. */
+export const getMyBankNfts = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const handle = await myXHandle(context.userId);
+    if (!handle) return { linked: false as const, nfts: [], error: null };
+    const { findBankWallet } = await import("./bank-wallet.server");
+    const wallet = await findBankWallet(handle);
+    if (!wallet) return { linked: false as const, nfts: [], error: null };
+    const { readSuiNfts } = await import("./sui-balances.server");
+    try {
+      return { linked: true as const, address: wallet.address, nfts: await readSuiNfts(wallet.address), error: null };
+    } catch (e) {
+      return { linked: true as const, address: wallet.address, nfts: [], error: (e as Error).message };
+    }
+  });

@@ -29,3 +29,6 @@
 - [ ] Presale buys (Blast)
 - [x] Copy trading (bot chat)
 - [ ] Limit orders
+- [x] Main trade tokens (USDC, LOFI, ZUK, BLUB, CETUS, SEND, BLUE, WAL, DEEP, SOH) by ticker on all platforms
+- [x] Fix 'couldn't read your OurBank wallet' on buys (GraphQL balances)
+- [x] NFT reader on OurBank wallet (read-only)

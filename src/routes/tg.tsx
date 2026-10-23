@@ -9,6 +9,7 @@ import mascot from "@/assets/blast-cool.png.asset.json";
 import { toast } from "sonner";
 
 import { buildSwapCommand, normalizeSwapToken, swapTokenSymbol } from "@/lib/tg/tradeCommand";
+import { MAIN_TOKENS, mainTokenByType } from "@/lib/terminal/mainTokens";
 import { listPublicLaunches } from "@/lib/terminal/launch-status.functions";
 import { tgBlastPresales, tgBridgeHistory, tgConsolidate, tgCreateWallet, tgExportWalletKey, tgWalletTokens, tgWalletTransfer, tgGetBankWallet, tgListWallets, tgSetTradeSlots, tgLinkX, tgRunCommand, tgSession, tgToggleWatch, tgUnlinkX } from "@/lib/tg/tg.functions";
 
@@ -492,7 +493,7 @@ function SwapCard({ preset, busy, onRun, holdings, onRefresh }: { preset: TradeP
   const payUsd = unitUsd(pay);
   const estOut = (() => { const a = Number(amount), up = unitUsd(pay), ur = unitUsd(receive); return a > 0 && up && ur ? (a * up) / ur : null; })();
   const pickList = useMemo(() => {
-    const syms = Array.from(new Set(["SUI", "BLAST", ...holdings.filter((h) => h.symbol.toUpperCase() !== "SUI").map((h) => h.coinType)]));
+    const syms = Array.from(new Set(["SUI", ...MAIN_TOKENS.map((t) => t.symbol), ...holdings.filter((h) => h.symbol.toUpperCase() !== "SUI" && !mainTokenByType(h.coinType)).map((h) => h.coinType)]));
     const q = search.trim().replace(/^\$/, "").toUpperCase();
     return syms.filter((s) => !q || swapTokenSymbol(s).toUpperCase().includes(q) || s.toUpperCase().includes(q));
   }, [holdings, search]);

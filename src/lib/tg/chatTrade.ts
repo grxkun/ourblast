@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: BUSL-1.1
 /** Pure helpers for in-chat Telegram trading: token detection and button payloads (64-byte limit). */
+import { mainToken } from "@/lib/terminal/mainTokens";
 
 const COIN_TYPE = /^(0x[a-f0-9]{1,64})::([a-z_][a-z0-9_]*)::([a-z_][a-z0-9_]*)$/i;
 
@@ -9,7 +10,7 @@ export function detectToken(text: string): { symbol: string; coinType: string | 
   const ct = t.match(COIN_TYPE);
   if (ct?.[3]) return { symbol: ct[3].toUpperCase().slice(0, 16), coinType: t };
   const tk = t.match(/^\$([a-z0-9]{1,16})$/i);
-  if (tk?.[1]) return { symbol: tk[1].toUpperCase(), coinType: null };
+  if (tk?.[1]) return { symbol: tk[1].toUpperCase(), coinType: mainToken(tk[1])?.coinType ?? null };
   return null;
 }
 
