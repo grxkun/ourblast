@@ -356,7 +356,7 @@ export async function sendManyFromBankWallet(
   const tx = new Transaction();
   withGas(tx, sender, gas, await referenceGasPrice(), Number(GAS_BUDGET));
 
-  const outs: TransactionResult[] = [];
+  const outs: (TransactionResult | ReturnType<Transaction["splitCoins"]>[number])[] = [];
   for (const it of items) {
     const type = normalizeStructTag(it.coinType);
     if (type === SUI_TYPE) {
