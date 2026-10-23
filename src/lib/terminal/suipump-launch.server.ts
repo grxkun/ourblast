@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: BUSL-1.1
+import { SuiGraphQLClient } from "@mysten/sui/graphql";
 import { Ed25519Keypair } from "@mysten/sui/keypairs/ed25519";
 import { Transaction } from "@mysten/sui/transactions";
 
@@ -310,7 +311,9 @@ export async function signAndExecute(
 ): Promise<ExecutedTransaction> {
   let bytes: Uint8Array;
   try {
-    bytes = await tx.build();
+    // Built with the official GraphQL client so tx.coin()/tx.balance() intents
+    // (coin objects + address-balance accumulator) resolve at build time.
+    bytes = await tx.build({ client: buildClient });
   } catch (error) {
     return { digest: null, ok: false, error: `prepare failed: ${(error as Error).message}`, created: [] };
   }
