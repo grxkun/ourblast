@@ -1,4 +1,5 @@
 # Roadmap
+- [ ] Stop repeated Telegram updates from duplicating replies or transfers; acknowledge promptly and test retry/error handling without live sends.
 - [x] Replace retired swap build/simulation connection with official Sui GraphQL; 35 tests and unsigned SUI→USDC simulation on Grxxxkun wallet passed, no signing/submission; publishing requested.
 - [x] Restore OurBank Sui holdings with official GraphQL; seven tests and real-wallet read passed (not published; Telegram delivery unverified).
 - [x] Fix shared Solana RPC fallback; 30 tests passed and live balance/blockhash reads verified without sending transactions (not published)
