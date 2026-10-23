@@ -28,7 +28,7 @@ export function staleTelegramMessage(update: TelegramUpdate, nowMs = Date.now())
 export function telegramDeliveryKeys(update: TelegramUpdate): string[] {
   const keys = [`update:${update.update_id}`];
   const cq = update.callback_query;
-  if (cq?.message && cq.data && (/^(br:x:|go:|pg:)/.test(cq.data) || ["lp", "wp", "cc"].includes(cq.data))) {
+  if (cq?.message && cq.data && (/^(br:x:|g\||pg\|)/.test(cq.data) || ["lp", "wp", "cc"].includes(cq.data))) {
     keys.push(`confirm:${cq.message.chat.id}:${cq.message.message_id}`);
   }
   return keys;
