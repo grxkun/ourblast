@@ -25,7 +25,7 @@ describe("Solana RPC fallback", () => {
   it("skips an unavailable endpoint on the next request", async () => {
     const fetcher = vi.fn()
       .mockResolvedValueOnce(new Response("limited", { status: 429 }))
-      .mockResolvedValue(Response.json({ result: 1 }));
+      .mockImplementation(async () => Response.json({ result: 1 }));
     vi.stubGlobal("fetch", fetcher);
     const { solRpc } = await import("./sol-rpc.server");
     await solRpc("getBalance", []);
@@ -42,7 +42,10 @@ describe("Solana RPC fallback", () => {
     vi.stubGlobal("fetch", fetcher);
     const { solRpc } = await import("./sol-rpc.server");
     expect(await solRpc("sendTransaction", ["same-signed-payload", { encoding: "base64" }])).toBe("signature");
-    expect(fetcher.mock.calls[0][1].body).toBe(fetcher.mock.calls[1][1].body);
+    const first = fetcher.mock.calls[0]?.[1];
+    const second = fetcher.mock.calls[1]?.[1];
+    expect(first?.body).toBeDefined();
+    expect(first?.body).toBe(second?.body);
   });
 
   it("does not expose credentials or provider errors when every endpoint fails", async () => {
