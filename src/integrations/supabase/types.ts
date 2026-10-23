@@ -2513,6 +2513,24 @@ export type Database = {
           },
         ]
       }
+      tg_webhook_receipts: {
+        Row: {
+          delivery_key: string
+          received_at: string
+          update_id: number
+        }
+        Insert: {
+          delivery_key: string
+          received_at?: string
+          update_id: number
+        }
+        Update: {
+          delivery_key?: string
+          received_at?: string
+          update_id?: number
+        }
+        Relationships: []
+      }
       user_achievements: {
         Row: {
           achievement_key: string

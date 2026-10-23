@@ -134,6 +134,13 @@
       "when": 1792594037071,
       "tag": "0018_tg_copy_trade",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1792796906870,
+      "tag": "0019_telegram_delivery_receipts",
+      "breakpoints": true
     }
   ]
 }
