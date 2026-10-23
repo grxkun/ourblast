@@ -27,9 +27,10 @@
 - [x] Token sniping (confirm-first, slippage cap)
 - [x] Presale buys in TG chat (confirm-first; live once BLAST_PARTNER_KEY added)
 - [x] Copy trading (bot chat)
-- [ ] Presale buys (Blast)
+- [x] Presale buys (Blast) — live once BLAST_PARTNER_KEY added
 - [x] Copy trading (bot chat)
-- [ ] Limit orders
+- [x] Limit orders
 - [x] Main trade tokens (USDC, LOFI, ZUK, BLUB, CETUS, SEND, BLUE, WAL, DEEP, SOH) by ticker on all platforms
 - [x] Fix 'couldn't read your OurBank wallet' on buys (GraphQL balances)
 - [x] NFT reader on OurBank wallet (read-only)
+- [x] /docs dev-fee split reads launch payees via Sui GraphQL
