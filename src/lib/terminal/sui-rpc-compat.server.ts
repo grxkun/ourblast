@@ -118,7 +118,7 @@ async function getObject(params: unknown[]) {
 }
 
 async function getCoins(params: unknown[]) {
-  const [owner, coinType = "0x2::sui::SUI", cursor = null, limit = 50] = params as [string, string?, string | null?, number?];
+  const [owner, coinType = "0x2::sui::SUI", cursor = null, limit = 50] = params as [string, string?, (string | null)?, number?];
   const data = await suiGql<{
     address: {
       objects: {
@@ -157,7 +157,7 @@ async function getOwnedObjects(params: unknown[]) {
   const [owner, query = {}, cursor = null, limit = 50] = params as [
     string,
     { filter?: { StructType?: string }; options?: { showContent?: boolean } }?,
-    string | null?,
+    (string | null)?,
     number?,
   ];
   const data = await suiGql<{
@@ -284,7 +284,7 @@ async function queryTransactionBlocks(params: unknown[]) {
 }
 
 async function queryEvents(params: unknown[]) {
-  const [query, cursor = null, limit = 50, descending = false] = params as [{ MoveEventType?: string }, string | null?, number?, boolean?];
+  const [query, cursor = null, limit = 50, descending = false] = params as [{ MoveEventType?: string }, (string | null)?, number?, boolean?];
   if (!query?.MoveEventType) throw new Error("Only event-type lookups are supported.");
   const n = Math.min(Number(limit) || 50, 50);
   const q = descending
@@ -305,7 +305,7 @@ async function queryEvents(params: unknown[]) {
 }
 
 async function getDynamicFields(params: unknown[]) {
-  const [parent, cursor = null, limit = 50] = params as [string, string | null?, number?];
+  const [parent, cursor = null, limit = 50] = params as [string, (string | null)?, number?];
   const data = await suiGql<{
     object: {
       dynamicFields: {
