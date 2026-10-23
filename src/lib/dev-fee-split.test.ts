@@ -1,8 +1,6 @@
 // SPDX-License-Identifier: BUSL-1.1
-import { describe, expect, it, vi } from "vitest";
-vi.mock("@/lib/terminal/suipump-launch.server", () => ({}));
-vi.mock("@/integrations/supabase/auth-middleware", () => ({ requireSupabaseAuth: {} }));
-import { decodeFeeSplit } from "./dev-fee.functions";
+import { describe, expect, it } from "vitest";
+import { decodeFeeSplit } from "./dev-fee-split";
 
 describe("decodeFeeSplit", () => {
   it("reads a single 100% payee from a real Suipump launch", () => {

@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
+import { decodeFeeSplit } from "@/lib/dev-fee-split";
 import { Ed25519Keypair } from "@mysten/sui/keypairs/ed25519";
 import { Transaction } from "@mysten/sui/transactions";
 
