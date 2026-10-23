@@ -141,6 +141,13 @@
       "when": 1792796906870,
       "tag": "0019_telegram_delivery_receipts",
       "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1792796975207,
+      "tag": "0020_telegram_durable_update_queue",
+      "breakpoints": true
     }
   ]
 }

@@ -2515,18 +2515,27 @@ export type Database = {
       }
       tg_webhook_receipts: {
         Row: {
+          completed_at: string | null
           delivery_key: string
+          payload: Json | null
           received_at: string
+          status: string
           update_id: number
         }
         Insert: {
+          completed_at?: string | null
           delivery_key: string
+          payload?: Json | null
           received_at?: string
+          status?: string
           update_id: number
         }
         Update: {
+          completed_at?: string | null
           delivery_key?: string
+          payload?: Json | null
           received_at?: string
+          status?: string
           update_id?: number
         }
         Relationships: []
