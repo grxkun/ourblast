@@ -431,7 +431,7 @@ async function handleSwapMention(postId: string, username: string, rawText: stri
     if (command.side === "buy") {
       coinIn = SWAP_SUI; symbolIn = "SUI"; decimalsIn = 9; balanceIn = suiMatch?.balance ?? 0n;
       coinOut = normalizeStructTag(command.token);
-      const meta = await rpc<{ symbol: string; decimals: number } | null>("suix_getCoinMetadata", [coinOut]).catch(() => null);
+      const meta = await (await import("./sui-balances.server")).readCoinMetadata(coinOut).catch(() => null);
       if (!meta) return `@${username} couldn't find that token on Sui. Check the contract address.`;
       symbolOut = meta.symbol.toUpperCase(); decimalsOut = meta.decimals;
     } else {
@@ -635,7 +635,7 @@ async function balanceReply(username: string): Promise<string> {
   if (!rows.length) return `@${username} your OurBank wallet ${short} is empty. Deposit SUI to ${wallet.address}`;
   const parts: string[] = [];
   for (const r of rows.slice(0, 6)) {
-    const meta = await rpc<{ symbol: string; decimals: number } | null>("suix_getCoinMetadata", [r.coinType]).catch(() => null);
+    const meta = await (await import("./sui-balances.server")).readCoinMetadata(r.coinType).catch(() => null);
     const dec = meta?.decimals ?? 9;
     const amt = Number(r.balance) / 10 ** dec;
     const sym = (meta?.symbol ?? r.coinType.split("::").at(-1) ?? "?").toUpperCase().replace(/^\$/, "");
