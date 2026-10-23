@@ -23,6 +23,9 @@ import {
 } from "./suipump-launch";
 import { escrowCreatorSui, refundCreatorSui, type DevBuySigner, type OwnedSuiCoin } from "./devbuy-sui.server";
 
+/** Official GraphQL client used to build transactions (resolves coin/balance intents). */
+const buildClient = new SuiGraphQLClient({ url: "https://graphql.mainnet.sui.io/graphql", network: "mainnet" });
+
 /** The shared PriceConfig id the Suipump registry points buys at. */
 async function readRegistryPriceConfig(registryId: string): Promise<string | null> {
   const obj = await rpc<{ data?: { content?: { fields?: Record<string, unknown> } } }>("sui_getObject", [
