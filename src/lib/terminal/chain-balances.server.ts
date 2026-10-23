@@ -5,6 +5,7 @@ import { createPublicClient, erc20Abi, http, type Hex } from "viem";
 
 import { SWEEP_CHAINS, type SweepChain } from "./evm-sweep";
 import { SOL_USDC_MINT } from "./sol-sweep";
+import { solRpc as rpc } from "./sol-rpc.server";
 
 export interface ChainBalance { chain: string; eth: number; usdc: number | null; native: "ETH" | "BNB" }
 
@@ -20,40 +21,6 @@ export async function evmBalances(address: string): Promise<ChainBalance[]> {
       return { chain, native: c.native, eth: Number(eth) / 1e18, usdc: usdc === null ? null : Number(usdc) / 1e6 };
     }),
   );
-}
-
-const SOL_RPCS = () =>
-  [
-    process.env["SOLANA_RPC_URL"],
-    "https://api.mainnet-beta.solana.com",
-    "https://solana-rpc.publicnode.com",
-    "https://rpc.ankr.com/solana",
-    "https://solana.api.onfinality.io/public",
-  ].filter(Boolean) as string[];
-
-const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
-
-/** Tries each Solana RPC in turn, then retries the whole list once after a pause; public endpoints throttle edge IPs. */
-async function rpc<T>(method: string, params: unknown[]): Promise<T> {
-  let last: unknown;
-  for (let pass = 0; pass < 2; pass++) {
-    if (pass > 0) await sleep(1_200);
-    for (const url of SOL_RPCS()) {
-      try {
-        const res = await fetch(url, {
-          method: "POST",
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify({ jsonrpc: "2.0", id: 1, method, params }),
-          signal: AbortSignal.timeout(10_000),
-        });
-        if (res.status === 429 || res.status === 403) throw new Error(`Solana RPC ${method}: rate limited (${res.status})`);
-        const json = (await res.json()) as { result?: T; error?: { message: string } };
-        if (json.error || json.result === undefined) throw new Error(`Solana RPC ${method}: ${json.error?.message ?? res.status}`);
-        return json.result;
-      } catch (e) { last = e; }
-    }
-  }
-  throw new Error("Solana network is congested right now — please try again in a moment.");
 }
 
 export async function solBalances(address: string): Promise<{ sol: number; usdc: number }> {
