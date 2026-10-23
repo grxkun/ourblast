@@ -8,7 +8,7 @@ export interface WalletSnapshot {
   evmAddress: string | null;
   solAddress: string | null;
   sui: SuiHolding[];
-  suiError?: string;
+  suiError?: string | undefined;
   evm: ChainBal[];
   sol: { sol: number; usdc: number } | null;
 }
