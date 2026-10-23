@@ -41,7 +41,7 @@ describe("tokenSendSource address accumulator", () => {
       "coin::from_balance",
     ]);
     expect(kinds(tx)).toContain("SplitCoins");
-    expect(kinds(tx)).toContain("TransferObjects");
+    expect(kinds(tx)).not.toContain("TransferObjects"); // the caller transfers
   });
 
   it("merges an accumulator top-up into existing Coin objects", async () => {
