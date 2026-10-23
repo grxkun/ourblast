@@ -15,3 +15,4 @@
 
 - Telegram swaps preserve full, case-sensitive coin types; bot cards carry contracts in bot-authored message text across confirmation because callback payloads are limited to 64 bytes.
 - SOL → SUI bridges try NEAR Intents first, then Mayan MCTP (mayan-sol.ts, hand-built v0 tx, simulated before sending) — two providers so one solver outage doesn't block bridging, and no Solana SDK in the worker.
+- Solana balances and bridge RPC calls share sol-rpc.server.ts with public-first endpoints and temporary outage cooldowns; broadcast fallback reuses the identical signed payload to avoid creating duplicate transfers.
