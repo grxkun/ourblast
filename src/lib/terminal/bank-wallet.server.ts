@@ -229,7 +229,9 @@ export async function ensureBankWallet(handle: string, userId: string | null): P
 }
 
 export async function bankBalances(address: string) {
-  return (await readSuiHoldings(address)).map(({ coinType, balance }) => ({ coinType, balance }));
+  // GraphQL metadata (symbol/decimals) rides along so callers never fall back
+  // to the deprecated JSON-RPC metadata endpoint and mis-scale amounts.
+  return readSuiHoldings(address);
 }
 
 /** A signer for a bank wallet, wherever its key lives. */
