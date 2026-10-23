@@ -5,6 +5,7 @@ import { Transaction } from "@mysten/sui/transactions";
 import { normalizeStructTag, normalizeSuiAddress } from "@mysten/sui/utils";
 
 import { decryptConnectionKey, encryptConnectionKey } from "@/lib/connection-key.server";
+import { readSuiHoldings } from "./sui-balances.server";
 
 /**
  * OurBank wallets: one bot-held Sui wallet per X account, like Bankrbot. New
@@ -228,9 +229,7 @@ export async function ensureBankWallet(handle: string, userId: string | null): P
 }
 
 export async function bankBalances(address: string) {
-  const { rpc } = await chain();
-  const balances = await rpc<{ coinType: string; totalBalance: string }[]>("suix_getAllBalances", [address]);
-  return balances.filter((b) => BigInt(b.totalBalance) > 0n).map((b) => ({ coinType: normalizeStructTag(b.coinType), balance: BigInt(b.totalBalance) }));
+  return (await readSuiHoldings(address)).map(({ coinType, balance }) => ({ coinType, balance }));
 }
 
 /** A signer for a bank wallet, wherever its key lives. */
