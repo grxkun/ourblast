@@ -7,7 +7,7 @@ describe("Solana RPC fallback", () => {
   it("tries PublicNode and Vibe Station before the configured endpoint", async () => {
     vi.stubEnv("SOLANA_RPC_URL", "https://configured.example/private-key");
     const { solRpcEndpoints } = await import("./sol-rpc.server");
-    expect(solRpcEndpoints().slice(0, 2)).toEqual(["https://solana-rpc.publicnode.com", "https://solanavibestation.com"]);
+    expect(solRpcEndpoints().slice(0, 2)).toEqual(["https://solana-rpc.publicnode.com", "https://public.rpc.solanavibestation.com"]);
     expect(solRpcEndpoints().at(-1)).toBe("https://configured.example/private-key");
   });
 
@@ -31,7 +31,7 @@ describe("Solana RPC fallback", () => {
     await solRpc("getBalance", []);
     await solRpc("getBalance", []);
     expect(fetcher.mock.calls.map(([url]) => url)).toEqual([
-      "https://solana-rpc.publicnode.com", "https://solanavibestation.com", "https://solanavibestation.com",
+      "https://solana-rpc.publicnode.com", "https://public.rpc.solanavibestation.com", "https://public.rpc.solanavibestation.com",
     ]);
   });
 

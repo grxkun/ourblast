@@ -2,9 +2,9 @@
 /** Shared RPC pool for bridge reads, simulation and broadcast of the same signed transaction. */
 const PUBLIC_RPCS = [
   "https://solana-rpc.publicnode.com",
-  "https://solanavibestation.com",
+  "https://public.rpc.solanavibestation.com",
+  "https://solana.leorpc.com/?api_key=FREE",
   "https://api.mainnet-beta.solana.com",
-  "https://solana.api.onfinality.io/public",
 ];
 const unavailableUntil = new Map<string, number>();
 

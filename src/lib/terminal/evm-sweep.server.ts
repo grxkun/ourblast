@@ -147,7 +147,8 @@ async function relayTxs(w: EvmWalletRow, amount: bigint) {
 
 /** NEAR Intents 1Click: quote native BNB → SUI and return the BSC deposit address to pay. */
 async function intentsBnbDeposit(w: EvmWalletRow, amount: bigint): Promise<Hex> {
-  const headers: Record<string, string> = { "content-type": "application/json" };
+  // 1Click's bot check rejects requests without a User-Agent.
+  const headers: Record<string, string> = { "content-type": "application/json", "user-agent": "ourblast-bridge/1.0" };
   const jwt = process.env["ONECLICK_JWT"];
   if (jwt) { headers["authorization"] = `Bearer ${jwt}`; headers["x-api-key"] = jwt; }
   const res = await fetch("https://1click.chaindefuser.com/v0/quote", {
@@ -162,7 +163,7 @@ async function intentsBnbDeposit(w: EvmWalletRow, amount: bigint): Promise<Hex> 
     }),
     signal: AbortSignal.timeout(20_000),
   });
-  const json = (await res.json()) as { message?: string; quote?: { depositAddress?: string } };
+  const json = (await res.json().catch(() => ({}))) as { message?: string; quote?: { depositAddress?: string } };
   const dep = json.quote?.depositAddress;
   if (!res.ok || !dep) throw new Error(`NEAR Intents quote failed: ${json.message ?? res.status}`);
   if (!/^0x[0-9a-fA-F]{40}$/.test(dep)) throw new Error("NEAR Intents returned a bad deposit address.");

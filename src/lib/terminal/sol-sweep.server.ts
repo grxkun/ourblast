@@ -56,7 +56,8 @@ async function sign(w: SolWalletRow, msg: Uint8Array): Promise<Uint8Array> {
 
 /** Asks NEAR Intents for a one-time deposit address that pays SUI to the OurBank Sui wallet. */
 async function intentsDeposit(token: "SOL" | "USDC", amount: bigint, w: SolWalletRow): Promise<string> {
-  const headers: Record<string, string> = { "content-type": "application/json" };
+  // 1Click's bot check rejects requests without a User-Agent.
+  const headers: Record<string, string> = { "content-type": "application/json", "user-agent": "ourblast-bridge/1.0" };
   const jwt = process.env["ONECLICK_JWT"];
   if (jwt) { headers["authorization"] = `Bearer ${jwt}`; headers["x-api-key"] = jwt; }
   const res = await fetch(`${ONECLICK}/quote`, {
@@ -71,7 +72,7 @@ async function intentsDeposit(token: "SOL" | "USDC", amount: bigint, w: SolWalle
     }),
     signal: AbortSignal.timeout(20_000),
   });
-  const json = (await res.json()) as { message?: string; quote?: { depositAddress?: string } };
+  const json = (await res.json().catch(() => ({}))) as { message?: string; quote?: { depositAddress?: string } };
   const dep = json.quote?.depositAddress;
   if (!res.ok || !dep) throw new Error(`NEAR Intents quote failed: ${json.message ?? res.status}`);
   if (bs58.decode(dep).length !== 32) throw new Error("NEAR Intents returned a bad deposit address.");
