@@ -382,13 +382,9 @@ export async function sendManyFromBankWallet(
       outs.push(tx.splitCoins(tx.gas, [tx.pure.u64(it.amount)])[0]!);
       continue;
     }
-    const page = await rpc<{ data: { coinObjectId: string; version: string; digest: string }[] }>("suix_getCoins", [sender, type, null, 50]);
-    const coins = page.data ?? [];
-    if (coins.length === 0) return { ok: false, error: `No ${type.split("::").at(-1)} coins in your OurBank wallet.` };
-    const refs = coins.map((c) => tx.objectRef({ objectId: c.coinObjectId, version: String(c.version), digest: c.digest }));
-    const [primary, ...rest] = refs;
-    if (rest.length) tx.mergeCoins(primary!, rest);
-    outs.push(tx.splitCoins(primary!, [tx.pure.u64(it.amount)])[0]!);
+    const source = await tokenSendSource(tx, sender, type, it.amount, tokenSourceDeps(rpc));
+    if ("error" in source) return { ok: false, error: source.error };
+    outs.push(source.coin);
   }
   tx.transferObjects(outs, tx.pure.address(to));
 
