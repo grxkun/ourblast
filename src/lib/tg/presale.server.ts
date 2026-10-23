@@ -3,7 +3,6 @@
 import { parsePresaleType, suiToMist } from "./presale";
 
 const SUI_TYPE = "0x0000000000000000000000000000000000000000000000000000000000000002::sui::SUI";
-const RPC = "https://fullnode.mainnet.sui.io:443";
 
 export type PresaleInfo = {
   id: string;
