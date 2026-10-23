@@ -4,6 +4,7 @@
  * no network access, so it is safe in any bundle and easy to test.
  */
 import { BLAST_BUILD } from "@/lib/blast-build.config";
+import { MAIN_TOKENS } from "./mainTokens";
 
 export type BankRecipientKind = "x" | "suins" | "address";
 
@@ -166,7 +167,10 @@ const SELL = new RegExp(String.raw`\b(?:sell|dump|jeet)\s+${SELL_AMT}\s+(?:of\s+
 const SELL_REV = new RegExp(String.raw`\b(?:sell|dump|jeet)\s+(?:my\s+)?${TOKEN}\s+${SELL_AMT}(?:\s+(?:for|into)\s+\$?sui)?(?=\s|$|[^\w%])`, "i");
 
 /** Symbols we can resolve to a verified contract without asking. */
-const KNOWN_SYMBOLS: Record<string, string> = { BLAST: BLAST_BUILD.blastTokenType };
+const KNOWN_SYMBOLS: Record<string, string> = {
+  BLAST: BLAST_BUILD.blastTokenType,
+  ...Object.fromEntries(MAIN_TOKENS.map((t) => [t.symbol, t.coinType])),
+};
 
 function tokenOf(raw: string) {
   // Bare 0x ids (launchpad curve/pool objects) pass through untouched — they are
