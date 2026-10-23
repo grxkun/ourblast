@@ -8,6 +8,7 @@ export interface WalletSnapshot {
   evmAddress: string | null;
   solAddress: string | null;
   sui: SuiHolding[];
+  suiError?: string;
   evm: ChainBal[];
   sol: { sol: number; usdc: number } | null;
 }
@@ -48,7 +49,7 @@ export function formatBalance(s: WalletSnapshot): string {
     `💰 Balance — @${s.handle}`,
     "",
     "Sui:",
-    ...(lines.length ? lines : ["• empty"]),
+    ...(s.suiError ? [s.suiError] : lines.length ? lines : ["• empty"]),
     ...(other.length ? ["", "Other chains:", ...other] : []),
     ...(total > 0 ? ["", `Sui tokens with a live price: ≈ ${usd(total)}`] : []),
     "",
@@ -69,6 +70,7 @@ export function formatWallet(s: WalletSnapshot): string {
 }
 
 export function formatPositions(s: WalletSnapshot): string {
+  if (s.suiError) return s.suiError;
   const tokens = sortHoldings(s.sui).filter((h) => !h.coinType.endsWith("::sui::SUI"));
   if (!tokens.length) return "📊 No token positions yet. Paste a $TICKER or contract to buy.";
   const names = labels(tokens);
