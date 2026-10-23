@@ -134,6 +134,15 @@ export async function buildMayanSolTx(w: Pick<SolWalletRow, "address" | "sol_add
   return { tx, ledger: plan.ledger, expectedSui: plan.quote.expectedAmountOut };
 }
 
+/** SOL Mayan needs beyond the bridged amount: ledger/wSOL rent (~0.0047) + fees. Without it the route fails its simulation. */
+export const MAYAN_SOL_RESERVE = 12_000_000n;
+
+/** Bridged amount for the Mayan path: never more than asked, trimmed so the rent/fee reserve stays in the wallet. */
+export function mayanLamports(requested: bigint, balance: bigint): bigint {
+  const room = balance - MAYAN_SOL_RESERVE;
+  return requested < room ? requested : room;
+}
+
 async function mayanBridge(w: SolWalletRow, lamports: bigint, beforeSend: (ledger: string) => Promise<void>): Promise<string> {
   const { tx, ledger } = await buildMayanSolTx(w, lamports);
   await beforeSend(ledger);
@@ -156,10 +165,14 @@ async function sweep(w: SolWalletRow, token: "SOL" | "USDC", amount: bigint, buy
     try {
       dep = await intentsDeposit(token, amount, w);
     } catch (e) {
-      // NEAR Intents can't quote: try Mayan for SOL. Nothing is sent unless Mayan's tx simulates cleanly.
+      // NEAR Intents can't quote: try Mayan for SOL (SOL → USDC → Circle CCTP → swapped to SUI on Sui).
+      // Nothing is sent unless Mayan's tx simulates cleanly.
       if (token !== "SOL") throw e;
-      const sigStr = await mayanBridge(w, amount, async (ledger) => {
-        await db.from("sol_sweeps").update({ deposit_address: `mayan:${ledger}`, order_id: orderId }).eq("id", claimed.id);
+      const { lamports: bal } = await balances(w.sol_address);
+      const mLam = mayanLamports(amount, bal);
+      if (mLam < 20_000_000n) throw new Error(`${(e as Error).message}; Mayan fallback needs ~0.012 SOL for rent/fees plus at least 0.02 SOL to bridge.`);
+      const sigStr = await mayanBridge(w, mLam, async (ledger) => {
+        await db.from("sol_sweeps").update({ deposit_address: `mayan:${ledger}`, order_id: orderId, amount_atomic: mLam.toString() as unknown as number }).eq("id", claimed.id);
       }).catch((m: Error) => { throw new Error(`${(e as Error).message}; Mayan fallback: ${m.message}`); });
       await db.from("sol_sweeps").update({ status: "submitted", tx_sig: sigStr, updated_at: new Date().toISOString() }).eq("id", claimed.id);
       return { ok: true, txSig: sigStr };
