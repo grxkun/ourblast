@@ -280,12 +280,11 @@ export const listSwapAttemptsAdmin = createServerFn({ method: "GET" })
     const chain = new Map<string, { state: string; error: string | null }>();
     await Promise.all(rows.filter((r) => r.tx_digest).map(async (r) => {
       try {
-        const res = await fetch("https://rpc-mainnet.suiscan.xyz", {
-          method: "POST", headers: { "content-type": "application/json" },
-          body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "sui_getTransactionBlock", params: [r.tx_digest, { showEffects: true }] }),
-          signal: AbortSignal.timeout(5000),
-        });
-        const j = await res.json() as { result?: { effects?: { status?: { status?: string; error?: string } } }; error?: { message?: string } };
+        const { suiCompatCall } = await import("@/lib/terminal/sui-rpc-compat.server");
+        const j: { result?: { effects?: { status?: { status?: string; error?: string } } }; error?: { message?: string } } =
+          await suiCompatCall<{ effects?: { status?: { status?: string; error?: string } } }>("sui_getTransactionBlock", [r.tx_digest, { showEffects: true }])
+            .then((result) => ({ result }))
+            .catch((e: Error) => (/could not find/i.test(e.message) ? { error: { message: e.message } } : Promise.reject(e)));
         const st = j.result?.effects?.status;
         chain.set(r.id, st ? { state: st.status === "success" ? "CONFIRMED" : "CHAIN FAILED", error: st.error ?? null }
           : { state: "NOT FOUND ON CHAIN", error: j.error?.message ?? null });

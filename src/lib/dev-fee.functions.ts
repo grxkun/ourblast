@@ -209,7 +209,9 @@ export const getDevShareLedger = createServerFn({ method: "GET" })
         const bps = inputs.find((i) => i.valueType === "vector<u64>")?.value as
           | string[]
           | undefined;
-        if (addrs && bps) {
+        if (!tx.transaction?.data?.transaction?.inputs) {
+          note = "Fee split for this launch can't be read right now.";
+        } else if (addrs && bps) {
           recipients = addrs.map((a) => a.toLowerCase());
           const index = recipients.indexOf(dev);
           devBps = index >= 0 ? Number(bps[index] ?? 0) : 0;

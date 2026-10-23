@@ -3,7 +3,6 @@
 import { parsePresaleType, suiToMist } from "./presale";
 
 const SUI_TYPE = "0x0000000000000000000000000000000000000000000000000000000000000002::sui::SUI";
-const RPC = "https://fullnode.mainnet.sui.io:443";
 
 export type PresaleInfo = {
   id: string;
@@ -20,13 +19,9 @@ export type PresaleInfo = {
 
 async function getObjectType(id: string): Promise<string | null> {
   try {
-    const res = await fetch(RPC, {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "sui_getObject", params: [id, { showType: true }] }),
-    });
-    const j = (await res.json()) as { result?: { data?: { type?: string } } };
-    return j.result?.data?.type ?? null;
+    const { suiCompatCall } = await import("@/lib/terminal/sui-rpc-compat.server");
+    const j = await suiCompatCall<{ data?: { type?: string } }>("sui_getObject", [id, { showType: true }]);
+    return j.data?.type ?? null;
   } catch {
     return null;
   }

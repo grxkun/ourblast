@@ -129,43 +129,15 @@ export interface OwnedObject {
 }
 
 /**
- * Owned-object reads through Sui JSON-RPC mirrors. The official GraphQL
- * service's owned-object index can lag badly (it reported zero objects for a
- * wallet that demonstrably holds coins), so these mirrors are the source of
- * truth for anything we intend to sign over.
+ * Public Sui JSON-RPC mirrors were all retired in October 2026. Legacy-style
+ * calls are answered by the official GraphQL service in the same JSON-RPC
+ * shapes (see sui-rpc-compat.server.ts), so no mirror list remains.
  */
-const RPC_MIRRORS = [
-  "https://sui-rpc.publicnode.com",
-  "https://rpc-mainnet.suiscan.xyz",
-  "https://sui-mainnet.nodeinfra.com",
-  "https://sui-mainnet-endpoint.blockvision.org",
-  "https://mainnet.sui.rpcpool.com",
-];
+const RPC_MIRRORS: string[] = [];
 
 export async function rpc<T>(method: string, params: unknown[]): Promise<T> {
-  let lastError: Error | null = null;
-  let sawNull = false;
-  for (const url of RPC_MIRRORS) {
-    try {
-      const res = await fetch(url, {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ jsonrpc: "2.0", id: 1, method, params }),
-        signal: AbortSignal.timeout(NETWORK_TIMEOUT_MS),
-      });
-      const json = (await res.json()) as { result?: T; error?: { message: string } };
-      if (json.error) throw new Error(json.error.message);
-      if (json.result === undefined) throw new Error("Sui read failed.");
-      // Some mirrors answer null for data they haven't indexed (e.g. coin
-      // metadata held in the coin registry); ask the next mirror before trusting it.
-      if (json.result === null) { sawNull = true; continue; }
-      return json.result;
-    } catch (error) {
-      lastError = error as Error;
-    }
-  }
-  if (sawNull) return null as T;
-  throw lastError ?? new Error("Sui read failed.");
+  const { suiCompatCall } = await import("./sui-rpc-compat.server");
+  return suiCompatCall<T>(method, params);
 }
 
 async function listOwnedViaGraphql(address: string, typeFilter: string): Promise<OwnedObject[]> {
