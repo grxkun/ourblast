@@ -163,7 +163,7 @@ async function intentsBnbDeposit(w: EvmWalletRow, amount: bigint): Promise<Hex> 
     }),
     signal: AbortSignal.timeout(20_000),
   });
-  const json = (await res.json()) as { message?: string; quote?: { depositAddress?: string } };
+  const json = (await res.json().catch(() => ({}))) as { message?: string; quote?: { depositAddress?: string } };
   const dep = json.quote?.depositAddress;
   if (!res.ok || !dep) throw new Error(`NEAR Intents quote failed: ${json.message ?? res.status}`);
   if (!/^0x[0-9a-fA-F]{40}$/.test(dep)) throw new Error("NEAR Intents returned a bad deposit address.");

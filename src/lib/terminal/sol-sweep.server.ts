@@ -72,7 +72,7 @@ async function intentsDeposit(token: "SOL" | "USDC", amount: bigint, w: SolWalle
     }),
     signal: AbortSignal.timeout(20_000),
   });
-  const json = (await res.json()) as { message?: string; quote?: { depositAddress?: string } };
+  const json = (await res.json().catch(() => ({}))) as { message?: string; quote?: { depositAddress?: string } };
   const dep = json.quote?.depositAddress;
   if (!res.ok || !dep) throw new Error(`NEAR Intents quote failed: ${json.message ?? res.status}`);
   if (bs58.decode(dep).length !== 32) throw new Error("NEAR Intents returned a bad deposit address.");
