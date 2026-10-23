@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: BUSL-1.1
 import { decodeSuiPrivateKey } from "@mysten/sui/cryptography";
 import { Ed25519Keypair } from "@mysten/sui/keypairs/ed25519";
-import { Transaction } from "@mysten/sui/transactions";
+import { Transaction, type TransactionResult } from "@mysten/sui/transactions";
 import { normalizeStructTag, normalizeSuiAddress } from "@mysten/sui/utils";
 
 import { decryptConnectionKey, encryptConnectionKey } from "@/lib/connection-key.server";
-import { readSuiHoldings } from "./sui-balances.server";
+import { readAddressBalance, readSuiHoldings } from "./sui-balances.server";
 
 /**
  * OurBank wallets: one bot-held Sui wallet per X account, like Bankrbot. New
@@ -260,6 +260,45 @@ export async function bankSigner(wallet: BankWalletRow) {
 
 type Result = { ok: true; digest: string } | { ok: false; error: string };
 
+type CoinRef = { coinObjectId: string; version: string; digest: string; balance: string };
+type TxCoin = TransactionResult;
+export interface TokenSourceDeps {
+  getCoins: (owner: string, coinType: string) => Promise<CoinRef[]>;
+  addressBalance: (owner: string, coinType: string) => Promise<bigint>;
+}
+
+/**
+ * Spendable funds for a token via the SDK's coin-with-balance intent: Coin
+ * objects first, then the address accumulator (funds received via
+ * balance::send_funds have no Coin object). The intent resolves at build time,
+ * so signAndExecute must build with a client. Totals are checked up front so
+ * failures read clearly instead of surfacing a generic build error.
+ */
+export async function tokenSendSource(
+  tx: Transaction,
+  sender: string,
+  type: string,
+  amount: bigint | null,
+  deps: TokenSourceDeps,
+): Promise<{ coin: TxCoin } | { error: string }> {
+  const label = type.split("::").at(-1) ?? type;
+  const coins = await deps.getCoins(sender, type);
+  const coinsTotal = coins.reduce((sum, c) => sum + BigInt(c.balance), 0n);
+  const acc = await deps.addressBalance(sender, type);
+  const total = coinsTotal + acc;
+  if (amount !== null && total < amount) return { error: `Not enough ${label} in your OurBank wallet.` };
+  if (amount === null && total === 0n) return { error: `No ${label} coins in your OurBank wallet.` };
+  return { coin: tx.coin({ balance: amount ?? total, type }) };
+}
+
+function tokenSourceDeps(rpc: <T>(method: string, params: unknown[]) => Promise<T>): TokenSourceDeps {
+  return {
+    getCoins: async (owner, coinType) =>
+      (await rpc<{ data: CoinRef[] }>("suix_getCoins", [owner, coinType, null, 50])).data ?? [],
+    addressBalance: readAddressBalance,
+  };
+}
+
 /** Sends `amount` of `coinType` (or everything, when amount is null) from a bank wallet. */
 export async function sendFromBankWallet(
   wallet: BankWalletRow,
@@ -287,17 +326,9 @@ export async function sendFromBankWallet(
     if (amount === null) tx.transferObjects([tx.gas], tx.pure.address(to));
     else tx.transferObjects([tx.splitCoins(tx.gas, [tx.pure.u64(amount)])[0]!], tx.pure.address(to));
   } else {
-    const page = await rpc<{ data: { coinObjectId: string; version: string; digest: string; balance: string }[] }>(
-      "suix_getCoins",
-      [sender, type, null, 50],
-    );
-    const coins = page.data ?? [];
-    if (coins.length === 0) return { ok: false, error: "No coins of that type in your OurBank wallet." };
-    const refs = coins.map((c) => tx.objectRef({ objectId: c.coinObjectId, version: String(c.version), digest: c.digest }));
-    const [primary, ...rest] = refs;
-    if (rest.length) tx.mergeCoins(primary!, rest);
-    if (amount === null) tx.transferObjects([primary!], tx.pure.address(to));
-    else tx.transferObjects([tx.splitCoins(primary!, [tx.pure.u64(amount)])[0]!], tx.pure.address(to));
+    const source = await tokenSendSource(tx, sender, type, amount, tokenSourceDeps(rpc));
+    if ("error" in source) return { ok: false, error: source.error };
+    tx.transferObjects([source.coin], tx.pure.address(to));
   }
 
   const executed = await signAndExecute(tx, signer);
@@ -325,20 +356,16 @@ export async function sendManyFromBankWallet(
   const tx = new Transaction();
   withGas(tx, sender, gas, await referenceGasPrice(), Number(GAS_BUDGET));
 
-  const outs: ReturnType<typeof tx.splitCoins>[number][] = [];
+  const outs: (TransactionResult | ReturnType<Transaction["splitCoins"]>[number])[] = [];
   for (const it of items) {
     const type = normalizeStructTag(it.coinType);
     if (type === SUI_TYPE) {
       outs.push(tx.splitCoins(tx.gas, [tx.pure.u64(it.amount)])[0]!);
       continue;
     }
-    const page = await rpc<{ data: { coinObjectId: string; version: string; digest: string }[] }>("suix_getCoins", [sender, type, null, 50]);
-    const coins = page.data ?? [];
-    if (coins.length === 0) return { ok: false, error: `No ${type.split("::").at(-1)} coins in your OurBank wallet.` };
-    const refs = coins.map((c) => tx.objectRef({ objectId: c.coinObjectId, version: String(c.version), digest: c.digest }));
-    const [primary, ...rest] = refs;
-    if (rest.length) tx.mergeCoins(primary!, rest);
-    outs.push(tx.splitCoins(primary!, [tx.pure.u64(it.amount)])[0]!);
+    const source = await tokenSendSource(tx, sender, type, it.amount, tokenSourceDeps(rpc));
+    if ("error" in source) return { ok: false, error: source.error };
+    outs.push(source.coin);
   }
   tx.transferObjects(outs, tx.pure.address(to));
 

@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: BUSL-1.1
+import { SuiGraphQLClient } from "@mysten/sui/graphql";
 import { Ed25519Keypair } from "@mysten/sui/keypairs/ed25519";
 import { Transaction } from "@mysten/sui/transactions";
 
@@ -21,6 +22,9 @@ import {
   type SuipumpLaunchResult,
 } from "./suipump-launch";
 import { escrowCreatorSui, refundCreatorSui, type DevBuySigner, type OwnedSuiCoin } from "./devbuy-sui.server";
+
+/** Official GraphQL client used to build transactions (resolves coin/balance intents). */
+const buildClient = new SuiGraphQLClient({ url: "https://graphql.mainnet.sui.io/graphql", network: "mainnet" });
 
 /** The shared PriceConfig id the Suipump registry points buys at. */
 async function readRegistryPriceConfig(registryId: string): Promise<string | null> {
@@ -310,7 +314,9 @@ export async function signAndExecute(
 ): Promise<ExecutedTransaction> {
   let bytes: Uint8Array;
   try {
-    bytes = await tx.build();
+    // Built with the official GraphQL client so tx.coin()/tx.balance() intents
+    // (coin objects + address-balance accumulator) resolve at build time.
+    bytes = await tx.build({ client: buildClient });
   } catch (error) {
     return { digest: null, ok: false, error: `prepare failed: ${(error as Error).message}`, created: [] };
   }

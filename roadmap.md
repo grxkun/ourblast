@@ -34,3 +34,5 @@
 - [x] Fix 'couldn't read your OurBank wallet' on buys (GraphQL balances)
 - [x] NFT reader on OurBank wallet (read-only)
 - [x] /docs dev-fee split reads launch payees via Sui GraphQL
+- [x] Send tokens held as address balances (no Coin object) — tx.coin intent draws coins + accumulator; live mainnet simulation of YoBooogie's 1000 ONE send passed (unsigned, nothing broadcast)
+- [ ] "No.2" — unclear which item; asked user to confirm

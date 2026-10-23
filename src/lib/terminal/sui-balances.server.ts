@@ -69,6 +69,18 @@ export async function readCoinMetadata(coinType: string): Promise<{ symbol: stri
   return data.coinMetadata;
 }
 
+/**
+ * Funds sitting in the address accumulator (received via balance::send_funds).
+ * These have no Coin object yet, so suix_getCoins cannot see them.
+ */
+export async function readAddressBalance(address: string, coinType: string): Promise<bigint> {
+  const data = await gql<{ address: { balance: { addressBalance: string | null } | null } | null }>(
+    `query($a:SuiAddress!,$t:String!){address(address:$a){balance(coinType:$t){addressBalance}}}`,
+    { a: address, t: coinType },
+  );
+  return BigInt(data.address?.balance?.addressBalance ?? "0");
+}
+
 export interface SuiNft { id: string; type: string; name: string; image: string | null; description: string | null; collection: string }
 
 interface ObjPage {
