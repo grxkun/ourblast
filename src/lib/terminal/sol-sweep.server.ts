@@ -3,7 +3,7 @@ import { ed25519 } from "@noble/curves/ed25519.js";
 import bs58 from "bs58";
 
 import { decryptConnectionKey } from "@/lib/connection-key.server";
-import { solRpc as rpc } from "./sol-rpc.server";
+import { solRpc as rpc, solBroadcast } from "./sol-rpc.server";
 import { sweepAllowed } from "./evm-sweep";
 import { planSolSweep, SOL_FEE_LAMPORTS, SOL_USDC_MINT, signedTxBase64, solTransferMessage, usdcTransferMessage } from "./sol-sweep";
 
