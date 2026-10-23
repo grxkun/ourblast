@@ -7,6 +7,7 @@ import { decodePresaleAction, encodePresaleAction, parsePresaleCommand, presaleI
 
 const APP_URL = "https://ourblast.xyz/tg";
 const LINK_URL = "https://ourblast.xyz/tg?tab=wallet";
+type Btn = { text: string; callback_data?: string; web_app?: { url: string }; url?: string };
 
 function tokenKeyboard(symbol: string): Btn[][] {
   return [
