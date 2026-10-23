@@ -5,7 +5,7 @@ import { Transaction } from "@mysten/sui/transactions";
 import { normalizeStructTag, normalizeSuiAddress } from "@mysten/sui/utils";
 
 import { decryptConnectionKey, encryptConnectionKey } from "@/lib/connection-key.server";
-import { readSuiHoldings } from "./sui-balances.server";
+import { readAddressBalance, readSuiHoldings } from "./sui-balances.server";
 
 /**
  * OurBank wallets: one bot-held Sui wallet per X account, like Bankrbot. New
@@ -259,6 +259,64 @@ export async function bankSigner(wallet: BankWalletRow) {
 }
 
 type Result = { ok: true; digest: string } | { ok: false; error: string };
+
+type CoinRef = { coinObjectId: string; version: string; digest: string; balance: string };
+type TxCoin = ReturnType<Transaction["splitCoins"]>[number];
+export interface TokenSourceDeps {
+  getCoins: (owner: string, coinType: string) => Promise<CoinRef[]>;
+  addressBalance: (owner: string, coinType: string) => Promise<bigint>;
+}
+
+/**
+ * Finds spendable funds for a token: Coin objects first, then the address
+ * accumulator. Funds received via balance::send_funds have no Coin object yet,
+ * so they are withdrawn and redeemed into one inside the same transaction.
+ */
+export async function tokenSendSource(
+  tx: Transaction,
+  sender: string,
+  type: string,
+  amount: bigint | null,
+  deps: TokenSourceDeps,
+): Promise<{ coin: TxCoin } | { error: string }> {
+  const label = type.split("::").at(-1) ?? type;
+  const coins = await deps.getCoins(sender, type);
+  const coinsTotal = coins.reduce((sum, c) => sum + BigInt(c.balance), 0n);
+  let primary: TxCoin | null = null;
+  if (coins.length) {
+    const refs = coins.map((c) => tx.objectRef({ objectId: c.coinObjectId, version: c.version, digest: c.digest }));
+    const [first, ...rest] = refs;
+    if (rest.length) tx.mergeCoins(first!, rest);
+    primary = first!;
+  }
+  const topUp = amount === null ? 0n : amount - coinsTotal;
+  const acc = amount === null || topUp > 0n ? await deps.addressBalance(sender, type) : 0n;
+  if (amount !== null && coinsTotal + acc < amount) return { error: `Not enough ${label} in your OurBank wallet.` };
+  if (amount === null && coinsTotal + acc === 0n) return { error: `No ${label} coins in your OurBank wallet.` };
+  const withdraw = amount === null ? acc : topUp > 0n ? topUp : 0n;
+  let source = primary;
+  if (withdraw > 0n) {
+    const withdrawal = tx.moveCall({
+      target: "0x2::balance::withdraw_funds_from_object",
+      typeArguments: [type],
+      arguments: [tx.object(sender), tx.pure.u64(withdraw)],
+    });
+    const balance = tx.moveCall({ target: "0x2::balance::redeem_funds", typeArguments: [type], arguments: [withdrawal] });
+    const redeemed = tx.moveCall({ target: "0x2::coin::from_balance", typeArguments: [type], arguments: [balance] });
+    if (source) tx.mergeCoins(source, [redeemed]);
+    else source = redeemed;
+  }
+  if (!source) return { error: `No ${label} coins in your OurBank wallet.` };
+  return { coin: amount === null ? source : tx.splitCoins(source, [tx.pure.u64(amount)])[0]! };
+}
+
+function tokenSourceDeps(rpc: <T>(method: string, params: unknown[]) => Promise<T>): TokenSourceDeps {
+  return {
+    getCoins: async (owner, coinType) =>
+      (await rpc<{ data: CoinRef[] }>("suix_getCoins", [owner, coinType, null, 50])).data ?? [],
+    addressBalance: readAddressBalance,
+  };
+}
 
 /** Sends `amount` of `coinType` (or everything, when amount is null) from a bank wallet. */
 export async function sendFromBankWallet(
