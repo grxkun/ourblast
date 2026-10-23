@@ -257,7 +257,7 @@ async function getTransactionBlock(params: unknown[]) {
 async function executeTransactionBlock(params: unknown[]) {
   const [tx, signatures] = params as [string, string[]];
   const data = await suiGql<{ executeTransaction: { effects: { transaction: GqlTx | null } | null } | null }>(
-    `mutation($tx:String!,$s:[String!]!){executeTransaction(transactionDataBcs:$tx,signatures:$s){effects{transaction{${TX_FIELDS}}}}}`,
+    `mutation($tx:Base64!,$s:[Base64!]!){executeTransaction(transactionDataBcs:$tx,signatures:$s){effects{transaction{${TX_FIELDS}}}}}`,
     { tx, s: signatures },
   );
   const t = data.executeTransaction?.effects?.transaction;
