@@ -134,6 +134,15 @@ export async function buildMayanSolTx(w: Pick<SolWalletRow, "address" | "sol_add
   return { tx, ledger: plan.ledger, expectedSui: plan.quote.expectedAmountOut };
 }
 
+/** SOL Mayan needs beyond the bridged amount: ledger/wSOL rent (~0.0047) + fees. Without it the route fails its simulation. */
+export const MAYAN_SOL_RESERVE = 12_000_000n;
+
+/** Bridged amount for the Mayan path: never more than asked, trimmed so the rent/fee reserve stays in the wallet. */
+export function mayanLamports(requested: bigint, balance: bigint): bigint {
+  const room = balance - MAYAN_SOL_RESERVE;
+  return requested < room ? requested : room;
+}
+
 async function mayanBridge(w: SolWalletRow, lamports: bigint, beforeSend: (ledger: string) => Promise<void>): Promise<string> {
   const { tx, ledger } = await buildMayanSolTx(w, lamports);
   await beforeSend(ledger);
