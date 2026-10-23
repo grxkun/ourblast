@@ -8,8 +8,8 @@ export type SolCommand = { amountSol?: number; buyBlast?: true };
 
 const NUM = "(\\d+(?:\\.\\d+)?|\\.\\d+)";
 const PATTERNS = [
-  new RegExp(`^(?:bridge|sweep)\\s+(?:${NUM}\\s+)?sol(?:\\s+(?:now|to\\s+sui|to\\s+blast))*$`, "i"),
-  new RegExp(`^(?:bridge|sweep)\\s+sol\\s+${NUM}$`, "i"),
+  new RegExp(`^(?:bridge|sweep)\\s+(?:(?:${NUM}|all)\\s+)?sol(?:\\s+(?:now|to\\s+sui|to\\s+blast))*$`, "i"),
+  new RegExp(`^(?:bridge|sweep)\\s+sol\\s+(?:${NUM}|all)$`, "i"),
   new RegExp(`^(?:buy|ape|swap)\\s+\\$?blast\\s+(?:with|using|for)\\s+${NUM}\\s+sol$`, "i"),
   new RegExp(`^(?:buy|ape|swap)\\s+${NUM}\\s+sol\\s+(?:of|into|to|for)\\s+\\$?blast$`, "i"),
 ];

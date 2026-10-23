@@ -7,6 +7,10 @@ describe("parseSolCommand", () => {
   it("buys BLAST with an exact SOL amount", () => expect(parseSolCommand("buy BLAST with 0.03 sol")).toEqual({ amountSol: 0.03, buyBlast: true }));
   it("buy 0.05 sol of $blast", () => expect(parseSolCommand("buy 0.05 sol of $blast")).toEqual({ amountSol: 0.05, buyBlast: true }));
   it("bridge sol = everything", () => expect(parseSolCommand("bridge sol")).toEqual({}));
+  it("the All SOL bridge menu command means everything", () => expect(parseSolCommand("bridge all sol to sui")).toEqual({}));
+  it("all in chat means everything", () => expect(parseSolCommand("bridge all sol")).toEqual({}));
+  it("all after sol means everything", () => expect(parseSolCommand("bridge sol all")).toEqual({}));
+  it("all never buys BLAST", () => expect(parseSolCommand("bridge all sol to sui")).not.toHaveProperty("buyBlast"));
   it("SUI buys stay on Sui", () => expect(parseSolCommand("buy BLAST with 0.03 sui")).toBeNull());
   it("plain bridge is the EVM bridge", () => expect(parseSolCommand("bridge")).toBeNull());
   it("X tweet: buy 0.03 sol of blast on sui", () =>
