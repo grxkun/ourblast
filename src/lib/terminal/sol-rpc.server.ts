@@ -42,5 +42,5 @@ export async function solRpc<T>(method: string, params: unknown[]): Promise<T> {
     }
   }
   // Never expose a configured RPC URL, which can contain credentials.
-  throw new Error("Solana connection unavailable — please retry shortly. No new transaction was created.");
+  throw new Error("Solana connection unavailable — check bridge history before retrying; transaction status may be unavailable.");
 }
