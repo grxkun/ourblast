@@ -345,17 +345,9 @@ export async function sendFromBankWallet(
     if (amount === null) tx.transferObjects([tx.gas], tx.pure.address(to));
     else tx.transferObjects([tx.splitCoins(tx.gas, [tx.pure.u64(amount)])[0]!], tx.pure.address(to));
   } else {
-    const page = await rpc<{ data: { coinObjectId: string; version: string; digest: string; balance: string }[] }>(
-      "suix_getCoins",
-      [sender, type, null, 50],
-    );
-    const coins = page.data ?? [];
-    if (coins.length === 0) return { ok: false, error: "No coins of that type in your OurBank wallet." };
-    const refs = coins.map((c) => tx.objectRef({ objectId: c.coinObjectId, version: String(c.version), digest: c.digest }));
-    const [primary, ...rest] = refs;
-    if (rest.length) tx.mergeCoins(primary!, rest);
-    if (amount === null) tx.transferObjects([primary!], tx.pure.address(to));
-    else tx.transferObjects([tx.splitCoins(primary!, [tx.pure.u64(amount)])[0]!], tx.pure.address(to));
+    const source = await tokenSendSource(tx, sender, type, amount, tokenSourceDeps(rpc));
+    if ("error" in source) return { ok: false, error: source.error };
+    tx.transferObjects([source.coin], tx.pure.address(to));
   }
 
   const executed = await signAndExecute(tx, signer);
