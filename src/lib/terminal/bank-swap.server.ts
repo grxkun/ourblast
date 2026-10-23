@@ -3,7 +3,7 @@ import { Aftermath } from "aftermath-ts-sdk";
 import { AggregatorClient, Env } from "@cetusprotocol/aggregator-sdk";
 import { buildTx as buildBluefinTx, getQuote as getBluefinQuote } from "@bluefin-exchange/bluefin7k-aggregator-sdk";
 import { Transaction } from "@mysten/sui/transactions";
-import { SuiJsonRpcClient } from "@mysten/sui/jsonRpc";
+import { SuiGraphQLClient } from "@mysten/sui/graphql";
 import { normalizeStructTag, normalizeSuiAddress } from "@mysten/sui/utils";
 
 import { DEFAULT_TREASURY_ADDRESS } from "@/lib/ourblast.config";
@@ -30,14 +30,13 @@ async function simulateReceived(tx: Transaction, sender: string, coinType: strin
     tx.setSender(sender);
     tx.setGasPrice(await referenceGasPrice());
     tx.setGasBudget(SWAP_GAS_BUDGET);
-    const client = new SuiJsonRpcClient({ url: BUILD_RPC, network: "mainnet" });
+    const client = new SuiGraphQLClient({ url: BUILD_GRAPHQL, network: "mainnet" });
     const bytes = await withTimeout(tx.build({ client }), BUILD_TIMEOUT_MS, "Simulate build");
-    const dry = await client.dryRunTransactionBlock({ transactionBlock: bytes });
-    if (dry.effects.status.status !== "success") return null;
+    const dry = await withTimeout(client.core.simulateTransaction({ transaction: bytes, include: { balanceChanges: true } }), BUILD_TIMEOUT_MS, "Swap simulation");
+    if (dry.$kind !== "Transaction") return null;
     const want = normalizeStructTag(coinType);
-    const change = dry.balanceChanges.find((c) => {
-      const owner = c.owner as { AddressOwner?: string };
-      return owner.AddressOwner && normalizeSuiAddress(owner.AddressOwner) === normalizeSuiAddress(sender) && normalizeStructTag(c.coinType) === want;
+    const change = dry.Transaction.balanceChanges.find((c) => {
+      return normalizeSuiAddress(c.address) === normalizeSuiAddress(sender) && normalizeStructTag(c.coinType) === want;
     });
     const amt = change ? BigInt(change.amount) : 0n;
     return amt > 0n ? amt : null;
@@ -48,8 +47,8 @@ async function simulateReceived(tx: Transaction, sender: string, coinType: strin
 // 0.25% router fee on Aftermath swaps, sent to the community treasury.
 const AFTERMATH_ROUTER_FEE = 0.0025;
 const SWAP_GAS_BUDGET = 50_000_000n; // 0.05 SUI
-// nodeinfra rejects this build ("Index store not available"); suiscan works.
-const BUILD_RPC = "https://rpc-mainnet.suiscan.xyz";
+// Official GraphQL resolves aggregator inputs; legacy Suiscan JSON-RPC is retired.
+const BUILD_GRAPHQL = "https://graphql.mainnet.sui.io/graphql";
 const AFTERMATH_ATTEMPTS = 2;
 const AFTERMATH_TIMEOUT_MS = 6_000;
 // Cetus starts shortly after Aftermath. The first valid route wins, so a slow
@@ -145,14 +144,14 @@ export async function executeBankSwap(
     }
     try {
       // Resolve the aggregator's object inputs once; signAndExecute then simulates and submits.
-      const client = new SuiJsonRpcClient({ url: BUILD_RPC, network: "mainnet" });
+      const client = new SuiGraphQLClient({ url: BUILD_GRAPHQL, network: "mainnet" });
       const bytes = await withTimeout(built.tx.build({ client }), BUILD_TIMEOUT_MS, "Swap build");
       // Bluefin's quote can run ahead of its pool; dry-run it here so a doomed
       // trade never reaches the chain (and never burns gas).
       if (built.venue === "Bluefin") {
-        const dry = await client.dryRunTransactionBlock({ transactionBlock: bytes }).catch(() => null);
-        if (dry && dry.effects.status.status !== "success") {
-          return { picked, built, executed: { digest: null, ok: false, error: `simulation rejected: ${dry.effects.status.error ?? "unknown"}`, created: [] } };
+        const dry = await withTimeout(client.core.simulateTransaction({ transaction: bytes }), BUILD_TIMEOUT_MS, "Swap simulation");
+        if (dry.$kind === "FailedTransaction") {
+          return { picked, built, executed: { digest: null, ok: false, error: `simulation rejected: ${dry.FailedTransaction.status.error?.message ?? "unknown"}`, created: [] } };
         }
       }
     } catch (error) {
@@ -178,8 +177,9 @@ export async function executeBankSwap(
     run = await attempt(true, true, true);
   }
   if (!run.picked.ok) return run.picked;
-  const executed = run.executed!;
-  const built = run.built!;
+  const executed = run.executed;
+  const built = run.built;
+  if (!executed || !built) return { ok: false, error: "Could not prepare the swap. Nothing was spent." };
   if (!executed.ok || !executed.digest) return { ok: false, error: friendlySwapError(executed.error ?? "Swap failed.") };
 
   let received: bigint | null = null;
@@ -297,7 +297,7 @@ export async function prepareSwapForAddress(
   }
   try {
     const bytes = await withTimeout(
-      picked.built.tx.build({ client: new SuiJsonRpcClient({ url: BUILD_RPC, network: "mainnet" }) }),
+      picked.built.tx.build({ client: new SuiGraphQLClient({ url: BUILD_GRAPHQL, network: "mainnet" }) }),
       BUILD_TIMEOUT_MS,
       "Swap build",
     );
