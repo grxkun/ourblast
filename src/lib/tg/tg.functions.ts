@@ -86,7 +86,7 @@ export const tgGetBankWallet = createServerFn({ method: "POST" })
     const sui = await Promise.all(
       raw.map(async (b) => {
         const meta = b.decimals == null
-          ? await rpc<{ symbol: string; decimals: number } | null>("suix_getCoinMetadata", [b.coinType]).catch(() => null)
+          ? await (await import("@/lib/terminal/sui-balances.server")).readCoinMetadata(b.coinType).catch(() => null)
           : null;
         const decimals = b.decimals ?? meta?.decimals ?? 9;
         return { coinType: b.coinType, symbol: b.symbol ?? meta?.symbol ?? b.coinType.split("::").at(-1)!, amount: Number(b.balance) / 10 ** decimals };
@@ -218,7 +218,7 @@ async function walletCtx(initData: string) {
     return Promise.all(raw.map(async (b) => {
       const meta = b.coinType === SUI_T ? { symbol: "SUI", decimals: 9 }
         : b.decimals == null
-          ? await rpc<{ symbol: string; decimals: number } | null>("suix_getCoinMetadata", [b.coinType]).catch(() => null)
+          ? await (await import("@/lib/terminal/sui-balances.server")).readCoinMetadata(b.coinType).catch(() => null)
           : null;
       const decimals = b.coinType === SUI_T ? 9 : (b.decimals ?? meta?.decimals ?? 9);
       return { coinType: b.coinType, symbol: b.symbol ?? meta?.symbol ?? b.coinType.split("::").at(-1)!, decimals, raw: b.balance, amount: Number(b.balance) / 10 ** decimals };

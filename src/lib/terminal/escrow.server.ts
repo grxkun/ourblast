@@ -46,7 +46,7 @@ async function resolveToken(token: string, holder: string): Promise<{ coinType: 
     if (matches.length !== 1) return null;
     type = matches[0]!.coinType;
   }
-  const meta = await rpc<{ symbol: string; decimals: number } | null>("suix_getCoinMetadata", [type]).catch(() => null);
+  const meta = await (await import("./sui-balances.server")).readCoinMetadata(type).catch(() => null);
   if (!meta) return null;
   return { coinType: type, symbol: meta.symbol.toUpperCase(), decimals: meta.decimals };
 }
