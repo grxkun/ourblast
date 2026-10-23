@@ -34,3 +34,5 @@
 - [x] Fix 'couldn't read your OurBank wallet' on buys (GraphQL balances)
 - [x] NFT reader on OurBank wallet (read-only)
 - [x] /docs dev-fee split reads launch payees via Sui GraphQL
+- [ ] Send tokens held as address balances (no Coin object) — withdraw accumulator in same tx
+- [ ] "No.2" — unclear which item; asked user to confirm
