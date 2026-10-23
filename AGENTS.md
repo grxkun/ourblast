@@ -12,6 +12,7 @@
 - Perpsplexity funded launches swap bridged SUI above launch cost + 2 SUI gas reserve into USDC and set it as the creator's first buy — the curve trades in USDC; a failed swap never blocks the launch.
 - SUI → ETH/BNB hops through the user's own OurBank Solana address (sui_out_hops: leg 1 SUI→SOL via 1Click, leg 2 by maintainSuiOutHops via 1Click for Base/Arbitrum ETH / Relay for BNB and Robinhood Chain ETH, claimed sent→hopping so leg 2 is sent once) — direct SUI→EVM corridors are refused or have a $1,000 floor.
 - Telegram Mini App (/tg) authenticates by verifying Telegram initData HMAC server-side on every call (src/lib/tg); tg_* tables are service-role only — no Supabase session exists inside Telegram.
+- Telegram webhooks persist atomic update/confirmation claims before acknowledging; Nitro Request.waitUntil runs queued work, with the authenticated poller draining pending jobs as fallback; processing jobs never auto-replay because submission outcomes can be ambiguous.
 
 - Telegram swaps preserve full, case-sensitive coin types; bot cards carry contracts in bot-authored message text across confirmation because callback payloads are limited to 64 bytes.
 - SOL → SUI bridges try NEAR Intents first, then Mayan MCTP (mayan-sol.ts, hand-built v0 tx, simulated before sending) — two providers so one solver outage doesn't block bridging, and no Solana SDK in the worker.

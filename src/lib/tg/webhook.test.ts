@@ -10,6 +10,11 @@ vi.mock("@/integrations/supabase/client.server", () => ({
   supabaseAdmin: { from: () => ({ select: () => ({ eq: () => ({ maybeSingle: async () => ({ data: linked.handle ? { x_username: linked.handle } : null }) }) }) }) },
 }));
 import { Route } from "@/routes/api/public/telegram/webhook";
+vi.mock("@/lib/tg/webhookQueue.server", () => ({
+  enqueueTelegramUpdate: vi.fn(async () => "queued"),
+  processQueuedTelegramUpdate: vi.fn(),
+}));
+import { processTelegramUpdate } from "./webhook.server";
 
 afterEach(() => { vi.unstubAllGlobals(); vi.unstubAllEnvs(); vi.clearAllMocks(); });
 
@@ -23,10 +28,8 @@ describe("Telegram contract buy webhook", () => {
     }));
     const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode("telegram-webhook:test-token-not-a-credential"));
     const secret = [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, "0")).join("");
-    const handler = (Route as unknown as { server: { handlers: { POST: (ctx: { request: Request }) => Promise<Response> } } }).server.handlers.POST;
-    const send = (update: unknown) => handler({ request: new Request("https://example.test/api/public/telegram/webhook", {
-      method: "POST", headers: { "X-Telegram-Bot-Api-Secret-Token": secret, "content-type": "application/json" }, body: JSON.stringify(update),
-    }) });
+    let id = 0;
+    const send = (update: object) => processTelegramUpdate({ update_id: ++id, ...update }, "test-token-not-a-credential");
     const ca = `0x${"c".repeat(64)}::groklet::GROKLET`;
     await send({ message: { chat: { id: 12, type: "private" }, from: { id: 12 }, text: ca } });
     const card = calls.find((c) => c.method === "sendMessage")?.body;

@@ -19,6 +19,11 @@ export const Route = createFileRoute("/api/public/x-poll")({
         }
         if (mismatch !== 0) return new Response("Unauthorized", { status: 401 });
 
+        const telegramToken = process.env["TELEGRAM_BOT_TOKEN"];
+        if (telegramToken) {
+          const { drainTelegramQueue } = await import("@/lib/tg/webhookQueue.server");
+          await drainTelegramQueue(telegramToken).catch(() => console.error("Telegram queue drain failed"));
+        }
         const { runXMentionPoll } = await import("@/lib/terminal/x-poll.server");
         return Response.json(await runXMentionPoll());
       },
