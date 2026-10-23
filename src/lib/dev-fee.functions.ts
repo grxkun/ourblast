@@ -197,27 +197,24 @@ export const getDevShareLedger = createServerFn({ method: "GET" })
       let recipients: string[] = [];
       let note: string | null = null;
       try {
-        const tx = await rpc<{
-          transaction?: {
-            data?: { transaction?: { inputs?: { valueType?: string; value?: unknown }[] } };
-          };
-        }>("sui_getTransactionBlock", [row.tx_digest, { showInput: true }]);
-        const inputs = tx.transaction?.data?.transaction?.inputs ?? [];
-        const addrs = inputs.find((i) => i.valueType === "vector<address>")?.value as
-          | string[]
-          | undefined;
-        const bps = inputs.find((i) => i.valueType === "vector<u64>")?.value as
-          | string[]
-          | undefined;
-        if (!tx.transaction?.data?.transaction?.inputs) {
+        const data = await gql<{
+          transaction: {
+            transactionJson: { kind?: { programmableTransaction?: { inputs?: { kind: string; pure?: string }[] } } } | null;
+          } | null;
+        }>(`query($d:String!){transaction(digest:$d){transactionJson}}`, { d: row.tx_digest });
+        const inputs = data.transaction?.transactionJson?.kind?.programmableTransaction?.inputs;
+        if (!inputs) {
           note = "Fee split for this launch can't be read right now.";
-        } else if (addrs && bps) {
-          recipients = addrs.map((a) => a.toLowerCase());
-          const index = recipients.indexOf(dev);
-          devBps = index >= 0 ? Number(bps[index] ?? 0) : 0;
-          if (devBps === 0) note = "Launched before the dev share existed — pays the treasury wallet only.";
         } else {
-          note = "This pad handles creator fees in its own pool.";
+          const split = decodeFeeSplit(inputs);
+          if (split) {
+            recipients = split.payees;
+            const index = recipients.indexOf(dev);
+            devBps = index >= 0 ? split.bps[index]! : 0;
+            if (devBps === 0) note = "Launched before the dev share existed — pays the treasury wallet only.";
+          } else {
+            note = "This pad handles creator fees in its own pool.";
+          }
         }
       } catch {
         note = "Could not read this launch transaction right now.";
