@@ -1,5 +1,5 @@
 # Roadmap
-- [ ] Replace retired swap build/simulation connection with official Sui GraphQL, verify unsigned swap, and publish (no live trade).
+- [x] Replace retired swap build/simulation connection with official Sui GraphQL; 35 tests and unsigned SUI→USDC simulation on Grxxxkun wallet passed, no signing/submission; publishing requested.
 - [x] Restore OurBank Sui holdings with official GraphQL; seven tests and real-wallet read passed (not published; Telegram delivery unverified).
 - [x] Fix shared Solana RPC fallback; 30 tests passed and live balance/blockhash reads verified without sending transactions (not published)
 - [x] Fix Telegram buy address preservation in bot buttons and Mini App swaps; verified with mocked trades
