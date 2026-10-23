@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 import { decodeSuiPrivateKey } from "@mysten/sui/cryptography";
 import { Ed25519Keypair } from "@mysten/sui/keypairs/ed25519";
-import { Transaction } from "@mysten/sui/transactions";
+import { Inputs, Transaction } from "@mysten/sui/transactions";
 import { normalizeStructTag, normalizeSuiAddress } from "@mysten/sui/utils";
 
 import { decryptConnectionKey, encryptConnectionKey } from "@/lib/connection-key.server";
@@ -296,13 +296,17 @@ export async function tokenSendSource(
   const withdraw = amount === null ? acc : topUp > 0n ? topUp : 0n;
   let source = primary;
   if (withdraw > 0n) {
-    const withdrawal = tx.moveCall({
-      target: "0x2::balance::withdraw_funds_from_object",
-      typeArguments: [type],
-      arguments: [tx.object(sender), tx.pure.u64(withdraw)],
-    });
-    const balance = tx.moveCall({ target: "0x2::balance::redeem_funds", typeArguments: [type], arguments: [withdrawal] });
-    const redeemed = tx.moveCall({ target: "0x2::coin::from_balance", typeArguments: [type], arguments: [balance] });
+    // FundsWithdrawal is a special input: the framework withdraws from the
+    // sender's address accumulator at execution time, no object ref needed.
+    const withdrawal = tx.getData().addInput(
+      "withdrawal",
+      Inputs.FundsWithdrawal({
+        reservation: { $kind: "MaxAmountU64", MaxAmountU64: String(withdraw) },
+        typeArg: { $kind: "Balance", Balance: type },
+        withdrawFrom: { $kind: "Sender", Sender: true },
+      }),
+    );
+    const redeemed = tx.moveCall({ target: "0x2::coin::redeem_funds", typeArguments: [type], arguments: [withdrawal] });
     if (source) tx.mergeCoins(source, [redeemed]);
     else source = redeemed;
   }
