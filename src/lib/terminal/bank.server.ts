@@ -92,7 +92,7 @@ async function nftSend(username: string, cmd: import("./nftSend").NftSendCommand
   }
   const picks = pickNfts(nfts, cmd);
   if (picks.length === 0) {
-    return `@${username} no NFT matching "${cmd.target}" in your OurBank wallet. Kiosk-locked NFTs can't be sent yet. Nothing was sent.`;
+    return `@${username} no NFT matching "${cmd.target}" in your OurBank wallet (or its kiosk). Nothing was sent.`;
   }
   let recipient = await resolveRecipient(cmd.recipientKind, cmd.recipient);
   if (!recipient && cmd.recipientKind === "x") {
@@ -105,7 +105,9 @@ async function nftSend(username: string, cmd: import("./nftSend").NftSendCommand
   if (nftSendsInFlight.has(key)) return `@${username} an NFT send is already running. Wait for it to finish.`;
   nftSendsInFlight.add(key);
   try {
-    const sent = await sendNftsFromBankWallet(wallet, picks.map((n) => n.id), recipient);
+    const direct = picks.filter((n) => !n.kiosk).map((n) => n.id);
+    const kioskItems = picks.filter((n) => n.kiosk).map((n) => ({ id: n.id, type: n.type, ...n.kiosk! }));
+    const sent = await sendNftsFromBankWallet(wallet, direct, recipient, kioskItems);
     const who = describeRecipient(cmd.recipientKind, cmd.recipient);
     const label = picks.length === 1 ? picks[0]!.name : `${picks.length} NFTs (${picks.map((n) => n.name).slice(0, 3).join(", ")}${picks.length > 3 ? "…" : ""})`;
     if (!sent.ok) return `@${username} NFT send failed: ${sent.error} Nothing was sent.`;

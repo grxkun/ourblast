@@ -336,10 +336,28 @@ export async function sendFromBankWallet(
   return { ok: true, digest: executed.digest };
 }
 
-/** Sends directly-owned NFT objects to one recipient in one transaction (all or nothing). */
-export async function sendNftsFromBankWallet(wallet: BankWalletRow, objectIds: string[], recipient: string): Promise<Result> {
-  if (objectIds.length === 0) return { ok: false, error: "No NFTs to send." };
+/**
+ * Sends NFTs to one recipient in one transaction (all or nothing). Plain ids are directly owned;
+ * `kioskItems` come out of the sender's kiosk (locked ones land in a new kiosk owned by the recipient).
+ */
+export async function sendNftsFromBankWallet(
+  wallet: BankWalletRow,
+  objectIds: string[],
+  recipient: string,
+  kioskItems: import("./kiosk").KioskItem[] = [],
+): Promise<Result> {
+  if (objectIds.length === 0 && kioskItems.length === 0) return { ok: false, error: "No NFTs to send." };
   const { gasCoins, referenceGasPrice, withGas, signAndExecute } = await chain();
+  const { addKioskTransfers, unsupportedRules } = await import("./kiosk");
+  const { readTransferPolicies } = await import("./sui-balances.server");
+  const policies = new Map<string, import("./kiosk").KioskPolicy>();
+  for (const type of new Set(kioskItems.filter((k) => k.locked).map((k) => k.type))) {
+    const all = await readTransferPolicies(type).catch(() => null);
+    if (!all) return { ok: false, error: "Couldn't read the collection's transfer rules." };
+    const usable = all.filter((p) => unsupportedRules(p.rules).length === 0);
+    if (usable.length !== 1) return { ok: false, error: "This collection's transfer rules aren't supported yet." };
+    policies.set(type, usable[0]!);
+  }
   let signer: Awaited<ReturnType<typeof bankSigner>>;
   try {
     signer = await bankSigner(wallet);
@@ -349,8 +367,10 @@ export async function sendNftsFromBankWallet(wallet: BankWalletRow, objectIds: s
   const gas = await gasCoins(signer.address);
   if (gas.length === 0) return { ok: false, error: "Your OurBank wallet has no SUI for network fees." };
   const tx = new Transaction();
-  withGas(tx, signer.address, gas, await referenceGasPrice(), Number(GAS_BUDGET));
-  tx.transferObjects(objectIds.map((id) => tx.object(id)), tx.pure.address(normalizeSuiAddress(recipient)));
+  withGas(tx, signer.address, gas, await referenceGasPrice(), Number(GAS_BUDGET) * (kioskItems.length ? 3 : 1));
+  const to = normalizeSuiAddress(recipient);
+  if (objectIds.length) tx.transferObjects(objectIds.map((id) => tx.object(id)), tx.pure.address(to));
+  if (kioskItems.length) addKioskTransfers(tx, kioskItems, policies, to);
   const executed = await signAndExecute(tx, signer);
   if (!executed.ok || !executed.digest) return { ok: false, error: executed.error ?? "Transaction failed." };
   return { ok: true, digest: executed.digest };
