@@ -81,11 +81,66 @@ export async function readAddressBalance(address: string, coinType: string): Pro
   return BigInt(data.address?.balance?.addressBalance ?? "0");
 }
 
-export interface SuiNft { id: string; type: string; name: string; image: string | null; description: string | null; collection: string }
+export interface SuiNft {
+  id: string; type: string; name: string; image: string | null; description: string | null; collection: string;
+  /** Set when the NFT sits inside a Sui Kiosk the wallet owns. */
+  kiosk?: { kioskId: string; capId: string; locked: boolean };
+}
+
+function toNft(id: string, type: string, output: Record<string, unknown> | null | undefined): SuiNft | null {
+  const d = (output ?? {}) as Record<string, unknown>;
+  const s = (k: string) => (typeof d[k] === "string" ? (d[k] as string) : null);
+  const image = ipfs(s("image_url") ?? s("img_url") ?? s("image"));
+  if (!image && !s("name")) return null;
+  const struct = type.split("<")[0]!.split("::").at(-1) ?? type;
+  return { id, type, name: s("name") ?? struct, image, description: s("description"), collection: s("collection_name") ?? s("project_name") ?? struct };
+}
+
+interface KioskFields {
+  object: { dynamicFields: {
+    nodes: { name: { type: { repr: string }; json: { id?: string } | null }; value: { address?: string; contents?: { type: { repr: string }; display: { output: Record<string, unknown> | null } | null } } | null }[];
+    pageInfo: { hasNextPage: boolean; endCursor: string | null };
+  } } | null;
+}
+
+/** NFTs inside a kiosk (owner cap held by the wallet). Lock markers flag non-takeable items. */
+async function readKioskNfts(kioskId: string, capId: string): Promise<SuiNft[]> {
+  const items: SuiNft[] = [];
+  const locked = new Set<string>();
+  let after: string | null = null;
+  for (let page = 0; page < 10; page++) {
+    const data: KioskFields = await gql<KioskFields>(
+      `query($k:SuiAddress!,$after:String){object(address:$k){dynamicFields(first:50,after:$after){nodes{name{type{repr} json} value{... on MoveObject{address contents{type{repr} display{output}}}}} pageInfo{hasNextPage endCursor}}}}`,
+      { k: kioskId, after },
+    );
+    const conn = data.object?.dynamicFields;
+    if (!conn) break;
+    for (const n of conn.nodes) {
+      const kind = n.name.type.repr;
+      if (/::kiosk::Lock$/.test(kind) && n.name.json?.id) locked.add(n.name.json.id.toLowerCase());
+      if (/::kiosk::Item$/.test(kind) && n.value?.address && n.value.contents) {
+        const nft = toNft(n.value.address, n.value.contents.type.repr, n.value.contents.display?.output);
+        if (nft) items.push(nft);
+      }
+    }
+    if (!conn.pageInfo.hasNextPage || !conn.pageInfo.endCursor) break;
+    after = conn.pageInfo.endCursor;
+  }
+  return items.map((n) => ({ ...n, kiosk: { kioskId, capId, locked: locked.has(n.id.toLowerCase()) } }));
+}
+
+/** Shared TransferPolicy objects for an NFT type (rules listed by type name). */
+export async function readTransferPolicies(type: string): Promise<{ id: string; rules: string[] }[]> {
+  const data = await gql<{ objects: { nodes: { address: string; asMoveObject: { contents: { json: { rules?: { contents?: string[] } } } } | null }[] } }>(
+    `query($t:String!){objects(first:10,filter:{type:$t}){nodes{address asMoveObject{contents{json}}}}}`,
+    { t: `0x2::transfer_policy::TransferPolicy<${type}>` },
+  );
+  return data.objects.nodes.map((n) => ({ id: n.address, rules: n.asMoveObject?.contents.json.rules?.contents ?? [] }));
+}
 
 interface ObjPage {
   address: { objects: {
-    nodes: { address: string; contents: { type: { repr: string }; display: { output: Record<string, unknown> | null } | null } | null }[];
+    nodes: { address: string; contents: { type: { repr: string }; json: unknown; display: { output: Record<string, unknown> | null } | null } | null }[];
     pageInfo: { hasNextPage: boolean; endCursor: string | null };
   } } | null;
 }
@@ -96,30 +151,32 @@ function ipfs(url: string | null): string | null {
   return /^https?:\/\//.test(url) ? url : null;
 }
 
-/** Read-only list of non-coin objects the wallet owns (NFTs), up to `max`. */
+/** Read-only list of NFTs the wallet owns directly or inside its kiosks, up to `max`. */
 export async function readSuiNfts(address: string, max = 200): Promise<SuiNft[]> {
   const out: SuiNft[] = [];
+  const caps: { capId: string; kioskId: string }[] = [];
   let after: string | null = null;
   for (let page = 0; page < 10 && out.length < max; page++) {
     const data: ObjPage = await gql<ObjPage>(
-      `query($a:SuiAddress!,$after:String){address(address:$a){objects(first:50,after:$after){nodes{address contents{type{repr} display{output}}} pageInfo{hasNextPage endCursor}}}}`,
+      `query($a:SuiAddress!,$after:String){address(address:$a){objects(first:50,after:$after){nodes{address contents{type{repr} json display{output}}} pageInfo{hasNextPage endCursor}}}}`,
       { a: address, after },
     );
     const conn = data.address?.objects;
     if (!conn) break;
     for (const n of conn.nodes) {
       const type = n.contents?.type.repr ?? "";
-      if (!type || /^0x0*2::coin::Coin</.test(type) || /::coin::Coin</.test(type)) continue;
-      const d = (n.contents?.display?.output ?? {}) as Record<string, unknown>;
-      const s = (k: string) => (typeof d[k] === "string" ? (d[k] as string) : null);
-      const image = ipfs(s("image_url") ?? s("img_url") ?? s("image"));
-      // Only things wallets would show as collectibles: has a Display name or image.
-      if (!image && !s("name")) continue;
-      const struct = type.split("<")[0]!.split("::").at(-1) ?? type;
-      out.push({ id: n.address, type, name: s("name") ?? struct, image, description: s("description"), collection: s("collection_name") ?? s("project_name") ?? struct });
+      if (!type || /::coin::Coin</.test(type)) continue;
+      if (/^0x0*2::kiosk::KioskOwnerCap$/.test(type)) {
+        const forId = (n.contents?.json as { for?: string } | null)?.for;
+        if (forId) caps.push({ capId: n.address, kioskId: forId });
+        continue;
+      }
+      const nft = toNft(n.address, type, n.contents?.display?.output);
+      if (nft) out.push(nft);
     }
     if (!conn.pageInfo.hasNextPage || !conn.pageInfo.endCursor) break;
     after = conn.pageInfo.endCursor;
   }
+  for (const c of caps.slice(0, 10)) out.push(...(await readKioskNfts(c.kioskId, c.capId)));
   return out.slice(0, max);
 }
