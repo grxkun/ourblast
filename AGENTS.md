@@ -21,3 +21,4 @@
 - Swap input resolution and preflight simulations use the official Sui GraphQL SDK client in bank-swap.server.ts, including connected-wallet preparation and launch-curve estimates, because legacy Suiscan JSON-RPC is retired.
 - Sui reads/submits go through `rpc()` → sui-rpc-compat.server.ts, which answers legacy JSON-RPC methods via the official GraphQL service in JSON-RPC shapes — all public JSON-RPC mirrors were retired (Oct 2026); never add a JSON-RPC mirror URL back.
 - Numbered NFT sends use the shared NFT parser and exact collection/edition matching; missing or ambiguous editions select nothing to avoid transferring the wrong collectible.
+- Kiosk NFT sends (kiosk.ts) only satisfy royalty_rule + kiosk_lock_rule, calling the rules package version the collection links against; locked items go into a new recipient-owned kiosk, and any other policy rule is refused so a send never guesses.
