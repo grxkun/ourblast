@@ -16,7 +16,8 @@ export function unsupportedRules(rules: string[]): string[] {
 }
 
 export interface KioskItem { id: string; type: string; kioskId: string; capId: string; locked: boolean }
-export interface KioskPolicy { id: string; rules: string[] }
+/** `callPkg` = the upgraded rules package the collection links against (calls must target it). */
+export interface KioskPolicy { id: string; rules: string[]; callPkg: string }
 
 /**
  * Moves kiosk items to `recipient` inside one transaction.
@@ -52,12 +53,12 @@ export function addKioskTransfers(
     const [item, req] = tx.moveCall({ target: "0x2::kiosk::purchase", typeArguments: [it.type], arguments: [kiosk, tx.pure.id(it.id), zero] });
     const has = (r: string) => policy.rules.some((x) => strip(x) === strip(r));
     if (has(ROYALTY)) {
-      const fee = tx.moveCall({ target: `${KIOSK_RULES_PKG}::royalty_rule::fee_amount`, typeArguments: [it.type], arguments: [pol, tx.pure.u64(0)] });
+      const fee = tx.moveCall({ target: `${policy.callPkg}::royalty_rule::fee_amount`, typeArguments: [it.type], arguments: [pol, tx.pure.u64(0)] });
       const [pay] = tx.splitCoins(tx.gas, [fee]);
-      tx.moveCall({ target: `${KIOSK_RULES_PKG}::royalty_rule::pay`, typeArguments: [it.type], arguments: [pol, req!, pay!] });
+      tx.moveCall({ target: `${policy.callPkg}::royalty_rule::pay`, typeArguments: [it.type], arguments: [pol, req!, pay!] });
     }
     tx.moveCall({ target: "0x2::kiosk::lock", typeArguments: [it.type], arguments: [newKiosk, newCap!, pol, item!] });
-    if (has(LOCK)) tx.moveCall({ target: `${KIOSK_RULES_PKG}::kiosk_lock_rule::prove`, typeArguments: [it.type], arguments: [req!, newKiosk] });
+    if (has(LOCK)) tx.moveCall({ target: `${policy.callPkg}::kiosk_lock_rule::prove`, typeArguments: [it.type], arguments: [req!, newKiosk] });
     tx.moveCall({ target: "0x2::transfer_policy::confirm_request", typeArguments: [it.type], arguments: [pol, req!] });
   }
   if (direct.length) tx.transferObjects(direct, tx.pure.address(recipient));

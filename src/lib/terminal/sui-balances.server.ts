@@ -180,3 +180,12 @@ export async function readSuiNfts(address: string, max = 200): Promise<SuiNft[]>
   for (const c of caps.slice(0, 10)) out.push(...(await readKioskNfts(c.kioskId, c.capId)));
   return out.slice(0, max);
 }
+
+/** Upgraded id a package links against for `originalId` (falls back to the original). */
+export async function readLinkedPackage(typePkg: string, originalId: string): Promise<string> {
+  const data = await gql<{ package: { linkage: { originalId: string; upgradedId: string }[] } | null }>(
+    `query($p:SuiAddress!){package(address:$p){linkage{originalId upgradedId}}}`, { p: typePkg },
+  );
+  const strip = (s: string) => s.toLowerCase().replace(/^0x0*/, "");
+  return data.package?.linkage.find((l) => strip(l.originalId) === strip(originalId))?.upgradedId ?? originalId;
+}

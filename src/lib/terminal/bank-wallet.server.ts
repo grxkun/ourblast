@@ -348,15 +348,17 @@ export async function sendNftsFromBankWallet(
 ): Promise<Result> {
   if (objectIds.length === 0 && kioskItems.length === 0) return { ok: false, error: "No NFTs to send." };
   const { gasCoins, referenceGasPrice, withGas, signAndExecute } = await chain();
-  const { addKioskTransfers, unsupportedRules } = await import("./kiosk");
-  const { readTransferPolicies } = await import("./sui-balances.server");
+  const { addKioskTransfers, unsupportedRules, KIOSK_RULES_PKG } = await import("./kiosk");
+  const { readTransferPolicies, readLinkedPackage } = await import("./sui-balances.server");
   const policies = new Map<string, import("./kiosk").KioskPolicy>();
   for (const type of new Set(kioskItems.filter((k) => k.locked).map((k) => k.type))) {
     const all = await readTransferPolicies(type).catch(() => null);
     if (!all) return { ok: false, error: "Couldn't read the collection's transfer rules." };
     const usable = all.filter((p) => unsupportedRules(p.rules).length === 0);
     if (usable.length !== 1) return { ok: false, error: "This collection's transfer rules aren't supported yet." };
-    policies.set(type, usable[0]!);
+    const callPkg = await readLinkedPackage(type.split("::")[0]!, KIOSK_RULES_PKG).catch(() => null);
+    if (!callPkg) return { ok: false, error: "Couldn't read the collection's transfer rules." };
+    policies.set(type, { ...usable[0]!, callPkg });
   }
   let signer: Awaited<ReturnType<typeof bankSigner>>;
   try {
