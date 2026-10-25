@@ -75,6 +75,46 @@ export async function matchCoins(wallet: string, command: Pick<BankCommand, "tok
  * Several coins to one recipient from the OurBank wallet in ONE Sui transaction.
  * All-or-nothing: every coin is checked first; one tweet claims once.
  */
+const nftSendsInFlight = new Set<string>();
+
+/** "send my holmot nft to adeniyi.sui" — moves directly-owned NFTs from the OurBank wallet. */
+async function nftSend(username: string, cmd: import("./nftSend").NftSendCommand): Promise<string> {
+  const { findBankWallet, sendNftsFromBankWallet } = await import("./bank-wallet.server");
+  const { readSuiNfts } = await import("./sui-balances.server");
+  const { pickNfts } = await import("./nftSend");
+  const wallet = await findBankWallet(username);
+  if (!wallet) return `@${username} sending NFTs needs an OurBank wallet. Sign in at ${X_BOT_SITE}/terminal.`;
+  let nfts;
+  try {
+    nfts = await readSuiNfts(wallet.address);
+  } catch {
+    return `@${username} couldn't read your NFTs right now. Nothing was sent.`;
+  }
+  const picks = pickNfts(nfts, cmd);
+  if (picks.length === 0) {
+    return `@${username} no NFT matching "${cmd.target}" in your OurBank wallet. Kiosk-locked NFTs can't be sent yet. Nothing was sent.`;
+  }
+  let recipient = await resolveRecipient(cmd.recipientKind, cmd.recipient);
+  if (!recipient && cmd.recipientKind === "x") {
+    const { ensureBankWallet } = await import("./bank-wallet.server");
+    recipient = (await ensureBankWallet(cmd.recipient, null)).address;
+  }
+  if (!recipient) return `@${username} ${cmd.recipient} doesn't point to a Sui address. Nothing was sent.`;
+  if (recipient === normalizeSuiAddress(wallet.address)) return `@${username} that's your own wallet.`;
+  const key = normalizeSuiAddress(wallet.address);
+  if (nftSendsInFlight.has(key)) return `@${username} an NFT send is already running. Wait for it to finish.`;
+  nftSendsInFlight.add(key);
+  try {
+    const sent = await sendNftsFromBankWallet(wallet, picks.map((n) => n.id), recipient);
+    const who = describeRecipient(cmd.recipientKind, cmd.recipient);
+    const label = picks.length === 1 ? picks[0]!.name : `${picks.length} NFTs (${picks.map((n) => n.name).slice(0, 3).join(", ")}${picks.length > 3 ? "…" : ""})`;
+    if (!sent.ok) return `@${username} NFT send failed: ${sent.error} Nothing was sent.`;
+    return `@${username} sent ${label} to ${who} ✅ https://suiscan.xyz/mainnet/tx/${sent.digest}`;
+  } finally {
+    nftSendsInFlight.delete(key);
+  }
+}
+
 async function multiSend(postId: string, username: string, cmd: MultiSendCommand): Promise<string | null> {
   const { findBankWallet, ensureBankWallet, sendManyFromBankWallet, SUI_TYPE: SUI, GAS_BUDGET } = await import("./bank-wallet.server");
   const wallet = await findBankWallet(username);
@@ -560,6 +600,9 @@ export async function handleBankMention(postId: string, username: string, text: 
   const solCmd = parseSolCommand(text);
   if (solCmd) return solSweep.bridgeSolForXHandle(username, solCmd.amountSol, solCmd.buyBlast === true);
   if (parseSwapCommand(text.replace(/\s+(?:max\s+)?slippage\s+\d*\.?\d+\s*%?\s*$/i, ""))) return handleSwapMention(postId, username, text);
+  const { parseNftSendCommand } = await import("./nftSend");
+  const nftCmd = parseNftSendCommand(text);
+  if (nftCmd) return nftSend(username, nftCmd);
   const multi = parseMultiSendCommand(text);
   if (multi) return multiSend(postId, username, multi);
   const transfer = await createBankTransferFromMention(postId, username, text);

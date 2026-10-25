@@ -336,6 +336,26 @@ export async function sendFromBankWallet(
   return { ok: true, digest: executed.digest };
 }
 
+/** Sends directly-owned NFT objects to one recipient in one transaction (all or nothing). */
+export async function sendNftsFromBankWallet(wallet: BankWalletRow, objectIds: string[], recipient: string): Promise<Result> {
+  if (objectIds.length === 0) return { ok: false, error: "No NFTs to send." };
+  const { gasCoins, referenceGasPrice, withGas, signAndExecute } = await chain();
+  let signer: Awaited<ReturnType<typeof bankSigner>>;
+  try {
+    signer = await bankSigner(wallet);
+  } catch (e) {
+    return { ok: false, error: (e as Error).message };
+  }
+  const gas = await gasCoins(signer.address);
+  if (gas.length === 0) return { ok: false, error: "Your OurBank wallet has no SUI for network fees." };
+  const tx = new Transaction();
+  withGas(tx, signer.address, gas, await referenceGasPrice(), Number(GAS_BUDGET));
+  tx.transferObjects(objectIds.map((id) => tx.object(id)), tx.pure.address(normalizeSuiAddress(recipient)));
+  const executed = await signAndExecute(tx, signer);
+  if (!executed.ok || !executed.digest) return { ok: false, error: executed.error ?? "Transaction failed." };
+  return { ok: true, digest: executed.digest };
+}
+
 /** Sends several coins to one recipient in a single transaction block (all or nothing). */
 export async function sendManyFromBankWallet(
   wallet: BankWalletRow,
