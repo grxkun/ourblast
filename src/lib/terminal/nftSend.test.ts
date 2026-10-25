@@ -55,9 +55,9 @@ describe("pickNfts", () => {
     expect(pickNfts(editions, cmd).map((n) => n.id)).toEqual(["0x31"]);
   });
   it("does not substitute another edition when 300 is missing", () => {
-    expect(pickNfts([editions[0]], { target: "holmot #300", isObjectId: false, count: 1 })).toEqual([]);
+    expect(pickNfts(editions.filter((n) => n.id !== "0x31"), { target: "holmot #300", isObjectId: false, count: 1 })).toEqual([]);
   });
   it("refuses ambiguous editions instead of choosing the first", () => {
-    expect(pickNfts([...editions, { ...editions[1], id: "0x33" }], { target: "holmot #300", isObjectId: false, count: 1 })).toEqual([]);
+    expect(pickNfts([...editions, { id: "0x33", name: "Holmot #300", collection: "HOLMOT", type: "0xa::collection::Holmot" }], { target: "holmot #300", isObjectId: false, count: 1 })).toEqual([]);
   });
 });
