@@ -9,6 +9,11 @@ const nfts = [
 ];
 
 describe("parseNftSendCommand", () => {
+  it("routes the terminal Holmot edition 127 command to the intended X recipient", () => {
+    expect(parseNftSendCommand("Send Holmot #127 to @Grxxxkun")).toEqual({
+      target: "holmot #127", isObjectId: false, count: 1, recipientKind: "x", recipient: "Grxxxkun",
+    });
+  });
   it("reads a named NFT send to a SuiNS name", () => {
     expect(parseNftSendCommand("@ourblastbot send my holmot nft to adeniyi.sui")).toMatchObject({ target: "holmot", count: 1, recipientKind: "suins" });
   });

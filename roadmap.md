@@ -1,4 +1,5 @@
 # Roadmap
+- [x] Route web terminal NFT sends through OurBank with sign-in required; Kiosk transfers retain collection policy checks; no live transfers during verification.
 - [x] Support natural numbered NFT sends with exact edition matching; 16 tests pass, no live transfer or publishing.
 - [x] Stop repeated Telegram updates from duplicating replies or transfers; durable atomic claims, immediate acknowledgement, single-use confirmations and safe pending-job fallback; 73 Telegram tests pass, preview only, live Telegram delivery unverified.
 - [x] Replace retired swap build/simulation connection with official Sui GraphQL; 35 tests and unsigned SUI→USDC simulation on Grxxxkun wallet passed, no signing/submission; publishing requested.
