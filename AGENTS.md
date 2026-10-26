@@ -24,3 +24,4 @@
 - Web terminal NFT commands route through the shared OurBank handler and require sign-in, so they never fall through to conversational interpretation.
 - Kiosk NFT sends (kiosk.ts) only satisfy royalty_rule + kiosk_lock_rule, calling the rules package version the collection links against; locked items go into a new recipient-owned kiosk, and any other policy rule is refused so a send never guesses.
 - Mini App NFT inventory derives the main wallet from verified Telegram/X identity, sends exact object IDs through the shared command handler, and hides collection types only in account-scoped device storage so hiding never transfers assets.
+- drip.market data is read via its public search API in src/lib/drip.functions.ts (cached 5 min); marketplace actions are outbound links only — OURBLAST never signs drip trades.
