@@ -42,3 +42,5 @@
 - [ ] "No.2" — unclear which item; asked user to confirm
 - [x] Assets: dedicated /assets web page + Telegram Assets tab + "nfts"/"assets" chat command
 - [x] Fix unspaced NFT titles (Bluey Bubble Time#630) so name sends match
+- [ ] Assets: select/deselect, filter, search (web + Mini App)
+- [ ] Assets: drip.market floor price + Buy/Sell/List/Bid links
