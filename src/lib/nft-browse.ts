@@ -28,5 +28,5 @@ export function collectionCounts(nfts: BrowseNft[]): { type: string; name: strin
 
 /** Struct name of a Move type, e.g. 0x..::collection::Holmot -> Holmot. */
 export function structName(type: string): string {
-  return type.split("<")[0].split("::").pop() ?? type;
+  return (type.split("<")[0] ?? "").split("::").pop() ?? type;
 }

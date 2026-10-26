@@ -21,7 +21,7 @@ describe("filterNfts", () => {
     expect(filterNfts(nfts, "", null, "loose")).toHaveLength(2);
   });
   it("matches object id prefix", () => {
-    expect(filterNfts(nfts, "0xbbb", null, "all")[0].collection).toBe("BlueyOnSui");
+    expect(filterNfts(nfts, "0xbbb", null, "all")[0]?.collection).toBe("BlueyOnSui");
   });
   it("reads struct names", () => expect(structName("0x1::collection::Holmot")).toBe("Holmot"));
 });

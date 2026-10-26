@@ -10,7 +10,7 @@ const TTL = 5 * 60_000;
 async function lookup(type: string, name: string): Promise<DripCollection> {
   const hit = cache.get(type);
   if (hit && Date.now() - hit.at < TTL) return hit.v;
-  const struct = type.split("<")[0].split("::").pop() ?? "";
+  const struct = (type.split("<")[0] ?? "").split("::").pop() ?? "";
   const wanted = new Set([name.toLowerCase(), struct.toLowerCase()]);
   let v: DripCollection = { type, slug: null, floorSui: null, url: "https://drip.market/nfts" };
   for (const q of [...new Set([name, struct])].filter(Boolean)) {

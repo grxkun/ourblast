@@ -101,7 +101,7 @@ export function NftPanel({ userId }: { userId: string }) {
       <Dialog open={!!pick} onOpenChange={(o) => (!o ? close() : null)}>
         <DialogContent className="max-h-[85dvh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Send {pick?.length === 1 ? pick[0].name : `${pick?.length ?? 0} NFTs`}</DialogTitle>
+            <DialogTitle>Send {pick?.length === 1 ? pick[0]?.name : `${pick?.length ?? 0} NFTs`}</DialogTitle>
             <DialogDescription>
               {pick?.some((n) => n.kiosk?.locked)
                 ? "Kiosk-locked NFTs arrive in a new kiosk owned by the recipient; any royalty is paid from your SUI. Each NFT is a separate transfer."

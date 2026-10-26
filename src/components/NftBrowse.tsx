@@ -59,7 +59,7 @@ export function NftToolbar({ b, total }: { b: ReturnType<typeof useNftBrowse<Bro
   );
 }
 
-export function DripLinks({ d }: { d?: DripCollection }) {
+export function DripLinks({ d }: { d: DripCollection | undefined }) {
   const url = d?.url ?? "https://drip.market/nfts";
   const a = "inline-flex items-center justify-center gap-0.5 border border-border px-1 py-0.5 text-[0.6rem] uppercase hover:bg-accent";
   return (
