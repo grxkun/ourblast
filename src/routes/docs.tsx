@@ -54,6 +54,8 @@ const TOC = [
   { id: "matrix", label: "Fee matrix" },
   { id: "markets", label: "Perps markets" },
   { id: "blast", label: "$BLAST & arcade" },
+  { id: "assets", label: "Assets & NFTs" },
+  { id: "telegram", label: "Telegram" },
   { id: "faq", label: "FAQ" },
 ] as const;
 
@@ -396,7 +398,7 @@ function Docs() {
             <em>@Ourblastbot cancel escrow #N</em> and deposits go back to each OurBank wallet.
           </li>
           <li><strong className="text-foreground">Overpaid?</strong> Anything above the agreed amount is returned to the sender's OurBank wallet.</li>
-          <li><strong className="text-foreground">Coins only:</strong> SUI, USDC, $BLAST or any token by its full coin type (0x…::coin::COIN). NFTs aren't supported yet.</li>
+          <li><strong className="text-foreground">Coins only:</strong> SUI, USDC, $BLAST or any token by its full coin type (0x…::coin::COIN). Escrow doesn't hold NFTs — send those directly (see Assets & NFTs).</li>
           <li><strong className="text-foreground">No gas needed:</strong> the bot pays network fees for settlement and refunds.</li>
         </ul>
       </Block>
@@ -703,6 +705,41 @@ function Docs() {
             </Link>{" "}
             — the five-step beginner guide to points and ranks.
           </li>
+        </ul>
+      </Block>
+
+      <Block id="assets" kicker="Collectibles" title="Assets & NFTs">
+        <p>
+          The <Link to="/assets" className="text-primary underline">Assets</Link> page, the Telegram
+          Mini App Assets tab and <em>/assets</em> in Telegram chat show every NFT in your OurBank
+          wallet, including kiosk-locked ones. Each NFT has a Send button with a review step.
+        </p>
+        <Cmd>{"send nft 0x<full 66-char object id> to adeniyi.sui"}</Cmd>
+        <Cmd>{"send Holmot #127 to @friend"}</Cmd>
+        <Cmd>{"send all blueyonsui nfts to 0x…"}</Cmd>
+        <ul className="list-disc space-y-2 pl-5">
+          <li>Works in the terminal, Telegram and by tagging {BOT_HANDLE} on X.</li>
+          <li>Kiosk-locked NFTs move into a new kiosk owned by the recipient. Collections with unusual transfer rules are refused instead of guessed.</li>
+          <li>Missing or ambiguous numbers send nothing. Hiding a spam collection only hides it on your device.</li>
+        </ul>
+      </Block>
+
+      <Block id="telegram" kicker="Telegram" title="Telegram bot & Mini App">
+        <p>
+          Open @ourblastsuibot and tap the menu to launch the Mini App (Home, Discover, Trade, Assets,
+          Wallet), or trade straight from private chat with <em>/menu</em>. Link your X account with{" "}
+          <em>/link</em> first — it uses the same OurBank wallet.
+        </p>
+        <Cmd>{"/balance · /wallet · /positions · /wallets · /orders · /bridges · /assets"}</Cmd>
+        <Cmd>{"snipe 0x…::coin::COIN 5 sui slippage 10"}</Cmd>
+        <Cmd>{"follow 0x<wallet>   ·   unfollow 0x<wallet>   ·   /following"}</Cmd>
+        <Cmd>{"newwallet trading"}</Cmd>
+        <ul className="list-disc space-y-2 pl-5">
+          <li><strong className="text-foreground">Every trade asks for Confirm</strong> — buys, sells, snipes, copy trades, limit orders, bridges and sends.</li>
+          <li><strong className="text-foreground">Limit orders:</strong> up to 10 open, expire after 7 days.</li>
+          <li><strong className="text-foreground">Copy trading:</strong> future trades only, with per-trade and daily caps.</li>
+          <li><strong className="text-foreground">Multi-wallet:</strong> main + up to 5 sub-wallets; distribute, withdraw or consolidate. Backup keys are shown only inside the Mini App, never sent in chat.</li>
+          <li><strong className="text-foreground">Bridges:</strong> SOL, ETH (Base, Arbitrum, Robinhood) and BNB in and out of Sui, with live progress and history. "All" keeps a small gas amount behind.</li>
         </ul>
       </Block>
 
