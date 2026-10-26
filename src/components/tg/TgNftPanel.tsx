@@ -8,6 +8,8 @@ import { NftImage } from "@/components/NftImage";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { tgWalletNfts, tgRunCommand } from "@/lib/tg/tg.functions";
+import { Checkbox } from "@/components/ui/checkbox";
+import { DripLinks, NftToolbar, floorTotal, useDrip, useNftBrowse } from "@/components/NftBrowse";
 import { nftCollectionKey, nftSendCommand, NFT_RECIPIENT, visibleNfts } from "@/lib/tg/nftInventory";
 
 type Nft = Awaited<ReturnType<typeof tgWalletNfts>>["nfts"][number];
@@ -57,7 +59,16 @@ export function TgNftPanel({ initData, handle }: { initData: string; handle: str
   });
 
   const nfts = q.data?.nfts ?? [];
-  const rows = visibleNfts(nfts, hidden, showHidden);
+  const base = visibleNfts(nfts, hidden, showHidden);
+  const b = useNftBrowse(base);
+  const drip = useDrip(nfts);
+  const rows = b.rows;
+  const hideSelected = () => {
+    const keys = [...new Set(b.picked.map(nftCollectionKey))];
+    const next = showHidden ? hidden.filter((k) => !keys.includes(k)) : [...new Set([...hidden, ...keys])];
+    setHidden(next); b.clear();
+    try { localStorage.setItem(storageKey, JSON.stringify(next)); } catch { setStorageError(true); }
+  };
   const hiddenCount = visibleNfts(nfts, hidden, true).length;
   const link = result?.match(/https:\/\/suiscan\.xyz[^\s)]+/)?.[0];
 
@@ -74,16 +85,20 @@ export function TgNftPanel({ initData, handle }: { initData: string; handle: str
       {storageError && <p className="text-xs text-muted-foreground">Hidden choices couldn't be saved on this device.</p>}
       {(q.error || q.data?.error) && <p role="alert" className="text-sm text-destructive">{q.data?.error ?? "Couldn't read your NFTs. Please refresh."}</p>}
       {q.isPending ? <p className="text-sm text-muted-foreground">Reading your NFTs…</p> : !q.error && !q.data?.error && rows.length === 0 ? <p className="text-sm text-muted-foreground">{showHidden ? "No hidden NFTs." : hiddenCount ? "All NFTs are hidden." : "No NFTs in your main wallet yet."}</p> : null}
+      {base.length > 0 && <NftToolbar b={b} total={base.length} />}
+      {b.picked.length > 0 && <div className="flex flex-wrap items-center gap-2 rounded-lg border border-primary p-2 text-xs"><span>{b.picked.length} selected · floor ≈ {floorTotal(b.picked, drip).toFixed(2)} SUI</span><Button size="sm" variant="outline" className="ml-auto" onClick={hideSelected}>{showHidden ? "Restore collections" : "Hide collections"}</Button><Button size="sm" variant="ghost" onClick={b.clear}>Clear</Button></div>}
       <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3">
         {rows.map((n) => (
-          <li key={n.id} className="min-w-0 overflow-hidden rounded-lg border border-border bg-card">
+          <li key={n.id} className={`relative min-w-0 overflow-hidden rounded-lg border bg-card ${b.selected.includes(n.id) ? "border-primary" : "border-border"}`}>
             <a href={`https://suiscan.xyz/mainnet/object/${n.id}`} target="_blank" rel="noreferrer" className="relative block" aria-label={`View ${n.name} on Suiscan`}>
               <NftImage image={n.image} name={n.name} />
               {n.kiosk && <span className="absolute left-1 top-1 flex items-center gap-1 bg-background/90 px-1.5 py-1 text-xs">{n.kiosk.locked && <Lock className="size-3" />}Kiosk</span>}
             </a>
+            <Checkbox aria-label={`Select ${n.name}`} className="absolute right-2 top-2 size-5 bg-background" checked={b.selected.includes(n.id)} onCheckedChange={() => b.toggle(n.id)} />
             <div className="space-y-1 p-2">
               <p className="break-words text-sm font-semibold">{n.name}</p>
               <p className="break-words text-xs text-muted-foreground">{n.collection}</p>
+              <DripLinks d={drip.get(n.type)} />
               <div className="flex items-center gap-1 pt-1">
                 {!showHidden && <Button size="sm" variant="outline" className="flex-1" onClick={() => { setPick(n); setTo(""); setReview(false); setResult(null); }}><Send />Send</Button>}
                 <Button size={showHidden ? "sm" : "icon-sm"} variant="ghost" title={showHidden ? "Restore collection" : "Hide collection on this device"} aria-label={showHidden ? `Restore ${n.collection} collection` : `Hide ${n.collection} collection`} onClick={() => toggleHidden(n)}>{showHidden ? <><Eye />Restore</> : <EyeOff />}</Button>
