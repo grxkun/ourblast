@@ -273,7 +273,11 @@ export function shortCoinType(type: string): string {
 
 /** "@ourblastbot balance" / "my balance" / "bal" / "wallet" — read-only OurBank balance check. */
 export function isBalanceRequest(raw: string): boolean {
-  const t = raw.replace(/@[a-z0-9_]{1,15}/gi, " ").replace(/\s+/g, " ").trim().toLowerCase();
+  const t = raw.replace(/@[a-z0-9_]{1,15}/gi, " ").replace(/[,]/g, " ").replace(/\s+/g, " ").trim().toLowerCase()
+    // Conversational openers: "hey", "gm", "pls", "can you"…
+    .replace(/^(?:(?:hey|hi|hello|yo|gm|ser|pls|please|bot)\s+)+/, "")
+    .replace(/^(?:can|could) you\s+/, "")
+    .replace(/\s+(?:pls|please)\s*([?!.]*)$/, "$1");
   if (/\b(send|buy|sell|swap|launch|deploy|claim|fees?|burn|transfer)\b/.test(t)) return false;
-  return /^(?:(?:check|show|what(?:'s| is)?)\s+)?(?:my\s+)?(?:ourbank\s+|bank\s+|wallet\s+)?(?:balances?|bal|wallet|holdings|portfolio)\s*[?!.]*$/.test(t);
+  return /^(?:(?:check|show|tell me|what(?:'s| is| are)?)\s+)?(?:(?:is|are)\s+)?(?:my\s+)?(?:total\s+)?(?:ourbank\s+|bank\s+|wallet\s+)?(?:balances?|bal|wallet|holdings|portfolio)\s*[?!.]*$/.test(t);
 }
