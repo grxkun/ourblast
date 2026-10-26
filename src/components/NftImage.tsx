@@ -12,7 +12,7 @@ export function imageCandidates(src: string | null | undefined): string[] {
   return [...new Set([src.startsWith("ipfs://") ? GATEWAYS[0] + cid : src, ...GATEWAYS.map((g) => g + cid)])];
 }
 
-export function NftImage({ image, name }: { image?: string | null; name: string }) {
+export function NftImage({ image, name }: { image?: string | null | undefined; name: string }) {
   const list = imageCandidates(image);
   const [i, setI] = useState(0);
   if (i >= list.length) {
