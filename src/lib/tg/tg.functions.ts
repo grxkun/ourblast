@@ -135,6 +135,21 @@ async function linkedHandle(initData: string) {
   return { user, handle: row.x_username };
 }
 
+/** Main OurBank NFT inventory; the caller cannot choose another account's address. */
+export const tgWalletNfts = createServerFn({ method: "POST" })
+  .inputValidator((d) => z.object({ initData: z.string().min(1).max(4096) }).parse(d))
+  .handler(async ({ data }) => {
+    const { handle } = await linkedHandle(data.initData);
+    const { ensureBankWallet } = await import("@/lib/terminal/bank-wallet.server");
+    const { readSuiNfts } = await import("@/lib/terminal/sui-balances.server");
+    const wallet = await ensureBankWallet(handle, null);
+    try {
+      return { address: wallet.address, nfts: await readSuiNfts(wallet.address), error: null };
+    } catch {
+      return { address: wallet.address, nfts: [], error: "Couldn't read your NFTs. Please refresh." };
+    }
+  });
+
 /** Multi-wallet manager: lists the account's Sui wallets with SUI balance and which ones trade. */
 export const tgListWallets = createServerFn({ method: "POST" })
   .inputValidator((d) => z.object({ initData: z.string().min(1).max(4096) }).parse(d))
