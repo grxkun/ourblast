@@ -11,7 +11,7 @@ describe("Mini App NFT safety", () => {
   });
   it("hides only the selected collection type and allows restoration", () => {
     const nfts = [{ type: "0xa::collection::Spam", id: "spam" }, { type: "0xb::collection::Holmot", id: "holmot" }];
-    const hidden = [nfts[0].type];
+    const hidden = ["0xa::collection::Spam"];
     expect(visibleNfts(nfts, hidden, false).map((n) => n.id)).toEqual(["holmot"]);
     expect(visibleNfts(nfts, hidden, true).map((n) => n.id)).toEqual(["spam"]);
     expect(visibleNfts(nfts, [], false)).toEqual(nfts);
