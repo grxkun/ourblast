@@ -27,7 +27,7 @@ import { parseFundWith } from "@/lib/terminal/fundedLaunch";
 import { resolveFundedLaunchTerminal, stageFundedLaunchTerminal } from "@/lib/terminal/fundedLaunch.functions";
 import { uploadTokenIcon } from "@/lib/terminal/tokenIcon.functions";
 import { parseBankCommand, parseMultiSendCommand, parseSwapCommand } from "@/lib/terminal/bank";
-import { parseNftSendCommand } from "@/lib/terminal/nftSend";
+import { isNftListRequest, parseNftSendCommand } from "@/lib/terminal/nftSend";
 import { useBankApprovals } from "./useBankApprovals";
 import type { LaunchConfiguration, TerminalEntry, TerminalIntentName, TerminalStatus } from "@/lib/terminal/types";
 
@@ -242,7 +242,7 @@ export function Terminal({ tryCommand }: { tryCommand?: { command: string; nonce
         await saveEntry({ id: makeId(), command: clean, intent: "getWallet", result: { tool: "getWallet", status: "NOT_CONNECTED", message: "Sign in first to send NFTs from your OurBank wallet." }, createdAt: new Date().toISOString() });
         return;
       }
-      const isBank = Boolean(userId) && (nftSend || swap || parseEvmBridgeCommand(clean) || parseBankCommand(clean) || parseMultiSendCommand(clean) || /^\s*#?[1-4]\s*$/.test(clean) || /^\s*(buy|sell|swap)\b/i.test(clean) || /\bfees?\b/i.test(clean) || /\bclaim[\s-]*link\b/i.test(clean));
+      const isBank = Boolean(userId) && (nftSend || isNftListRequest(clean) || swap || parseEvmBridgeCommand(clean) || parseBankCommand(clean) || parseMultiSendCommand(clean) || /^\s*#?[1-4]\s*$/.test(clean) || /^\s*(buy|sell|swap)\b/i.test(clean) || /\bfees?\b/i.test(clean) || /\bclaim[\s-]*link\b/i.test(clean));
       if (isBank) {
         const out = await bankCommand({ data: { text: clean } });
         let message = out.reply;
