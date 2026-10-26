@@ -77,6 +77,24 @@ export async function matchCoins(wallet: string, command: Pick<BankCommand, "tok
  */
 const nftSendsInFlight = new Set<string>();
 
+/** "nfts" / "assets" — read-only list of NFTs in the OurBank wallet (and its kiosks). */
+async function nftListReply(username: string): Promise<string> {
+  const { findBankWallet } = await import("./bank-wallet.server");
+  const { readSuiNfts } = await import("./sui-balances.server");
+  const wallet = await findBankWallet(username);
+  if (!wallet) return `@${username} you don't have an OurBank wallet yet. Sign in at ${X_BOT_SITE}/terminal.`;
+  let nfts;
+  try {
+    nfts = await readSuiNfts(wallet.address);
+  } catch {
+    return `@${username} couldn't read your NFTs right now. Try again in a minute.`;
+  }
+  if (nfts.length === 0) return `@${username} no NFTs in your OurBank wallet yet.`;
+  const lines = nfts.slice(0, 15).map((n) => `• ${n.name}${n.kiosk ? " 🔒" : ""} — ${n.id.slice(0, 10)}…${n.id.slice(-4)}`);
+  const more = nfts.length > 15 ? `\n…and ${nfts.length - 15} more. Full list: ${X_BOT_SITE}/assets` : "";
+  return `@${username} ${nfts.length} NFT${nfts.length === 1 ? "" : "s"} in your OurBank wallet:\n${lines.join("\n")}${more}\nSend one: send nft <full object id> to <recipient>`;
+}
+
 /** "send my holmot nft to adeniyi.sui" — moves directly-owned NFTs from the OurBank wallet. */
 async function nftSend(username: string, cmd: import("./nftSend").NftSendCommand): Promise<string> {
   const { findBankWallet, sendNftsFromBankWallet } = await import("./bank-wallet.server");
@@ -581,6 +599,8 @@ export async function handleBankMention(postId: string, username: string, text: 
   const choice = await resolvePendingChoice(postId, username, text);
   if (choice !== null) return choice;
   if (isBalanceRequest(text)) return balanceReply(username);
+  const nftMod = await import("./nftSend");
+  if (nftMod.isNftListRequest(text)) return nftListReply(username);
   // SOL spends ("buy 0.03 sol of blast on sui", "bridge sol") run before Sui swaps.
   // Nothing moves until the author replies "confirm bridge".
   const solSweep = await import("./sol-sweep.server");
