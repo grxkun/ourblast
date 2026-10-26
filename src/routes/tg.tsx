@@ -7,6 +7,8 @@ import { ArrowDownToLine, ArrowDownUp, Copy, ExternalLink, HelpCircle, Home, Ref
 import logo from "@/assets/blast-logo.jpg.asset.json";
 import mascot from "@/assets/blast-cool.png.asset.json";
 import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
+import { TgNftPanel } from "@/components/tg/TgNftPanel";
 
 import { buildSwapCommand, normalizeSwapToken, swapTokenSymbol } from "@/lib/tg/tradeCommand";
 import { MAIN_TOKENS, mainTokenByType } from "@/lib/terminal/mainTokens";
@@ -352,6 +354,7 @@ function WalletView({ initData, handle, onTrade, onSell }: { initData: string; h
   const getWallet = useServerFn(tgGetBankWallet);
   const [w, setW] = useState<Awaited<ReturnType<typeof tgGetBankWallet>> | null>(null);
   const [err, setErr] = useState<string | null>(null);
+  const [inventoryTab, setInventoryTab] = useState<"tokens" | "nfts">("tokens");
   const load = useCallback(() => {
     setErr(null);
     getWallet({ data: { initData } }).then(setW).catch((e) => setErr(String((e as Error).message ?? e)));
@@ -389,6 +392,11 @@ function WalletView({ initData, handle, onTrade, onSell }: { initData: string; h
       </div>
       <WalletManager initData={initData} />
       <BridgeHistory initData={initData} />
+      <div className="grid grid-cols-2 gap-2" role="tablist" aria-label="Wallet inventory">
+        <Button role="tab" aria-selected={inventoryTab === "tokens"} variant={inventoryTab === "tokens" ? "default" : "outline"} onClick={() => setInventoryTab("tokens")}>Tokens</Button>
+        <Button role="tab" aria-selected={inventoryTab === "nfts"} variant={inventoryTab === "nfts" ? "default" : "outline"} onClick={() => setInventoryTab("nfts")}>NFTs</Button>
+      </div>
+      {inventoryTab === "nfts" ? <TgNftPanel key={handle} initData={initData} handle={handle} /> : <>
       <div className="rounded-2xl border border-border bg-surface p-2">
         <div className="mb-1 rounded-xl bg-primary py-1.5 text-center text-sm font-semibold text-primary-foreground">Tokens</div>
         <ul>
@@ -431,6 +439,7 @@ function WalletView({ initData, handle, onTrade, onSell }: { initData: string; h
           </div>
         );
       })()}
+      </>}
       <div id="tg-addresses" className="space-y-3">
         <AddressRow label="Sui wallet" address={w.address} explorer={`https://suiscan.xyz/mainnet/account/${w.address}`} note="Send SUI or any Sui token here." />
         <AddressRow label="EVM deposit (BNB, Base, Arbitrum)" address={w.evmAddress} note="Funds stay here until you ask the bot to bridge them." />
