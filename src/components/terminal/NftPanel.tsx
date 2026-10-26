@@ -5,6 +5,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { Image as ImageIcon, Lock, Send } from "lucide-react";
 import { getMyBankNfts, runBankCommand } from "@/lib/terminal/bank.functions";
 import { Button } from "@/components/ui/button";
+import { NftImage } from "@/components/NftImage";
 import { Input } from "@/components/ui/input";
 import {
   Dialog,
@@ -58,11 +59,7 @@ export function NftPanel({ userId }: { userId: string }) {
           {(d.nfts as Nft[]).map((n) => (
             <li key={n.id} className="flex flex-col border border-border bg-background">
               <a href={`https://suiscan.xyz/mainnet/object/${n.id}`} target="_blank" rel="noreferrer" className="relative block">
-                {n.image ? (
-                  <img src={n.image} alt={n.name} loading="lazy" className="aspect-square w-full object-cover" />
-                ) : (
-                  <div className="grid aspect-square w-full place-items-center bg-muted text-xs text-muted-foreground">No image</div>
-                )}
+                <NftImage image={n.image} name={n.name} />
                 {n.kiosk ? (
                   <span className="absolute left-1 top-1 bg-background/90 px-1 text-[0.6rem] uppercase text-foreground">
                     {n.kiosk.locked ? <Lock className="mr-0.5 inline size-2.5" /> : null}Kiosk

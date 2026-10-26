@@ -4,6 +4,7 @@ import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { Eye, EyeOff, Image as ImageIcon, Lock, RefreshCw, Send } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { NftImage } from "@/components/NftImage";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { tgWalletNfts, tgRunCommand } from "@/lib/tg/tg.functions";
@@ -105,9 +106,4 @@ export function TgNftPanel({ initData, handle }: { initData: string; handle: str
       </Dialog>
     </section>
   );
-}
-
-function NftImage({ image, name }: { image: string | null; name: string }) {
-  const [failed, setFailed] = useState(false);
-  return image && !failed ? <img src={image} alt={name} loading="lazy" referrerPolicy="no-referrer" className="aspect-square w-full object-cover" onError={() => setFailed(true)} /> : <div className="grid aspect-square place-items-center bg-muted text-muted-foreground"><ImageIcon className="size-8" aria-label="No image" /></div>;
 }

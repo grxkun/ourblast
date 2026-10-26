@@ -90,7 +90,7 @@ export interface SuiNft {
 function toNft(id: string, type: string, output: Record<string, unknown> | null | undefined): SuiNft | null {
   const d = (output ?? {}) as Record<string, unknown>;
   const s = (k: string) => (typeof d[k] === "string" ? (d[k] as string) : null);
-  const image = ipfs(s("image_url") ?? s("img_url") ?? s("image"));
+  const image = ipfs(s("image_url") ?? s("img_url") ?? s("image") ?? s("thumbnail_url") ?? s("media_url"));
   if (!image && !s("name")) return null;
   const struct = type.split("<")[0]!.split("::").at(-1) ?? type;
   return { id, type, name: s("name") ?? struct, image, description: s("description"), collection: s("collection_name") ?? s("project_name") ?? struct };
@@ -145,9 +145,12 @@ interface ObjPage {
   } } | null;
 }
 
+// ipfs.io's public gateway was sunset (returns 429); filebase serves CIDs reliably.
 function ipfs(url: string | null): string | null {
   if (!url) return null;
-  if (url.startsWith("ipfs://")) return `https://ipfs.io/ipfs/${url.slice(7)}`;
+  if (url.startsWith("ipfs://")) return `https://ipfs.filebase.io/ipfs/${url.slice(7).replace(/^ipfs\//, "")}`;
+  const m = url.match(/^https?:\/\/(?:gateway\.)?ipfs\.io\/ipfs\/(.+)$/);
+  if (m) return `https://ipfs.filebase.io/ipfs/${m[1]}`;
   return /^https?:\/\//.test(url) ? url : null;
 }
 
