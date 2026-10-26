@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as ArcadeRouteImport } from './routes/arcade'
+import { Route as AssetsRouteImport } from './routes/assets'
 import { Route as BuildRouteImport } from './routes/build'
 import { Route as BuildersRouteImport } from './routes/builders'
 import { Route as BuyRouteImport } from './routes/buy'
@@ -58,6 +59,11 @@ const AdminRoute = AdminRouteImport.update({
 const ArcadeRoute = ArcadeRouteImport.update({
   id: '/arcade',
   path: '/arcade',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AssetsRoute = AssetsRouteImport.update({
+  id: '/assets',
+  path: '/assets',
   getParentRoute: () => rootRouteImport,
 } as any)
 const BuildRoute = BuildRouteImport.update({
@@ -227,6 +233,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
   '/arcade': typeof ArcadeRoute
+  '/assets': typeof AssetsRoute
   '/build': typeof BuildRoute
   '/builders': typeof BuildersRoute
   '/buy': typeof BuyRoute
@@ -264,6 +271,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
   '/arcade': typeof ArcadeRoute
+  '/assets': typeof AssetsRoute
   '/build': typeof BuildRoute
   '/builders': typeof BuildersRoute
   '/buy': typeof BuyRoute
@@ -302,6 +310,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
   '/arcade': typeof ArcadeRoute
+  '/assets': typeof AssetsRoute
   '/build': typeof BuildRoute
   '/builders': typeof BuildersRoute
   '/buy': typeof BuyRoute
@@ -341,6 +350,7 @@ export interface FileRouteTypes {
     | '/'
     | '/admin'
     | '/arcade'
+    | '/assets'
     | '/build'
     | '/builders'
     | '/buy'
@@ -378,6 +388,7 @@ export interface FileRouteTypes {
     | '/'
     | '/admin'
     | '/arcade'
+    | '/assets'
     | '/build'
     | '/builders'
     | '/buy'
@@ -415,6 +426,7 @@ export interface FileRouteTypes {
     | '/'
     | '/admin'
     | '/arcade'
+    | '/assets'
     | '/build'
     | '/builders'
     | '/buy'
@@ -453,6 +465,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AdminRoute: typeof AdminRoute
   ArcadeRoute: typeof ArcadeRoute
+  AssetsRoute: typeof AssetsRoute
   BuildRoute: typeof BuildRoute
   BuildersRoute: typeof BuildersRoute
   BuyRoute: typeof BuyRoute
@@ -508,6 +521,13 @@ declare module '@tanstack/react-router' {
       path: '/arcade'
       fullPath: '/arcade'
       preLoaderRoute: typeof ArcadeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/assets': {
+      id: '/assets'
+      path: '/assets'
+      fullPath: '/assets'
+      preLoaderRoute: typeof AssetsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/build': {
@@ -741,6 +761,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AdminRoute: AdminRoute,
   ArcadeRoute: ArcadeRoute,
+  AssetsRoute: AssetsRoute,
   BuildRoute: BuildRoute,
   BuildersRoute: BuildersRoute,
   BuyRoute: BuyRoute,

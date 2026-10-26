@@ -3,7 +3,7 @@ import { Suspense, lazy, useCallback, useEffect, useMemo, useState } from "react
 import { ClientOnly, createFileRoute } from "@tanstack/react-router";
 import { queryOptions, useSuspenseQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { ArrowDownToLine, ArrowDownUp, Copy, ExternalLink, HelpCircle, Home, RefreshCw, Repeat, Rocket, Search, Send, Star, Wallet, X, Zap } from "lucide-react";
+import { ArrowDownToLine, ArrowDownUp, Copy, ExternalLink, HelpCircle, Home, Image as ImageIcon, RefreshCw, Repeat, Rocket, Search, Send, Star, Wallet, X, Zap } from "lucide-react";
 import logo from "@/assets/blast-logo.jpg.asset.json";
 import mascot from "@/assets/blast-cool.png.asset.json";
 import { toast } from "sonner";
@@ -64,7 +64,7 @@ function TgApp() {
   useEffect(() => {
     // Bot chat "Link X" button opens /tg?tab=wallet.
     const want = new URLSearchParams(window.location.search).get("tab");
-    if (want === "wallet" || want === "trade" || want === "discover") setTab(want as Tab);
+    if (want === "wallet" || want === "trade" || want === "discover" || want === "assets") setTab(want as Tab);
   }, []);
 
   useEffect(() => {
@@ -199,6 +199,7 @@ function TgApp() {
               ["Copy", Repeat, "text-cyber", () => { setPreset({ side: "buy", token: "", key: Date.now(), mode: "copy" }); setTab("trade"); }],
               ["Limit", RefreshCw, "text-muted-foreground", () => { setPreset({ side: "buy", token: "", key: Date.now(), mode: "limit" }); setTab("trade"); }],
               ["Wallet", Wallet, "text-cyber", () => setTab("wallet")],
+              ["Assets", ImageIcon, "text-grape", () => setTab("assets")],
               ["Deposit", ArrowDownToLine, "text-lime", () => setTab("wallet")],
               ["Launches", Search, "text-primary", () => { setFilter("live"); setTab("discover"); }],
               [`Watch (${watch.size})`, Star, "text-lime", () => { setFilter("watch"); setTab("discover"); }],
@@ -260,9 +261,21 @@ function TgApp() {
         </div>
       )}
 
+      {tab === "assets" && (
+        <div className="space-y-3">
+          <div>
+            <h2 className="font-display text-2xl uppercase">Assets</h2>
+            <p className="text-sm text-muted-foreground">NFTs in your main OurBank Sui wallet, including kiosk items.</p>
+          </div>
+          {session?.xUsername && initData
+            ? <TgNftPanel key={session.xUsername} initData={initData} handle={session.xUsername} />
+            : <div className="space-y-3"><p className="text-sm text-muted-foreground">Link your X account to see your NFTs.</p>{xCard}</div>}
+        </div>
+      )}
+
       <nav className="fixed bottom-0 left-0 z-50 w-full border-t border-border bg-background/95 pb-[env(safe-area-inset-bottom)] backdrop-blur">
-        <div className="mx-auto grid max-w-md grid-cols-4">
-          {([["home", "Home", Home], ["discover", "Discover", Search], ["trade", "Trade", Zap], ["wallet", "Wallet", Wallet]] as const).map(([t, label, Icon]) => (
+        <div className="mx-auto grid max-w-md grid-cols-5">
+          {([["home", "Home", Home], ["discover", "Discover", Search], ["trade", "Trade", Zap], ["assets", "Assets", ImageIcon], ["wallet", "Wallet", Wallet]] as const).map(([t, label, Icon]) => (
             <button key={t} onClick={() => setTab(t)} className={`flex flex-col items-center gap-0.5 py-2 text-[0.65rem] font-semibold uppercase ${tab === t ? "text-primary" : "text-muted-foreground"}`}>
               <Icon className="h-5 w-5" />{label}
             </button>
@@ -273,7 +286,7 @@ function TgApp() {
   );
 }
 
-type Tab = "home" | "discover" | "trade" | "wallet";
+type Tab = "home" | "discover" | "trade" | "assets" | "wallet";
 
 type LaunchRow = Awaited<ReturnType<typeof listPublicLaunches>>[number];
 

@@ -13,7 +13,14 @@ export interface NftSendCommand {
 
 export const MAX_NFTS_PER_SEND = 20;
 const OBJECT_ID = /^0x[0-9a-f]{1,64}$/i;
-const NUMBERED_TARGET = /^(.+?)\s+(?:#\s*|number\s+|no\.?\s*)?(\d+)$/i;
+// "Holmot #127", "Holmot 127", and unspaced on-chain titles like "Bluey Bubble Time#630".
+const NUMBERED_TARGET = /^(.+?)(?:\s*#\s*|\s+(?:number\s+|no\.?\s*)?)(\d+)$/i;
+
+/** "nfts", "my nfts", "assets", "show my nfts" — read-only inventory request. */
+export function isNftListRequest(raw: string): boolean {
+  const t = raw.replace(/@ourblastbot\b/gi, " ").replace(/\s+/g, " ").trim().replace(/[?.!]+$/, "");
+  return /^(?:\/?(?:nfts?|assets|collectibles)|(?:show|list|see|view|check)?\s*(?:me\s+)?(?:my\s+)?(?:nfts?|assets|collectibles))$/i.test(t);
+}
 
 function numberedTarget(raw: string): { collection: string; edition: string } | null {
   const match = NUMBERED_TARGET.exec(raw);

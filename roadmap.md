@@ -40,3 +40,5 @@
 - [x] /docs dev-fee split reads launch payees via Sui GraphQL
 - [x] Send tokens held as address balances (no Coin object) — tx.coin intent draws coins + accumulator; live mainnet simulation of YoBooogie's 1000 ONE send passed (unsigned, nothing broadcast)
 - [ ] "No.2" — unclear which item; asked user to confirm
+- [x] Assets: dedicated /assets web page + Telegram Assets tab + "nfts"/"assets" chat command
+- [x] Fix unspaced NFT titles (Bluey Bubble Time#630) so name sends match

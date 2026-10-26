@@ -66,3 +66,21 @@ describe("pickNfts", () => {
     expect(pickNfts([...editions, { id: "0x33", name: "Holmot #300", collection: "HOLMOT", type: "0xa::collection::Holmot" }], { target: "holmot #300", isObjectId: false, count: 1 })).toEqual([]);
   });
 });
+
+describe("NFT inventory phrasing", () => {
+  it("matches unspaced on-chain titles like Bluey Bubble Time#630", async () => {
+    const { parseNftSendCommand, pickNfts } = await import("./nftSend");
+    const cmd = parseNftSendCommand("Send Bluey Bubble Time#630 to adeniyi.sui");
+    expect(cmd).toMatchObject({ target: "bluey bubble time #630", recipient: "adeniyi.sui" });
+    const nfts = [
+      { id: "0x1", name: "Bluey Bubble Time#630", collection: "BlueyOnSui", type: "t" },
+      { id: "0x2", name: "Bluey Bubble Time#678", collection: "BlueyOnSui", type: "t" },
+    ];
+    expect(pickNfts(nfts, cmd!).map((n) => n.id)).toEqual(["0x1"]);
+  });
+  it("recognises read-only list requests", async () => {
+    const { isNftListRequest } = await import("./nftSend");
+    for (const t of ["nfts", "/nfts", "assets", "my nfts", "show my nfts", "@ourblastbot assets"]) expect(isNftListRequest(t)).toBe(true);
+    for (const t of ["send nfts to @x", "balance", "buy 1 sui of $blast"]) expect(isNftListRequest(t)).toBe(false);
+  });
+});
