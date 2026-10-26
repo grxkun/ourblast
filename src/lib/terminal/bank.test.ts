@@ -120,3 +120,10 @@ describe("buy and burn", () => {
     });
   });
 });
+
+import { isBalanceRequest as _isBal } from "./bank";
+import { describe as _d, it as _it, expect as _e } from "vitest";
+_d("isBalanceRequest conversational", () => {
+  _it("accepts 'Hey, @Ourblastbot what my total balance ?'", () => _e(_isBal("Hey, @Ourblastbot what my total balance ?")).toBe(true));
+  _it("still rejects send commands", () => _e(_isBal("hey send my balance to @x")).toBe(false));
+});
