@@ -262,7 +262,7 @@ export async function processTelegramUpdate(update: TelegramUpdate, token: strin
               await replyWithProgress(chat_id, key === "wallet" ? "Loading addresses" : "Reading balances", async () => {
                 const [srv, fmt] = await Promise.all([import("@/lib/tg/walletChat.server"), import("@/lib/tg/walletChat")]);
                 const snap = await srv.walletSnapshot(h, { sui: key !== "wallet", other: key === "balance" });
-                return key === "wallet" ? fmt.formatWallet(snap) : key === "positions" ? fmt.formatPositions(snap) : fmt.formatBalance(snap);
+                return key === "wallet" ? fmt.formatWallet(snap) : key === "positions" ? (await import("@/lib/tg/pnl.server")).positionsPnl(h).catch(() => fmt.formatPositions(snap)) : fmt.formatBalance(snap);
               });
               return Response.json({ ok: true });
             }
@@ -489,6 +489,17 @@ export async function processTelegramUpdate(update: TelegramUpdate, token: strin
           const { runTgCommand } = await import("@/lib/tg/runCommand.server");
           const { reply } = await runTgCommand(cq.from.id, actionCommand(action, coinType)).catch((e) => ({ reply: `❌ Failed: ${(e as Error).message}. Status is unconfirmed. Check your wallet and history before retrying; a transfer may already have been submitted.` }));
           await tg("editMessageText", { chat_id, message_id, text: reply.slice(0, 4000), disable_web_page_preview: true });
+          if (action.side === "sell" && coinType && reply.includes("✅")) {
+            try {
+              const { supabaseAdmin: db } = await import("@/integrations/supabase/client.server");
+              const { data: u } = await db.from("tg_users").select("x_username").eq("tg_user_id", cq.from.id).maybeSingle();
+              const card = u?.x_username ? await (await import("@/lib/tg/pnl.server")).exitCardFor(u.x_username, coinType, action.symbol) : null;
+              if (card) await tg("sendMessage", { chat_id, text: card, disable_web_page_preview: true, reply_markup: { inline_keyboard: [[
+                { text: "Share on X", url: `https://x.com/intent/post?text=${encodeURIComponent(card)}` },
+                { text: "Share on Telegram", url: `https://t.me/share/url?url=${encodeURIComponent("https://t.me/ourblastsuibot")}&text=${encodeURIComponent(card)}` },
+              ]] } });
+            } catch { /* PnL card is best-effort; the trade receipt already went out */ }
+          }
           return Response.json({ ok: true });
         }
 
@@ -650,6 +661,29 @@ export async function processTelegramUpdate(update: TelegramUpdate, token: strin
           await tg("sendMessage", { chat_id: chatId, text: "🔗 Link your X account first — trades use your OurBank wallet tied to X.", reply_markup: linkKb });
           return Response.json({ ok: true });
         }
+        // Custom amount typed in reply to the deck's "✏️ Buy X / Sell X%" prompt → same confirm-first card.
+        const promptText = (msg as { reply_to_message?: { text?: string; from?: { is_bot?: boolean } } }).reply_to_message;
+        if (promptText?.from?.is_bot && promptText.text && (promptText.text.startsWith(CUSTOM_BUY_PROMPT) || promptText.text.startsWith(CUSTOM_SELL_PROMPT))) {
+          const buy = promptText.text.startsWith(CUSTOM_BUY_PROMPT);
+          const t = findScanTarget(promptText.text);
+          const slip = promptText.text.match(/max slippage (\d{1,2})%/)?.[1];
+          const amt = original.replace(/[%\s]|sui/gi, "").replace(",", ".");
+          const n = Number(amt);
+          if (!t || !/^\d*\.?\d+$/.test(amt) || n <= 0 || (!buy && n > 100) || (buy && n > 10000)) {
+            await tg("sendMessage", { chat_id: chatId, text: buy ? "Send a SUI amount like 3.5 — tap ✏️ Buy X SUI again." : "Send a percent from 1 to 100 — tap ✏️ Sell X% again." });
+            return Response.json({ ok: true });
+          }
+          const action = { kind: "ask" as const, side: (buy ? "buy" : "sell") as "buy" | "sell", amount: String(n), symbol: t.symbol, ...(slip ? { slippage: slip } : {}) };
+          const go = encodeAction({ ...action, kind: "go" });
+          if (!decodeAction(go)) { await tg("sendMessage", { chat_id: chatId, text: "That amount can't be used. Try a simpler number." }); return Response.json({ ok: true }); }
+          const what = (buy ? `Spend ${n} SUI on $${t.symbol}` : `Sell ${n}% of your $${t.symbol} for SUI`) + (slip ? ` (max slippage ${slip}%)` : "");
+          await tg("sendMessage", {
+            chat_id: chatId,
+            text: `Confirm: ${what} from your selected OurBank wallet(s) (/wallets)?\n${t.coinType}\nBest route is picked when it runs; the receipt shows the final amount.`,
+            reply_markup: { inline_keyboard: [[{ text: "✅ Confirm", callback_data: go }, { text: "Cancel", callback_data: "x" }]] },
+          });
+          return Response.json({ ok: true });
+        }
         if (/^\/?retry\s*(sui\s+)?hop$/i.test(original.trim())) {
           await replyWithProgress(chatId, "Retrying SOL → SUI hop", async () => {
             const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
@@ -680,7 +714,7 @@ export async function processTelegramUpdate(update: TelegramUpdate, token: strin
           await replyWithProgress(chatId, kind === "wallet" ? "Loading addresses" : "Reading balances", async () => {
             const [h, srv, fmt] = await Promise.all([linkedHandle(), import("@/lib/tg/walletChat.server"), import("@/lib/tg/walletChat")]);
             const snap = await srv.walletSnapshot(h!, { sui: kind !== "wallet", other: kind === "balance" });
-            return kind === "wallet" ? fmt.formatWallet(snap) : kind === "positions" ? fmt.formatPositions(snap) : fmt.formatBalance(snap);
+            return kind === "wallet" ? fmt.formatWallet(snap) : kind === "positions" ? (await import("@/lib/tg/pnl.server")).positionsPnl(h!).catch(() => fmt.formatPositions(snap)) : fmt.formatBalance(snap);
           });
           return Response.json({ ok: true });
         }
