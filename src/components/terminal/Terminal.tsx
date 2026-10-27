@@ -26,7 +26,7 @@ import { bridgeSuiOut } from "@/lib/terminal/suiOut.functions";
 import { parseFundWith } from "@/lib/terminal/fundedLaunch";
 import { resolveFundedLaunchTerminal, stageFundedLaunchTerminal } from "@/lib/terminal/fundedLaunch.functions";
 import { uploadTokenIcon } from "@/lib/terminal/tokenIcon.functions";
-import { parseBankCommand, parseMultiSendCommand, parseSwapCommand } from "@/lib/terminal/bank";
+import { isBalanceRequest, parseBankCommand, parseMultiSendCommand, parseSwapCommand } from "@/lib/terminal/bank";
 import { isNftListRequest, parseNftSendCommand } from "@/lib/terminal/nftSend";
 import { useBankApprovals } from "./useBankApprovals";
 import type { LaunchConfiguration, TerminalEntry, TerminalIntentName, TerminalStatus } from "@/lib/terminal/types";
