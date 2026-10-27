@@ -534,6 +534,30 @@ export async function processTelegramUpdate(update: TelegramUpdate, token: strin
         }
         // Groups: read-only scanner. /scan <ca|$TICKER> or any pasted contract → price card + Buy (opens DM).
         if (!isPrivate) {
+          // Group send: only the tagging sender's own OurBank wallet moves; executes immediately (user choice).
+          const { parseGroupSend } = await import("@/lib/tg/groupSend");
+          const gs = msg?.from?.id ? parseGroupSend(original) : null;
+          if (gs) {
+            const reply = (t: string) => tg("sendMessage", { chat_id: chatId, text: t, disable_web_page_preview: true, reply_to_message_id: msg?.message_id });
+            const { supabaseAdmin: db } = await import("@/integrations/supabase/client.server");
+            const sender = await linkedHandle();
+            if (!sender) { await reply("🔗 DM me and /link your X account first — sends use your OurBank wallet."); return Response.json({ ok: true }); }
+            const replied = (msg as { reply_to_message?: { from?: { id?: number; is_bot?: boolean; username?: string } } }).reply_to_message?.from;
+            const q = db.from("tg_users").select("x_username, username");
+            const { data: rec } = gs.tgUsername
+              ? await q.ilike("username", gs.tgUsername).maybeSingle()
+              : replied?.id && !replied.is_bot ? await q.eq("tg_user_id", replied.id).maybeSingle() : { data: null };
+            const label = `@${gs.tgUsername ?? replied?.username ?? "recipient"}`;
+            if (!gs.tgUsername && !replied?.id) { await reply("Tag someone: @ourblastsuibot send @user 100 BLAST — or reply to their message."); return Response.json({ ok: true }); }
+            if (!rec?.x_username) { await reply(`${label} hasn't linked an OurBank wallet yet. Ask them to DM @ourblastsuibot and tap /link, then try again.`); return Response.json({ ok: true }); }
+            const uid = msg!.from!.id;
+            await replyWithProgress(chatId, `Sending ${gs.amount} ${gs.token} to ${label}`, async () => {
+              const { runTgCommand } = await import("@/lib/tg/runCommand.server");
+              const tok = gs.token.startsWith("0x") ? gs.token : `$${gs.token}`;
+              return (await runTgCommand(uid, `send ${gs.amount} ${tok} to @${rec.x_username}`, sender, { mainOnly: true })).reply;
+            });
+            return Response.json({ ok: true });
+          }
           const t = findScanTarget(original);
           if (t) {
             const { getScanStats } = await import("@/lib/tg/scanInfo.server");
