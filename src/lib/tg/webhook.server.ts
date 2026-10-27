@@ -218,7 +218,7 @@ export async function processTelegramUpdate(update: TelegramUpdate, token: strin
             const { getScanStats } = await import("@/lib/tg/scanInfo.server");
             const stats = await getScanStats(t.coinType).catch(() => null);
             const kb = await userDeck(cq.from.id, t.symbol, t.coinType, deckTap.slip, override);
-            const edited = stats ? await tg("editMessageText", { chat_id, message_id, text: richScanCard(t, stats, "dm"), disable_web_page_preview: true, reply_markup: { inline_keyboard: kb } }) : null;
+            const edited = stats ? await tg("editMessageText", { chat_id, message_id, text: richScanCard(t, stats, "dm"), disable_web_page_preview: true, parse_mode: "HTML", reply_markup: { inline_keyboard: kb } }) : null;
             if (!edited) await tg("editMessageReplyMarkup", { chat_id, message_id, reply_markup: { inline_keyboard: kb } });
             return Response.json({ ok: true });
           }
