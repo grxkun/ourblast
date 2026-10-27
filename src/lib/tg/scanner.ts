@@ -90,3 +90,36 @@ export function richScanCard(t: { symbol: string; coinType: string }, s: ScanSta
   ];
   return lines.join("\n");
 }
+
+export const SLIP_PRESETS = ["5", "10", "15", "25"];
+export const DEFAULT_DECK_SLIP = "10";
+type Btn = { text: string; callback_data?: string; url?: string; web_app?: { url: string } };
+
+/** Private-chat trading deck: wallet toggles (tw|slot|slip), slippage picks (ts|slip), and buy/sell presets carrying the chosen slippage. */
+export function deckKeyboard(o: {
+  symbol: string; slots: number[]; selected: number[]; slip: string;
+  encode: (side: "buy" | "sell", amount: string, slip: string) => string;
+}): Btn[][] {
+  const sel = new Set(o.selected);
+  const walletRow = o.slots.map((s) => ({ text: `${sel.has(s) ? "✅ " : ""}W${s}`, callback_data: `tw|${s}|${o.slip}` }));
+  return [
+    ["1", "5", "10", "25"].map((a) => ({ text: `Buy ${a} SUI`, callback_data: o.encode("buy", a, o.slip) })),
+    ["25", "50", "100"].map((a) => ({ text: a === "100" ? "Sell MAX" : `Sell ${a}%`, callback_data: o.encode("sell", a, o.slip) })),
+    SLIP_PRESETS.map((p) => ({ text: `${p === o.slip ? "✅ " : ""}Slip ${p}%`, callback_data: `ts|${p}` })),
+    ...(walletRow.length > 1 ? [walletRow] : []),
+  ];
+}
+
+export function parseDeckTap(data: string): { kind: "wallet"; slot: number; slip: string } | { kind: "slip"; slip: string } | null {
+  const w = data.match(/^tw\|([1-9])\|(\d{1,2})$/);
+  if (w && SLIP_PRESETS.includes(w[2]!)) return { kind: "wallet", slot: Number(w[1]), slip: w[2]! };
+  const s = data.match(/^ts\|(\d{1,2})$/);
+  if (s && SLIP_PRESETS.includes(s[1]!)) return { kind: "slip", slip: s[1]! };
+  return null;
+}
+
+/** Toggle a wallet; never leaves zero wallets selected. */
+export function toggleSlot(selected: number[], slot: number): number[] {
+  const next = selected.includes(slot) ? selected.filter((s) => s !== slot) : [...selected, slot].sort();
+  return next.length ? next : selected;
+}
