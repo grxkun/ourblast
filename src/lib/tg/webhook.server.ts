@@ -9,6 +9,8 @@ import { decodePresaleAction, encodePresaleAction, parsePresaleCommand, presaleI
 
 const APP_URL = "https://ourblast.xyz/tg";
 const LINK_URL = "https://ourblast.xyz/tg?tab=wallet";
+/** The real ticker shown on a card ($HOLMOT), not the shared struct name some launchpads use. */
+const cardSymbol = (text: string, fallback: string) => text.split("\n")[0]?.match(/\$([A-Za-z0-9_]{1,16})/)?.[1]?.toUpperCase() ?? fallback;
 const CUSTOM_BUY_PROMPT = "✏️ Reply with how much SUI to spend on";
 const CUSTOM_SELL_PROMPT = "✏️ Reply with what % to sell of";
 type Btn = { text: string; callback_data?: string; web_app?: { url: string }; url?: string };
@@ -201,8 +203,9 @@ export async function processTelegramUpdate(update: TelegramUpdate, token: strin
           const cx = (cq.data ?? "").match(/^cx\|([bs])\|(\d{1,2})$/);
           if (cx || cq.data === "pp") {
             await tg("answerCallbackQuery", { callback_query_id: cq.id });
-            const t = findScanTarget(cq.message.text ?? "");
-            if (!t) return Response.json({ ok: true });
+            const t0 = findScanTarget(cq.message.text ?? "");
+            if (!t0) return Response.json({ ok: true });
+            const t = { ...t0, symbol: cardSymbol(cq.message.text ?? "", t0.symbol) };
             if (cx) {
               const buy = cx[1] === "b";
               await tg("sendMessage", {
@@ -665,7 +668,8 @@ export async function processTelegramUpdate(update: TelegramUpdate, token: strin
         const promptText = (msg as { reply_to_message?: { text?: string; from?: { is_bot?: boolean } } }).reply_to_message;
         if (promptText?.from?.is_bot && promptText.text && (promptText.text.startsWith(CUSTOM_BUY_PROMPT) || promptText.text.startsWith(CUSTOM_SELL_PROMPT))) {
           const buy = promptText.text.startsWith(CUSTOM_BUY_PROMPT);
-          const t = findScanTarget(promptText.text);
+          const t0 = findScanTarget(promptText.text);
+          const t = t0 ? { ...t0, symbol: cardSymbol(promptText.text, t0.symbol) } : null;
           const slip = promptText.text.match(/max slippage (\d{1,2})%/)?.[1];
           const amt = original.replace(/[%\s]|sui/gi, "").replace(",", ".");
           const n = Number(amt);
