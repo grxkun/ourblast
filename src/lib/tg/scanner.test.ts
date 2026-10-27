@@ -24,9 +24,11 @@ describe("scan card sources", () => {
     expect(scanCard({ symbol: "Q", coinType: CT }, 1, "suipump")).toContain("Launched on Suipump");
     expect(launchpadLabel(null)).toBeNull();
   });
-  it("includes Sui chart sites and keeps DexScreener", () => {
+  it("includes Sui chart sites and no DexScreener", () => {
     const urls = chartButtons(CT).flat().map((b) => b.url).join(" ");
-    for (const h of ["noodles.fi", "yolo.casa", "tavern.family", "dexscreener.com"]) expect(urls).toContain(h);
+    for (const h of ["noodles.fi", "yolo.casa", "tavern.family"]) expect(urls).toContain(h);
+    expect(urls).not.toContain("dexscreener");
+    expect(chartLinksHtml(CT)).not.toContain("dexscreener");
   });
 });
 
