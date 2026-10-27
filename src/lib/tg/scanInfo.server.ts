@@ -43,7 +43,6 @@ export async function getScanStats(coinType: string): Promise<ScanStats> {
   const hit = cache.get(coinType);
   if (hit && Date.now() - hit.at < 30_000) return hit.v;
   const pkg = coinType.split("::")[0]!;
-  const { aftermathPrices } = await import("@/lib/tg/runCommand.server");
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
   const [priceInfo, meta, pad] = await Promise.all([
     fetch("https://aftermath.finance/api/price-info", {
@@ -55,7 +54,6 @@ export async function getScanStats(coinType: string): Promise<ScanStats> {
       .or(`token_address.eq.${coinType},token_address.eq.${pkg},token_url.ilike.%${pkg}%`)
       .limit(1).maybeSingle().then((r) => r.data?.launchpad ?? null, () => null),
   ]);
-  void aftermathPrices;
   const v: ScanStats = { priceUsd: null, mcap: null, liquidity: null, volume24h: null, change24h: null, dex: null, pools: 0, launchpad: pad ?? padFromModule(coinType) };
   v.symbol = meta.symbol;
   v.name = meta.name;
