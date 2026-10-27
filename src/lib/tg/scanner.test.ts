@@ -29,3 +29,13 @@ describe("scan card sources", () => {
     for (const h of ["noodles.fi", "yolo.casa", "tavern.family", "dexscreener.com"]) expect(urls).toContain(h);
   });
 });
+
+import { richScanCard, fmtUsd } from "./scanner";
+describe("rich scan card", () => {
+  it("formats stats and never invents missing data", () => {
+    const c = richScanCard({ symbol: "X", coinType: "0x1::x::X" }, { priceUsd: null, mcap: 5168, liquidity: 3551, volume24h: null, change24h: null, dex: "cetus", pools: 1 }, "dm");
+    expect(c).toContain("Mcap: $5.2K · Liq: $3.6K | 68.7%");
+    expect(c).toContain("Price: n/a");
+    expect(fmtUsd(2_500_000)).toBe("$2.50M");
+  });
+});

@@ -3,7 +3,7 @@ import type { TelegramUpdate } from "./webhookDelivery";
 
 import { MAX_FOLLOWS, parseFollowCommand } from "@/lib/tg/walletWatch";
 import { actionCoinType, actionCommand, BUY_PRESETS, decodeAction, detectToken, encodeAction, parseSnipeCommand, SELL_PRESETS } from "@/lib/tg/chatTrade";
-import { buyDeepLink, chartButtons, findScanTarget, parseStartBuy, scanCard } from "@/lib/tg/scanner";
+import { buyDeepLink, chartButtons, findScanTarget, parseStartBuy, richScanCard } from "@/lib/tg/scanner";
 import { decodePresaleAction, encodePresaleAction, parsePresaleCommand, presaleIdFromText } from "@/lib/tg/presale";
 
 const APP_URL = "https://ourblast.xyz/tg";
@@ -165,10 +165,12 @@ export async function processTelegramUpdate(update: TelegramUpdate, token: strin
             const t = findScanTarget(cq.message.text ?? "");
             if (!t) { await tg("answerCallbackQuery", { callback_query_id: cq.id }); return Response.json({ ok: true }); }
             const saved = threadId; threadId = undefined;
+            const { getScanStats } = await import("@/lib/tg/scanInfo.server");
+            const stats = await getScanStats(t.coinType);
             const sent = await tg("sendMessage", {
               chat_id: cq.from.id, disable_web_page_preview: true,
-              text: `💥 $${t.symbol}\n${t.coinType}\nhttps://suiscan.xyz/mainnet/coin/${t.coinType}\n\nPick an amount — you'll confirm before anything moves.`,
-              reply_markup: { inline_keyboard: tokenKeyboard(t.symbol) },
+              text: richScanCard(t, stats, "dm"),
+              reply_markup: { inline_keyboard: [...tokenKeyboard(t.symbol), ...chartButtons(t.coinType)] },
             });
             threadId = saved;
             await tg("answerCallbackQuery", sent ? { callback_query_id: cq.id, text: "Sent to your DM with @" + "ourblastsuibot" } : { callback_query_id: cq.id, url: buyDeepLink(t.symbol) });
@@ -473,18 +475,11 @@ export async function processTelegramUpdate(update: TelegramUpdate, token: strin
         if (!isPrivate) {
           const t = findScanTarget(original);
           if (t) {
-            const { currentPrice } = await import("@/lib/tg/limitOrder.server");
-            const pkg = t.coinType.split("::")[0]!;
-            const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-            const [price, pad] = await Promise.all([
-              currentPrice(t.coinType).catch(() => null),
-              supabaseAdmin.from("x_launch_requests").select("launchpad")
-                .or(`token_address.eq.${t.coinType},token_address.eq.${pkg},token_url.ilike.%${pkg}%`)
-                .limit(1).maybeSingle().then((r) => r.data?.launchpad ?? null, () => null),
-            ]);
+            const { getScanStats } = await import("@/lib/tg/scanInfo.server");
+            const stats = await getScanStats(t.coinType);
             await tg("sendMessage", {
               chat_id: chatId, disable_web_page_preview: true, reply_to_message_id: msg?.message_id,
-              text: scanCard(t, price, pad),
+              text: richScanCard(t, stats, "group"),
               reply_markup: { inline_keyboard: [
                 [{ text: `🟢 Buy $${t.symbol} on OURBLAST`, callback_data: "sc" }],
                 ...chartButtons(t.coinType),
@@ -694,11 +689,13 @@ export async function processTelegramUpdate(update: TelegramUpdate, token: strin
 
         const tokenHit = detectToken(original);
         if (tokenHit) {
+          const ct = tokenHit.coinType;
+          const stats = ct ? await (await import("@/lib/tg/scanInfo.server")).getScanStats(ct).catch(() => null) : null;
           await tg("sendMessage", {
             chat_id: chatId,
-            text: `💥 $${tokenHit.symbol}${tokenHit.coinType ? `\n${tokenHit.coinType}\nhttps://suiscan.xyz/mainnet/coin/${tokenHit.coinType}` : ""}\n\nPick an amount — you'll confirm before anything moves.`,
+            text: ct && stats ? richScanCard({ symbol: tokenHit.symbol, coinType: ct }, stats, "dm") : `💥 $${tokenHit.symbol}${ct ? `\n${ct}` : ""}\n\nPick an amount — you'll confirm before anything moves.`,
             disable_web_page_preview: true,
-            reply_markup: { inline_keyboard: tokenKeyboard(tokenHit.symbol) },
+            reply_markup: { inline_keyboard: [...tokenKeyboard(tokenHit.symbol), ...(ct ? chartButtons(ct) : [])] },
           });
           return Response.json({ ok: true });
         }
