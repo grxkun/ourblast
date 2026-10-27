@@ -517,6 +517,16 @@ export async function processTelegramUpdate(update: TelegramUpdate, token: strin
         if (!chatId || !original) return Response.json({ ok: true });
 
         const isPrivate = msg?.chat?.type === "private" && !!msg.from?.id;
+        // Private /buy /sell /send /burn … run as plain commands; bare ones get syntax help.
+        if (isPrivate) {
+          const { mapPrivateSlash } = await import("@/lib/tg/slashCommands");
+          const ps = mapPrivateSlash(original);
+          if (ps && "help" in ps) {
+            await tg("sendMessage", { chat_id: chatId, text: ps.help });
+            return Response.json({ ok: true });
+          }
+          if (ps) original = ps.text;
+        }
         // Looked up once per message, then reused by every branch below.
         let handleLookup: Promise<string | null> | null = null;
         const linkedHandle = (): Promise<string | null> => {
