@@ -18,7 +18,7 @@ describe("group scanner", () => {
   });
 });
 
-import { chartButtons, launchpadLabel, scanCard } from "./scanner";
+import { chartButtons, chartLinksHtml as chartLinksHtml2, launchpadLabel, scanCard } from "./scanner";
 describe("scan card sources", () => {
   it("shows the launchpad when known", () => {
     expect(scanCard({ symbol: "Q", coinType: CT }, 1, "suipump")).toContain("Launched on Suipump");
@@ -28,7 +28,7 @@ describe("scan card sources", () => {
     const urls = chartButtons(CT).flat().map((b) => b.url).join(" ");
     for (const h of ["noodles.fi", "yolo.casa", "tavern.family"]) expect(urls).toContain(h);
     expect(urls).not.toContain("dexscreener");
-    expect(chartLinksHtml(CT)).not.toContain("dexscreener");
+    expect(chartLinksHtml2(CT)).not.toContain("dexscreener");
   });
 });
 
