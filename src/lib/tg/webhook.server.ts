@@ -3,7 +3,8 @@ import type { TelegramUpdate } from "./webhookDelivery";
 
 import { MAX_FOLLOWS, parseFollowCommand } from "@/lib/tg/walletWatch";
 import { actionCoinType, actionCommand, BUY_PRESETS, decodeAction, detectToken, encodeAction, parseSnipeCommand, SELL_PRESETS } from "@/lib/tg/chatTrade";
-import { buyDeepLink, chartButtons, deckKeyboard, DEFAULT_DECK_SLIP, findScanTarget, parseDeckTap, parseStartBuy, richScanCard, toggleSlot } from "@/lib/tg/scanner";
+import { buyDeepLink, contractDeepLink, parseStartContract, deckKeyboard, DEFAULT_DECK_SLIP, findScanTarget, parseDeckTap, parseStartBuy, richScanCard, toggleSlot } from "@/lib/tg/scanner";
+import { mainToken } from "@/lib/terminal/mainTokens";
 import { decodePresaleAction, encodePresaleAction, parsePresaleCommand, presaleIdFromText } from "@/lib/tg/presale";
 
 const APP_URL = "https://ourblast.xyz/tg";
@@ -33,7 +34,6 @@ async function userDeck(tgUserId: number, symbol: string, coinType: string, slip
   } catch { /* fall back to W1 only */ }
   return [
     ...deckKeyboard({ symbol, slots, selected: selectedOverride ?? selected, slip, encode: (side, amount, sl) => encodeAction({ kind: "ask", side, amount, symbol, slippage: sl }) }),
-    ...chartButtons(coinType),
     [{ text: "🔄 Refresh", callback_data: `ts|${slip}` }, { text: "Open OURBLAST", web_app: { url: APP_URL } }],
   ];
 }
@@ -188,7 +188,7 @@ export async function processTelegramUpdate(update: TelegramUpdate, token: strin
             const { getScanStats } = await import("@/lib/tg/scanInfo.server");
             const stats = await getScanStats(t.coinType);
             const sent = await tg("sendMessage", {
-              chat_id: cq.from.id, disable_web_page_preview: true,
+              chat_id: cq.from.id, disable_web_page_preview: true, parse_mode: "HTML",
               text: richScanCard(t, stats, "dm"),
               reply_markup: { inline_keyboard: await userDeck(cq.from.id, t.symbol, t.coinType) },
             });
@@ -218,7 +218,7 @@ export async function processTelegramUpdate(update: TelegramUpdate, token: strin
             const { getScanStats } = await import("@/lib/tg/scanInfo.server");
             const stats = await getScanStats(t.coinType).catch(() => null);
             const kb = await userDeck(cq.from.id, t.symbol, t.coinType, deckTap.slip, override);
-            const edited = stats ? await tg("editMessageText", { chat_id, message_id, text: richScanCard(t, stats, "dm"), disable_web_page_preview: true, reply_markup: { inline_keyboard: kb } }) : null;
+            const edited = stats ? await tg("editMessageText", { chat_id, message_id, text: richScanCard(t, stats, "dm"), disable_web_page_preview: true, parse_mode: "HTML", reply_markup: { inline_keyboard: kb } }) : null;
             if (!edited) await tg("editMessageReplyMarkup", { chat_id, message_id, reply_markup: { inline_keyboard: kb } });
             return Response.json({ ok: true });
           }
@@ -507,7 +507,22 @@ export async function processTelegramUpdate(update: TelegramUpdate, token: strin
           return Response.json({ ok: true });
         }
 
-        const startBuy = isPrivate ? parseStartBuy(original) : null;
+        const startCt = isPrivate ? parseStartContract(original) : null;
+        const startBuyRaw = isPrivate && !startCt ? parseStartBuy(original) : null;
+        const startHit = startBuyRaw ? detectToken(`$${startBuyRaw}`) : null;
+        const deepT = startCt ? { symbol: startCt.split("::")[2]!.toUpperCase().slice(0, 16), coinType: startCt }
+          : startHit?.coinType ? { symbol: startBuyRaw!, coinType: startHit.coinType } : null;
+        if (deepT) {
+          const { getScanStats } = await import("@/lib/tg/scanInfo.server");
+          const stats = await getScanStats(deepT.coinType);
+          await tg("sendMessage", {
+            chat_id: chatId, disable_web_page_preview: true, parse_mode: "HTML",
+            text: richScanCard(deepT, stats, "dm"),
+            reply_markup: { inline_keyboard: await userDeck(msg!.from!.id, deepT.symbol, deepT.coinType) },
+          });
+          return Response.json({ ok: true });
+        }
+        const startBuy = startBuyRaw;
         if (startBuy) {
           const hit = detectToken(`$${startBuy}`);
           await tg("sendMessage", {
@@ -524,12 +539,13 @@ export async function processTelegramUpdate(update: TelegramUpdate, token: strin
             const { getScanStats } = await import("@/lib/tg/scanInfo.server");
             const stats = await getScanStats(t.coinType);
             await tg("sendMessage", {
-              chat_id: chatId, disable_web_page_preview: true, reply_to_message_id: msg?.message_id,
+              chat_id: chatId, disable_web_page_preview: true, parse_mode: "HTML", reply_to_message_id: msg?.message_id,
               text: richScanCard(t, stats, "group"),
-              reply_markup: { inline_keyboard: [
-                [{ text: `🟢 Buy $${t.symbol} on OURBLAST`, callback_data: "sc" }],
-                ...chartButtons(t.coinType),
-              ] },
+              reply_markup: { inline_keyboard: [[(() => {
+                // URL button opens the DM directly; tickers or encodable contracts fit Telegram's 64-char start payload.
+                const url = mainToken(t.symbol)?.coinType === t.coinType ? buyDeepLink(t.symbol) : contractDeepLink(t.coinType);
+                return url ? { text: `🟢 Buy $${t.symbol} on OURBLAST`, url } : { text: `🟢 Buy $${t.symbol} on OURBLAST`, callback_data: "sc" };
+              })()]] },
             });
             return Response.json({ ok: true });
           }
@@ -738,9 +754,8 @@ export async function processTelegramUpdate(update: TelegramUpdate, token: strin
           const ct = tokenHit.coinType;
           const stats = ct ? await (await import("@/lib/tg/scanInfo.server")).getScanStats(ct).catch(() => null) : null;
           await tg("sendMessage", {
-            chat_id: chatId,
+            chat_id: chatId, parse_mode: "HTML", disable_web_page_preview: true,
             text: ct && stats ? richScanCard({ symbol: tokenHit.symbol, coinType: ct }, stats, "dm") : `💥 $${tokenHit.symbol}${ct ? `\n${ct}` : ""}\n\nPick an amount — you'll confirm before anything moves.`,
-            disable_web_page_preview: true,
             reply_markup: { inline_keyboard: ct ? await userDeck(msg!.from!.id, tokenHit.symbol, ct) : tokenKeyboard(tokenHit.symbol) },
           });
           return Response.json({ ok: true });
