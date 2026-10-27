@@ -59,3 +59,16 @@ describe("trading deck", () => {
     expect(toggleSlot([1, 3], 1)).toEqual([3]);
   });
 });
+
+import { contractDeepLink, parseStartContract, chartLinksHtml } from "./scanner";
+describe("group buy deep link", () => {
+  it("round-trips a full contract within 64 chars", () => {
+    const ct = "0x6055e3a3decac47b3934f1baf358fb799f1d6483b55d279dadad029286da583e::qlong::QLONG";
+    const url = contractDeepLink(ct)!;
+    expect(url.split("start=")[1]!.length).toBeLessThanOrEqual(64);
+    expect(parseStartContract(`/start ${url.split("start=")[1]}`)).toBe(ct);
+  });
+  it("chart links are hyperlinked tags", () => {
+    expect(chartLinksHtml("0x1::x::X")).toContain(">NOO</a>");
+  });
+});

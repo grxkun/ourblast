@@ -754,7 +754,7 @@ export async function processTelegramUpdate(update: TelegramUpdate, token: strin
           const ct = tokenHit.coinType;
           const stats = ct ? await (await import("@/lib/tg/scanInfo.server")).getScanStats(ct).catch(() => null) : null;
           await tg("sendMessage", {
-            chat_id: chatId,
+            chat_id: chatId, parse_mode: "HTML", disable_web_page_preview: true,
             text: ct && stats ? richScanCard({ symbol: tokenHit.symbol, coinType: ct }, stats, "dm") : `💥 $${tokenHit.symbol}${ct ? `\n${ct}` : ""}\n\nPick an amount — you'll confirm before anything moves.`,
             disable_web_page_preview: true,
             reply_markup: { inline_keyboard: ct ? await userDeck(msg!.from!.id, tokenHit.symbol, ct) : tokenKeyboard(tokenHit.symbol) },
