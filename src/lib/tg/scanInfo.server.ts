@@ -11,10 +11,12 @@ async function gql<T>(query: string, variables: Record<string, unknown>): Promis
   return j.data ?? null;
 }
 
-async function coinMeta(coinType: string): Promise<{ symbol: string | null; name: string | null }> {
-  const d = await gql<{ coinMetadata?: { symbol?: string; name?: string } | null }>(
-    "query($t:String!){coinMetadata(coinType:$t){symbol name}}", { t: coinType });
-  return { symbol: d?.coinMetadata?.symbol ?? null, name: d?.coinMetadata?.name ?? null };
+async function coinMeta(coinType: string): Promise<{ symbol: string | null; name: string | null; supply?: number | null }> {
+  const d = await gql<{ coinMetadata?: { symbol?: string; name?: string; decimals?: number; supply?: string | null } | null }>(
+    "query($t:String!){coinMetadata(coinType:$t){symbol name decimals supply}}", { t: coinType });
+  const m = d?.coinMetadata;
+  const supply = m?.supply != null && m.decimals != null ? Number(m.supply) / 10 ** m.decimals : null;
+  return { symbol: m?.symbol ?? null, name: m?.name ?? null, supply: supply && Number.isFinite(supply) ? supply : null };
 }
 
 async function dexStats(coinType: string): Promise<Partial<ScanStats>> {
@@ -56,6 +58,8 @@ export async function getScanStats(coinType: string): Promise<ScanStats> {
   v.symbol = meta.symbol ?? dex.symbol ?? null;
   v.name = meta.name ?? dex.name ?? null;
   if (price != null) { v.priceUsd = price; v.priceSource = "Aftermath"; } else if (v.priceUsd != null) v.priceSource = "DexScreener";
+  // Pre-graduation curve tokens have no DEX pairs: market cap = live price × on-chain total supply.
+  if (v.mcap == null && v.priceUsd != null && meta.supply) v.mcap = v.priceUsd * meta.supply;
   cache.set(coinType, { at: Date.now(), v });
   return v;
 }
