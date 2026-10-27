@@ -474,13 +474,19 @@ export async function processTelegramUpdate(update: TelegramUpdate, token: strin
           const t = findScanTarget(original);
           if (t) {
             const { currentPrice } = await import("@/lib/tg/limitOrder.server");
-            const price = await currentPrice(t.coinType).catch(() => null);
+            const pkg = t.coinType.split("::")[0]!;
+            const [price, pad] = await Promise.all([
+              currentPrice(t.coinType).catch(() => null),
+              supabaseAdmin.from("x_launch_requests").select("launchpad")
+                .or(`token_address.eq.${t.coinType},token_address.eq.${pkg},token_url.ilike.%${pkg}%`)
+                .limit(1).maybeSingle().then((r) => r.data?.launchpad ?? null, () => null),
+            ]);
             await tg("sendMessage", {
               chat_id: chatId, disable_web_page_preview: true, reply_to_message_id: msg?.message_id,
-              text: scanCard(t, price),
+              text: scanCard(t, price, pad),
               reply_markup: { inline_keyboard: [
                 [{ text: `🟢 Buy $${t.symbol} on OURBLAST`, callback_data: "sc" }],
-                [{ text: "Suiscan", url: `https://suiscan.xyz/mainnet/coin/${t.coinType}` }, { text: "Chart", url: `https://dexscreener.com/sui/${t.coinType}` }],
+                ...chartButtons(t.coinType),
               ] },
             });
             return Response.json({ ok: true });

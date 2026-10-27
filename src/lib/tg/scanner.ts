@@ -34,6 +34,25 @@ export function fmtPrice(p: number | null): string {
   return `$${p.toPrecision(4)}`;
 }
 
-export function scanCard(t: { symbol: string; coinType: string }, price: number | null): string {
-  return `🔎 $${t.symbol} — OURBLAST scan\nPrice: ${fmtPrice(price)} (Aftermath)\n\n${t.coinType}\n\nTap Buy to trade in a private chat — you always confirm first.`;
+const PAD_LABELS: Record<string, string> = {
+  suipump: "Suipump", perpsplexity: "Perpsplexity", maelstrom: "Maelstrom", blastfun: "Blast.fun",
+  "blast.fun": "Blast.fun", turbosfun: "TurbosFun", vicefun: "ViceFun", popularsui: "PopularSui",
+};
+export function launchpadLabel(id: string | null | undefined): string | null {
+  if (!id) return null;
+  return PAD_LABELS[id.toLowerCase()] ?? id;
+}
+
+/** Chart links: Sui-native first, DexScreener kept as fallback. */
+export function chartButtons(coinType: string): { text: string; url: string }[][] {
+  const c = encodeURIComponent(coinType);
+  return [
+    [{ text: "📈 Noodles", url: `https://noodles.fi/coins/${c}` }, { text: "📈 YOLO", url: `https://yolo.casa/token/${c}` }, { text: "📈 Tavern", url: `https://tavern.family/token/${c}` }],
+    [{ text: "Suiscan", url: `https://suiscan.xyz/mainnet/coin/${coinType}` }, { text: "DexScreener", url: `https://dexscreener.com/sui/${coinType}` }],
+  ];
+}
+
+export function scanCard(t: { symbol: string; coinType: string }, price: number | null, launchpad?: string | null): string {
+  const pad = launchpadLabel(launchpad);
+  return `🔎 $${t.symbol} — OURBLAST scan\nPrice: ${fmtPrice(price)} (Aftermath)${pad ? `\n🚀 Launched on ${pad}` : ""}\n\n${t.coinType}\n\nTap Buy to trade in a private chat — you always confirm first.`;
 }
