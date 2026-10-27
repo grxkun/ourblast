@@ -79,7 +79,15 @@ export function scanCard(t: { symbol: string; coinType: string }, price: number 
 export type ScanStats = {
   priceUsd: number | null; priceSource?: string; mcap: number | null; liquidity: number | null;
   volume24h: number | null; change24h: number | null; dex: string | null; pools: number; launchpad?: string | null;
+  /** Real on-chain ticker/name (launchpad templates share struct names like ::suipump::SUIPUMP). */
+  symbol?: string | null; name?: string | null;
 };
+
+/** Launchpads whose coin template fixes the module name, so the module identifies the pad. */
+export function padFromModule(coinType: string): string | null {
+  const mod = coinType.split("::")[1]?.toLowerCase();
+  return mod === "suipump" ? "suipump" : null;
+}
 
 export function fmtUsd(n: number | null | undefined): string {
   if (n == null || !Number.isFinite(n)) return "n/a";
@@ -108,7 +116,7 @@ export function richScanCard(t: { symbol: string; coinType: string }, s: ScanSta
   const liqPct = s.liquidity && s.mcap ? ` [${((s.liquidity / s.mcap) * 100).toFixed(1)}%]` : "";
   const dex = s.dex ? s.dex.charAt(0).toUpperCase() + s.dex.slice(1) : "n/a";
   const lines = [
-    `${mode === "group" ? "🔎" : "💥"} <b>$${esc(t.symbol)}</b> · Sui${pad ? ` · 🚀 ${esc(pad)}` : ""}`,
+    `${mode === "group" ? "🔎" : "💥"} <b>$${esc(s.symbol || t.symbol)}</b>${s.name ? ` (${esc(s.name)})` : ""} · Sui${pad ? ` · 🚀 ${esc(pad)}` : ""}`,
     `<code>${esc(t.coinType)}</code>`,
     "",
     `💰 <b>USD:</b> ${fmtPrice(s.priceUsd)}${ch}`,

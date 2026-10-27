@@ -558,17 +558,28 @@ export async function processTelegramUpdate(update: TelegramUpdate, token: strin
             });
             return Response.json({ ok: true });
           }
-          const t = findScanTarget(original);
+          let t = findScanTarget(original);
+          if (!t) {
+            // "/scan $HOLMOT" for tokens OURBLAST launched (not in the main-token list).
+            const tk = original.trim().match(/^\/scan(?:@\w+)?\s+\$?([a-z0-9]{1,16})\s*$/i)?.[1];
+            if (tk) {
+              const { resolveLaunchedTicker } = await import("@/lib/tg/scanInfo.server");
+              const ct = await resolveLaunchedTicker(tk).catch(() => null);
+              if (ct) t = { symbol: tk.toUpperCase(), coinType: ct };
+            }
+          }
           if (t) {
             const { getScanStats } = await import("@/lib/tg/scanInfo.server");
             const stats = await getScanStats(t.coinType);
+            if (stats.symbol) t = { ...t, symbol: stats.symbol.toUpperCase().slice(0, 16) };
+            const sym = t.symbol;
             await tg("sendMessage", {
               chat_id: chatId, disable_web_page_preview: true, parse_mode: "HTML", reply_to_message_id: msg?.message_id,
               text: richScanCard(t, stats, "group"),
               reply_markup: { inline_keyboard: [[(() => {
                 // URL button opens the DM directly; tickers or encodable contracts fit Telegram's 64-char start payload.
-                const url = mainToken(t.symbol)?.coinType === t.coinType ? buyDeepLink(t.symbol) : contractDeepLink(t.coinType);
-                return url ? { text: `🟢 Buy $${t.symbol} on OURBLAST`, url } : { text: `🟢 Buy $${t.symbol} on OURBLAST`, callback_data: "sc" };
+                const url = mainToken(sym)?.coinType === t.coinType ? buyDeepLink(sym) : contractDeepLink(t.coinType);
+                return url ? { text: `🟢 Buy $${sym} on OURBLAST`, url } : { text: `🟢 Buy $${sym} on OURBLAST`, callback_data: "sc" };
               })()]] },
             });
             return Response.json({ ok: true });
