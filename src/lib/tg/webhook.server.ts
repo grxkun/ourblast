@@ -833,7 +833,8 @@ export async function processTelegramUpdate(update: TelegramUpdate, token: strin
         const note = /^(bridge|send|launch|claim|withdraw)\b/i.test(original) ? "Working on it — chain steps can take a moment" : "Checking";
         await replyWithProgress(chatId, note, async () => {
           const [{ runTgCommand }, h] = await Promise.all([import("@/lib/tg/runCommand.server"), linkedHandle()]);
-          return (await runTgCommand(uid, original, h)).reply;
+          const { parseGroupTrade } = await import("@/lib/tg/groupTrade");
+          return (await runTgCommand(uid, parseGroupTrade(original) ?? original, h)).reply;
         });
         return Response.json({ ok: true });
 }
