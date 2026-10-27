@@ -72,3 +72,14 @@ describe("group buy deep link", () => {
     expect(chartLinksHtml("0x1::x::X")).toContain(">NOO</a>");
   });
 });
+
+import { padFromModule, richScanCard } from "./scanner";
+describe("suipump template tokens", () => {
+  const HOLMOT = "0x2de341b0ac3206a6a7befb5bf03e498b5aece8fd2e95e0cebe0c14d3af547f81::suipump::SUIPUMP";
+  it("detects Suipump from the template module", () => expect(padFromModule(HOLMOT)).toBe("suipump"));
+  it("shows the real ticker, not the template struct", () => {
+    const card = richScanCard({ symbol: "SUIPUMP", coinType: HOLMOT }, { priceUsd: null, mcap: null, liquidity: null, volume24h: null, change24h: null, dex: null, pools: 0, symbol: "HOLMOT", name: "Holmot" }, "group");
+    expect(card).toContain("$HOLMOT");
+    expect(card).not.toContain("$SUIPUMP");
+  });
+});
