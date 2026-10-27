@@ -73,7 +73,7 @@ describe("group buy deep link", () => {
   });
 });
 
-import { padFromModule, richScanCard } from "./scanner";
+import { padFromModule } from "./scanner";
 describe("suipump template tokens", () => {
   const HOLMOT = "0x2de341b0ac3206a6a7befb5bf03e498b5aece8fd2e95e0cebe0c14d3af547f81::suipump::SUIPUMP";
   it("detects Suipump from the template module", () => expect(padFromModule(HOLMOT)).toBe("suipump"));
