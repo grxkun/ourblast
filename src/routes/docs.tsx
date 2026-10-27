@@ -730,16 +730,42 @@ function Docs() {
           Wallet), or trade straight from private chat with <em>/menu</em>. Link your X account with{" "}
           <em>/link</em> first — it uses the same OurBank wallet.
         </p>
-        <Cmd>{"/balance · /wallet · /positions · /wallets · /orders · /bridges · /assets"}</Cmd>
-        <Cmd>{"snipe 0x…::coin::COIN 5 sui slippage 10"}</Cmd>
-        <Cmd>{"follow 0x<wallet>   ·   unfollow 0x<wallet>   ·   /following"}</Cmd>
-        <Cmd>{"newwallet trading"}</Cmd>
+        <h3 className="pt-2 font-body text-sm font-bold text-foreground">Slash commands (private chat)</h3>
+        <Cmd>{"/menu · /balance · /wallets · /positions · /orders · /bridges · /assets · /link · /help"}</Cmd>
+        <Cmd>{"/buy 5 sui $BLAST   ·   /sell 50% $BLAST   ·   /swap 10 sui to usdc"}</Cmd>
+        <Cmd>{"/send @friend 100 BLAST   ·   /burn 1000 $BLAST   ·   /burn 2 sui of $BLAST"}</Cmd>
+        <Cmd>{"/snipe 0x…::coin::COIN 5 sui slippage 10   ·   /limit   ·   /bridge   ·   /scan $BLAST"}</Cmd>
+        <p>Type a command alone (like <em>/send</em> or <em>/burn</em>) and the bot replies with examples — nothing moves.</p>
+        <Cmd>{"follow 0x<wallet>   ·   unfollow 0x<wallet>   ·   /following   ·   newwallet trading"}</Cmd>
+        <Cmd>{"send 10 SUI and 50000 $BLAST to @friend"}</Cmd>
+
+        <h3 className="pt-2 font-body text-sm font-bold text-foreground">Trading card</h3>
         <ul className="list-disc space-y-2 pl-5">
-          <li><strong className="text-foreground">Every trade asks for Confirm</strong> — buys, sells, snipes, copy trades, limit orders, bridges and sends.</li>
+          <li>Paste a contract or scan a ticker to get a card with price, market cap and chart links (NOO · YO · TAV · SCAN).</li>
+          <li>Buy 1 / 5 / 10 / 25 SUI, Sell 25% / 50% / MAX, slippage 5–25% (default 10%), and W1–W6 wallet toggles.</li>
+          <li><strong className="text-foreground">✏️ Buy X SUI / ✏️ Sell X%:</strong> tap, type any amount, then confirm.</li>
+          <li><strong className="text-foreground">📊 Position:</strong> your holding, average cost and profit/loss for that token. <em>/positions</em> shows all of them.</li>
+          <li><strong className="text-foreground">Exit card:</strong> after a sell you get a win/loss card with Share on X and Share on Telegram buttons.</li>
+        </ul>
+
+        <h3 className="pt-2 font-body text-sm font-bold text-foreground">In groups</h3>
+        <Cmd>{"/scan $BLAST   ·   /scan 0x…::coin::COIN   (or just paste a contract)"}</Cmd>
+        <Cmd>{"@ourblastsuibot send @John_Gibb 100 BLAST"}</Cmd>
+        <Cmd>{"/buy 2 sui $BLAST   ·   /burn 1000 $BLAST   ·   /burn 2 sui of $BLAST"}</Cmd>
+        <ul className="list-disc space-y-2 pl-5">
+          <li>The scan card's Buy button opens your private chat with the bot, ready to trade.</li>
+          <li>Group tips send instantly with a Suiscan receipt — you can also reply to someone's message with <em>send 100 BLAST</em>.</li>
+          <li>Sender and recipient both need to have linked X with <em>/link</em> in private chat.</li>
+        </ul>
+
+        <h3 className="pt-2 font-body text-sm font-bold text-foreground">Rules</h3>
+        <ul className="list-disc space-y-2 pl-5">
+          <li><strong className="text-foreground">Private chat trades ask for Confirm</strong> — buys, sells, snipes, copy trades, limit orders and bridges.</li>
           <li><strong className="text-foreground">Limit orders:</strong> up to 10 open, expire after 7 days.</li>
           <li><strong className="text-foreground">Copy trading:</strong> future trades only, with per-trade and daily caps.</li>
           <li><strong className="text-foreground">Multi-wallet:</strong> main + up to 5 sub-wallets; distribute, withdraw or consolidate. Backup keys are shown only inside the Mini App, never sent in chat.</li>
           <li><strong className="text-foreground">Bridges:</strong> SOL, ETH (Base, Arbitrum, Robinhood) and BNB in and out of Sui, with live progress and history. "All" keeps a small gas amount behind.</li>
+          <li><strong className="text-foreground">Profit/loss</strong> counts trades made through OurBank on your main wallet only.</li>
         </ul>
       </Block>
 
