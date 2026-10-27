@@ -3,7 +3,7 @@ import type { TelegramUpdate } from "./webhookDelivery";
 
 import { MAX_FOLLOWS, parseFollowCommand } from "@/lib/tg/walletWatch";
 import { actionCoinType, actionCommand, BUY_PRESETS, decodeAction, detectToken, encodeAction, parseSnipeCommand, SELL_PRESETS } from "@/lib/tg/chatTrade";
-import { buyDeepLink, chartButtons, findScanTarget, parseStartBuy, richScanCard } from "@/lib/tg/scanner";
+import { buyDeepLink, chartButtons, deckKeyboard, DEFAULT_DECK_SLIP, findScanTarget, parseDeckTap, parseStartBuy, richScanCard, toggleSlot } from "@/lib/tg/scanner";
 import { decodePresaleAction, encodePresaleAction, parsePresaleCommand, presaleIdFromText } from "@/lib/tg/presale";
 
 const APP_URL = "https://ourblast.xyz/tg";
@@ -15,6 +15,26 @@ function tokenKeyboard(symbol: string): Btn[][] {
     BUY_PRESETS.map((a) => ({ text: `Buy ${a} SUI`, callback_data: encodeAction({ kind: "ask", side: "buy", amount: a, symbol }) })),
     SELL_PRESETS.map((a) => ({ text: a === "100" ? "Sell MAX" : `Sell ${a}%`, callback_data: encodeAction({ kind: "ask", side: "sell", amount: a, symbol }) })),
     [{ text: "Open OURBLAST", web_app: { url: APP_URL } }],
+  ];
+}
+
+
+/** BasedBot-style deck for a user's private chat: their wallets + selection, chosen slippage, chart links. */
+async function userDeck(tgUserId: number, symbol: string, coinType: string, slip = DEFAULT_DECK_SLIP, selectedOverride?: number[]): Promise<Btn[][]> {
+  let slots = [1], selected = [1];
+  try {
+    const { supabaseAdmin: db } = await import("@/integrations/supabase/client.server");
+    const { data: u } = await db.from("tg_users").select("x_username").eq("tg_user_id", tgUserId).maybeSingle();
+    if (u?.x_username) {
+      const { listTgWallets } = await import("@/lib/tg/tgWallets.server");
+      const r = await listTgWallets(tgUserId, u.x_username);
+      slots = r.wallets.map((w) => w.slot); selected = r.selected;
+    }
+  } catch { /* fall back to W1 only */ }
+  return [
+    ...deckKeyboard({ symbol, slots, selected: selectedOverride ?? selected, slip, encode: (side, amount, sl) => encodeAction({ kind: "ask", side, amount, symbol, slippage: sl }) }),
+    ...chartButtons(coinType),
+    [{ text: "🔄 Refresh", callback_data: `ts|${slip}` }, { text: "Open OURBLAST", web_app: { url: APP_URL } }],
   ];
 }
 
@@ -170,10 +190,36 @@ export async function processTelegramUpdate(update: TelegramUpdate, token: strin
             const sent = await tg("sendMessage", {
               chat_id: cq.from.id, disable_web_page_preview: true,
               text: richScanCard(t, stats, "dm"),
-              reply_markup: { inline_keyboard: [...tokenKeyboard(t.symbol), ...chartButtons(t.coinType)] },
+              reply_markup: { inline_keyboard: await userDeck(cq.from.id, t.symbol, t.coinType) },
             });
             threadId = saved;
             await tg("answerCallbackQuery", sent ? { callback_query_id: cq.id, text: "Sent to your DM with @" + "ourblastsuibot" } : { callback_query_id: cq.id, url: buyDeepLink(t.symbol) });
+            return Response.json({ ok: true });
+          }
+          const deckTap = parseDeckTap(cq.data ?? "");
+          if (deckTap) {
+            const t = findScanTarget(cq.message.text ?? "");
+            if (!t) { await tg("answerCallbackQuery", { callback_query_id: cq.id }); return Response.json({ ok: true }); }
+            let override: number[] | undefined;
+            let note: string | undefined;
+            if (deckTap.kind === "wallet") {
+              const { supabaseAdmin: db } = await import("@/integrations/supabase/client.server");
+              const { data: u } = await db.from("tg_users").select("x_username").eq("tg_user_id", cq.from.id).maybeSingle();
+              if (!u?.x_username) note = "Link your X account first (/link).";
+              else {
+                const { listTgWallets, setTradeSlots } = await import("@/lib/tg/tgWallets.server");
+                const cur = await listTgWallets(cq.from.id, u.x_username);
+                const r = await setTradeSlots(cq.from.id, u.x_username, toggleSlot(cur.selected, deckTap.slot));
+                override = r.ok ? r.selected : undefined;
+                note = r.ok ? `Trading from ${r.selected.map((x) => `W${x}`).join(", ")}` : r.error;
+              }
+            } else note = `Slippage ${deckTap.slip}%`;
+            await tg("answerCallbackQuery", { callback_query_id: cq.id, text: note });
+            const { getScanStats } = await import("@/lib/tg/scanInfo.server");
+            const stats = await getScanStats(t.coinType).catch(() => null);
+            const kb = await userDeck(cq.from.id, t.symbol, t.coinType, deckTap.slip, override);
+            const edited = stats ? await tg("editMessageText", { chat_id, message_id, text: richScanCard(t, stats, "dm"), disable_web_page_preview: true, reply_markup: { inline_keyboard: kb } }) : null;
+            if (!edited) await tg("editMessageReplyMarkup", { chat_id, message_id, reply_markup: { inline_keyboard: kb } });
             return Response.json({ ok: true });
           }
           if (cq.data?.startsWith("m:")) {
@@ -695,7 +741,7 @@ export async function processTelegramUpdate(update: TelegramUpdate, token: strin
             chat_id: chatId,
             text: ct && stats ? richScanCard({ symbol: tokenHit.symbol, coinType: ct }, stats, "dm") : `💥 $${tokenHit.symbol}${ct ? `\n${ct}` : ""}\n\nPick an amount — you'll confirm before anything moves.`,
             disable_web_page_preview: true,
-            reply_markup: { inline_keyboard: [...tokenKeyboard(tokenHit.symbol), ...(ct ? chartButtons(ct) : [])] },
+            reply_markup: { inline_keyboard: ct ? await userDeck(msg!.from!.id, tokenHit.symbol, ct) : tokenKeyboard(tokenHit.symbol) },
           });
           return Response.json({ ok: true });
         }

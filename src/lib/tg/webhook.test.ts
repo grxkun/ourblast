@@ -65,6 +65,6 @@ describe("Telegram contract buy webhook", () => {
     if (!confirm) throw new Error("Missing confirmation");
     expect(actionCoinType(confirm.text, "GROKLET")).toBe(ca);
     await send({ callback_query: { id: "go", data: confirm.reply_markup.inline_keyboard[0]?.[0]?.callback_data, from: { id: 12 }, message: { chat: { id: 12 }, message_id: 2, text: confirm.text } } });
-    expect(run).toHaveBeenCalledExactlyOnceWith(12, `buy 1 sui of ${ca}`);
+    expect(run).toHaveBeenCalledExactlyOnceWith(12, `buy 1 sui of ${ca} slippage 10%`);
   });
 });
