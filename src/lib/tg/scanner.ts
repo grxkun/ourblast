@@ -62,12 +62,12 @@ export function launchpadLabel(id: string | null | undefined): string | null {
   return PAD_LABELS[id.toLowerCase()] ?? id;
 }
 
-/** Chart links: Sui-native first, DexScreener kept as fallback. */
+/** Chart links: Sui-native sites only (DexScreener removed — its Sui data was unreliable). */
 export function chartButtons(coinType: string): { text: string; url: string }[][] {
   const c = encodeURIComponent(coinType);
   return [
     [{ text: "📈 Noodles", url: `https://noodles.fi/coins/${c}` }, { text: "📈 YOLO", url: `https://yolo.casa/token/${c}` }, { text: "📈 Tavern", url: `https://tavern.family/token/${c}` }],
-    [{ text: "Suiscan", url: `https://suiscan.xyz/mainnet/coin/${coinType}` }, { text: "DexScreener", url: `https://dexscreener.com/sui/${coinType}` }],
+    [{ text: "Suiscan", url: `https://suiscan.xyz/mainnet/coin/${coinType}` }],
   ];
 }
 
@@ -105,7 +105,7 @@ export function chartLinksHtml(coinType: string): string {
   const l = (u: string, t: string) => `<a href="${esc(u)}">${t}</a>`;
   return [
     l(`https://noodles.fi/coins/${c}`, "NOO"), l(`https://yolo.casa/token/${c}`, "YO"), l(`https://tavern.family/token/${c}`, "TAV"),
-    l(`https://suiscan.xyz/mainnet/coin/${coinType}`, "SCAN"), l(`https://dexscreener.com/sui/${coinType}`, "DEX"),
+    l(`https://suiscan.xyz/mainnet/coin/${coinType}`, "SCAN"),
   ].join(" · ");
 }
 
@@ -121,8 +121,8 @@ export function richScanCard(t: { symbol: string; coinType: string }, s: ScanSta
     "",
     `💰 <b>USD:</b> ${fmtPrice(s.priceUsd)}${ch}`,
     `💎 <b>MC:</b> ${fmtUsd(s.mcap)}`,
-    `💧 <b>Liq:</b> ${fmtUsd(s.liquidity)}${liqPct}`,
-    `📊 <b>Vol:</b> ${fmtUsd(s.volume24h)} (24h)`,
+    ...(s.liquidity != null ? [`💧 <b>Liq:</b> ${fmtUsd(s.liquidity)}${liqPct}`] : []),
+    ...(s.volume24h != null ? [`📊 <b>Vol:</b> ${fmtUsd(s.volume24h)} (24h)`] : []),
     `🏦 <b>DEX:</b> ${esc(dex)}${s.pools > 1 ? ` · ${s.pools} pools` : ""}${s.priceSource ? ` · via ${esc(s.priceSource)}` : ""}`,
     "",
     `📈 ${chartLinksHtml(t.coinType)}`,
