@@ -3,6 +3,7 @@ import type { TelegramUpdate } from "./webhookDelivery";
 
 import { MAX_FOLLOWS, parseFollowCommand } from "@/lib/tg/walletWatch";
 import { actionCoinType, actionCommand, BUY_PRESETS, decodeAction, detectToken, encodeAction, parseSnipeCommand, SELL_PRESETS } from "@/lib/tg/chatTrade";
+import { buyDeepLink, findScanTarget, parseStartBuy, scanCard } from "@/lib/tg/scanner";
 import { decodePresaleAction, encodePresaleAction, parsePresaleCommand, presaleIdFromText } from "@/lib/tg/presale";
 
 const APP_URL = "https://ourblast.xyz/tg";
@@ -159,6 +160,20 @@ export async function processTelegramUpdate(update: TelegramUpdate, token: strin
           threadId = (cq.message as { message_thread_id?: number }).message_thread_id;
           const chat_id = cq.message.chat.id;
           const message_id = cq.message.message_id;
+          if (cq.data === "sc") {
+            // Group scan "Buy" tap: open the token card in the tapper's private chat (never trades in the group).
+            const t = findScanTarget(cq.message.text ?? "");
+            if (!t) { await tg("answerCallbackQuery", { callback_query_id: cq.id }); return Response.json({ ok: true }); }
+            const saved = threadId; threadId = undefined;
+            const sent = await tg("sendMessage", {
+              chat_id: cq.from.id, disable_web_page_preview: true,
+              text: `💥 $${t.symbol}\n${t.coinType}\nhttps://suiscan.xyz/mainnet/coin/${t.coinType}\n\nPick an amount — you'll confirm before anything moves.`,
+              reply_markup: { inline_keyboard: tokenKeyboard(t.symbol) },
+            });
+            threadId = saved;
+            await tg("answerCallbackQuery", sent ? { callback_query_id: cq.id, text: "Sent to your DM with @" + "ourblastsuibot" } : { callback_query_id: cq.id, url: buyDeepLink(t.symbol) });
+            return Response.json({ ok: true });
+          }
           if (cq.data?.startsWith("m:")) {
             await tg("answerCallbackQuery", { callback_query_id: cq.id });
             const key = cq.data.slice(2);
@@ -444,6 +459,37 @@ export async function processTelegramUpdate(update: TelegramUpdate, token: strin
           return Response.json({ ok: true });
         }
 
+        const startBuy = isPrivate ? parseStartBuy(original) : null;
+        if (startBuy) {
+          const hit = detectToken(`$${startBuy}`);
+          await tg("sendMessage", {
+            chat_id: chatId, disable_web_page_preview: true,
+            text: `💥 $${startBuy}${hit?.coinType ? `\n${hit.coinType}` : "\nPaste the full contract (0x…::coin::COIN) to get buy buttons."}\n\nPick an amount — you'll confirm before anything moves.`,
+            reply_markup: { inline_keyboard: hit?.coinType ? tokenKeyboard(startBuy) : [[{ text: "Open OURBLAST", web_app: { url: APP_URL } }]] },
+          });
+          return Response.json({ ok: true });
+        }
+        // Groups: read-only scanner. /scan <ca|$TICKER> or any pasted contract → price card + Buy (opens DM).
+        if (!isPrivate) {
+          const t = findScanTarget(original);
+          if (t) {
+            const { currentPrice } = await import("@/lib/tg/limitOrder.server");
+            const price = await currentPrice(t.coinType).catch(() => null);
+            await tg("sendMessage", {
+              chat_id: chatId, disable_web_page_preview: true, reply_to_message_id: msg?.message_id,
+              text: scanCard(t, price),
+              reply_markup: { inline_keyboard: [
+                [{ text: `🟢 Buy $${t.symbol} on OURBLAST`, callback_data: "sc" }],
+                [{ text: "Suiscan", url: `https://suiscan.xyz/mainnet/coin/${t.coinType}` }, { text: "Chart", url: `https://dexscreener.com/sui/${t.coinType}` }],
+              ] },
+            });
+            return Response.json({ ok: true });
+          }
+          if (/^\/scan\b/i.test(text)) {
+            await tg("sendMessage", { chat_id: chatId, text: "Usage: /scan 0x…::coin::COIN or /scan $TICKER" });
+            return Response.json({ ok: true });
+          }
+        }
         if (/^\/(start|app|menu|launches|help)/.test(text)) {
           const isHelp = text.startsWith("/help");
           const h = isPrivate ? await linkedHandle() : null;
