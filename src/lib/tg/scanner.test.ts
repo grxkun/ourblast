@@ -17,3 +17,15 @@ describe("group scanner", () => {
     expect(parseStartBuy(`/start ${buyDeepLink("QLONG").split("start=")[1]}`)).toBe("QLONG");
   });
 });
+
+import { chartButtons, launchpadLabel, scanCard } from "./scanner";
+describe("scan card sources", () => {
+  it("shows the launchpad when known", () => {
+    expect(scanCard({ symbol: "Q", coinType: CT }, 1, "suipump")).toContain("Launched on Suipump");
+    expect(launchpadLabel(null)).toBeNull();
+  });
+  it("includes Sui chart sites and keeps DexScreener", () => {
+    const urls = chartButtons(CT).flat().map((b) => b.url).join(" ");
+    for (const h of ["noodles.fi", "yolo.casa", "tavern.family", "dexscreener.com"]) expect(urls).toContain(h);
+  });
+});
