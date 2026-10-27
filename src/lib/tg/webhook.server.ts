@@ -4,6 +4,7 @@ import type { TelegramUpdate } from "./webhookDelivery";
 import { MAX_FOLLOWS, parseFollowCommand } from "@/lib/tg/walletWatch";
 import { actionCoinType, actionCommand, BUY_PRESETS, decodeAction, detectToken, encodeAction, parseSnipeCommand, SELL_PRESETS } from "@/lib/tg/chatTrade";
 import { buyDeepLink, contractDeepLink, parseStartContract, deckKeyboard, DEFAULT_DECK_SLIP, findScanTarget, parseDeckTap, parseStartBuy, richScanCard, toggleSlot } from "@/lib/tg/scanner";
+import { mainToken } from "@/lib/terminal/mainTokens";
 import { decodePresaleAction, encodePresaleAction, parsePresaleCommand, presaleIdFromText } from "@/lib/tg/presale";
 
 const APP_URL = "https://ourblast.xyz/tg";
