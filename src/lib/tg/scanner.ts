@@ -146,6 +146,7 @@ export function deckKeyboard(o: {
   return [
     ["1", "5", "10", "25"].map((a) => ({ text: `Buy ${a} SUI`, callback_data: o.encode("buy", a, o.slip) })),
     ["25", "50", "100"].map((a) => ({ text: a === "100" ? "Sell MAX" : `Sell ${a}%`, callback_data: o.encode("sell", a, o.slip) })),
+    [{ text: "✏️ Buy X SUI", callback_data: `cx|b|${o.slip}` }, { text: "✏️ Sell X%", callback_data: `cx|s|${o.slip}` }, { text: "📊 Position", callback_data: "pp" }],
     SLIP_PRESETS.map((p) => ({ text: `${p === o.slip ? "✅ " : ""}Slip ${p}%`, callback_data: `ts|${p}` })),
     ...(walletRow.length > 1 ? [walletRow] : []),
   ];
