@@ -558,6 +558,22 @@ export async function processTelegramUpdate(update: TelegramUpdate, token: strin
             });
             return Response.json({ ok: true });
           }
+          // Group /buy and /burn: the sender's own OurBank wallet only; executes immediately like sends.
+          const { parseGroupTrade } = await import("@/lib/tg/groupTrade");
+          const gt = msg?.from?.id ? parseGroupTrade(original) : null;
+          if (gt) {
+            const sender = await linkedHandle();
+            if (!sender) {
+              await tg("sendMessage", { chat_id: chatId, text: "🔗 DM me and /link your X account first — /buy and /burn use your OurBank wallet.", reply_to_message_id: msg?.message_id });
+              return Response.json({ ok: true });
+            }
+            const uid = msg!.from!.id;
+            await replyWithProgress(chatId, gt.startsWith("send") ? "Burning 🔥" : "Buying", async () => {
+              const { runTgCommand } = await import("@/lib/tg/runCommand.server");
+              return (await runTgCommand(uid, gt, sender, { mainOnly: true })).reply;
+            });
+            return Response.json({ ok: true });
+          }
           let t = findScanTarget(original);
           if (!t) {
             // "/scan $HOLMOT" for tokens OURBLAST launched (not in the main-token list).
@@ -817,7 +833,8 @@ export async function processTelegramUpdate(update: TelegramUpdate, token: strin
         const note = /^(bridge|send|launch|claim|withdraw)\b/i.test(original) ? "Working on it — chain steps can take a moment" : "Checking";
         await replyWithProgress(chatId, note, async () => {
           const [{ runTgCommand }, h] = await Promise.all([import("@/lib/tg/runCommand.server"), linkedHandle()]);
-          return (await runTgCommand(uid, original, h)).reply;
+          const { parseGroupTrade } = await import("@/lib/tg/groupTrade");
+          return (await runTgCommand(uid, parseGroupTrade(original) ?? original, h)).reply;
         });
         return Response.json({ ok: true });
 }

@@ -324,7 +324,8 @@ export async function sendFromBankWallet(
 
   if (type === SUI_TYPE) {
     if (amount === null) tx.transferObjects([tx.gas], tx.pure.address(to));
-    else tx.transferObjects([tx.splitCoins(tx.gas, [tx.pure.u64(amount)])[0]!], tx.pure.address(to));
+    // Coin intent draws from coin objects AND the address accumulator (tx.gas alone may be too small).
+    else tx.transferObjects([tx.coin({ balance: amount, type: SUI_TYPE })], tx.pure.address(to));
   } else {
     const source = await tokenSendSource(tx, sender, type, amount, tokenSourceDeps(rpc));
     if ("error" in source) return { ok: false, error: source.error };
