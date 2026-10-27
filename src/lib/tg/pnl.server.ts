@@ -20,8 +20,7 @@ async function load(handle: string) {
 export async function tokenPnlReply(handle: string, coinType: string, symbol: string): Promise<string> {
   const { raw, rows, aftermathPrices } = await load(handle);
   const h = raw.find((b) => b.coinType === coinType);
-  const { coinMeta } = await import("./scanInfo.server").catch(() => ({ coinMeta: null as never }));
-  const decimals = h?.decimals ?? (coinMeta ? (await (coinMeta as (t: string) => Promise<{ decimals?: number } | null>)(coinType).catch(() => null))?.decimals : undefined) ?? 9;
+  const decimals = h?.decimals ?? 9;
   const prices = await aftermathPrices([coinType, SUI]).catch(() => ({} as Record<string, number>));
   const suiUsd = prices[SUI] ?? null, tokUsd = prices[coinType] ?? null;
   const held = h ? Number(h.balance) / 10 ** decimals : 0;
