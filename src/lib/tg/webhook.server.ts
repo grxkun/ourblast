@@ -475,6 +475,7 @@ export async function processTelegramUpdate(update: TelegramUpdate, token: strin
           if (t) {
             const { currentPrice } = await import("@/lib/tg/limitOrder.server");
             const pkg = t.coinType.split("::")[0]!;
+            const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
             const [price, pad] = await Promise.all([
               currentPrice(t.coinType).catch(() => null),
               supabaseAdmin.from("x_launch_requests").select("launchpad")
