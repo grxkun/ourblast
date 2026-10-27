@@ -762,7 +762,7 @@ function TradeTerminal({ initData, preset }: { initData: string; preset: TradePr
   const [mode, setMode] = useState<TradeMode>(preset?.mode ?? "swap");
   useEffect(() => { if (preset?.mode) setMode(preset.mode); }, [preset?.key, preset?.mode]);
   return (
-    <div className="flex flex-col gap-3 pb-20">
+    <div className="flex min-w-0 flex-col gap-3 overflow-x-hidden pb-20">
       <div className="grid grid-cols-4 gap-1 rounded-full bg-surface p-1">
         {(["swap", "snipe", "limit", "copy"] as const).map((m) => (
           <button key={m} onClick={() => setMode(m)} className={`rounded-full py-1.5 text-xs font-bold uppercase ${mode === m ? "bg-primary text-primary-foreground" : "text-muted-foreground"}`}>{m}</button>
@@ -775,7 +775,7 @@ function TradeTerminal({ initData, preset }: { initData: string; preset: TradePr
       {mode === "copy" && <SoonCard soon={false} title="Copy trading" text="Copy a wallet's buys and sells with a per-trade size and daily max. In the bot chat send “copy 0x… 2 sui max 10 sui” — review, confirm, and stop anytime with “stopcopy all”." />}
       <div className="space-y-2">
         {log.map((m) => (
-          <div key={m.id} className={`max-w-[85%] whitespace-pre-wrap rounded-2xl px-3 py-2 text-sm ${m.who === "me" ? "ml-auto bg-primary text-primary-foreground" : "border border-border bg-card"}`}>
+          <div key={m.id} className={`w-fit min-w-0 max-w-[85%] whitespace-pre-wrap rounded-2xl px-3 py-2 text-sm [overflow-wrap:anywhere] ${m.who === "me" ? "ml-auto bg-primary text-primary-foreground" : "border border-border bg-card"}`}>
             {linkify(m.text)}
           </div>
         ))}
