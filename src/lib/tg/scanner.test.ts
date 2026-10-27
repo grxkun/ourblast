@@ -47,8 +47,9 @@ describe("trading deck", () => {
   it("buttons carry slippage and fit 64 bytes", () => {
     const kb = deckKeyboard({ symbol: "QLONG", slots: [1, 2, 3], selected: [1], slip: "15", encode: (s, a, p) => `a|${s[0]}|${a}|QLONG|${p}` });
     expect(kb[0]![0]!.callback_data).toBe("a|b|1|QLONG|15");
-    expect(kb[2]!.find((b) => b.text.startsWith("✅"))!.text).toBe("✅ Slip 15%");
-    expect(kb[3]!.map((b) => b.text)).toEqual(["✅ W1", "W2", "W3"]);
+    expect(kb[2]!.map((b) => b.callback_data)).toEqual(["cx|b|15", "cx|s|15", "pp"]);
+    expect(kb[3]!.find((b) => b.text.startsWith("✅"))!.text).toBe("✅ Slip 15%");
+    expect(kb[4]!.map((b) => b.text)).toEqual(["✅ W1", "W2", "W3"]);
     kb.flat().forEach((b) => expect((b.callback_data ?? "").length).toBeLessThanOrEqual(64));
   });
   it("parses taps and rejects unknown slippage", () => {
