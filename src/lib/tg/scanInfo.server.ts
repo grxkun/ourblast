@@ -48,7 +48,7 @@ export async function getScanStats(coinType: string): Promise<ScanStats> {
   const [price, dex, meta, pad] = await Promise.all([
     currentPrice(coinType).catch(() => null),
     dexStats(coinType).catch(() => ({}) as Partial<ScanStats>),
-    coinMeta(coinType).catch(() => ({ symbol: null, name: null })),
+    coinMeta(coinType).catch(() => ({ symbol: null, name: null, supply: null })),
     supabaseAdmin.from("x_launch_requests").select("launchpad")
       .or(`token_address.eq.${coinType},token_address.eq.${pkg},token_url.ilike.%${pkg}%`)
       .limit(1).maybeSingle().then((r) => r.data?.launchpad ?? null, () => null),
