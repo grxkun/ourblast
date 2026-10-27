@@ -9,6 +9,8 @@ import { decodePresaleAction, encodePresaleAction, parsePresaleCommand, presaleI
 
 const APP_URL = "https://ourblast.xyz/tg";
 const LINK_URL = "https://ourblast.xyz/tg?tab=wallet";
+const CUSTOM_BUY_PROMPT = "✏️ Reply with how much SUI to spend on";
+const CUSTOM_SELL_PROMPT = "✏️ Reply with what % to sell of";
 type Btn = { text: string; callback_data?: string; web_app?: { url: string }; url?: string };
 
 function tokenKeyboard(symbol: string): Btn[][] {
@@ -194,6 +196,26 @@ export async function processTelegramUpdate(update: TelegramUpdate, token: strin
             });
             threadId = saved;
             await tg("answerCallbackQuery", sent ? { callback_query_id: cq.id, text: "Sent to your DM with @" + "ourblastsuibot" } : { callback_query_id: cq.id, url: buyDeepLink(t.symbol) });
+            return Response.json({ ok: true });
+          }
+          const cx = (cq.data ?? "").match(/^cx\|([bs])\|(\d{1,2})$/);
+          if (cx || cq.data === "pp") {
+            await tg("answerCallbackQuery", { callback_query_id: cq.id });
+            const t = findScanTarget(cq.message.text ?? "");
+            if (!t) return Response.json({ ok: true });
+            if (cx) {
+              const buy = cx[1] === "b";
+              await tg("sendMessage", {
+                chat_id,
+                text: `${buy ? CUSTOM_BUY_PROMPT : CUSTOM_SELL_PROMPT} $${t.symbol} (max slippage ${cx[2]}%)\n${t.coinType}\n\n${buy ? "Example: 3.5" : "Example: 40 (= 40% of your holding)"}`,
+                reply_markup: { force_reply: true, input_field_placeholder: buy ? "SUI amount, e.g. 3.5" : "Percent 1–100" },
+              });
+              return Response.json({ ok: true });
+            }
+            const { supabaseAdmin: db } = await import("@/integrations/supabase/client.server");
+            const { data: u } = await db.from("tg_users").select("x_username").eq("tg_user_id", cq.from.id).maybeSingle();
+            if (!u?.x_username) { await tg("sendMessage", { chat_id, text: "🔗 Link your X account first (/link)." }); return Response.json({ ok: true }); }
+            await replyWithProgress(chat_id, "Calculating PnL", async () => (await import("@/lib/tg/pnl.server")).tokenPnlReply(u.x_username!, t.coinType, t.symbol));
             return Response.json({ ok: true });
           }
           const deckTap = parseDeckTap(cq.data ?? "");
