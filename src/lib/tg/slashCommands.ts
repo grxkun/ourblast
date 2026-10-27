@@ -28,7 +28,7 @@ export function mapPrivateSlash(raw: string): SlashResult {
     if (b) return { text: `buy and burn ${b[1]} sui of ${b[2]}` };
     const t = args.match(/^(\d*\.?\d+)\s+(\S+)$/);
     if (t && !/^\$?sui$/i.test(t[2]!)) return { text: `send ${t[1]} ${t[2]} to burn` };
-    return { help: HELP.burn! };
+    return { help: HELP["burn"]! };
   }
   if (cmd === "buy") {
     const b = args.match(/^(\d*\.?\d+)\s+sui\s+(?!of\b)(\S+)$/i);
