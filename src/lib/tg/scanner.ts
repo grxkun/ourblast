@@ -24,6 +24,25 @@ export function buyDeepLink(symbol: string): string {
   return `https://t.me/${BOT_USERNAME}?start=b_${s}`;
 }
 
+/** Full-contract DM deep link: c_<base64url 32-byte address><Name>, only when module == lowercase(name) (most Sui coins). */
+export function contractDeepLink(coinType: string): string | null {
+  const [addr, mod, name] = coinType.split("::");
+  if (!addr || !mod || !name || mod !== name.toLowerCase() || !/^[A-Za-z0-9]+$/.test(name)) return null;
+  const hex = addr.replace(/^0x/i, "").padStart(64, "0");
+  if (!/^[a-f0-9]{64}$/i.test(hex)) return null;
+  const b64 = Buffer.from(hex, "hex").toString("base64").replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+  const payload = `c_${b64}${name}`;
+  return payload.length <= 64 ? `https://t.me/${BOT_USERNAME}?start=${payload}` : null;
+}
+
+export function parseStartContract(text: string): string | null {
+  const m = text.match(/^\/start\s+c_([A-Za-z0-9_-]{43})([A-Za-z0-9]{1,19})$/);
+  if (!m) return null;
+  const hex = Buffer.from(m[1]!.replace(/-/g, "+").replace(/_/g, "/") + "=", "base64").toString("hex");
+  if (hex.length !== 64) return null;
+  return `0x${hex}::${m[2]!.toLowerCase()}::${m[2]}`;
+}
+
 export function parseStartBuy(text: string): string | null {
   return text.match(/^\/start\s+b_([a-z0-9]{1,16})$/i)?.[1]?.toUpperCase() ?? null;
 }
@@ -70,23 +89,37 @@ export function fmtUsd(n: number | null | undefined): string {
   return `$${n.toFixed(0)}`;
 }
 
-/** BasedBot-style card. mode "group" = info + DM hint; "dm" = info + confirm hint. Missing data shows n/a, never guessed. */
+const esc = (v: string) => v.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+
+/** Inline chart/explorer links as short hyperlinked tags (Rick-style), not buttons. */
+export function chartLinksHtml(coinType: string): string {
+  const c = encodeURIComponent(coinType);
+  const l = (u: string, t: string) => `<a href="${esc(u)}">${t}</a>`;
+  return [
+    l(`https://noodles.fi/coins/${c}`, "NOO"), l(`https://yolo.casa/token/${c}`, "YO"), l(`https://tavern.family/token/${c}`, "TAV"),
+    l(`https://suiscan.xyz/mainnet/coin/${coinType}`, "SCAN"), l(`https://dexscreener.com/sui/${coinType}`, "DEX"),
+  ].join(" · ");
+}
+
+/** Rick/BasedBot-style card in Telegram HTML (send with parse_mode "HTML"). Missing data shows n/a, never guessed. */
 export function richScanCard(t: { symbol: string; coinType: string }, s: ScanStats, mode: "group" | "dm"): string {
   const pad = launchpadLabel(s.launchpad);
-  const ch = s.change24h == null ? "" : ` (${s.change24h >= 0 ? "+" : ""}${s.change24h.toFixed(1)}% 24h)`;
-  const liqPct = s.liquidity && s.mcap ? ` | ${((s.liquidity / s.mcap) * 100).toFixed(1)}%` : "";
+  const ch = s.change24h == null ? "" : ` ${s.change24h >= 0 ? "🟢 +" : "🔴 "}${s.change24h.toFixed(1)}%`;
+  const liqPct = s.liquidity && s.mcap ? ` [${((s.liquidity / s.mcap) * 100).toFixed(1)}%]` : "";
+  const dex = s.dex ? s.dex.charAt(0).toUpperCase() + s.dex.slice(1) : "n/a";
   const lines = [
-    `${mode === "group" ? "🔎" : "💥"} $${t.symbol} · Sui`,
-    t.coinType,
+    `${mode === "group" ? "🔎" : "💥"} <b>$${esc(t.symbol)}</b> · Sui${pad ? ` · 🚀 ${esc(pad)}` : ""}`,
+    `<code>${esc(t.coinType)}</code>`,
     "",
-    "📊 Market",
-    `Price: ${fmtPrice(s.priceUsd)}${ch}${s.priceSource ? ` · ${s.priceSource}` : ""}`,
-    `Mcap: ${fmtUsd(s.mcap)} · Liq: ${fmtUsd(s.liquidity)}${liqPct}`,
-    `Vol 24h: ${fmtUsd(s.volume24h)}`,
-    `DEX: ${s.dex ? s.dex.charAt(0).toUpperCase() + s.dex.slice(1) : "n/a"}${s.pools > 1 ? ` (${s.pools} pools)` : ""}`,
-    ...(pad ? [`🚀 Launched on ${pad}`] : []),
+    `💰 <b>USD:</b> ${fmtPrice(s.priceUsd)}${ch}`,
+    `💎 <b>MC:</b> ${fmtUsd(s.mcap)}`,
+    `💧 <b>Liq:</b> ${fmtUsd(s.liquidity)}${liqPct}`,
+    `📊 <b>Vol:</b> ${fmtUsd(s.volume24h)} (24h)`,
+    `🏦 <b>DEX:</b> ${esc(dex)}${s.pools > 1 ? ` · ${s.pools} pools` : ""}${s.priceSource ? ` · via ${esc(s.priceSource)}` : ""}`,
     "",
-    mode === "group" ? "Tap Buy to trade in a private chat — you always confirm first." : "Pick an amount — you'll confirm before anything moves.",
+    `📈 ${chartLinksHtml(t.coinType)}`,
+    "",
+    mode === "group" ? "<i>Tap Buy — opens your private chat. You always confirm first.</i>" : "<i>Pick an amount — you'll confirm before anything moves.</i>",
   ];
   return lines.join("\n");
 }
