@@ -68,6 +68,21 @@ describe("parseSwapCommand", () => {
   });
 });
 describe("multi-step", () => {
+  it("reads the exact HOLMOT direct gift command", () => {
+    expect(parseSwapCommand("Buy 1 sui of holmot to @Mamoubdran")).toEqual({
+      side: "buy", amount: "1", token: "HOLMOT", isCoinType: false,
+      sendTo: { recipientKind: "x", recipient: "Mamoubdran" },
+    });
+  });
+  it("preserves Telegram-resolved gift addresses and case-sensitive contracts", () => {
+    const address = `0x${"b".repeat(64)}`;
+    const holmot = "0x2de341b0ac3206a6a7befb5bf03e498b5aece8fd2e95e0cebe0c14d3af547f81::suipump::SUIPUMP";
+    expect(parseSwapCommand(`buy 1 sui of ${holmot} to ${address}`)).toEqual({
+      side: "buy", amount: "1", token: holmot, isCoinType: true,
+      sendTo: { recipientKind: "address", recipient: address },
+    });
+    expect(parseSwapCommand("buy 1 sui of holmot to invalid-recipient")).toBeNull();
+  });
   it("buy then send", () => {
     expect(parseSwapCommand(`@ourblast buy a token ${CT} with 1 sui and send it to @adeniyi`)).toMatchObject({
       side: "buy", amount: "1", token: CT, sendTo: { recipientKind: "x", recipient: "adeniyi" },
