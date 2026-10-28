@@ -354,6 +354,14 @@ export const tgConsolidate = createServerFn({ method: "POST" })
   });
 
 /** Bridge in/out of Sui history with live status, read-only. */
+export const tgTransactions = createServerFn({ method: "POST" })
+  .inputValidator((d) => z.object({ initData: z.string().min(1).max(4096) }).parse(d))
+  .handler(async ({ data }) => {
+    const { user, handle } = await linkedHandle(data.initData);
+    const { walletTransactions } = await import("./txHistory.server");
+    return walletTransactions(user.id, handle, 30);
+  });
+
 export const tgBridgeHistory = createServerFn({ method: "POST" })
   .inputValidator((d) => z.object({ initData: z.string().min(1).max(4096) }).parse(d))
   .handler(async ({ data }) => {
