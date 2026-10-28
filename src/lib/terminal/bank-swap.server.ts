@@ -9,7 +9,7 @@ import { normalizeStructTag, normalizeSuiAddress } from "@mysten/sui/utils";
 import { DEFAULT_TREASURY_ADDRESS } from "@/lib/ourblast.config";
 import { bankSigner } from "./bank-wallet.server";
 import { toAtomic, type SwapCommand } from "./bank";
-import { resolveLaunchpadBuy, buildLaunchpadBuySwap } from "./launchpad-buy.server";
+import { resolveLaunchpadBuy, buildLaunchpadBuySwap, buildLaunchpadSellSwap } from "./launchpad-buy.server";
 import { minimumSnipeOutput } from "@/lib/blast/advisor";
 
 /**
@@ -233,6 +233,25 @@ export async function pickSwapRoute(sender: string, inType: string, outType: str
       }
     } catch {
       /* launchpad lookup/build failed — fall through to the DEX aggregators */
+    }
+  }
+  // Selling an unbonded Suipump token: sell straight back into its curve.
+  if (outType === SUI && inType !== SUI) {
+    try {
+      const plan = await withTimeout(resolveLaunchpadBuy(inType), LAUNCHPAD_LOOKUP_MS, "Launchpad lookup");
+      if (plan?.pad === "suipump") {
+        let built = await withTimeout(buildLaunchpadSellSwap(sender, plan, amountIn), BUILD_TIMEOUT_MS, "Launchpad build");
+        if (built) {
+          const expected = await simulateReceived(built.tx, sender, SUI);
+          if (!expected) return { ok: false, error: "Couldn't simulate the launch-curve sell to apply your slippage limit. Nothing was spent." };
+          const minOut = minimumSnipeOutput(expected, slippage * 100);
+          built = await withTimeout(buildLaunchpadSellSwap(sender, plan, amountIn, minOut), BUILD_TIMEOUT_MS, "Launchpad build");
+          if (built) built.quoted = expected;
+        }
+        if (built) return { ok: true, built: { ...built, venue: built.venue as BuiltSwap["venue"] } };
+      }
+    } catch {
+      /* fall through to the DEX aggregators */
     }
   }
 
