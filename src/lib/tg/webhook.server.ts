@@ -12,6 +12,12 @@ const APP_URL = "https://ourblast.xyz/tg";
 const LINK_URL = "https://ourblast.xyz/tg?tab=wallet";
 /** The real ticker shown on a card ($HOLMOT), not the shared struct name some launchpads use. */
 const cardSymbol = (text: string, fallback: string) => text.split("\n")[0]?.match(/\$([A-Za-z0-9_]{1,16})/)?.[1]?.toUpperCase() ?? fallback;
+/** On-chain ticker for a coin type (Suipump coins all share ::suipump::SUIPUMP); falls back if metadata is unreadable. */
+async function realSymbol(coinType: string | null | undefined, fallback: string): Promise<string> {
+  if (!coinType) return fallback;
+  const meta = await (await import("@/lib/terminal/sui-balances.server")).readCoinMetadata(coinType).catch(() => null);
+  return meta?.symbol ? meta.symbol.toUpperCase().slice(0, 16) : fallback;
+}
 const CUSTOM_BUY_PROMPT = "✏️ Reply with how much SUI to spend on";
 const CUSTOM_SELL_PROMPT = "✏️ Reply with what % to sell of";
 type Btn = { text: string; callback_data?: string; web_app?: { url: string }; url?: string };
@@ -480,7 +486,8 @@ export async function processTelegramUpdate(update: TelegramUpdate, token: strin
           // contract in that message, not callback_data (limited to 64 bytes).
           const coinType = actionCoinType(cq.message.text ?? "", action.symbol);
           const slipNote = action.slippage ? ` (max slippage ${action.slippage}%)` : "";
-          const what = (action.side === "buy" ? `Spend ${action.amount} SUI on $${action.symbol}` : `Sell ${action.amount}% of your $${action.symbol} for SUI`) + slipNote;
+          const shown = await realSymbol(coinType, action.symbol);
+          const what = (action.side === "buy" ? `Spend ${action.amount} SUI on $${shown}` : `Sell ${action.amount}% of your $${shown} for SUI`) + slipNote;
           if (action.kind === "ask") {
             await tg("sendMessage", {
               chat_id,
