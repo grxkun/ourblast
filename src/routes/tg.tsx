@@ -59,6 +59,7 @@ function TgApp() {
   const [help, setHelp] = useState(false);
   const [openId, setOpenId] = useState<string | null>(null);
   const [preset, setPreset] = useState<TradePreset | null>(null);
+  const [mergeSlot, setMergeSlot] = useState<number | null>(null);
   const open = openId ? launches.find((l) => l.id === openId) ?? null : null;
 
   useEffect(() => {
@@ -99,6 +100,7 @@ function TgApp() {
     try {
       const r = await linkX({ data: { initData, privyToken } });
       setSession((s) => (s ? { ...s, xUsername: r.xUsername } : s));
+      if (r.telegramSlot) setMergeSlot(r.telegramSlot);
     } catch (e) {
       setError(String((e as Error).message ?? e));
     }
@@ -115,6 +117,14 @@ function TgApp() {
             setSession({ ...session, xUsername: null });
           }}>Unlink</button>
         </div>
+      ) : null}
+      {session.xUsername && mergeSlot ? (
+        <div className="mt-2 rounded-md bg-muted p-2 text-xs">
+          Your Telegram wallet is now <b>W{mergeSlot}</b> — nothing was moved.{" "}
+          <button className="underline" onClick={() => { setTab("wallet"); setMergeSlot(null); }}>Open Wallets → Consolidate</button> to combine it into your X wallet, or keep both.
+        </div>
+      ) : null}
+      {session.xUsername ? null
       ) : session.privyAppId ? (
         <div className="space-y-2">
           <p className="text-muted-foreground">Connect your X account to open your OurBank wallet.</p>

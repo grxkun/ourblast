@@ -16,19 +16,21 @@ export async function tgWalletHandle(tgUserId: number): Promise<string> {
  * When an X account is linked, keep the native Telegram wallet reachable as an
  * extra slot so its funds are never stranded.
  */
-export async function keepNativeWalletAsSlot(tgUserId: number): Promise<void> {
+export async function keepNativeWalletAsSlot(tgUserId: number): Promise<number | null> {
   const { supabaseAdmin: db } = await import("@/integrations/supabase/client.server");
   const handle = tgNativeHandle(tgUserId);
   const { data: bw } = await db.from("bank_wallets").select("x_username").eq("x_username", handle).maybeSingle();
-  if (!bw) return;
+  if (!bw) return null;
   const { data: subs } = await db.from("tg_sub_wallets").select("slot, bank_handle").eq("tg_user_id", tgUserId);
-  if ((subs ?? []).some((s) => s.bank_handle === handle)) return;
+  const have = (subs ?? []).find((s) => s.bank_handle === handle);
+  if (have) return have.slot;
   const used = new Set((subs ?? []).map((s) => s.slot));
   const { MAX_SLOT } = await import("./multiWallet");
   for (let s = 2; s <= MAX_SLOT; s++) {
     if (!used.has(s)) {
       await db.from("tg_sub_wallets").insert({ tg_user_id: tgUserId, slot: s, label: "Telegram", bank_handle: handle });
-      return;
+      return s;
     }
   }
+  return null;
 }

@@ -60,8 +60,8 @@ export const tgLinkX = createServerFn({ method: "POST" })
     const { did, xUsername } = await verifiedXFromPrivy(data.privyToken, appId, secret);
     if (!xUsername) throw new Error("No X account on that sign-in");
     await db.from("tg_users").update({ x_username: xUsername, privy_user_id: did }).eq("tg_user_id", user.id);
-    await (await import("./tgIdentity.server")).keepNativeWalletAsSlot(user.id).catch(() => {});
-    return { xUsername };
+    const telegramSlot = await (await import("./tgIdentity.server")).keepNativeWalletAsSlot(user.id).catch(() => null);
+    return { xUsername, telegramSlot };
   });
 
 export const tgUnlinkX = createServerFn({ method: "POST" })
