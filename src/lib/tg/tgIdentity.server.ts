@@ -12,6 +12,21 @@ export async function tgWalletHandle(tgUserId: number): Promise<string> {
   return data?.x_username ?? tgNativeHandle(tgUserId);
 }
 
+/** Telegram usernames never fall back to an X lookup, even when linked. */
+export async function tgRecipientAddress(username: string): Promise<string | null> {
+  if (!/^[a-z0-9_]{4,32}$/i.test(username)) return null;
+  const { supabaseAdmin: db } = await import("@/integrations/supabase/client.server");
+  // Escape LIKE wildcards: an underscore is a literal part of a handle.
+  const exact = username.replace(/_/g, "\\_");
+  const { data, error } = await db.from("tg_users")
+    .select("tg_user_id, x_username").ilike("username", exact).limit(2);
+  if (error || !data || data.length !== 1) return null;
+  const recipient = data[0];
+  if (!recipient?.tg_user_id) return null;
+  const { ensureBankWallet } = await import("@/lib/terminal/bank-wallet.server");
+  return (await ensureBankWallet(recipient.x_username || tgNativeHandle(recipient.tg_user_id), null)).address;
+}
+
 /**
  * When an X account is linked, keep the native Telegram wallet reachable as an
  * extra slot so its funds are never stranded.
