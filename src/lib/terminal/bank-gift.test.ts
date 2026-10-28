@@ -21,7 +21,7 @@ vi.mock("@/integrations/supabase/client.server", () => ({
   } },
 }));
 vi.mock("@/lib/tg/scanInfo.server", () => ({ resolveLaunchedTicker: m.resolve }));
-vi.mock("./bank-wallet.server", () => ({ findBankWallet: m.wallet, sendFromBankWallet: m.send }));
+vi.mock("./bank-wallet.server", () => ({ findBankWallet: m.wallet, ensureBankWallet: vi.fn(), sendFromBankWallet: m.send }));
 vi.mock("./bank-swap.server", () => ({
   executeBankSwap: m.swap, SWAP_SUI: "0x2::sui::SUI", SWAP_GAS_BUDGET: 50_000_000n,
   swapAmountIn: () => 1_000_000_000n,
