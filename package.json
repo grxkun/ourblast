@@ -16,6 +16,7 @@
     "rpc-websockets": "7.11.2"
   },
   "dependencies": {
+    "@ai-sdk/openai": "4.0.102",
     "@bluefin-exchange/bluefin7k-aggregator-sdk": "^7.6.3",
     "@cetusprotocol/aggregator-sdk": "1.7.3",
     "@hookform/resolvers": "^5.2.2",
@@ -66,7 +67,7 @@
     "@tanstack/zod-adapter": "^1.167.0",
     "@turnkey/crypto": "^2.13.2",
     "aftermath-ts-sdk": "^5.0.2",
-    "ai": "^7.0.102",
+    "ai": "^7.0.154",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "cmdk": "^1.1.1",

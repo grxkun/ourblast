@@ -12,6 +12,11 @@ export async function runTgCommand(
   knownHandle?: string | null,
   opts: { slots?: number[]; mainOnly?: boolean } = {},
 ): Promise<{ reply: string; linked: boolean }> {
+  const { isAdvisorCommand } = await import("@/lib/blast/advisor");
+  if (isAdvisorCommand(text)) {
+    const { launchAdvice } = await import("@/lib/blast/advisor.server");
+    return { linked: true, reply: await launchAdvice(text) };
+  }
   let handle = knownHandle ?? null;
   if (!handle) {
     handle = await (await import("./tgIdentity.server")).tgWalletHandle(tgUserId);
@@ -51,7 +56,7 @@ export async function runTgCommand(
 
   const prefix = mw.parseWalletPrefix(trimmed);
   const command = prefix?.rest ?? trimmed;
-  if (!opts.mainOnly && (prefix || opts.slots || mw.isFanOutTrade(command))) {
+  if (!opts.mainOnly && (prefix || opts.slots || mw.isFanOutTrade(command) || /^snipe\s/i.test(command))) {
     const { tradeTargets } = await import("./tgWallets.server");
     const targets = await tradeTargets(tgUserId, handle, prefix ? [prefix.slot] : opts.slots);
     if (!targets.length) return { linked: true, reply: prefix ? `You don't have wallet w${prefix.slot}. See: wallets` : "No trading wallet selected. See: wallets" };
@@ -68,6 +73,15 @@ export async function runTgCommand(
 
 /** One command on one OurBank wallet. Fee/claim commands only apply to the X-linked main wallet. */
 async function runOne(bankHandle: string, xHandle: string | null, text: string): Promise<string> {
+  const { parseSnipeCommand, actionCommand } = await import("./chatTrade");
+  const snipe = parseSnipeCommand(text);
+  if (snipe) {
+    if (!snipe.ok) return snipe.error;
+    const { sniperPreflight } = await import("@/lib/blast/sniper.server");
+    const check = await sniperPreflight(bankHandle, snipe.coinType, snipe.amount, snipe.slippage);
+    if (!check.ok) return check.reply;
+    text = actionCommand({ side: "buy", amount: snipe.amount, symbol: snipe.symbol, slippage: snipe.slippage }, snipe.coinType);
+  }
   const [{ ensureBankWallet }, claim, bank] = await Promise.all([
     import("@/lib/terminal/bank-wallet.server"),
     import("@/lib/terminal/xClaim.server"),

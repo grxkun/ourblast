@@ -491,7 +491,9 @@ export async function processTelegramUpdate(update: TelegramUpdate, token: strin
           }
           await tg("editMessageText", { chat_id, message_id, text: `⏳ ${what}…` });
           const { runTgCommand } = await import("@/lib/tg/runCommand.server");
-          const { reply } = await runTgCommand(cq.from.id, actionCommand(action, coinType)).catch((e) => ({ reply: `❌ Failed: ${(e as Error).message}. Status is unconfirmed. Check your wallet and history before retrying; a transfer may already have been submitted.` }));
+          const isSnipe = (cq.message.text ?? "").startsWith("🎯 Snipe review");
+          const command = isSnipe && coinType ? `snipe ${coinType} ${action.amount} sui slippage ${action.slippage ?? "10"}%` : actionCommand(action, coinType);
+          const { reply } = await runTgCommand(cq.from.id, command).catch((e) => ({ reply: `❌ Failed: ${(e as Error).message}. Status is unconfirmed. Check your wallet and history before retrying; a transfer may already have been submitted.` }));
           await tg("editMessageText", { chat_id, message_id, text: reply.slice(0, 4000), disable_web_page_preview: true });
           if (action.side === "sell" && coinType && reply.includes("✅")) {
             try {
@@ -839,10 +841,20 @@ export async function processTelegramUpdate(update: TelegramUpdate, token: strin
             await tg("sendMessage", { chat_id: chatId, text: "🔗 Link your X account first so the snipe uses your OurBank wallet.", reply_markup: linkKb });
             return Response.json({ ok: true });
           }
+          const handle = await linkedHandle();
+          if (!handle || !msg?.from?.id) return Response.json({ ok: true });
+          const { tradeTargets } = await import("./tgWallets.server");
+          const targets = await tradeTargets(msg.from.id, handle);
+          const { sniperPreflight } = await import("@/lib/blast/sniper.server");
+          const checks = await Promise.all(targets.map(async (t) => ({ slot: t.slot, ...(await sniperPreflight(t.handle, snipe.coinType, snipe.amount, snipe.slippage)) })));
+          if (!checks.length || checks.some((c) => !c.ok)) {
+            await tg("sendMessage", { chat_id: chatId, text: checks.length ? checks.map((c) => `w${c.slot}\n${c.reply}`).join("\n\n").slice(0, 4000) : "No selected wallet. Open /wallets first." });
+            return Response.json({ ok: true });
+          }
           const a = { kind: "go" as const, side: "buy" as const, amount: snipe.amount, symbol: snipe.symbol, slippage: snipe.slippage };
           await tg("sendMessage", {
             chat_id: chatId,
-            text: `🎯 Snipe review\nToken: $${snipe.symbol}\n${snipe.coinType}\nSpend: ${snipe.amount} SUI from your OurBank wallet\nMax slippage: ${snipe.slippage}% — the trade fails on-chain (nothing spent but gas) if the fill is worse.\n\nNothing is sent until you tap Confirm.`,
+            text: `🎯 Snipe review\nToken: $${snipe.symbol}\n${snipe.coinType}\nSpend: ${snipe.amount} SUI per selected wallet\nMax slippage: ${snipe.slippage}%\n${checks.map((c) => `w${c.slot}: ${c.reply}`).join("\n").slice(0, 2600)}\n\nNothing is sent until you tap Confirm.`,
             disable_web_page_preview: true,
             reply_markup: { inline_keyboard: [[{ text: "✅ Confirm snipe", callback_data: encodeAction(a) }, { text: "Cancel", callback_data: "x" }]] },
           });

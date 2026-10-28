@@ -10,6 +10,7 @@ import { DEFAULT_TREASURY_ADDRESS } from "@/lib/ourblast.config";
 import { bankSigner } from "./bank-wallet.server";
 import { toAtomic, type SwapCommand } from "./bank";
 import { resolveLaunchpadBuy, buildLaunchpadBuySwap } from "./launchpad-buy.server";
+import { minimumSnipeOutput } from "@/lib/blast/advisor";
 
 /**
  * OurBank swaps: "buy 5 SUI of 0x…" / "sell 50% $MOO" from X, routed through
@@ -221,10 +222,10 @@ export async function pickSwapRoute(sender: string, inType: string, outType: str
         let built = await withTimeout(buildLaunchpadBuySwap(sender, plan, amountIn), BUILD_TIMEOUT_MS, "Launchpad build");
         // Custom slippage on a curve: simulate the buy for the real expected
         // amount, then rebuild with min_out so the chain rejects a worse fill.
-        if (built && slippage !== SLIPPAGE) {
+        if (built) {
           const expected = await simulateReceived(built.tx, sender, outType);
           if (!expected) return { ok: false, error: "Couldn't simulate the launch-curve buy to apply your slippage limit. Nothing was spent." };
-          const minOut = (expected * BigInt(Math.floor((1 - slippage) * 10_000))) / 10_000n;
+          const minOut = minimumSnipeOutput(expected, slippage * 100);
           built = await withTimeout(buildLaunchpadBuySwap(sender, plan, amountIn, minOut), BUILD_TIMEOUT_MS, "Launchpad build");
           if (built) built.quoted = expected;
         }

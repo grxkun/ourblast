@@ -635,10 +635,11 @@ function SnipeCard({ busy, onRun }: { busy: boolean; onRun: (cmd: string) => voi
   const amtOk = Number(amount) > 0 && Number(amount) <= 1000;
   const slipOk = Number(slip) >= 0.1 && Number(slip) <= 50;
   const ok = caOk && amtOk && slipOk;
-  const cmd = `buy ${amount} sui of ${ca.trim()} slippage ${slip}%`;
+  const cmd = `snipe ${ca.trim()} ${amount} sui slippage ${slip}%`;
   return (
     <div className="space-y-3 rounded-2xl border border-border bg-card p-4">
       <p className="font-display text-lg uppercase">Snipe a launch</p>
+      <Button variant="outline" disabled={busy || !ok} onClick={() => onRun(`snipe review ${ca.trim()} ${amount} sui slippage ${slip}%`)}>Inspect & simulate</Button>
       <input value={ca} onChange={(e) => { setCa(e.target.value); setReview(false); }} placeholder="0x…::coin::COIN (contract only)"
         className="w-full rounded-xl border border-border bg-surface px-3 py-2 font-mono text-xs outline-none" />
       {ca && !caOk && <p className="text-xs text-destructive">Paste the full contract — tickers can be faked by new launches.</p>}
@@ -759,7 +760,7 @@ function TradeTerminal({ initData, preset }: { initData: string; preset: TradePr
     setBusy(true);
     setLog((l) => [...l, { id: crypto.randomUUID(), who: "me", text: t }]);
     try {
-      const r = await run({ data: { initData, text: t } });
+      const r = await run({ data: { initData, text: t, history: log.filter((m) => m.id !== "hi").slice(-6).map((m) => ({ who: m.who, text: m.text.slice(0, 4000) })) } });
       setLog((l) => [...l, { id: crypto.randomUUID(), who: "bot", text: r.reply }]);
       loadHoldings();
     } catch (e) {
@@ -778,6 +779,7 @@ function TradeTerminal({ initData, preset }: { initData: string; preset: TradePr
         ))}
       </div>
       <WalletStrip busy={busy} onRun={(c) => void send(c)} />
+      <Button variant="outline" disabled={busy} onClick={() => void send("/advisor")}>Blast Launch Advisor</Button>
       {mode === "swap" && <SwapCard preset={preset} busy={busy} onRun={(c) => void send(c)} holdings={holdings} onRefresh={loadHoldings} />}
       {mode === "snipe" && <SnipeCard busy={busy} onRun={(c) => void send(c)} />}
       {mode === "limit" && <LimitCard busy={busy} onRun={(c) => void send(c)} />}

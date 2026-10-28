@@ -736,6 +736,13 @@ function Docs() {
         <Cmd>{"/send @friend 100 BLAST   ·   /burn 1000 $BLAST   ·   /burn 2 sui of $BLAST"}</Cmd>
         <Cmd>{"/snipe 0x…::coin::COIN 5 sui slippage 10   ·   /limit   ·   /bridge   ·   /scan $BLAST"}</Cmd>
         <p>Type a command alone (like <em>/send</em> or <em>/burn</em>) and the bot replies with examples — nothing moves.</p>
+        <h3 className="pt-2 font-body text-sm font-bold text-foreground">Blast Launch Advisor & sniper checks</h3>
+        <Cmd>{"/advisor plan launch $TOKEN for our game"}</Cmd>
+        <Cmd>{"/advisor presale 100000 400000000 200000000 60000"}</Cmd>
+        <Cmd>{"/advisor curve 600000000 1000 3000 200000000 2400"}</Cmd>
+        <p>The advisor compares presale and curve routes, funding, allocation, vesting and downside. Numbers are draft scenarios, not live quotes or supported launch settings. Presale inputs: target SUI, buyer tokens, pool tokens, pool SUI. Curve inputs: curve tokens, virtual SUI, target real SUI, pool tokens, pool real SUI. Use <em>/advisor inspect 0x…</em> for an object inspection. The same advisor is available in the website terminal and Mini App Trade chat.</p>
+        <p>Snipes simulate the exact selected wallet and amount before submission, then recheck at confirmation. No usable route or failed simulation blocks the trade. Minimum output protection also applies at the default 5% curve slippage. A simulation is not a token safety audit; newer Blast v2 rules are never assumed for historical MemezFun contracts.</p>
+        <a className="text-primary underline" href="https://docs.blast.fun/tools/presale-market-simulator/" target="_blank" rel="noreferrer">Official presale market simulator</a>
         <Cmd>{"follow 0x<wallet>   ·   unfollow 0x<wallet>   ·   /following   ·   newwallet trading"}</Cmd>
         <Cmd>{"send 10 SUI and 50000 $BLAST to @friend"}</Cmd>
 
