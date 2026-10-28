@@ -28,7 +28,8 @@ describe("scan card sources", () => {
     const urls = chartButtons(CT).flat().map((b) => b.url).join(" ");
     for (const h of ["noodles.fi", "yolo.casa", "tavern.family"]) expect(urls).toContain(h);
     expect(urls).not.toContain("dexscreener");
-    expect(chartLinksHtml2(CT)).not.toContain("dexscreener");
+    expect(chartLinksHtml2(CT)).toContain(">DS</a>");
+    expect(chartLinksHtml2(CT)).toContain(">DEF</a>");
   });
 });
 
