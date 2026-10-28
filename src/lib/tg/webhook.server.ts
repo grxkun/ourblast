@@ -12,6 +12,12 @@ const APP_URL = "https://ourblast.xyz/tg";
 const LINK_URL = "https://ourblast.xyz/tg?tab=wallet";
 /** The real ticker shown on a card ($HOLMOT), not the shared struct name some launchpads use. */
 const cardSymbol = (text: string, fallback: string) => text.split("\n")[0]?.match(/\$([A-Za-z0-9_]{1,16})/)?.[1]?.toUpperCase() ?? fallback;
+/** On-chain ticker for a coin type (Suipump coins all share ::suipump::SUIPUMP); falls back if metadata is unreadable. */
+async function realSymbol(coinType: string | null | undefined, fallback: string): Promise<string> {
+  if (!coinType) return fallback;
+  const meta = await (await import("@/lib/terminal/sui-balances.server")).readCoinMetadata(coinType).catch(() => null);
+  return meta?.symbol ? meta.symbol.toUpperCase().slice(0, 16) : fallback;
+}
 const CUSTOM_BUY_PROMPT = "✏️ Reply with how much SUI to spend on";
 const CUSTOM_SELL_PROMPT = "✏️ Reply with what % to sell of";
 type Btn = { text: string; callback_data?: string; web_app?: { url: string }; url?: string };
@@ -480,7 +486,8 @@ export async function processTelegramUpdate(update: TelegramUpdate, token: strin
           // contract in that message, not callback_data (limited to 64 bytes).
           const coinType = actionCoinType(cq.message.text ?? "", action.symbol);
           const slipNote = action.slippage ? ` (max slippage ${action.slippage}%)` : "";
-          const what = (action.side === "buy" ? `Spend ${action.amount} SUI on $${action.symbol}` : `Sell ${action.amount}% of your $${action.symbol} for SUI`) + slipNote;
+          const shown = await realSymbol(coinType, action.symbol);
+          const what = (action.side === "buy" ? `Spend ${action.amount} SUI on $${shown}` : `Sell ${action.amount}% of your $${shown} for SUI`) + slipNote;
           if (action.kind === "ask") {
             await tg("sendMessage", {
               chat_id,
@@ -499,7 +506,7 @@ export async function processTelegramUpdate(update: TelegramUpdate, token: strin
             try {
               const { supabaseAdmin: db } = await import("@/integrations/supabase/client.server");
               const u = { x_username: await tgWalletHandle(cq.from.id) as string | null };
-              const card = u?.x_username ? await (await import("@/lib/tg/pnl.server")).exitCardFor(u.x_username, coinType, action.symbol) : null;
+              const card = u?.x_username ? await (await import("@/lib/tg/pnl.server")).exitCardFor(u.x_username, coinType, shown) : null;
               if (card) await tg("sendMessage", { chat_id, text: card, disable_web_page_preview: true, reply_markup: { inline_keyboard: [[
                 { text: "Share on X", url: `https://x.com/intent/post?text=${encodeURIComponent(card)}` },
                 { text: "Share on Telegram", url: `https://t.me/share/url?url=${encodeURIComponent("https://t.me/ourblastsuibot")}&text=${encodeURIComponent(card)}` },
@@ -912,13 +919,19 @@ export async function processTelegramUpdate(update: TelegramUpdate, token: strin
         const sell = original.match(/^sell\s+(\d*\.?\d+)%\s+(?:of\s+)?\$?([a-z0-9]{1,16})$/i) ?? null;
         const m = trade ?? sell;
         if (m?.[1] && m[2]) {
-          const tokenHit = detectToken(m[2]) ?? detectToken(`$${m[2]}`);
+          let tokenHit = detectToken(m[2]) ?? detectToken(`$${m[2]}`);
+          // "HOLMOT" → a token OURBLAST launched (verified launch record, not a free-text ticker search).
+          if (tokenHit && !tokenHit.coinType && !m[2].includes("::")) {
+            const launched = await (await import("@/lib/tg/scanInfo.server")).resolveLaunchedTicker(m[2].replace(/^\$/, "")).catch(() => null);
+            if (launched) tokenHit = detectToken(launched);
+          }
           const side = trade ? "buy" : "sell";
           const a = { kind: "go" as const, side: side as "buy" | "sell", amount: m[1], symbol: tokenHit?.symbol ?? m[2].toUpperCase() };
+          const shownSym = await realSymbol(tokenHit?.coinType, a.symbol);
           if (decodeAction(encodeAction(a))) {
             await tg("sendMessage", {
               chat_id: chatId,
-              text: `Confirm: ${side === "buy" ? `spend ${a.amount} SUI on $${a.symbol}` : `sell ${a.amount}% of your $${a.symbol}`}?${tokenHit?.coinType ? `\n${tokenHit.coinType}` : ""}`,
+              text: `Confirm: ${side === "buy" ? `spend ${a.amount} SUI on $${shownSym}` : `sell ${a.amount}% of your $${shownSym}`}?${tokenHit?.coinType ? `\n${tokenHit.coinType}` : ""}`,
               reply_markup: { inline_keyboard: [[{ text: "✅ Confirm", callback_data: encodeAction(a) }, { text: "Cancel", callback_data: "x" }]] },
             });
             return Response.json({ ok: true });
