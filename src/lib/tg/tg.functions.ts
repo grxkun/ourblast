@@ -60,6 +60,7 @@ export const tgLinkX = createServerFn({ method: "POST" })
     const { did, xUsername } = await verifiedXFromPrivy(data.privyToken, appId, secret);
     if (!xUsername) throw new Error("No X account on that sign-in");
     await db.from("tg_users").update({ x_username: xUsername, privy_user_id: did }).eq("tg_user_id", user.id);
+    await (await import("./tgIdentity.server")).keepNativeWalletAsSlot(user.id).catch(() => {});
     return { xUsername };
   });
 
@@ -76,9 +77,8 @@ export const tgGetBankWallet = createServerFn({ method: "POST" })
   .inputValidator((d) => z.object({ initData: z.string().min(1).max(4096) }).parse(d))
   .handler(async ({ data }) => {
     const { user, db } = await authed(data.initData);
-    const { data: row } = await db.from("tg_users").select("x_username").eq("tg_user_id", user.id).maybeSingle();
-    const handle = row?.x_username;
-    if (!handle) return { linked: false as const };
+    void db;
+    const handle = await (await import("./tgIdentity.server")).tgWalletHandle(user.id);
     const { ensureBankWallet, bankBalances } = await import("@/lib/terminal/bank-wallet.server");
     const wallet = await ensureBankWallet(handle, null);
     const { rpc } = await import("@/lib/terminal/suipump-launch.server");
@@ -130,9 +130,9 @@ export const tgBlastPresales = createServerFn({ method: "GET" }).handler(async (
 
 async function linkedHandle(initData: string) {
   const { user, db } = await authed(initData);
-  const { data: row } = await db.from("tg_users").select("x_username").eq("tg_user_id", user.id).maybeSingle();
-  if (!row?.x_username) throw new Error("Link your X account first.");
-  return { user, handle: row.x_username };
+  void db;
+  const { tgWalletHandle } = await import("./tgIdentity.server");
+  return { user, handle: await tgWalletHandle(user.id) };
 }
 
 /** Main OurBank NFT inventory; the caller cannot choose another account's address. */

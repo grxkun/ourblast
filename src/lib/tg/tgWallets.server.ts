@@ -14,7 +14,8 @@ export async function listTgWallets(tgUserId: number, xHandle: string): Promise<
     d.from("tg_sub_wallets").select("slot, label, bank_handle").eq("tg_user_id", tgUserId).order("slot"),
     d.from("tg_users").select("trade_slots").eq("tg_user_id", tgUserId).maybeSingle(),
   ]);
-  const wallets: TgWallet[] = [{ slot: 1, label: "Main", handle: xHandle }, ...(subs ?? []).map((s) => ({ slot: s.slot, label: s.label ?? `Wallet ${s.slot}`, handle: s.bank_handle }))];
+  // After unlinking X, the native Telegram wallet is Main again; don't list it twice.
+  const wallets: TgWallet[] = [{ slot: 1, label: "Main", handle: xHandle }, ...(subs ?? []).filter((s) => s.bank_handle.toLowerCase() !== xHandle.toLowerCase()).map((s) => ({ slot: s.slot, label: s.label ?? `Wallet ${s.slot}`, handle: s.bank_handle }))];
   const have = new Set(wallets.map((w) => w.slot));
   const selected = (u?.trade_slots ?? [1]).filter((s) => have.has(s));
   return { wallets, selected: selected.length ? selected : [1] };
