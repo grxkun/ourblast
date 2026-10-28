@@ -919,13 +919,19 @@ export async function processTelegramUpdate(update: TelegramUpdate, token: strin
         const sell = original.match(/^sell\s+(\d*\.?\d+)%\s+(?:of\s+)?\$?([a-z0-9]{1,16})$/i) ?? null;
         const m = trade ?? sell;
         if (m?.[1] && m[2]) {
-          const tokenHit = detectToken(m[2]) ?? detectToken(`$${m[2]}`);
+          let tokenHit = detectToken(m[2]) ?? detectToken(`$${m[2]}`);
+          // "HOLMOT" → a token OURBLAST launched (verified launch record, not a free-text ticker search).
+          if (tokenHit && !tokenHit.coinType && !m[2].includes("::")) {
+            const launched = await (await import("@/lib/tg/scanInfo.server")).resolveLaunchedTicker(m[2].replace(/^\$/, "")).catch(() => null);
+            if (launched) tokenHit = detectToken(launched);
+          }
           const side = trade ? "buy" : "sell";
           const a = { kind: "go" as const, side: side as "buy" | "sell", amount: m[1], symbol: tokenHit?.symbol ?? m[2].toUpperCase() };
+          const shownSym = await realSymbol(tokenHit?.coinType, a.symbol);
           if (decodeAction(encodeAction(a))) {
             await tg("sendMessage", {
               chat_id: chatId,
-              text: `Confirm: ${side === "buy" ? `spend ${a.amount} SUI on $${a.symbol}` : `sell ${a.amount}% of your $${a.symbol}`}?${tokenHit?.coinType ? `\n${tokenHit.coinType}` : ""}`,
+              text: `Confirm: ${side === "buy" ? `spend ${a.amount} SUI on $${shownSym}` : `sell ${a.amount}% of your $${shownSym}`}?${tokenHit?.coinType ? `\n${tokenHit.coinType}` : ""}`,
               reply_markup: { inline_keyboard: [[{ text: "✅ Confirm", callback_data: encodeAction(a) }, { text: "Cancel", callback_data: "x" }]] },
             });
             return Response.json({ ok: true });
