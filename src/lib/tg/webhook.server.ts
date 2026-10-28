@@ -619,7 +619,25 @@ export async function processTelegramUpdate(update: TelegramUpdate, token: strin
             return Response.json({ ok: true });
           }
           // Group /buy and /burn: the sender's own OurBank wallet only; executes immediately like sends.
-          const { parseGroupTrade } = await import("@/lib/tg/groupTrade");
+          const { parseGroupTrade, parseGroupBuyGift } = await import("@/lib/tg/groupTrade");
+          // Buy & gift: "@bot buy 1 sui of <token> to @user" — buy with the sender's wallet, deliver to the recipient's OurBank.
+          const gift = msg?.from?.id ? parseGroupBuyGift(original) : null;
+          if (gift) {
+            const reply = (t: string) => tg("sendMessage", { chat_id: chatId, text: t, disable_web_page_preview: true, reply_to_message_id: msg?.message_id });
+            const sender = await linkedHandle();
+            if (!sender) { await reply("🔗 DM @ourblastsuibot once to activate your wallet."); return Response.json({ ok: true }); }
+            const { supabaseAdmin: db } = await import("@/integrations/supabase/client.server");
+            const { data: rec } = await db.from("tg_users").select("tg_user_id, x_username").ilike("username", gift.tgUsername).maybeSingle();
+            if (!rec?.tg_user_id) { await reply(`@${gift.tgUsername} hasn't started @ourblastsuibot yet. Ask them to open it once (no X needed), then try again.`); return Response.json({ ok: true }); }
+            const { ensureBankWallet } = await import("@/lib/terminal/bank-wallet.server");
+            const recAddr = (await ensureBankWallet(rec.x_username ?? `tg-${rec.tg_user_id}`, null)).address;
+            const uid = msg!.from!.id;
+            await replyWithProgress(chatId, `Buying ${gift.amount} SUI of ${gift.token.startsWith("0x") ? "token" : gift.token} for @${gift.tgUsername} 🎁`, async () => {
+              const { runTgCommand } = await import("@/lib/tg/runCommand.server");
+              return (await runTgCommand(uid, `buy ${gift.amount} sui of ${gift.token} then send it to ${recAddr}`, sender, { mainOnly: true })).reply;
+            });
+            return Response.json({ ok: true });
+          }
           const gt = msg?.from?.id ? parseGroupTrade(original) : null;
           if (gt) {
             const sender = await linkedHandle();
