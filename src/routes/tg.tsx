@@ -124,10 +124,9 @@ function TgApp() {
           <button className="underline" onClick={() => { setTab("wallet"); setMergeSlot(null); }}>Open Wallets → Consolidate</button> to combine it into your X wallet, or keep both.
         </div>
       ) : null}
-      {session.xUsername ? null
-      ) : session.privyAppId ? (
+      {session.xUsername ? null : session.privyAppId ? (
         <div className="space-y-2">
-          <p className="text-muted-foreground">Connect your X account to open your OurBank wallet.</p>
+          <p className="text-muted-foreground">Optional: connect X to use the same wallet on X and the website. Your Telegram wallet is kept.</p>
           <ClientOnly fallback={null}>
             <Suspense fallback={<div className="text-muted-foreground">Loading…</div>}>
               <PrivyXLink appId={session.privyAppId} onToken={onPrivyToken} />
