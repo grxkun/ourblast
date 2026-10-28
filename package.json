@@ -16,6 +16,7 @@
     "rpc-websockets": "7.11.2"
   },
   "dependencies": {
+    "@ai-sdk/openai": "^4.0.103",
     "@bluefin-exchange/bluefin7k-aggregator-sdk": "^7.6.3",
     "@cetusprotocol/aggregator-sdk": "1.7.3",
     "@hookform/resolvers": "^5.2.2",
