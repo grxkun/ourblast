@@ -114,9 +114,29 @@ export const tgGetBankWallet = createServerFn({ method: "POST" })
  * as an X mention, as the X account this Telegram user verified via Privy.
  */
 export const tgRunCommand = createServerFn({ method: "POST" })
-  .inputValidator((d) => z.object({ initData: z.string().min(1).max(4096), text: z.string().min(1).max(500) }).parse(d))
+  .inputValidator((d) => z.object({ initData: z.string().min(1).max(4096), text: z.string().min(1).max(500), history: z.array(z.object({ who: z.enum(["me", "bot"]), text: z.string().max(4000) })).max(6).optional() }).parse(d))
   .handler(async ({ data }) => {
     const { user } = await authed(data.initData);
+    const { isAdvisorCommand } = await import("@/lib/blast/advisor");
+    if (isAdvisorCommand(data.text)) {
+      const { launchAdvice } = await import("@/lib/blast/advisor.server");
+      return { reply: await launchAdvice(data.text, data.history) };
+    }
+    const review = data.text.match(/^snipe review\s+([\s\S]+)$/i);
+    if (review?.[1]) {
+      const { parseSnipeCommand } = await import("./chatTrade");
+      const s = parseSnipeCommand(`snipe ${review[1]}`);
+      if (!s?.ok) return { reply: s && !s.ok ? s.error : "Invalid snipe" };
+      const { tgWalletHandle } = await import("./tgIdentity.server");
+      const handle = await tgWalletHandle(user.id);
+      if (!handle) return { reply: "Open Wallet first." };
+      const { tradeTargets } = await import("./tgWallets.server");
+      const targets = await tradeTargets(user.id, handle);
+      if (!targets.length) return { reply: "No selected wallet. Open Wallets first." };
+      const { sniperPreflight } = await import("@/lib/blast/sniper.server");
+      const checks = await Promise.all(targets.map(async (t) => `w${t.slot}\n${(await sniperPreflight(t.handle, s.coinType, s.amount, s.slippage)).reply}`));
+      return { reply: checks.join("\n\n") };
+    }
     const { runTgCommand } = await import("./runCommand.server");
     const { reply } = await runTgCommand(user.id, data.text);
     return { reply };

@@ -3,6 +3,7 @@
  * Bare commands (e.g. "/send") return syntax help instead of running anything.
  */
 const HELP: Record<string, string> = {
+  advisor: "Blast Launch Advisor (read-only)\n/advisor plan launch $TOKEN for our game\n/advisor presale 100000 400000000 200000000 60000\n/advisor inspect 0x…\nDraft advice only; no funds move.",
   buy: "🟢 Buy\n/buy 5 sui $BLAST\n/buy 2 sui of 0x…::coin::COIN\nOr paste a token address / $TICKER for the trade deck. You confirm before anything moves.",
   sell: "🔴 Sell\n/sell 50% $BLAST\n/sell 100% 0x…::coin::COIN\nYou confirm before anything moves.",
   send: "📤 Send\n/send 100 $BLAST to @user\n/send 1 sui to name.sui\n/send 5 sui to 0x…\n@user is an X handle linked to OurBank.",
@@ -17,7 +18,7 @@ const HELP: Record<string, string> = {
 export type SlashResult = { help: string } | { text: string } | null;
 
 export function mapPrivateSlash(raw: string): SlashResult {
-  const m = raw.trim().match(/^\/(buy|sell|send|burn|snipe|limit|bridge|swap|scan)(?:@\w+)?(?:\s+([\s\S]*))?$/i);
+  const m = raw.trim().match(/^\/(advisor|buy|sell|send|burn|snipe|limit|bridge|swap|scan)(?:@\w+)?(?:\s+([\s\S]*))?$/i);
   if (!m) return null;
   const cmd = m[1]!.toLowerCase();
   const args = (m[2] ?? "").trim();

@@ -17,6 +17,8 @@ import type { Json } from "@/integrations/supabase/types";
 import { runTerminalAgent } from "@/lib/terminal/agent";
 import { chatCommand, interpretCommand } from "@/lib/terminal/nlu.functions";
 import { runBankCommand } from "@/lib/terminal/bank.functions";
+import { getLaunchAdvice } from "@/lib/blast/advisor.functions";
+import { isAdvisorCommand } from "@/lib/blast/advisor";
 import { launchFromTerminal } from "@/lib/terminal/xLauncher.functions";
 import { bridgeNow, bridgeSolNow, previewSolBridge } from "@/lib/terminal/evm-sweep.functions";
 import { parseSolCommand } from "@/lib/terminal/solCommand";
@@ -59,6 +61,7 @@ export function Terminal({ tryCommand }: { tryCommand?: { command: string; nonce
   const interpret = useServerFn(interpretCommand);
   const chat = useServerFn(chatCommand);
   const bankCommand = useServerFn(runBankCommand);
+  const advisor = useServerFn(getLaunchAdvice);
   const launchNow = useServerFn(launchFromTerminal);
   const bridge = useServerFn(bridgeNow);
   const bridgeSol = useServerFn(bridgeSolNow);
@@ -150,6 +153,11 @@ export function Terminal({ tryCommand }: { tryCommand?: { command: string; nonce
     setPending(clean);
     try {
       const context = { walletConnected: Boolean(userId), walletAddress: profile?.wallet_address ?? null, source: "terminal" as const };
+      if (isAdvisorCommand(clean)) {
+        const reply = userId ? (await advisor({ data: { text: clean, history: history.filter((e) => isAdvisorCommand(e.command)).slice(-3).flatMap((e) => [{ who: "me" as const, text: e.command }, { who: "bot" as const, text: e.result.message.slice(0, 4000) }]) } })).reply : "Sign in to use Blast Launch Advisor. Advice is read-only; nothing is launched.";
+        await saveEntry({ id: makeId(), command: clean, intent: "unknown", result: { tool: "unknown", status: "READY", message: reply }, createdAt: new Date().toISOString() });
+        return;
+      }
       // Send / buy / sell (and "1"/"2" answers to a which-token question) run the same
       // OurBank logic as an X mention, with the wallet the user picked.
       // "bridge 0.03 sol" / "buy blast with 0.03 sol": move only that SOL to Sui → $BLAST.
@@ -282,7 +290,7 @@ export function Terminal({ tryCommand }: { tryCommand?: { command: string; nonce
     } catch (error) {
       toast.error("Terminal history was not saved", { description: error instanceof Error ? error.message : "Try again." });
     } finally { setProcessing(false); setPending(null); }
-  }, [interpret, chat, processing, profile?.wallet_address, saveEntry, userId, bankCommand, approveSwap, approveTransfer, queryClient, bridge, bridgeSol, previewSol]);
+  }, [interpret, chat, advisor, history, processing, profile?.wallet_address, saveEntry, userId, bankCommand, approveSwap, approveTransfer, queryClient, bridge, bridgeSol, previewSol]);
 
   const handleSubmit = async (message: PromptInputMessage) => {
     const image = message.files.find((file) => file.mediaType?.startsWith("image/"));
