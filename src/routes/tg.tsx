@@ -13,7 +13,8 @@ import { TgNftPanel } from "@/components/tg/TgNftPanel";
 import { buildSwapCommand, normalizeSwapToken, swapTokenSymbol } from "@/lib/tg/tradeCommand";
 import { MAIN_TOKENS, mainTokenByType } from "@/lib/terminal/mainTokens";
 import { listPublicLaunches } from "@/lib/terminal/launch-status.functions";
-import { tgBlastPresales, tgBridgeHistory, tgConsolidate, tgCreateWallet, tgExportWalletKey, tgWalletTokens, tgWalletTransfer, tgGetBankWallet, tgListWallets, tgSetTradeSlots, tgLinkX, tgRunCommand, tgSession, tgToggleWatch, tgUnlinkX } from "@/lib/tg/tg.functions";
+import { describeTx } from "@/lib/tg/txHistory";
+import { tgBlastPresales, tgBridgeHistory, tgTransactions, tgConsolidate, tgCreateWallet, tgExportWalletKey, tgWalletTokens, tgWalletTransfer, tgGetBankWallet, tgListWallets, tgSetTradeSlots, tgLinkX, tgRunCommand, tgSession, tgToggleWatch, tgUnlinkX } from "@/lib/tg/tg.functions";
 
 const launchesQuery = queryOptions({
   queryKey: ["public-launches"],
@@ -376,7 +377,7 @@ function WalletView({ initData, handle, onTrade, onSell }: { initData: string; h
   const getWallet = useServerFn(tgGetBankWallet);
   const [w, setW] = useState<Awaited<ReturnType<typeof tgGetBankWallet>> | null>(null);
   const [err, setErr] = useState<string | null>(null);
-  const [inventoryTab, setInventoryTab] = useState<"tokens" | "nfts">("tokens");
+  const [inventoryTab, setInventoryTab] = useState<"tokens" | "nfts" | "activity">("tokens");
   const load = useCallback(() => {
     setErr(null);
     getWallet({ data: { initData } }).then(setW).catch((e) => setErr(String((e as Error).message ?? e)));

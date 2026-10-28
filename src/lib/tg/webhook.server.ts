@@ -726,7 +726,7 @@ export async function processTelegramUpdate(update: TelegramUpdate, token: strin
           await replyWithProgress(chatId, "Loading transactions", async () => {
             const { walletTransactions } = await import("@/lib/tg/txHistory.server");
             const { formatTxList } = await import("@/lib/tg/txHistory");
-            return formatTxList(await walletTransactions(msg.from.id, (await linkedHandle())!, 8));
+            return formatTxList(await walletTransactions(msg.from!.id, (await linkedHandle())!, 8));
           });
           return Response.json({ ok: true });
         }
