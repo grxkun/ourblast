@@ -30,7 +30,8 @@ import { rpc, sharedRef } from "./suipump-launch.server";
 
 const SUI = normalizeStructTag("0x2::sui::SUI");
 const CLOCK = "0x0000000000000000000000000000000000000000000000000000000000000006";
-const SUICOMP = "0xb205fea41ccedac051bc66498e6ca68cb802c4a6ea06da12e524bed09c80d9b0";
+// Calls target the latest upgraded Suipump package (V2); types stay under the original id.
+const SUICOMP = "0xb90fc5f4cd6558a63e0d99fee3ed67c1893e65b21d0a19c126885f5e45ba78ac";
 const SUICOMP_MODULE = "bonding_curve";
 
 // Blast.fun constants — mirror blastfun-launch.server.ts.
