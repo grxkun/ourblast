@@ -209,3 +209,34 @@ async function buildBlastfunBuy(
   tx.transferObjects([pumpResult[0]!], tx.pure.address(sender));
   return { tx, quoted: 0n, venue: "Blast.fun" };
 }
+
+/**
+ * Suipump bonding-curve sell (verified on mainnet V2):
+ *   bonding_curve::sell<T>(&mut Curve<T>, Coin<T>, u64 min_out, Option<address>, &mut TxContext) -> Coin<SUI>
+ * Only Suipump curves are sold directly; Blast.fun curve sells still go via DEX routes.
+ */
+export async function buildLaunchpadSellSwap(
+  sender: string,
+  plan: LaunchpadBuyPlan,
+  amountIn: bigint,
+  minOut: bigint = 0n,
+): Promise<LaunchpadBuiltSwap | null> {
+  if (plan.pad !== "suipump") return null;
+  const curveRef = await sharedRef(plan.poolObjectId);
+  const tx = new Transaction();
+  tx.setSender(sender);
+  // Coin intent draws from coin objects and the address balance.
+  const coinIn = tx.coin({ balance: amountIn, type: plan.coinType });
+  const suiOut = tx.moveCall({
+    target: `${SUICOMP}::${SUICOMP_MODULE}::sell`,
+    typeArguments: [plan.coinType],
+    arguments: [
+      tx.sharedObjectRef({ ...curveRef, mutable: true }),
+      coinIn,
+      tx.pure.u64(minOut),
+      tx.pure.option("address", null),
+    ],
+  });
+  tx.transferObjects([suiOut], tx.pure.address(sender));
+  return { tx, quoted: 0n, venue: "Suipump" };
+}
