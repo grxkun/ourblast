@@ -1,0 +1,4 @@
+interface:
+  display_name: "Blast Launch Advisor"
+  short_description: "Choose launch mechanics and design token economics"
+  default_prompt: "Use $blast-launch-advisor to help our team choose presale or bonding curve and design allocations, vesting, and launch liquidity around our goals."
