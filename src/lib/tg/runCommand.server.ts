@@ -14,9 +14,7 @@ export async function runTgCommand(
 ): Promise<{ reply: string; linked: boolean }> {
   let handle = knownHandle ?? null;
   if (!handle) {
-    const { supabaseAdmin: db } = await import("@/integrations/supabase/client.server");
-    const { data: row } = await db.from("tg_users").select("x_username").eq("tg_user_id", tgUserId).maybeSingle();
-    handle = row?.x_username ?? null;
+    handle = await (await import("./tgIdentity.server")).tgWalletHandle(tgUserId);
   }
   if (!handle) return { linked: false, reply: "Link your X account first (open the app → Wallet) — trades use your OurBank wallet." };
 
