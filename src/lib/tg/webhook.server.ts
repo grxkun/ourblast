@@ -506,7 +506,7 @@ export async function processTelegramUpdate(update: TelegramUpdate, token: strin
             try {
               const { supabaseAdmin: db } = await import("@/integrations/supabase/client.server");
               const u = { x_username: await tgWalletHandle(cq.from.id) as string | null };
-              const card = u?.x_username ? await (await import("@/lib/tg/pnl.server")).exitCardFor(u.x_username, coinType, action.symbol) : null;
+              const card = u?.x_username ? await (await import("@/lib/tg/pnl.server")).exitCardFor(u.x_username, coinType, shown) : null;
               if (card) await tg("sendMessage", { chat_id, text: card, disable_web_page_preview: true, reply_markup: { inline_keyboard: [[
                 { text: "Share on X", url: `https://x.com/intent/post?text=${encodeURIComponent(card)}` },
                 { text: "Share on Telegram", url: `https://t.me/share/url?url=${encodeURIComponent("https://t.me/ourblastsuibot")}&text=${encodeURIComponent(card)}` },
