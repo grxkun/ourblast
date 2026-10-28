@@ -24,7 +24,7 @@ vi.mock("aftermath-ts-sdk", () => ({
   }) }) },
 }));
 vi.mock("./bank-wallet.server", () => ({ bankSigner: mocks.signer }));
-vi.mock("./launchpad-buy.server", () => ({ resolveLaunchpadBuy: async () => null }));
+vi.mock("./launchpad-buy.server", () => ({ resolveLaunchpadBuy: async () => null, buildLaunchpadSellSwap: async () => null }));
 vi.mock("./suipump-launch.server", () => ({
   gasCoins: async () => [{ objectId: "0x1" }],
   referenceGasPrice: async () => 1000,
