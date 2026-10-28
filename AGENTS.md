@@ -25,3 +25,4 @@
 - Kiosk NFT sends (kiosk.ts) only satisfy royalty_rule + kiosk_lock_rule, calling the rules package version the collection links against; locked items go into a new recipient-owned kiosk, and any other policy rule is refused so a send never guesses.
 - Mini App NFT inventory derives the main wallet from verified Telegram/X identity, sends exact object IDs through the shared command handler, and hides collection types only in account-scoped device storage so hiding never transfers assets.
 - drip.market data is read via its public search API in src/lib/drip.functions.ts (cached 5 min); marketplace actions are outbound links only — OURBLAST never signs drip trades.
+- Telegram users without a linked X account get a native OurBank wallet keyed `tg-<telegramId>` (tgIdentity.server.ts); linking X keeps it as an extra wallet slot — X handles can't contain "-", so no collisions and funds are never stranded.
