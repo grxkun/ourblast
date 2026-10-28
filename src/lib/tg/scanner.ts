@@ -106,6 +106,7 @@ export function chartLinksHtml(coinType: string): string {
   return [
     l(`https://noodles.fi/coins/${c}`, "NOO"), l(`https://yolo.casa/token/${c}`, "YO"), l(`https://tavern.family/token/${c}`, "TAV"),
     l(`https://suiscan.xyz/mainnet/coin/${coinType}`, "SCAN"),
+    l(`https://dexscreener.com/sui/${c}`, "DS"), l(`https://www.defined.fi/sui/${c}`, "DEF"),
   ].join(" · ");
 }
 
