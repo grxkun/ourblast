@@ -561,7 +561,9 @@ async function handleSwapMention(postId: string, username: string, rawText: stri
   // Second step: forward tokens, only after the swap confirmed. Either the whole
   // amount received ("send it to …") or an explicit amount ("send 1000 BLAST to …").
   const who = describeRecipient(command.sendTo.recipientKind, command.sendTo.recipient);
-  const received = result.received;
+  // Fall back to the slippage-checked quote when the indexer never reported the
+  // exact amount; a short balance just makes the send fail safely.
+  const received = result.received && result.received > 0n ? result.received : result.quoted;
   if (!received || received <= 0n) return `${done} — couldn't confirm the amount received, so nothing was sent to ${who}.`;
   let sendAmount = received;
   if (command.sendTo.amount) {

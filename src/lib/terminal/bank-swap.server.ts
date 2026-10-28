@@ -184,17 +184,21 @@ export async function executeBankSwap(
   if (!executed.ok || !executed.digest) return { ok: false, error: friendlySwapError(executed.error ?? "Swap failed.") };
 
   let received: bigint | null = null;
-  try {
-    const info = await rpc<{ balanceChanges?: { owner: { AddressOwner?: string }; coinType: string; amount: string }[] }>(
-      "sui_getTransactionBlock",
-      [executed.digest, { showBalanceChanges: true }],
-    );
-    const change = info.balanceChanges?.find(
-      (c) => c.owner.AddressOwner && normalizeSuiAddress(c.owner.AddressOwner) === sender && normalizeStructTag(c.coinType) === outType,
-    );
-    if (change) received = BigInt(change.amount);
-  } catch {
-    /* quote is shown instead */
+  // The indexer can lag a second or two behind finality — retry a few times.
+  for (let attempt = 0; attempt < 4 && received === null; attempt++) {
+    if (attempt > 0) await new Promise((r) => setTimeout(r, 1500));
+    try {
+      const info = await rpc<{ balanceChanges?: { owner: { AddressOwner?: string }; coinType: string; amount: string }[] }>(
+        "sui_getTransactionBlock",
+        [executed.digest, { showBalanceChanges: true }],
+      );
+      const change = info.balanceChanges?.find(
+        (c) => c.owner.AddressOwner && normalizeSuiAddress(c.owner.AddressOwner) === sender && normalizeStructTag(c.coinType) === outType,
+      );
+      if (change) received = BigInt(change.amount);
+    } catch {
+      /* retry; quote is shown instead */
+    }
   }
   return { ok: true, digest: executed.digest, received, quoted: built.quoted, coinOut: outType, venue: built.venue };
 }
