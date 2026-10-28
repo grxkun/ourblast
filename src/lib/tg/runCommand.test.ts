@@ -9,7 +9,7 @@ const m = vi.hoisted(() => ({
 vi.mock("./tgIdentity.server", () => ({ tgRecipientAddress: m.recipient, tgWalletHandle: async () => "sender_x" }));
 vi.mock("./multiWallet", () => ({ parseWalletCommand: () => null, parseWalletPrefix: () => null, isFanOutTrade: () => false }));
 vi.mock("./limitOrder", () => ({ parseLimitCommand: () => null }));
-vi.mock("./chatTrade", () => ({ parseSnipeCommand: () => null }));
+vi.mock("./chatTrade", () => ({ parseSnipeCommand: () => null, actionCommand: vi.fn() }));
 vi.mock("@/lib/terminal/bank-wallet.server", () => ({ ensureBankWallet: m.wallet }));
 vi.mock("@/lib/terminal/bank.server", () => ({ handleBankMention: m.bank }));
 vi.mock("@/lib/terminal/xClaim.server", () => ({
