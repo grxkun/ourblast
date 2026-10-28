@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: BUSL-1.1
+import { tgWalletHandle } from "@/lib/tg/tgIdentity.server";
 import type { TelegramUpdate } from "./webhookDelivery";
 
 import { MAX_FOLLOWS, parseFollowCommand } from "@/lib/tg/walletWatch";
@@ -29,7 +30,7 @@ async function userDeck(tgUserId: number, symbol: string, coinType: string, slip
   let slots = [1], selected = [1];
   try {
     const { supabaseAdmin: db } = await import("@/integrations/supabase/client.server");
-    const { data: u } = await db.from("tg_users").select("x_username").eq("tg_user_id", tgUserId).maybeSingle();
+    const u = { x_username: await tgWalletHandle(tgUserId) as string | null };
     if (u?.x_username) {
       const { listTgWallets } = await import("@/lib/tg/tgWallets.server");
       const r = await listTgWallets(tgUserId, u.x_username);
@@ -216,7 +217,7 @@ export async function processTelegramUpdate(update: TelegramUpdate, token: strin
               return Response.json({ ok: true });
             }
             const { supabaseAdmin: db } = await import("@/integrations/supabase/client.server");
-            const { data: u } = await db.from("tg_users").select("x_username").eq("tg_user_id", cq.from.id).maybeSingle();
+            const u = { x_username: await tgWalletHandle(cq.from.id) as string | null };
             if (!u?.x_username) { await tg("sendMessage", { chat_id, text: "🔗 Link your X account first (/link)." }); return Response.json({ ok: true }); }
             await replyWithProgress(chat_id, "Calculating PnL", async () => (await import("@/lib/tg/pnl.server")).tokenPnlReply(u.x_username!, t.coinType, t.symbol));
             return Response.json({ ok: true });
@@ -229,7 +230,7 @@ export async function processTelegramUpdate(update: TelegramUpdate, token: strin
             let note: string | undefined;
             if (deckTap.kind === "wallet") {
               const { supabaseAdmin: db } = await import("@/integrations/supabase/client.server");
-              const { data: u } = await db.from("tg_users").select("x_username").eq("tg_user_id", cq.from.id).maybeSingle();
+              const u = { x_username: await tgWalletHandle(cq.from.id) as string | null };
               if (!u?.x_username) note = "Link your X account first (/link).";
               else {
                 const { listTgWallets, setTradeSlots } = await import("@/lib/tg/tgWallets.server");
@@ -251,7 +252,7 @@ export async function processTelegramUpdate(update: TelegramUpdate, token: strin
             await tg("answerCallbackQuery", { callback_query_id: cq.id });
             const key = cq.data.slice(2);
             const { supabaseAdmin: db } = await import("@/integrations/supabase/client.server");
-            const { data: u } = await db.from("tg_users").select("x_username").eq("tg_user_id", cq.from.id).maybeSingle();
+            const u = { x_username: await tgWalletHandle(cq.from.id) as string | null };
             const h = u?.x_username ?? null;
             if (key === "home") {
               await tg("sendMessage", { chat_id, text: dashboardText(h), reply_markup: { inline_keyboard: dashboardKeyboard(h) } });
@@ -301,7 +302,7 @@ export async function processTelegramUpdate(update: TelegramUpdate, token: strin
             await tg("answerCallbackQuery", { callback_query_id: cq.id });
             const [, kind, code] = cq.data.split(":");
             const { supabaseAdmin: db } = await import("@/integrations/supabase/client.server");
-            const { data: u } = await db.from("tg_users").select("x_username").eq("tg_user_id", cq.from.id).maybeSingle();
+            const u = { x_username: await tgWalletHandle(cq.from.id) as string | null };
             const h = u?.x_username ?? null;
             if (!h) {
               await tg("sendMessage", { chat_id, text: "🔗 Link your X account first.", reply_markup: { inline_keyboard: [[{ text: "🔗 Link X account", web_app: { url: LINK_URL } }]] } });
@@ -365,7 +366,7 @@ export async function processTelegramUpdate(update: TelegramUpdate, token: strin
           if (cq.data?.startsWith("ws:")) {
             const k = cq.data.slice(3);
             const { supabaseAdmin: db } = await import("@/integrations/supabase/client.server");
-            const { data: u } = await db.from("tg_users").select("x_username").eq("tg_user_id", cq.from.id).maybeSingle();
+            const u = { x_username: await tgWalletHandle(cq.from.id) as string | null };
             const h = u?.x_username;
             if (!h) {
               await tg("answerCallbackQuery", { callback_query_id: cq.id, text: "Link your X account first." });
@@ -428,7 +429,7 @@ export async function processTelegramUpdate(update: TelegramUpdate, token: strin
             const c = line ? parseCopyCommand(line) : null;
             if (c?.op !== "start") return Response.json({ ok: true });
             const { supabaseAdmin: db } = await import("@/integrations/supabase/client.server");
-            const { data: u } = await db.from("tg_users").select("x_username").eq("tg_user_id", cq.from.id).maybeSingle();
+            const u = { x_username: await tgWalletHandle(cq.from.id) as string | null };
             if (!u?.x_username) {
               await tg("sendMessage", { chat_id, text: "🔗 Link your X account first.", reply_markup: { inline_keyboard: [[{ text: "🔗 Link X account", web_app: { url: LINK_URL } }]] } });
               return Response.json({ ok: true });
@@ -456,7 +457,7 @@ export async function processTelegramUpdate(update: TelegramUpdate, token: strin
               return Response.json({ ok: true });
             }
             const { supabaseAdmin: db } = await import("@/integrations/supabase/client.server");
-            const { data } = await db.from("tg_users").select("x_username").eq("tg_user_id", cq.from.id).maybeSingle();
+            const data = { x_username: await tgWalletHandle(cq.from.id) as string | null };
             if (!data?.x_username) {
               await tg("sendMessage", { chat_id, text: "🔗 Link your X account first.", reply_markup: { inline_keyboard: [[{ text: "🔗 Link X account", web_app: { url: LINK_URL } }]] } });
               return Response.json({ ok: true });
@@ -495,7 +496,7 @@ export async function processTelegramUpdate(update: TelegramUpdate, token: strin
           if (action.side === "sell" && coinType && reply.includes("✅")) {
             try {
               const { supabaseAdmin: db } = await import("@/integrations/supabase/client.server");
-              const { data: u } = await db.from("tg_users").select("x_username").eq("tg_user_id", cq.from.id).maybeSingle();
+              const u = { x_username: await tgWalletHandle(cq.from.id) as string | null };
               const card = u?.x_username ? await (await import("@/lib/tg/pnl.server")).exitCardFor(u.x_username, coinType, action.symbol) : null;
               if (card) await tg("sendMessage", { chat_id, text: card, disable_web_page_preview: true, reply_markup: { inline_keyboard: [[
                 { text: "Share on X", url: `https://x.com/intent/post?text=${encodeURIComponent(card)}` },
@@ -534,7 +535,7 @@ export async function processTelegramUpdate(update: TelegramUpdate, token: strin
           const uid = msg.from.id;
           handleLookup ??= (async () => {
             const { supabaseAdmin: db } = await import("@/integrations/supabase/client.server");
-            const { data } = await db.from("tg_users").select("x_username").eq("tg_user_id", uid).maybeSingle();
+            const data = { x_username: await tgWalletHandle(uid) as string | null };
             return data?.x_username ?? null;
           })();
           return handleLookup;
