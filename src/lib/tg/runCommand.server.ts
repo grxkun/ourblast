@@ -56,7 +56,7 @@ export async function runTgCommand(
 
   const prefix = mw.parseWalletPrefix(trimmed);
   const command = prefix?.rest ?? trimmed;
-  if (!opts.mainOnly && (prefix || opts.slots || mw.isFanOutTrade(command))) {
+  if (!opts.mainOnly && (prefix || opts.slots || mw.isFanOutTrade(command) || /^snipe\s/i.test(command))) {
     const { tradeTargets } = await import("./tgWallets.server");
     const targets = await tradeTargets(tgUserId, handle, prefix ? [prefix.slot] : opts.slots);
     if (!targets.length) return { linked: true, reply: prefix ? `You don't have wallet w${prefix.slot}. See: wallets` : "No trading wallet selected. See: wallets" };

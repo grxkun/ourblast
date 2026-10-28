@@ -1,7 +1,7 @@
 # Roadmap
-- [ ] Import official Blast Launch Advisor as an active workspace skill (subject to approval).
-- [ ] Add read-only /advisor to Telegram, Mini App, and website terminal with launch planning and simulations.
-- [ ] Add fail-closed Blast sniper preflight; test without live transactions.
+- [x] Import official Blast Launch Advisor as an active workspace skill.
+- [x] Add read-only /advisor to Telegram, Mini App, and website terminal with draft launch planning and reproducible simulations; signed-in website math and AI conversation verified.
+- [x] Add fail-closed exact-wallet sniper preflight and curve minimum-output protection; unsigned tests only, live Telegram delivery and purchases not tested.
 - [x] Add Mini App main-wallet NFT inventory, reviewed sends, and device-local hide/restore by collection; 25 tests passed, Grxxxkun's nine kiosk NFTs read in the UI, review and hide/restore checked without live transfers; preview only.
 - [x] Route web terminal NFT sends through OurBank with sign-in required; Kiosk transfers retain collection policy checks; no live transfers during verification.
 - [x] Support natural numbered NFT sends with exact edition matching; 16 tests pass, no live transfer or publishing.
