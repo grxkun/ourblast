@@ -12,7 +12,7 @@ const m = vi.hoisted(() => ({
 vi.mock("@/integrations/supabase/client.server", () => ({
   supabaseAdmin: { from: () => {
     const chain = {
-      select: () => chain, eq: () => chain, gt: () => chain,
+      select: () => chain, eq: () => chain, gt: () => chain, ilike: () => chain,
       order: () => chain, limit: () => chain, insert: () => chain,
       update: () => chain, maybeSingle: async () => ({ data: null }),
       single: async () => ({ data: { id: "mock-swap" }, error: null }),
