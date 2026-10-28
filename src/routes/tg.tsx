@@ -13,7 +13,8 @@ import { TgNftPanel } from "@/components/tg/TgNftPanel";
 import { buildSwapCommand, normalizeSwapToken, swapTokenSymbol } from "@/lib/tg/tradeCommand";
 import { MAIN_TOKENS, mainTokenByType } from "@/lib/terminal/mainTokens";
 import { listPublicLaunches } from "@/lib/terminal/launch-status.functions";
-import { tgBlastPresales, tgBridgeHistory, tgConsolidate, tgCreateWallet, tgExportWalletKey, tgWalletTokens, tgWalletTransfer, tgGetBankWallet, tgListWallets, tgSetTradeSlots, tgLinkX, tgRunCommand, tgSession, tgToggleWatch, tgUnlinkX } from "@/lib/tg/tg.functions";
+import { describeTx } from "@/lib/tg/txHistory";
+import { tgBlastPresales, tgBridgeHistory, tgTransactions, tgConsolidate, tgCreateWallet, tgExportWalletKey, tgWalletTokens, tgWalletTransfer, tgGetBankWallet, tgListWallets, tgSetTradeSlots, tgLinkX, tgRunCommand, tgSession, tgToggleWatch, tgUnlinkX } from "@/lib/tg/tg.functions";
 
 const launchesQuery = queryOptions({
   queryKey: ["public-launches"],
@@ -376,7 +377,7 @@ function WalletView({ initData, handle, onTrade, onSell }: { initData: string; h
   const getWallet = useServerFn(tgGetBankWallet);
   const [w, setW] = useState<Awaited<ReturnType<typeof tgGetBankWallet>> | null>(null);
   const [err, setErr] = useState<string | null>(null);
-  const [inventoryTab, setInventoryTab] = useState<"tokens" | "nfts">("tokens");
+  const [inventoryTab, setInventoryTab] = useState<"tokens" | "nfts" | "activity">("tokens");
   const load = useCallback(() => {
     setErr(null);
     getWallet({ data: { initData } }).then(setW).catch((e) => setErr(String((e as Error).message ?? e)));
@@ -414,11 +415,12 @@ function WalletView({ initData, handle, onTrade, onSell }: { initData: string; h
       </div>
       <WalletManager initData={initData} />
       <BridgeHistory initData={initData} />
-      <div className="grid grid-cols-2 gap-2" role="tablist" aria-label="Wallet inventory">
+      <div className="grid grid-cols-3 gap-2" role="tablist" aria-label="Wallet inventory">
         <Button role="tab" aria-selected={inventoryTab === "tokens"} variant={inventoryTab === "tokens" ? "default" : "outline"} onClick={() => setInventoryTab("tokens")}>Tokens</Button>
         <Button role="tab" aria-selected={inventoryTab === "nfts"} variant={inventoryTab === "nfts" ? "default" : "outline"} onClick={() => setInventoryTab("nfts")}>NFTs</Button>
+        <Button role="tab" aria-selected={inventoryTab === "activity"} variant={inventoryTab === "activity" ? "default" : "outline"} onClick={() => setInventoryTab("activity")}>Activity</Button>
       </div>
-      {inventoryTab === "nfts" ? <TgNftPanel key={handle} initData={initData} handle={handle} /> : <>
+      {inventoryTab === "activity" ? <TxActivity initData={initData} /> : inventoryTab === "nfts" ? <TgNftPanel key={handle} initData={initData} handle={handle} /> : <>
       <div className="rounded-2xl border border-border bg-surface p-2">
         <div className="mb-1 rounded-xl bg-primary py-1.5 text-center text-sm font-semibold text-primary-foreground">Tokens</div>
         <ul>
@@ -1140,6 +1142,42 @@ function MoveFunds({ initData, mode, wallets, onDone }: { initData: string; mode
           ))}
         </ul>
       )}
+    </div>
+  );
+}
+
+function TxActivity({ initData }: { initData: string }) {
+  const load = useServerFn(tgTransactions);
+  const [items, setItems] = useState<Awaited<ReturnType<typeof tgTransactions>> | null>(null);
+  const [err, setErr] = useState<string | null>(null);
+  const run = () => { setErr(null); load({ data: { initData } }).then(setItems).catch((e) => setErr(e instanceof Error ? e.message : "Couldn't load")); };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(run, [initData]);
+  return (
+    <div className="rounded-2xl border border-border bg-surface p-3">
+      <div className="mb-2 flex items-center justify-between">
+        <span className="text-sm font-semibold">All transactions</span>
+        <button className="text-xs text-primary" onClick={run}>Refresh</button>
+      </div>
+      <p className="mb-2 text-xs text-muted-foreground">Everything on chain for your wallets — inside or outside OURBLAST.</p>
+      {err && <p className="text-xs text-muted-foreground">{err}</p>}
+      {!err && !items && <p className="text-xs text-muted-foreground">Loading…</p>}
+      {items?.length === 0 && <p className="text-xs text-muted-foreground">No transactions yet.</p>}
+      <ul className="space-y-2">
+        {items?.map((t) => (
+          <li key={t.digest + t.slot} className="rounded-xl border border-border p-2.5 text-xs">
+            <div className="flex items-center justify-between gap-2">
+              <span className="font-semibold">W{t.slot} · {t.outgoing ? "Sent by you" : "Received"}</span>
+              <span className={t.ok ? "text-primary" : "text-destructive"}>{t.ok ? "Success" : "Failed"}</span>
+            </div>
+            <div className="mt-1 break-words">{describeTx(t)}</div>
+            <div className="mt-1 flex justify-between text-muted-foreground">
+              <span>{t.time ? new Date(t.time).toLocaleString() : ""}</span>
+              <a href={`https://suiscan.xyz/mainnet/tx/${t.digest}`} target="_blank" rel="noreferrer" className="text-primary underline">Suiscan ↗</a>
+            </div>
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }

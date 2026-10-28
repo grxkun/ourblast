@@ -722,6 +722,14 @@ export async function processTelegramUpdate(update: TelegramUpdate, token: strin
           });
           return Response.json({ ok: true });
         }
+        if ((await import("@/lib/tg/txHistory")).isTxCommand(original)) {
+          await replyWithProgress(chatId, "Loading transactions", async () => {
+            const { walletTransactions } = await import("@/lib/tg/txHistory.server");
+            const { formatTxList } = await import("@/lib/tg/txHistory");
+            return formatTxList(await walletTransactions(msg.from!.id, (await linkedHandle())!, 8));
+          });
+          return Response.json({ ok: true });
+        }
         if (/^\/?wallets(@\w+)?$/i.test(original.trim())) {
           const p = await walletPicker(msg.from.id, (await linkedHandle())!);
           await tg("sendMessage", { chat_id: chatId, text: p.text, disable_web_page_preview: true, reply_markup: { inline_keyboard: p.kb } });
