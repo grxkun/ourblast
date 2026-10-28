@@ -1,5 +1,5 @@
 # Roadmap
-- [ ] Apply platform-based recipient handles across Telegram groups, DM, and Mini App; verify without live transfers.
+- [x] Apply platform-based recipient handles across Telegram groups, DM, and Mini App; exact unique Telegram lookup and mocked execution verified, no live transfers.
 - [x] Import official Blast Launch Advisor as an active workspace skill.
 - [x] Add read-only /advisor to Telegram, Mini App, and website terminal with draft launch planning and reproducible simulations; signed-in website math and AI conversation verified.
 - [x] Add fail-closed exact-wallet sniper preflight and curve minimum-output protection; unsigned tests only, live Telegram delivery and purchases not tested.
