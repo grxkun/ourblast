@@ -17,6 +17,13 @@ vi.mock("@/lib/terminal/xClaim.server", () => ({
 }));
 beforeEach(() => vi.clearAllMocks());
 describe("Telegram shared command execution", () => {
+  it("keeps the direct HOLMOT gift destination in the Telegram namespace", async () => {
+    const address = `0x${"b".repeat(64)}`;
+    m.recipient.mockResolvedValue(address);
+    await runTgCommand(123, "Buy 1 sui of holmot to @Mamoubdran", "sender_x", { mainOnly: true });
+    expect(m.recipient).toHaveBeenCalledWith("Mamoubdran");
+    expect(m.bank).toHaveBeenCalledWith(expect.stringMatching(/^terminal-tg-/), "sender_x", `Buy 1 sui of holmot to ${address}`);
+  });
   it("passes a Telegram-resolved address, not an X handle, into the send engine", async () => {
     const address = `0x${"9".repeat(64)}`;
     m.recipient.mockResolvedValue(address);

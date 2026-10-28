@@ -216,6 +216,15 @@ export function parseSwapCommand(input: string): SwapCommand | null {
   if (then) {
     const target = parseTarget(then[1]!);
     if (target) base.sendTo = target;
+  } else if (base.side === "buy") {
+    // Direct gift shorthand, including Telegram-preprocessed wallet addresses.
+    const direct = /\s+to\s+(\S+)\s*[.!?]*\s*$/i.exec(flat);
+    if (direct) {
+      const target = parseTarget(direct[1] ?? "");
+      // Never silently turn an invalid gift destination into a self-buy.
+      if (!target) return null;
+      base.sendTo = target;
+    }
   }
   return base;
 }

@@ -1,4 +1,5 @@
 # Roadmap
+- [ ] Resolve verified launch tickers in shared buys and support direct buy-to-recipient syntax; verify without live trades.
 - [x] Apply platform-based recipient handles across Telegram groups, DM, and Mini App; exact unique Telegram lookup and mocked execution verified, no live transfers.
 - [x] Import official Blast Launch Advisor as an active workspace skill.
 - [x] Add read-only /advisor to Telegram, Mini App, and website terminal with draft launch planning and reproducible simulations; signed-in website math and AI conversation verified.

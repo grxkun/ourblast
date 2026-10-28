@@ -456,12 +456,15 @@ async function handleSwapMention(postId: string, username: string, rawText: stri
   const text = slipMatch ? rawText.slice(0, slipMatch.index) : rawText;
   const parsed = parseSwapCommand(text);
   if (!parsed) return null;
-  const command = chosenCoinType ? { ...parsed, token: chosenCoinType, isCoinType: true } : parsed;
+  let command = chosenCoinType ? { ...parsed, token: chosenCoinType, isCoinType: true } : parsed;
   const { findBankWallet } = await import("./bank-wallet.server");
   const { executeBankSwap, swapAmountIn, formatUnits, SWAP_SUI, SWAP_GAS_BUDGET } = await import("./bank-swap.server");
 
   if (command.side === "buy" && !command.isCoinType) {
-    return `@${username} to buy safely, paste the token's full contract address, e.g. buy 5 SUI of 0x…::coin::COIN`;
+    const { resolveLaunchedTicker } = await import("@/lib/tg/scanInfo.server");
+    const coinType = await resolveLaunchedTicker(command.token).catch(() => null);
+    if (!coinType) return `@${username} to buy safely, paste the token's full contract address, e.g. buy 5 SUI of 0x…::coin::COIN`;
+    command = { ...command, token: coinType, isCoinType: true };
   }
   // Check the forward destination BEFORE trading, so nothing gets stranded.
   if (command.sendTo?.recipientKind === "suins") {
