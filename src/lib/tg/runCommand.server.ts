@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: BUSL-1.1
 /**
- * Runs a trading command for a Telegram user as their Privy-verified X account. Shared by the Mini App and the bot chat.
+ * Runs a command using a Telegram user's native or linked main wallet. Shared by the Mini App and bot chat.
  * Speed: independent steps (wallet check, module loads, fee-command checks) run in parallel; callers that already
  * know the linked handle pass it to skip a lookup.
  * Multi-wallet: buy/sell/swap run from every selected Sui wallet (each its own transaction, each reported);
@@ -55,14 +55,23 @@ export async function runTgCommand(
   }
 
   const prefix = mw.parseWalletPrefix(trimmed);
-  const command = prefix?.rest ?? trimmed;
+  const { telegramRecipientCommand } = await import("./recipient");
+  const { tgRecipientAddress } = await import("./tgIdentity.server");
+  let resolved;
+  try {
+    resolved = await telegramRecipientCommand(prefix?.rest ?? trimmed, tgRecipientAddress);
+  } catch {
+    return { linked: true, reply: "Couldn't check the Telegram recipient. Nothing was sent or traded. Try again later." };
+  }
+  if (!resolved.ok) return { linked: true, reply: resolved.reply };
+  const command = resolved.text;
   if (!opts.mainOnly && (prefix || opts.slots || mw.isFanOutTrade(command) || /^snipe\s/i.test(command))) {
     const { tradeTargets } = await import("./tgWallets.server");
     const targets = await tradeTargets(tgUserId, handle, prefix ? [prefix.slot] : opts.slots);
     if (!targets.length) return { linked: true, reply: prefix ? `You don't have wallet w${prefix.slot}. See: wallets` : "No trading wallet selected. See: wallets" };
-    if (targets.length > 1 || targets[0]!.slot !== 1) {
+    if (targets.length > 1 || targets[0]?.slot !== 1) {
       const results = await Promise.all(targets.map(async (t) => {
-        const r = await runOne(t.handle, t.slot === 1 ? handle! : null, command).catch((e) => `Failed: ${(e as Error).message}. Nothing was sent unless a transaction link is shown.`);
+        const r = await runOne(t.handle, t.slot === 1 ? handle : null, command).catch((e) => `Failed: ${(e as Error).message}. Nothing was sent unless a transaction link is shown.`);
         return `— w${t.slot} · ${t.label}\n${r}`;
       }));
       return { linked: true, reply: results.join("\n\n") };

@@ -596,20 +596,17 @@ export async function processTelegramUpdate(update: TelegramUpdate, token: strin
           const gs = msg?.from?.id ? parseGroupSend(original) : null;
           if (gs) {
             const reply = (t: string) => tg("sendMessage", { chat_id: chatId, text: t, disable_web_page_preview: true, reply_to_message_id: msg?.message_id });
-            const { supabaseAdmin: db } = await import("@/integrations/supabase/client.server");
             const sender = await linkedHandle();
             if (!sender) { await reply("🔗 DM @ourblastsuibot once to activate your wallet."); return Response.json({ ok: true }); }
             const replied = (msg as { reply_to_message?: { from?: { id?: number; is_bot?: boolean; username?: string } } }).reply_to_message?.from;
-            const q = db.from("tg_users").select("tg_user_id, x_username, username");
-            const { data: rec } = gs.tgUsername
-              ? await q.ilike("username", gs.tgUsername).maybeSingle()
-              : replied?.id && !replied.is_bot ? await q.eq("tg_user_id", replied.id).maybeSingle() : { data: null };
             const label = `@${gs.tgUsername ?? replied?.username ?? "recipient"}`;
             if (!gs.tgUsername && !replied?.id) { await reply("Tag someone: @ourblastsuibot send @user 100 BLAST — or reply to their message."); return Response.json({ ok: true }); }
-            const recTgId = rec?.tg_user_id ?? (!gs.tgUsername && replied?.id && !replied.is_bot ? replied.id : null);
-            if (!recTgId) { await reply(`${label} hasn't started @ourblastsuibot yet. Ask them to open it once (no X needed), then try again.`); return Response.json({ ok: true }); }
+            const { tgRecipientAddress, tgWalletHandle } = await import("@/lib/tg/tgIdentity.server");
             const { ensureBankWallet } = await import("@/lib/terminal/bank-wallet.server");
-            const recAddr = (await ensureBankWallet(rec?.x_username ?? `tg-${recTgId}`, null)).address;
+            const recAddr = gs.tgUsername
+              ? await tgRecipientAddress(gs.tgUsername)
+              : replied?.id && !replied.is_bot ? (await ensureBankWallet(await tgWalletHandle(replied.id), null)).address : null;
+            if (!recAddr) { await reply(`${label} couldn't be resolved uniquely on Telegram. Ask them to open @ourblastsuibot once (no X needed), then try again. Nothing was sent.`); return Response.json({ ok: true }); }
             const uid = msg!.from!.id;
             await replyWithProgress(chatId, `Sending ${gs.amount} ${gs.token} to ${label}`, async () => {
               const { runTgCommand } = await import("@/lib/tg/runCommand.server");
@@ -626,11 +623,9 @@ export async function processTelegramUpdate(update: TelegramUpdate, token: strin
             const reply = (t: string) => tg("sendMessage", { chat_id: chatId, text: t, disable_web_page_preview: true, reply_to_message_id: msg?.message_id });
             const sender = await linkedHandle();
             if (!sender) { await reply("🔗 DM @ourblastsuibot once to activate your wallet."); return Response.json({ ok: true }); }
-            const { supabaseAdmin: db } = await import("@/integrations/supabase/client.server");
-            const { data: rec } = await db.from("tg_users").select("tg_user_id, x_username").ilike("username", gift.tgUsername).maybeSingle();
-            if (!rec?.tg_user_id) { await reply(`@${gift.tgUsername} hasn't started @ourblastsuibot yet. Ask them to open it once (no X needed), then try again.`); return Response.json({ ok: true }); }
-            const { ensureBankWallet } = await import("@/lib/terminal/bank-wallet.server");
-            const recAddr = (await ensureBankWallet(rec.x_username ?? `tg-${rec.tg_user_id}`, null)).address;
+            const { tgRecipientAddress } = await import("@/lib/tg/tgIdentity.server");
+            const recAddr = await tgRecipientAddress(gift.tgUsername);
+            if (!recAddr) { await reply(`@${gift.tgUsername} couldn't be resolved uniquely on Telegram. Ask them to open @ourblastsuibot once (no X needed), then try again. Nothing was traded or sent.`); return Response.json({ ok: true }); }
             const uid = msg!.from!.id;
             await replyWithProgress(chatId, `Buying ${gift.amount} SUI of ${gift.token.startsWith("0x") ? "token" : gift.token} for @${gift.tgUsername} 🎁`, async () => {
               const { runTgCommand } = await import("@/lib/tg/runCommand.server");
