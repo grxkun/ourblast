@@ -38,6 +38,24 @@ const SUICOMP_MODULE = "bonding_curve";
 const MEMEZ_FUN_LATEST = "0x7e6aa6e179466ab2814425a780b122575296d011119fa69d27f289f5a28814bd";
 const VERSION = { objectId: "0x2319e3e76dfad73d8f4684bdbf42be4f32d8ce4521dd61becc8261dc918d82c0", initialSharedVersion: "597477043" };
 
+// Blast v2 (interest-protocol/blast-v2-contracts), verified on mainnet:
+//   launch::buy<M, Q>(&mut Launch<M,Q>, &PackageVersion, &RuntimeConfig, Coin<Q>, u64 min_out) -> (Coin<M>, Coin<Q> refund)
+//   launch::sell<M, Q>(&mut Launch<M,Q>, &PackageVersion, &RuntimeConfig, Coin<M>, u64 min_out) -> Coin<Q>
+export const BLAST_V2_LAUNCH_PKG = "0x079a1b44c551613cbc63cc0406f8ff8d717407378dd6f17d43d9e1b3fd63a573";
+const BLAST_V2_VERSION = { objectId: "0xe63adb5817a9a74a883062ac3790d21a6433dfbd35a9403d18261de3a8836f93", initialSharedVersion: "2" };
+const BLAST_V2_RUNTIME = { objectId: "0x6d0c08363ebc1e2a77f16fed290dd0cd5f52791285744d758a3b0942073b6785", initialSharedVersion: "1" };
+
+/** Finds the shared Blast v2 Launch<coinType, SUI> object for a coin, if one exists. */
+async function findBlastV2Launch(coinType: string): Promise<string | null> {
+  const { suiGql } = await import("./sui-rpc-compat.server");
+  const type = `${BLAST_V2_LAUNCH_PKG}::launch::Launch<${coinType}, ${SUI}>`;
+  const r = await suiGql<{ objects?: { nodes?: { address: string }[] } }>(
+    `query($t: String!) { objects(first: 1, filter: { type: $t }) { nodes { address } } }`,
+    { t: type },
+  );
+  return r.objects?.nodes?.[0]?.address ?? null;
+}
+
 export interface LaunchpadBuiltSwap {
   tx: Transaction;
   quoted: bigint;
@@ -45,7 +63,7 @@ export interface LaunchpadBuiltSwap {
 }
 
 export interface LaunchpadBuyPlan {
-  pad: "suipump" | "blastfun";
+  pad: "suipump" | "blastfun" | "blastv2";
   coinType: string;
   poolObjectId: string;
   priceConfigId?: string;
@@ -110,7 +128,17 @@ export async function resolveLaunchpadBuy(coinOut: string): Promise<LaunchpadBuy
     /* not a Curve object — not a Suipump direct buy */
   }
 
-  // Blast.fun by our own stored MemezFun pool object id (token_address is the
+  // Blast v2 Launch object by coin type (any creator, not only OURBLAST launches).
+  if (outType.includes("::")) {
+    try {
+      const launchId = await findBlastV2Launch(outType);
+      if (launchId) return { pad: "blastv2", coinType: outType, poolObjectId: launchId };
+    } catch {
+      /* GraphQL unavailable — try the legacy Blast.fun path */
+    }
+  }
+
+  // Blast.fun (legacy MemezFun) by our own stored MemezFun pool object id (token_address is the
   // coin type; pool_object_id holds the shared MemezFun object).
   try {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
@@ -140,6 +168,7 @@ export async function buildLaunchpadBuySwap(
 ): Promise<LaunchpadBuiltSwap | null> {
   if (plan.pad === "suipump") return buildSuipumpBuy(sender, plan, amountIn, minOut);
   if (plan.pad === "blastfun") return buildBlastfunBuy(sender, plan, amountIn, minOut);
+  if (plan.pad === "blastv2") return buildBlastV2Buy(sender, plan, amountIn, minOut);
   return null;
 }
 
@@ -210,10 +239,33 @@ async function buildBlastfunBuy(
   return { tx, quoted: 0n, venue: "Blast.fun" };
 }
 
+function blastV2Common(tx: Transaction, launchRef: { objectId: string; initialSharedVersion: string }) {
+  return [
+    tx.sharedObjectRef({ ...launchRef, mutable: true }),
+    tx.sharedObjectRef({ ...BLAST_V2_VERSION, mutable: false }),
+    tx.sharedObjectRef({ ...BLAST_V2_RUNTIME, mutable: false }),
+  ];
+}
+
+/** Blast v2 curve buy. Returns (Coin<Meme>, Coin<SUI> refund) — both go back to the sender. */
+async function buildBlastV2Buy(sender: string, plan: LaunchpadBuyPlan, amountIn: bigint, minOut: bigint): Promise<LaunchpadBuiltSwap> {
+  const launchRef = await sharedRef(plan.poolObjectId);
+  const tx = new Transaction();
+  tx.setSender(sender);
+  const [coinIn] = tx.splitCoins(tx.gas, [amountIn]);
+  const r = tx.moveCall({
+    target: `${BLAST_V2_LAUNCH_PKG}::launch::buy`,
+    typeArguments: [plan.coinType, SUI],
+    arguments: [...blastV2Common(tx, launchRef), coinIn!, tx.pure.u64(minOut)],
+  });
+  tx.transferObjects([r[0]!, r[1]!], tx.pure.address(sender));
+  return { tx, quoted: 0n, venue: "Blast.fun" };
+}
+
 /**
  * Suipump bonding-curve sell (verified on mainnet V2):
  *   bonding_curve::sell<T>(&mut Curve<T>, Coin<T>, u64 min_out, Option<address>, &mut TxContext) -> Coin<SUI>
- * Only Suipump curves are sold directly; Blast.fun curve sells still go via DEX routes.
+ * Suipump and Blast v2 curves are sold directly; legacy MemezFun sells still go via DEX routes.
  */
 export async function buildLaunchpadSellSwap(
   sender: string,
@@ -221,6 +273,19 @@ export async function buildLaunchpadSellSwap(
   amountIn: bigint,
   minOut: bigint = 0n,
 ): Promise<LaunchpadBuiltSwap | null> {
+  if (plan.pad === "blastv2") {
+    const launchRef = await sharedRef(plan.poolObjectId);
+    const tx = new Transaction();
+    tx.setSender(sender);
+    const coinIn = tx.coin({ balance: amountIn, type: plan.coinType });
+    const out = tx.moveCall({
+      target: `${BLAST_V2_LAUNCH_PKG}::launch::sell`,
+      typeArguments: [plan.coinType, SUI],
+      arguments: [...blastV2Common(tx, launchRef), coinIn, tx.pure.u64(minOut)],
+    });
+    tx.transferObjects([out], tx.pure.address(sender));
+    return { tx, quoted: 0n, venue: "Blast.fun" };
+  }
   if (plan.pad !== "suipump") return null;
   const curveRef = await sharedRef(plan.poolObjectId);
   const tx = new Transaction();
