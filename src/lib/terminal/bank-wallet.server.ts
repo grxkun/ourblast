@@ -442,12 +442,21 @@ export async function commitPresaleFromBankWallet(
   const [unused] = tx.moveCall({
     target: `${p.pkg}::blast_presale::commit_open`,
     typeArguments: [p.memeType, SUI_TYPE],
-    arguments: [tx.object(p.presaleId), payment!, tx.object.clock()],
+    // Blast v2 presales take the shared PackageVersion as the second argument.
+    arguments: isBlastV2Presale(p.pkg)
+      ? [tx.object(p.presaleId), tx.object(BLAST_V2_PRESALE_VERSION), payment!, tx.object.clock()]
+      : [tx.object(p.presaleId), payment!, tx.object.clock()],
   });
   tx.transferObjects([unused!], tx.pure.address(sender));
   const executed = await signAndExecute(tx, signer);
   if (!executed.ok || !executed.digest) return { ok: false, error: executed.error ?? "Transaction failed." };
   return { ok: true, digest: executed.digest };
+}
+
+export const BLAST_V2_PRESALE_PKG = "0xb0279fbe54bfd1d920e985a4dba0916b2b73a5218514edeecb7b9dd30cf2863b";
+const BLAST_V2_PRESALE_VERSION = "0xbf285882f2c2e0eec1afd3dc869e6d25fad70bccd30059ec1a7b7ceb95c3b42f";
+export function isBlastV2Presale(pkg: string): boolean {
+  return "0x" + pkg.replace(/^0x/, "").toLowerCase().padStart(64, "0") === BLAST_V2_PRESALE_PKG;
 }
 
 export { GAS_BUDGET, SUI_TYPE };

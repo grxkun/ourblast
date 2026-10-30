@@ -44,7 +44,9 @@ export async function loadVerifiedPresale(id: string): Promise<{ ok: true; sale:
   const feed = await getBlastPresales();
   const listed = feed.ok ? feed.presales.find((p) => p.id.toLowerCase() === id || ("0x" + p.id.replace(/^0x/, "").padStart(64, "0")).toLowerCase() === id) : undefined;
   const pinned = process.env["BLAST_PRESALE_PACKAGE"]?.toLowerCase();
-  const pkgOk = pinned ? ("0x" + parts.pkg.replace(/^0x/, "").padStart(64, "0")) === ("0x" + pinned.replace(/^0x/, "").padStart(64, "0")) : false;
+  const { isBlastV2Presale } = await import("@/lib/terminal/bank-wallet.server");
+  // The official Blast v2 presale package (shared by the Blast team) is always trusted.
+  const pkgOk = isBlastV2Presale(parts.pkg) || (pinned ? ("0x" + parts.pkg.replace(/^0x/, "").padStart(64, "0")) === ("0x" + pinned.replace(/^0x/, "").padStart(64, "0")) : false);
   if (!listed && !pkgOk) {
     return {
       ok: false,

@@ -243,7 +243,7 @@ export async function pickSwapRoute(sender: string, inType: string, outType: str
   if (outType === SUI && inType !== SUI) {
     try {
       const plan = await withTimeout(resolveLaunchpadBuy(inType), LAUNCHPAD_LOOKUP_MS, "Launchpad lookup");
-      if (plan?.pad === "suipump") {
+      if (plan?.pad === "suipump" || plan?.pad === "blastv2") {
         let built = await withTimeout(buildLaunchpadSellSwap(sender, plan, amountIn), BUILD_TIMEOUT_MS, "Launchpad build");
         if (built) {
           const expected = await simulateReceived(built.tx, sender, SUI);
