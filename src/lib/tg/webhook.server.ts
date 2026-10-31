@@ -680,7 +680,9 @@ export async function processTelegramUpdate(update: TelegramUpdate, token: strin
         }
         if (/^\/(start|app|menu|launches|help)/.test(text)) {
           const isHelp = text.startsWith("/help");
-          const h = isPrivate ? await linkedHandle() : null;
+          // tg-<id> is a native Telegram wallet, not a linked X account: never show it as an X link.
+          const rawHandle = isPrivate ? await linkedHandle() : null;
+          const h = rawHandle && !rawHandle.startsWith("tg-") ? rawHandle : null;
           const status = isPrivate ? (h ? `\n\n✅ Linked to X @${h}` : "\n\n⚠️ X not linked yet — tap Link X account below.") : "";
           await tg("sendMessage", {
             chat_id: chatId,
