@@ -67,4 +67,25 @@ describe("Telegram contract buy webhook", () => {
     await send({ callback_query: { id: "go", data: confirm.reply_markup.inline_keyboard[0]?.[0]?.callback_data, from: { id: 12 }, message: { chat: { id: 12 }, message_id: 2, text: confirm.text } } });
     expect(run).toHaveBeenCalledExactlyOnceWith(12, `buy 1 sui of ${ca} slippage 10%`);
   });
+  it("never shows a native tg- wallet as a linked X account on /menu", async () => {
+    vi.stubEnv("TELEGRAM_BOT_TOKEN", "test-token-not-a-credential");
+    const calls: { method: string; body: { text: string; reply_markup?: { inline_keyboard: { text: string }[][] } } }[] = [];
+    vi.stubGlobal("fetch", vi.fn(async (url: string, init: RequestInit) => {
+      calls.push({ method: url.split("/").at(-1) ?? "", body: JSON.parse(String(init.body)) });
+      return Response.json({ ok: true });
+    }));
+    const native = linked.handle;
+    linked.handle = "tg-8888";
+    try {
+      await processTelegramUpdate({ update_id: 90, message: { chat: { id: 55, type: "private" }, from: { id: 55 }, text: "/menu" } }, "test-token-not-a-credential");
+      const menu = calls.find((c) => c.method === "sendMessage" && c.body.reply_markup)?.body;
+      if (!menu) throw new Error("Missing menu message");
+      expect(menu.text).not.toContain("Linked to X");
+      expect(menu.text).toContain("X not linked yet");
+      const rows = menu.reply_markup!.inline_keyboard.flat().map((b) => b.text);
+      expect(rows).toContain("🔗 Link X account");
+    } finally {
+      linked.handle = native;
+    }
+  });
 });
