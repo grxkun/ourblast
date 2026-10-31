@@ -95,7 +95,7 @@ export function PartnerCapCard() {
       )}
       {teamCaps.map((t) => (
         <p key={t.addr} className="text-xs">
-          {t.who}: {t.caps.length > 0 ? <span className="font-bold">has a PartnerCap — don't mint again ({t.caps[0].slice(0, 10)}…)</span> : "no cap yet"}
+          {t.who}: {t.caps.length > 0 ? <span className="font-bold">has a PartnerCap — don't mint again ({(t.caps[0] ?? "").slice(0, 10)}…)</span> : "no cap yet"}
         </p>
       ))}
       {digest && (
