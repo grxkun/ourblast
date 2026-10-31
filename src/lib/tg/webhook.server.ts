@@ -261,7 +261,9 @@ export async function processTelegramUpdate(update: TelegramUpdate, token: strin
             const u = { x_username: await tgWalletHandle(cq.from.id) as string | null };
             const h = u?.x_username ?? null;
             if (key === "home") {
-              await tg("sendMessage", { chat_id, text: dashboardText(h), reply_markup: { inline_keyboard: dashboardKeyboard(h) } });
+              // tg-<id> is a native Telegram wallet, not a linked X account: show the Link X row instead.
+              const xh = h && !h.startsWith("tg-") ? h : null;
+              await tg("sendMessage", { chat_id, text: dashboardText(xh), reply_markup: { inline_keyboard: dashboardKeyboard(xh) } });
               return Response.json({ ok: true });
             }
             if (key === "balance" || key === "wallet" || key === "positions") {
@@ -680,7 +682,9 @@ export async function processTelegramUpdate(update: TelegramUpdate, token: strin
         }
         if (/^\/(start|app|menu|launches|help)/.test(text)) {
           const isHelp = text.startsWith("/help");
-          const h = isPrivate ? await linkedHandle() : null;
+          // tg-<id> is a native Telegram wallet, not a linked X account: never show it as an X link.
+          const rawHandle = isPrivate ? await linkedHandle() : null;
+          const h = rawHandle && !rawHandle.startsWith("tg-") ? rawHandle : null;
           const status = isPrivate ? (h ? `\n\n✅ Linked to X @${h}` : "\n\n⚠️ X not linked yet — tap Link X account below.") : "";
           await tg("sendMessage", {
             chat_id: chatId,
