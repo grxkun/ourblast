@@ -261,7 +261,9 @@ export async function processTelegramUpdate(update: TelegramUpdate, token: strin
             const u = { x_username: await tgWalletHandle(cq.from.id) as string | null };
             const h = u?.x_username ?? null;
             if (key === "home") {
-              await tg("sendMessage", { chat_id, text: dashboardText(h), reply_markup: { inline_keyboard: dashboardKeyboard(h) } });
+              // tg-<id> is a native Telegram wallet, not a linked X account: show the Link X row instead.
+              const xh = h && !h.startsWith("tg-") ? h : null;
+              await tg("sendMessage", { chat_id, text: dashboardText(xh), reply_markup: { inline_keyboard: dashboardKeyboard(xh) } });
               return Response.json({ ok: true });
             }
             if (key === "balance" || key === "wallet" || key === "positions") {
