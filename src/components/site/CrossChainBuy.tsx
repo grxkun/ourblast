@@ -51,7 +51,7 @@ export function CrossChainBuy({ blastUrl, defaultOpen = false }: { blastUrl: str
         const el = document.getElementById(ROOT_ID);
         if (!el || !window.MayanSwap) throw new Error("missing");
         window.MayanSwap.init(el, {
-          appIdentity: { uri: window.location.origin, icon: `${window.location.origin}/favicon.ico`, name: "OURBLAST" },
+          appIdentity: { uri: window.location.origin, icon: `${window.location.origin}/ourblast-icon-192.png`, name: "OURBLAST" },
           sourceChains: [...MAYAN_SOURCE_CHAINS],
           destinationChains: ["sui"],
           defaultToChain: "sui",
