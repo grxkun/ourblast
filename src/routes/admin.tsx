@@ -9,6 +9,7 @@ import { SectionTitle } from "@/components/blast/AppShell";
 import { LauncherSettingsCard } from "@/components/terminal/LauncherSettingsCard";
 import { SuipumpReadinessCard } from "@/components/terminal/SuipumpReadinessCard";
 import { DevFeeCard } from "@/components/terminal/DevFeeCard";
+import { PartnerCapCard } from "@/components/terminal/PartnerCapCard";
 import { CreatorClaimCard } from "@/components/terminal/CreatorClaimCard";
 import { BotHealthCard } from "@/components/terminal/BotHealthCard";
 import { SwapTweetsCard } from "@/components/terminal/SwapTweetsCard";
@@ -309,6 +310,7 @@ function AdminPage() {
       ) : tab === "fees" ? (
         <div className="max-w-2xl space-y-6">
           <DevFeeCard />
+          <PartnerCapCard />
           <CreatorClaimCard />
         </div>
       ) : tab === "challenge" ? (
