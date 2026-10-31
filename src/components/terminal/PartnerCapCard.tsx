@@ -10,7 +10,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { useBlast } from "@/components/blast/session";
 import { PARTNER_CAP_TYPE, buildMintPartnerCap } from "@/lib/blast/partners";
-import { FOUNDER_ADDRESS, SUI_GRAPHQL } from "@/lib/ourblast.config";
+import { DEFAULT_TREASURY_ADDRESS, FOUNDER_ADDRESS, SUI_GRAPHQL } from "@/lib/ourblast.config";
 
 async function ownedCaps(owner: string): Promise<string[]> {
   const res = await fetch(SUI_GRAPHQL["sui:mainnet"]!, {
@@ -32,6 +32,16 @@ export function PartnerCapCard() {
   const [busy, setBusy] = useState(false);
   const [confirming, setConfirming] = useState(false);
   const [digest, setDigest] = useState<string | null>(null);
+  const [teamCaps, setTeamCaps] = useState<{ who: string; addr: string; caps: string[] }[]>([]);
+
+  useEffect(() => {
+    const team = [
+      { who: "Developer wallet", addr: FOUNDER_ADDRESS },
+      { who: "Treasury wallet", addr: DEFAULT_TREASURY_ADDRESS },
+    ];
+    void Promise.all(team.map(async (t) => ({ ...t, caps: await ownedCaps(t.addr).catch(() => []) }))).then(setTeamCaps);
+  }, [digest]);
+  const anyTeamCap = teamCaps.some((t) => t.caps.length > 0);
 
   const refresh = useCallback(async (addr: string) => {
     try { setCaps(await ownedCaps(addr)); } catch { setCaps(null); }
@@ -83,12 +93,17 @@ export function PartnerCapCard() {
       ) : (
         <p className="text-sm">No PartnerCap found in this wallet yet.</p>
       )}
+      {teamCaps.map((t) => (
+        <p key={t.addr} className="text-xs">
+          {t.who}: {t.caps.length > 0 ? <span className="font-bold">has a PartnerCap — don't mint again ({(t.caps[0] ?? "").slice(0, 10)}…)</span> : "no cap yet"}
+        </p>
+      ))}
       {digest && (
         <a className="block text-xs underline" href={`https://suiscan.xyz/mainnet/tx/${digest}`} target="_blank" rel="noreferrer">
           View mint transaction
         </a>
       )}
-      <Button onClick={mint} disabled={busy} variant={confirming ? "destructive" : "default"}>
+      <Button onClick={mint} disabled={busy || anyTeamCap} variant={confirming ? "destructive" : "default"}>
         {busy ? "Waiting for wallet…" : confirming ? "Confirm: sign mint in wallet" : "Mint PartnerCap"}
       </Button>
       <p className="text-xs text-muted-foreground">
