@@ -1,4 +1,5 @@
 # Roadmap
+- [ ] Update Slush/site metadata icons to the official logo and enable developer-wallet admin access without minting or moving funds.
 - [x] Resolve verified launch tickers in shared buys and support direct buy-to-recipient syntax; 34 checks passed including mocked HOLMOT forwarding, no live trades or Telegram delivery tested.
 - [x] Apply platform-based recipient handles across Telegram groups, DM, and Mini App; exact unique Telegram lookup and mocked execution verified, no live transfers.
 - [x] Import official Blast Launch Advisor as an active workspace skill.
