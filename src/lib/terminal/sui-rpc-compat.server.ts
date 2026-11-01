@@ -12,12 +12,8 @@ const GRAPHQL = "https://graphql.mainnet.sui.io/graphql";
 const TIMEOUT_MS = 30_000;
 
 export async function suiGql<T>(query: string, variables: Record<string, unknown> = {}): Promise<T> {
-  const res = await fetch(GRAPHQL, {
-    method: "POST",
-    headers: { "content-type": "application/json", "user-agent": "ourblast/1.0" },
-    body: JSON.stringify({ query, variables }),
-    signal: AbortSignal.timeout(TIMEOUT_MS),
-  });
+  const { fetchSuiGql } = await import("./sui-gql-retry.server");
+  const res = await fetchSuiGql(GRAPHQL, JSON.stringify({ query, variables }), TIMEOUT_MS);
   const text = await res.text();
   let json: { data?: T; errors?: { message: string }[] };
   try {
