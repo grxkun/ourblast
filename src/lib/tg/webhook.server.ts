@@ -174,9 +174,11 @@ export async function processTelegramUpdate(update: TelegramUpdate, token: strin
         };
         /** Shows "⏳ note" right away, then replaces it with the final reply (falls back to a new message). */
         const replyWithProgress = async (chat_id: number, note: string, work: () => Promise<string>) => {
-          const [pid] = await Promise.all([tg("sendMessage", { chat_id, text: `⏳ ${note}…` }), tg("sendChatAction", { chat_id, action: "typing" })]);
+          // Start the work at once; the placeholder is sent alongside it instead of before it.
           const started = Date.now();
-          const text = await work().catch((e) => `❌ Failed: ${(e as Error).message}. Status is unconfirmed. Check your wallet and history before retrying; a transfer may already have been submitted.`);
+          const workP = work().catch((e) => `❌ Failed: ${(e as Error).message}. Status is unconfirmed. Check your wallet and history before retrying; a transfer may already have been submitted.`);
+          const [pid] = await Promise.all([tg("sendMessage", { chat_id, text: `⏳ ${note}…` }), tg("sendChatAction", { chat_id, action: "typing" })]);
+          const text = await workP;
           console.log(`tg command done in ${Date.now() - started}ms`);
           const body = { chat_id, text: text.slice(0, 4000), disable_web_page_preview: true };
           if (pid && (await fetch(`https://api.telegram.org/bot${token}/editMessageText`, {

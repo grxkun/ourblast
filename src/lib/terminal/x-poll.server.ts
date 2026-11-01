@@ -28,7 +28,7 @@ export async function runXMentionPoll(): Promise<{
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
   const { data: state } = await supabaseAdmin
     .from("x_bot_state")
-    .select("last_mention_id, bot_user_id, last_search_success_at")
+    .select("last_mention_id, bot_user_id, last_search_success_at, last_poll_success_at, last_poll_error")
     .eq("id", true)
     .maybeSingle();
 
@@ -212,16 +212,21 @@ export async function runXMentionPoll(): Promise<{
     (firstFailedIndex === -1 ? mentions.at(-1)?.id : mentions[firstFailedIndex - 1]?.id) ??
     state?.last_mention_id ??
     null;
-  await supabaseAdmin
-    .from("x_bot_state")
-    .update({
-      last_mention_id: newest,
-      bot_user_id: botUserId,
-      updated_at: new Date().toISOString(),
-      last_poll_success_at: new Date().toISOString(),
-      last_poll_error: null,
-    })
-    .eq("id", true);
+  // Idle polls only refresh the health heartbeat about once a minute instead of every poll.
+  const unchanged = newest === (state?.last_mention_id ?? null) && botUserId === (state?.bot_user_id ?? null);
+  const lastOk = state?.last_poll_success_at ? Date.parse(state.last_poll_success_at) : 0;
+  if (!unchanged || state?.last_poll_error || Date.now() - lastOk > 60_000) {
+    await supabaseAdmin
+      .from("x_bot_state")
+      .update({
+        last_mention_id: newest,
+        bot_user_id: botUserId,
+        updated_at: new Date().toISOString(),
+        last_poll_success_at: new Date().toISOString(),
+        last_poll_error: null,
+      })
+      .eq("id", true);
+  }
 
   // Retry queued automatic launches after a deployment fix or temporary chain
   // failure. executeLaunchRequest atomically claims each row, so overlapping
