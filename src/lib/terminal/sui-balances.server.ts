@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: BUSL-1.1
 import { normalizeStructTag } from "@mysten/sui/utils";
+import { fetchSuiGql } from "./sui-gql-retry.server";
 
 interface BalancePage {
   address: {
@@ -16,15 +17,10 @@ export async function readSuiHoldings(address: string) {
   let cursor: string | null = null;
   const seen = new Set<string>();
   do {
-    const res = await fetch("https://graphql.mainnet.sui.io/graphql", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({
-        query: `query($a:SuiAddress!,$after:String){address(address:$a){balances(first:50,after:$after){nodes{coinType{repr} totalBalance coinMetadata{symbol decimals}} pageInfo{hasNextPage endCursor}}}}`,
-        variables: { a: address, after: cursor },
-      }),
-      signal: AbortSignal.timeout(10_000),
-    });
+    const res = await fetchSuiGql("https://graphql.mainnet.sui.io/graphql", JSON.stringify({
+      query: `query($a:SuiAddress!,$after:String){address(address:$a){balances(first:50,after:$after){nodes{coinType{repr} totalBalance coinMetadata{symbol decimals}} pageInfo{hasNextPage endCursor}}}}`,
+      variables: { a: address, after: cursor },
+    }), 10_000);
     if (!res.ok) throw new Error("Sui balances are temporarily unavailable. Please refresh.");
     const json = await res.json() as { data?: BalancePage; errors?: { message: string }[] };
     const page = json.data?.address?.balances;
@@ -45,17 +41,15 @@ export async function readSuiHoldings(address: string) {
   return holdings;
 }
 async function gql<T>(query: string, variables: Record<string, unknown>): Promise<T> {
-  const res = await fetch("https://graphql.mainnet.sui.io/graphql", {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({ query, variables }),
-    signal: AbortSignal.timeout(10_000),
-  });
+  const res = await fetchSuiGql("https://graphql.mainnet.sui.io/graphql", JSON.stringify({ query, variables }), 10_000);
   if (!res.ok) throw new Error("Sui data is temporarily unavailable. Please refresh.");
   const json = await res.json() as { data?: T; errors?: { message: string }[] };
   if (json.errors?.length || !json.data) throw new Error("Sui data is temporarily unavailable. Please refresh.");
   return json.data;
 }
+
+// Coin metadata is effectively immutable on Sui, so cache found results per worker.
+const META_CACHE = new Map<string, { symbol: string; decimals: number }>();
 
 /** Coin symbol/decimals from official GraphQL (JSON-RPC metadata is retired on public nodes). Null = unknown coin. */
 export async function readCoinMetadata(coinType: string): Promise<{ symbol: string; decimals: number } | null> {
@@ -63,9 +57,16 @@ export async function readCoinMetadata(coinType: string): Promise<{ symbol: stri
   const known = mainTokenByType(coinType);
   if (known) return { symbol: known.symbol, decimals: known.decimals };
   if (normalizeStructTag(coinType) === normalizeStructTag("0x2::sui::SUI")) return { symbol: "SUI", decimals: 9 };
+  const key = normalizeStructTag(coinType);
+  const hit = META_CACHE.get(key);
+  if (hit) return hit;
   const data = await gql<{ coinMetadata: { symbol: string; decimals: number } | null }>(
     `query($t:String!){coinMetadata(coinType:$t){symbol decimals}}`, { t: coinType },
   );
+  if (data.coinMetadata) {
+    if (META_CACHE.size > 2000) META_CACHE.clear();
+    META_CACHE.set(key, data.coinMetadata);
+  }
   return data.coinMetadata;
 }
 
