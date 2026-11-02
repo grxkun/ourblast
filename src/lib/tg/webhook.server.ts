@@ -603,11 +603,16 @@ export async function processTelegramUpdate(update: TelegramUpdate, token: strin
             const sender = await linkedHandle();
             if (!sender) { await reply("🔗 DM @ourblastsuibot once to activate your wallet."); return Response.json({ ok: true }); }
             const replied = (msg as { reply_to_message?: { from?: { id?: number; is_bot?: boolean; username?: string } } }).reply_to_message?.from;
-            const label = `@${gs.tgUsername ?? replied?.username ?? "recipient"}`;
-            if (!gs.tgUsername && !replied?.id) { await reply("Tag someone: @ourblastsuibot send @user 100 BLAST — or reply to their message."); return Response.json({ ok: true }); }
+            const label = gs.address
+              ? (gs.address.startsWith("0x") ? `${gs.address.slice(0, 6)}…${gs.address.slice(-4)}` : gs.address)
+              : `@${gs.tgUsername ?? replied?.username ?? "recipient"}`;
+            if (!gs.address && !gs.tgUsername && !replied?.id) { await reply("Tag someone: @ourblastsuibot send @user 100 BLAST — or send 1 BLAST to name.sui / 0x… — or reply to their message."); return Response.json({ ok: true }); }
             const { tgRecipientAddress, tgWalletHandle } = await import("@/lib/tg/tgIdentity.server");
             const { ensureBankWallet } = await import("@/lib/terminal/bank-wallet.server");
-            const recAddr = gs.tgUsername
+            // .sui names / 0x addresses go straight to the shared send handler, which resolves SuiNS on-chain.
+            const recAddr = gs.address
+              ? gs.address
+              : gs.tgUsername
               ? await tgRecipientAddress(gs.tgUsername)
               : replied?.id && !replied.is_bot ? (await ensureBankWallet(await tgWalletHandle(replied.id), null)).address : null;
             if (!recAddr) { await reply(`${label} couldn't be resolved uniquely on Telegram. Ask them to open @ourblastsuibot once (no X needed), then try again. Nothing was sent.`); return Response.json({ ok: true }); }
