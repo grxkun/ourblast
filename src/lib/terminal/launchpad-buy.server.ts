@@ -124,7 +124,7 @@ export async function resolveLaunchpadBuy(coinOut: string): Promise<LaunchpadBuy
     if (sum && sum.poolState === "curve") {
       const info = await readSuipumpCurve(sum.curveId);
       if (info && !info.graduated) {
-        return { pad: "suipump", coinType: info.coinType, poolObjectId: info.curveId, priceConfigId: info.priceConfigId };
+        return { pad: "suipump", coinType: info.coinType, poolObjectId: info.curveId, priceConfigId: info.priceConfigId, suipumpTarget: info.target };
       }
     }
   } catch {
@@ -136,7 +136,7 @@ export async function resolveLaunchpadBuy(coinOut: string): Promise<LaunchpadBuy
   try {
     const info = await readSuipumpCurve(outType);
     if (info && !info.graduated) {
-      return { pad: "suipump", coinType: info.coinType, poolObjectId: info.curveId, priceConfigId: info.priceConfigId };
+      return { pad: "suipump", coinType: info.coinType, poolObjectId: info.curveId, priceConfigId: info.priceConfigId, suipumpTarget: info.target };
     }
   } catch {
     /* not a Curve object — not a Suipump direct buy */
@@ -207,7 +207,7 @@ async function buildSuipumpBuy(
   const [coinIn] = tx.splitCoins(tx.gas, [amountIn]);
   // buy returns (Coin<T>, Coin<SUI> refund) — both go back to the sender.
   const buyResult = tx.moveCall({
-    target: `${SUICOMP}::${SUICOMP_MODULE}::buy`,
+    target: `${plan.suipumpTarget ?? `${SUICOMP}::${SUICOMP_MODULE}`}::buy`,
     typeArguments: [plan.coinType],
     arguments: [
       tx.sharedObjectRef({ ...curveRef, mutable: true }),
@@ -307,7 +307,7 @@ export async function buildLaunchpadSellSwap(
   // Coin intent draws from coin objects and the address balance.
   const coinIn = tx.coin({ balance: amountIn, type: plan.coinType });
   const suiOut = tx.moveCall({
-    target: `${SUICOMP}::${SUICOMP_MODULE}::sell`,
+    target: `${plan.suipumpTarget ?? `${SUICOMP}::${SUICOMP_MODULE}`}::sell`,
     typeArguments: [plan.coinType],
     arguments: [
       tx.sharedObjectRef({ ...curveRef, mutable: true }),
