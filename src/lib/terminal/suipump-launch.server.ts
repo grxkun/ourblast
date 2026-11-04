@@ -17,6 +17,15 @@ import {
   SUIPUMP_SHARE_FUNCTION,
   SUIPUMP_TEMPLATE_URL_DEFAULT,
   SUIPUMP_TICKET_TYPE,
+  SUIPUMP_V18_PRICE_CONFIG,
+  SUIPUMP_V18_REGISTRY,
+  SUIPUMP_V18_WRITE,
+  CETUS_CLMM_PUBLISHED_AT,
+  CETUS_GLOBAL_CONFIG,
+  CETUS_POOLS,
+  CETUS_PROTECTED_TICK_SPACING,
+  SUI_COIN_TYPE,
+  isV18TicketType,
   type SuipumpDeployerStatus,
   type SuipumpLaunchConfig,
   type SuipumpLaunchResult,
@@ -797,6 +806,18 @@ export async function launchOnSuipump(input: SuipumpLaunchInput): Promise<Suipum
     awaitOwned(sender, ticketType, ticketId),
     awaitOwned(sender, `0x2::coin::TreasuryCap<${coinType}>`, capRow.address),
   ]);
+  // The issuer decides the lineage: a V18 ticket must go through the V18
+  // protected flow (Cetus PoolCreationCap attached before the curve is shared).
+  const v18 = Boolean(ticket && isV18TicketType(ticket.type));
+  if (v18 && !metadataRow) {
+    return {
+      status: "FAILED",
+      message: "Suipump V18 needs the coin's metadata object, which was not found, so nothing was launched.",
+      tokenAddress: null,
+      transactionDigest: published.digest,
+      coinType,
+    };
+  }
   if (!ticket || !cap) {
     return {
       status: "FAILED",
@@ -829,7 +850,7 @@ export async function launchOnSuipump(input: SuipumpLaunchInput): Promise<Suipum
   };
 
   const [registry, clock, allCoins] = await Promise.all([
-    sharedRef(config.registryId),
+    sharedRef(v18 ? SUIPUMP_V18_REGISTRY : config.registryId),
     sharedRef(CLOCK_ID),
     gasCoins(sender),
   ]);
@@ -862,9 +883,10 @@ export async function launchOnSuipump(input: SuipumpLaunchInput): Promise<Suipum
 
   // Move the coin's metadata into Sui's coin registry first, exactly like the
   // suipump.org client; skip only if this template created no legacy metadata.
+  let metadataArg: Awaited<ReturnType<typeof objectArg>> = null;
   if (metadataRow) {
     const registryArg = await objectArg(tx, COIN_REGISTRY_ID, true);
-    const metadataArg = await objectArg(tx, metadataRow.address, false);
+    metadataArg = await objectArg(tx, metadataRow.address, false);
     if (registryArg && metadataArg) {
       tx.moveCall({
         target: "0x2::coin_registry::migrate_legacy_metadata",
@@ -874,7 +896,56 @@ export async function launchOnSuipump(input: SuipumpLaunchInput): Promise<Suipum
     }
   }
 
-  const createResult = tx.moveCall({
+  if (v18 && !metadataArg) {
+    return {
+      status: "FAILED",
+      message: "Suipump V18 needs the coin's metadata object, which could not be read, so nothing was launched." +
+        (await refundEscrow()),
+      tokenAddress: null,
+      transactionDigest: published.digest,
+      coinType,
+    };
+  }
+  const capArg = tx.objectRef({ objectId: cap.objectId, version: cap.version, digest: cap.digest });
+  // V18 protection, step 1: mint the Cetus PoolCreationCap with the treasury
+  // cap and register the protected TOKEN/SUI pair, so only the curve can open
+  // the coin's Cetus pool at graduation (no sniper pool front-running).
+  const cetusConfig = v18 ? tx.sharedObjectRef({ ...CETUS_GLOBAL_CONFIG, mutable: false }) : null;
+  const cetusPools = v18 ? tx.sharedObjectRef({ ...CETUS_POOLS, mutable: true }) : null;
+  let poolCap: ReturnType<Transaction["moveCall"]>[number] | null = null;
+  if (v18 && cetusPools) {
+    poolCap = tx.moveCall({
+      target: `${CETUS_CLMM_PUBLISHED_AT}::factory::mint_pool_creation_cap`,
+      typeArguments: [coinType],
+      arguments: [cetusConfig!, cetusPools, capArg],
+    })[0] ?? null;
+    tx.moveCall({
+      target: `${CETUS_CLMM_PUBLISHED_AT}::factory::register_permission_pair`,
+      typeArguments: [coinType, SUI_COIN_TYPE],
+      arguments: [cetusConfig!, cetusPools, tx.pure.u32(CETUS_PROTECTED_TICK_SPACING), poolCap!],
+    });
+  }
+  const createResult = v18
+    ? tx.moveCall({
+        target: `${SUIPUMP_V18_WRITE}::curve::create_and_return`,
+        typeArguments: [coinType],
+        // V18: (LaunchTicket, &LaunchIssuerRegistry, TreasuryCap, Coin<SUI>,
+        // &CoinMetadata, payees, shares, graduation target (0 = Cetus, the
+        // only target V18 accepts), anti-bot delay, &Clock).
+        arguments: [
+          tx.objectRef({ objectId: ticket.objectId, version: ticket.version, digest: ticket.digest }),
+          tx.sharedObjectRef({ ...registry, mutable: false }),
+          capArg,
+          launchFee!,
+          metadataArg!,
+          tx.pure.vector("address", input.payees),
+          tx.pure.vector("u64", input.shareBps.map((bps) => BigInt(bps))),
+          tx.pure.u8(0),
+          tx.pure.u8(config.optionB),
+          tx.sharedObjectRef({ ...clock, mutable: false }),
+        ],
+      })
+    : tx.moveCall({
     target: `${config.packageId}::${SUIPUMP_MODULE}::${SUIPUMP_CREATE_FUNCTION}`,
     typeArguments: [coinType],
     // Order is the on-chain signature of create_and_return in the V17 package:
@@ -883,7 +954,7 @@ export async function launchOnSuipump(input: SuipumpLaunchInput): Promise<Suipum
     arguments: [
       tx.objectRef({ objectId: ticket.objectId, version: ticket.version, digest: ticket.digest }),
       tx.sharedObjectRef({ ...registry, mutable: false }),
-      tx.objectRef({ objectId: cap.objectId, version: cap.version, digest: cap.digest }),
+      capArg,
       launchFee!,
       tx.pure.string(name),
       tx.pure.string(symbol),
@@ -910,15 +981,24 @@ export async function launchOnSuipump(input: SuipumpLaunchInput): Promise<Suipum
   }
   // Anti-sniper first buy: the curve is still owned by this transaction, so
   // the creator's buy lands before anyone else can see the pool.
+  // V18 protection, step 2: attach the PoolCreationCap to the curve before
+  // anything else touches it — share_curve refuses a curve without it.
+  if (v18 && cetusPools && poolCap) {
+    tx.moveCall({
+      target: `${SUIPUMP_V18_WRITE}::curve::attach_pool_creation_cap`,
+      typeArguments: [coinType, SUI_COIN_TYPE],
+      arguments: [curveArg, cetusPools, poolCap],
+    });
+  }
   if (escrow && input.devBuyer) {
-    const priceConfigId = await readRegistryPriceConfig(config.registryId);
+    const priceConfigId = v18 ? SUIPUMP_V18_PRICE_CONFIG : await readRegistryPriceConfig(config.registryId);
     if (!priceConfigId) {
       devBuyError = "First buy skipped: Suipump's price config could not be read." + (await refundEscrow());
       escrow = null;
     } else {
       const priceConfig = await sharedRef(priceConfigId);
       const bought = tx.moveCall({
-        target: `${config.packageId}::${SUIPUMP_MODULE}::buy`,
+        target: v18 ? `${SUIPUMP_V18_WRITE}::curve::buy` : `${config.packageId}::${SUIPUMP_MODULE}::buy`,
         typeArguments: [coinType],
         arguments: [
           curveArg,
@@ -932,11 +1012,19 @@ export async function launchOnSuipump(input: SuipumpLaunchInput): Promise<Suipum
       tx.transferObjects([bought[0]!, bought[1]!], input.devBuyer.address);
     }
   }
-  tx.moveCall({
-    target: `${config.packageId}::${SUIPUMP_MODULE}::${SUIPUMP_SHARE_FUNCTION}`,
-    typeArguments: [coinType],
-    arguments: [curveArg],
-  });
+  if (v18 && cetusPools) {
+    tx.moveCall({
+      target: `${SUIPUMP_V18_WRITE}::curve::share_curve`,
+      typeArguments: [coinType, SUI_COIN_TYPE],
+      arguments: [curveArg, cetusPools],
+    });
+  } else {
+    tx.moveCall({
+      target: `${config.packageId}::${SUIPUMP_MODULE}::${SUIPUMP_SHARE_FUNCTION}`,
+      typeArguments: [coinType],
+      arguments: [curveArg],
+    });
+  }
   tx.transferObjects([creatorCap], sender);
 
   const created = await signAndExecute(tx, keypair);
@@ -951,7 +1039,7 @@ export async function launchOnSuipump(input: SuipumpLaunchInput): Promise<Suipum
     };
   }
 
-  const curve = created.created.find((row) => row.type.includes(`${SUIPUMP_MODULE}::Curve<`));
+  const curve = created.created.find((row) => row.type.includes(v18 ? "::curve::Curve<" : `${SUIPUMP_MODULE}::Curve<`));
   if (!curve) {
     return {
       status: "FAILED",
