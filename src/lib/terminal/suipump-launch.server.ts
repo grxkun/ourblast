@@ -694,6 +694,32 @@ async function readObjectRef(objectId: string, owner: string): Promise<OwnedObje
  * publish → launch pass → create curve. Returns CONFIRMED only when Sui
  * confirms the curve; anything else says plainly what happened.
  */
+
+/**
+ * Launch steps pay gas and the fee from Coin<SUI> objects. Funds received as
+ * an address balance (balance::send_funds) have no Coin object, so first turn
+ * enough of that balance into one coin for the bot itself; the SDK pays that
+ * one transaction's gas from the address balance.
+ */
+async function ensureCoinGas(keypair: Ed25519Keypair, sender: string, needMist: bigint): Promise<string | null> {
+  const data = await gql<{ address: { balance: { coinBalance: string; addressBalance: string } | null } | null }>(
+    `query($a:SuiAddress!){address(address:$a){balance(coinType:"0x2::sui::SUI"){coinBalance addressBalance}}}`,
+    { a: sender },
+  ).catch(() => null);
+  const bal = data?.address?.balance;
+  if (!bal) return null;
+  const coinBal = BigInt(bal.coinBalance ?? "0");
+  const accBal = BigInt(bal.addressBalance ?? "0");
+  if (coinBal >= needMist) return null;
+  const move = needMist - coinBal + 100_000_000n; // + 0.1 SUI headroom
+  if (accBal < move + 50_000_000n) return "The launch wallet does not hold enough SUI for a launch.";
+  const tx = new Transaction();
+  tx.setSender(sender);
+  tx.transferObjects([tx.coin({ balance: move, type: "0x2::sui::SUI" })], sender);
+  const done = await signAndExecute(tx, keypair);
+  return done.ok ? null : `The launch wallet's SUI could not be prepared (${done.error ?? "unknown"}).`;
+}
+
 export async function launchOnSuipump(input: SuipumpLaunchInput): Promise<SuipumpLaunchResult> {
   const config = readSuipumpConfig();
   const status = await readDeployerStatus();
@@ -746,6 +772,12 @@ export async function launchOnSuipump(input: SuipumpLaunchInput): Promise<Suipum
     return { status: "FAILED", message: "The coin could not be prepared.", tokenAddress: null, transactionDigest: null };
   }
 
+  const prepError = await ensureCoinGas(
+    keypair,
+    sender,
+    BigInt(PUBLISH_GAS_BUDGET_MIST + CREATE_GAS_BUDGET_MIST + config.launchFeeMist),
+  );
+  if (prepError) return { status: "FAILED", message: prepError, tokenAddress: null, transactionDigest: null };
   const gasPrice = await referenceGasPrice();
   const publishCoins = await gasCoins(sender);
   if (publishCoins.length === 0) {
