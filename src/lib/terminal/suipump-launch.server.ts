@@ -910,19 +910,19 @@ export async function launchOnSuipump(input: SuipumpLaunchInput): Promise<Suipum
   // V18 protection, step 1: mint the Cetus PoolCreationCap with the treasury
   // cap and register the protected TOKEN/SUI pair, so only the curve can open
   // the coin's Cetus pool at graduation (no sniper pool front-running).
-  const cetusConfig = tx.sharedObjectRef({ ...CETUS_GLOBAL_CONFIG, mutable: false });
+  const cetusConfig = v18 ? tx.sharedObjectRef({ ...CETUS_GLOBAL_CONFIG, mutable: false }) : null;
   const cetusPools = v18 ? tx.sharedObjectRef({ ...CETUS_POOLS, mutable: true }) : null;
   let poolCap: ReturnType<Transaction["moveCall"]>[number] | null = null;
   if (v18 && cetusPools) {
     [poolCap] = tx.moveCall({
       target: `${CETUS_CLMM_PUBLISHED_AT}::factory::mint_pool_creation_cap`,
       typeArguments: [coinType],
-      arguments: [cetusConfig, cetusPools, capArg],
+      arguments: [cetusConfig!, cetusPools, capArg],
     });
     tx.moveCall({
       target: `${CETUS_CLMM_PUBLISHED_AT}::factory::register_permission_pair`,
       typeArguments: [coinType, SUI_COIN_TYPE],
-      arguments: [cetusConfig, cetusPools, tx.pure.u32(CETUS_PROTECTED_TICK_SPACING), poolCap!],
+      arguments: [cetusConfig!, cetusPools, tx.pure.u32(CETUS_PROTECTED_TICK_SPACING), poolCap!],
     });
   }
   const createResult = v18
