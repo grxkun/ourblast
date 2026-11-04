@@ -918,7 +918,7 @@ export async function launchOnSuipump(input: SuipumpLaunchInput): Promise<Suipum
       target: `${CETUS_CLMM_PUBLISHED_AT}::factory::mint_pool_creation_cap`,
       typeArguments: [coinType],
       arguments: [cetusConfig!, cetusPools, capArg],
-    });
+    })[0] ?? null;
     tx.moveCall({
       target: `${CETUS_CLMM_PUBLISHED_AT}::factory::register_permission_pair`,
       typeArguments: [coinType, SUI_COIN_TYPE],
