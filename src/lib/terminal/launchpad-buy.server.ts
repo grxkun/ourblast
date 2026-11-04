@@ -67,6 +67,19 @@ export interface LaunchpadBuyPlan {
   coinType: string;
   poolObjectId: string;
   priceConfigId?: string;
+  /** Suipump call target (`pkg::module`) matching the curve's lineage (V17 or V18). */
+  suipumpTarget?: string;
+}
+
+// Suipump V18 (Nov 2026): defining package owns curve::Curve; calls go to the latest upgrade.
+const SUIPUMP_V18_DEFINING = "0x96a8523e464fdb6c1bb267404621cf47fcd3234d168b724b660995a420b439e3";
+const SUIPUMP_V18_WRITE = "0x511114ba2a5af7bb6b21ab243fb4d2fd8b23105ae7be086785abd2916ea2d99b";
+
+/** Picks the write package + module for a curve type; V18 curves use module `curve`. */
+export function suipumpTargetFor(curveType: string): string {
+  const pkg = normalizeSuiAddress(curveType.split("::")[0] ?? "");
+  if (pkg === SUIPUMP_V18_DEFINING) return `${SUIPUMP_V18_WRITE}::curve`;
+  return `${SUICOMP}::${SUICOMP_MODULE}`;
 }
 
 interface SuipumpCurveInfo {
@@ -74,6 +87,7 @@ interface SuipumpCurveInfo {
   curveId: string;
   priceConfigId: string;
   graduated: boolean;
+  target: string;
 }
 
 /** Reads a Suipump Curve shared object to get its coin type, price config and graduation state. */
@@ -82,15 +96,15 @@ async function readSuipumpCurve(curveId: string): Promise<SuipumpCurveInfo | nul
     data?: { type?: string; content?: { dataType?: string; fields?: Record<string, unknown> } };
   }>("sui_getObject", [curveId, { showType: true, showContent: true }]);
   const type = obj.data?.type ?? "";
-  // type: 0xb205…::bonding_curve::Curve<0x…::coin::COIN>
-  const m = type.match(/Curve<(.+)>$/);
+  // type: 0xb205…::bonding_curve::Curve<…> (V17) or 0x96a8…::curve::Curve<…> (V18)
+  const m = type.match(/::(?:bonding_curve|curve)::Curve<(.+)>$/);
   if (!m) return null;
   const coinType = normalizeStructTag(m[1]!);
   const fields = obj.data?.content?.dataType === "moveObject" ? obj.data.content.fields ?? {} : {};
   const graduated = Boolean(fields["graduated"]);
   const priceConfigId = String(fields["price_config_id"] ?? "");
   if (!priceConfigId) return null;
-  return { coinType, curveId, priceConfigId, graduated };
+  return { coinType, curveId, priceConfigId, graduated, target: suipumpTargetFor(type) };
 }
 
 /**
@@ -110,7 +124,7 @@ export async function resolveLaunchpadBuy(coinOut: string): Promise<LaunchpadBuy
     if (sum && sum.poolState === "curve") {
       const info = await readSuipumpCurve(sum.curveId);
       if (info && !info.graduated) {
-        return { pad: "suipump", coinType: info.coinType, poolObjectId: info.curveId, priceConfigId: info.priceConfigId };
+        return { pad: "suipump", coinType: info.coinType, poolObjectId: info.curveId, priceConfigId: info.priceConfigId, suipumpTarget: info.target };
       }
     }
   } catch {
@@ -122,7 +136,7 @@ export async function resolveLaunchpadBuy(coinOut: string): Promise<LaunchpadBuy
   try {
     const info = await readSuipumpCurve(outType);
     if (info && !info.graduated) {
-      return { pad: "suipump", coinType: info.coinType, poolObjectId: info.curveId, priceConfigId: info.priceConfigId };
+      return { pad: "suipump", coinType: info.coinType, poolObjectId: info.curveId, priceConfigId: info.priceConfigId, suipumpTarget: info.target };
     }
   } catch {
     /* not a Curve object — not a Suipump direct buy */
@@ -193,7 +207,7 @@ async function buildSuipumpBuy(
   const [coinIn] = tx.splitCoins(tx.gas, [amountIn]);
   // buy returns (Coin<T>, Coin<SUI> refund) — both go back to the sender.
   const buyResult = tx.moveCall({
-    target: `${SUICOMP}::${SUICOMP_MODULE}::buy`,
+    target: `${plan.suipumpTarget ?? `${SUICOMP}::${SUICOMP_MODULE}`}::buy`,
     typeArguments: [plan.coinType],
     arguments: [
       tx.sharedObjectRef({ ...curveRef, mutable: true }),
@@ -293,7 +307,7 @@ export async function buildLaunchpadSellSwap(
   // Coin intent draws from coin objects and the address balance.
   const coinIn = tx.coin({ balance: amountIn, type: plan.coinType });
   const suiOut = tx.moveCall({
-    target: `${SUICOMP}::${SUICOMP_MODULE}::sell`,
+    target: `${plan.suipumpTarget ?? `${SUICOMP}::${SUICOMP_MODULE}`}::sell`,
     typeArguments: [plan.coinType],
     arguments: [
       tx.sharedObjectRef({ ...curveRef, mutable: true }),
