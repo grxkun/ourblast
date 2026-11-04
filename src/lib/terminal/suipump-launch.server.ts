@@ -914,7 +914,7 @@ export async function launchOnSuipump(input: SuipumpLaunchInput): Promise<Suipum
   const cetusPools = v18 ? tx.sharedObjectRef({ ...CETUS_POOLS, mutable: true }) : null;
   let poolCap: ReturnType<Transaction["moveCall"]>[number] | null = null;
   if (v18 && cetusPools) {
-    [poolCap] = tx.moveCall({
+    poolCap = tx.moveCall({
       target: `${CETUS_CLMM_PUBLISHED_AT}::factory::mint_pool_creation_cap`,
       typeArguments: [coinType],
       arguments: [cetusConfig!, cetusPools, capArg],
