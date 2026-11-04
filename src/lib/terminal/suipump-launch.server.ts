@@ -717,7 +717,14 @@ async function ensureCoinGas(keypair: Ed25519Keypair, sender: string, needMist: 
   tx.setSender(sender);
   tx.transferObjects([tx.coin({ balance: move, type: "0x2::sui::SUI" })], sender);
   const done = await signAndExecute(tx, keypair);
-  return done.ok ? null : `The launch wallet's SUI could not be prepared (${done.error ?? "unknown"}).`;
+  if (!done.ok) return `The launch wallet's SUI could not be prepared (${done.error ?? "unknown"}).`;
+  // Wait until the new coin is listed, so the publish step can pay with it.
+  const newCoin = done.created.find((row) => row.type.includes("Coin<0x2::sui::SUI>"))?.address;
+  for (let i = 0; newCoin && i < 12; i += 1) {
+    if ((await gasCoins(sender)).some((c) => c.objectId === newCoin)) return null;
+    await new Promise((r) => setTimeout(r, 1_500));
+  }
+  return null;
 }
 
 export async function launchOnSuipump(input: SuipumpLaunchInput): Promise<SuipumpLaunchResult> {
