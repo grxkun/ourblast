@@ -132,7 +132,7 @@ export async function executeBankSwap(
     if (!picked.ok) return { picked, executed: null };
     const built = picked.built;
     const gas = await gasCoins(sender);
-    if (gas.length === 0) return { picked: { ok: false as const, error: "Your OurBank wallet has no SUI for network fees." }, executed: null };
+    if (!(await hasGasFunds(__ADDR__, gas))) return { picked: { ok: false as const, error: "Your OurBank wallet has no SUI for network fees." }, executed: null };
     // Aftermath reserves the trade amount from the address balance; pinning the
     // wallet's only SUI coin as gas makes the node reject that reservation, so
     // let the SDK pick gas itself for Aftermath routes.
@@ -311,7 +311,7 @@ export async function prepareSwapForAddress(
   const picked = await pickSwapRoute(sender, inType, outType, amountIn);
   if (!picked.ok) return picked;
   const gas = await gasCoins(sender);
-  if (gas.length === 0) return { ok: false, error: "Your wallet has no SUI for network fees." };
+  if (!(await hasGasFunds(__ADDR__, gas))) return { ok: false, error: "Your wallet has no SUI for network fees." };
   if (picked.built.venue === "Aftermath") {
     picked.built.tx.setSender(sender);
     picked.built.tx.setGasPrice(await referenceGasPrice());
