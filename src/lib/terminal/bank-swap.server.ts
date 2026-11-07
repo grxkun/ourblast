@@ -118,7 +118,7 @@ export async function executeBankSwap(
   amountIn: bigint,
   slippage: number = SLIPPAGE,
 ): Promise<SwapResult> {
-  const { gasCoins, referenceGasPrice, withGas, signAndExecute, rpc } = await import("./suipump-launch.server");
+  const { gasCoins, hasGasFunds, referenceGasPrice, withGas, signAndExecute, rpc } = await import("./suipump-launch.server");
   const signer = await bankSigner(wallet);
   const sender = signer.address;
   if (sender !== normalizeSuiAddress(wallet.address)) return { ok: false, error: "Bank wallet key mismatch." };
@@ -132,7 +132,7 @@ export async function executeBankSwap(
     if (!picked.ok) return { picked, executed: null };
     const built = picked.built;
     const gas = await gasCoins(sender);
-    if (!(await hasGasFunds(__ADDR__, gas))) return { picked: { ok: false as const, error: "Your OurBank wallet has no SUI for network fees." }, executed: null };
+    if (!(await hasGasFunds(sender, gas))) return { picked: { ok: false as const, error: "Your OurBank wallet has no SUI for network fees." }, executed: null };
     // Aftermath reserves the trade amount from the address balance; pinning the
     // wallet's only SUI coin as gas makes the node reject that reservation, so
     // let the SDK pick gas itself for Aftermath routes.
@@ -302,7 +302,7 @@ export async function prepareSwapForAddress(
   coinOut: string,
   amountIn: bigint,
 ): Promise<{ ok: true; bytes: string; quoted: bigint; venue: BuiltSwap["venue"] } | { ok: false; error: string }> {
-  const { gasCoins, referenceGasPrice, withGas } = await import("./suipump-launch.server");
+  const { gasCoins, hasGasFunds, referenceGasPrice, withGas } = await import("./suipump-launch.server");
   const sender = normalizeSuiAddress(address);
   const inType = normalizeCoinRef(coinIn);
   const outType = normalizeCoinRef(coinOut);
@@ -311,7 +311,7 @@ export async function prepareSwapForAddress(
   const picked = await pickSwapRoute(sender, inType, outType, amountIn);
   if (!picked.ok) return picked;
   const gas = await gasCoins(sender);
-  if (!(await hasGasFunds(__ADDR__, gas))) return { ok: false, error: "Your wallet has no SUI for network fees." };
+  if (!(await hasGasFunds(sender, gas))) return { ok: false, error: "Your wallet has no SUI for network fees." };
   if (picked.built.venue === "Aftermath") {
     picked.built.tx.setSender(sender);
     picked.built.tx.setGasPrice(await referenceGasPrice());

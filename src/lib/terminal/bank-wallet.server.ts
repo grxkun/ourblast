@@ -306,7 +306,7 @@ export async function sendFromBankWallet(
   amount: bigint | null,
   recipient: string,
 ): Promise<Result> {
-  const { gasCoins, referenceGasPrice, rpc, withGas, signAndExecute } = await chain();
+  const { gasCoins, hasGasFunds, referenceGasPrice, rpc, withGas, signAndExecute } = await chain();
   let signer: Awaited<ReturnType<typeof bankSigner>>;
   try {
     signer = await bankSigner(wallet);
@@ -318,7 +318,7 @@ export async function sendFromBankWallet(
   const type = normalizeStructTag(coinType);
 
   const gas = await gasCoins(sender);
-  if (!(await hasGasFunds(__ADDR__, gas))) return { ok: false, error: "Your OurBank wallet has no SUI for network fees." };
+  if (!(await hasGasFunds(sender, gas))) return { ok: false, error: "Your OurBank wallet has no SUI for network fees." };
   const tx = new Transaction();
   withGas(tx, sender, gas, await referenceGasPrice(), Number(GAS_BUDGET));
 
@@ -348,7 +348,7 @@ export async function sendNftsFromBankWallet(
   kioskItems: import("./kiosk").KioskItem[] = [],
 ): Promise<Result> {
   if (objectIds.length === 0 && kioskItems.length === 0) return { ok: false, error: "No NFTs to send." };
-  const { gasCoins, referenceGasPrice, withGas, signAndExecute } = await chain();
+  const { gasCoins, hasGasFunds, referenceGasPrice, withGas, signAndExecute } = await chain();
   const { addKioskTransfers, unsupportedRules, KIOSK_RULES_PKG } = await import("./kiosk");
   const { readTransferPolicies, readLinkedPackage } = await import("./sui-balances.server");
   const policies = new Map<string, import("./kiosk").KioskPolicy>();
@@ -368,7 +368,7 @@ export async function sendNftsFromBankWallet(
     return { ok: false, error: (e as Error).message };
   }
   const gas = await gasCoins(signer.address);
-  if (!(await hasGasFunds(__ADDR__, gas))) return { ok: false, error: "Your OurBank wallet has no SUI for network fees." };
+  if (!(await hasGasFunds(signer.address, gas))) return { ok: false, error: "Your OurBank wallet has no SUI for network fees." };
   const tx = new Transaction();
   withGas(tx, signer.address, gas, await referenceGasPrice(), Number(GAS_BUDGET) * (kioskItems.length ? 3 : 1));
   const to = normalizeSuiAddress(recipient);
@@ -385,7 +385,7 @@ export async function sendManyFromBankWallet(
   items: { coinType: string; amount: bigint }[],
   recipient: string,
 ): Promise<Result> {
-  const { gasCoins, referenceGasPrice, rpc, withGas, signAndExecute } = await chain();
+  const { gasCoins, hasGasFunds, referenceGasPrice, rpc, withGas, signAndExecute } = await chain();
   let signer: Awaited<ReturnType<typeof bankSigner>>;
   try {
     signer = await bankSigner(wallet);
@@ -395,7 +395,7 @@ export async function sendManyFromBankWallet(
   const sender = signer.address;
   const to = normalizeSuiAddress(recipient);
   const gas = await gasCoins(sender);
-  if (!(await hasGasFunds(__ADDR__, gas))) return { ok: false, error: "Your OurBank wallet has no SUI for network fees." };
+  if (!(await hasGasFunds(sender, gas))) return { ok: false, error: "Your OurBank wallet has no SUI for network fees." };
   const tx = new Transaction();
   withGas(tx, sender, gas, await referenceGasPrice(), Number(GAS_BUDGET));
 
@@ -426,7 +426,7 @@ export async function commitPresaleFromBankWallet(
   wallet: BankWalletRow,
   p: { pkg: string; presaleId: string; memeType: string; amount: bigint },
 ): Promise<Result> {
-  const { gasCoins, referenceGasPrice, withGas, signAndExecute } = await chain();
+  const { gasCoins, hasGasFunds, referenceGasPrice, withGas, signAndExecute } = await chain();
   let signer: Awaited<ReturnType<typeof bankSigner>>;
   try {
     signer = await bankSigner(wallet);
@@ -435,7 +435,7 @@ export async function commitPresaleFromBankWallet(
   }
   const sender = signer.address;
   const gas = await gasCoins(sender);
-  if (!(await hasGasFunds(__ADDR__, gas))) return { ok: false, error: "Your OurBank wallet has no SUI for network fees." };
+  if (!(await hasGasFunds(sender, gas))) return { ok: false, error: "Your OurBank wallet has no SUI for network fees." };
   const tx = new Transaction();
   withGas(tx, sender, gas, await referenceGasPrice(), Number(GAS_BUDGET));
   const [payment] = tx.splitCoins(tx.gas, [tx.pure.u64(p.amount)]);
