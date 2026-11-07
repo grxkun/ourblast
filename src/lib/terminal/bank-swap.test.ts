@@ -27,6 +27,7 @@ vi.mock("./bank-wallet.server", () => ({ bankSigner: mocks.signer }));
 vi.mock("./launchpad-buy.server", () => ({ resolveLaunchpadBuy: async () => null, buildLaunchpadSellSwap: async () => null }));
 vi.mock("./suipump-launch.server", () => ({
   gasCoins: async () => [{ objectId: "0x1" }],
+  hasGasFunds: async (_a: string, coins: unknown[]) => coins.length > 0,
   referenceGasPrice: async () => 1000,
   withGas: vi.fn(), signAndExecute: mocks.submit,
 }));
