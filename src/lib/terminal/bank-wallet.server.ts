@@ -318,7 +318,7 @@ export async function sendFromBankWallet(
   const type = normalizeStructTag(coinType);
 
   const gas = await gasCoins(sender);
-  if (gas.length === 0) return { ok: false, error: "Your OurBank wallet has no SUI for network fees." };
+  if (!(await hasGasFunds(__ADDR__, gas))) return { ok: false, error: "Your OurBank wallet has no SUI for network fees." };
   const tx = new Transaction();
   withGas(tx, sender, gas, await referenceGasPrice(), Number(GAS_BUDGET));
 
@@ -368,7 +368,7 @@ export async function sendNftsFromBankWallet(
     return { ok: false, error: (e as Error).message };
   }
   const gas = await gasCoins(signer.address);
-  if (gas.length === 0) return { ok: false, error: "Your OurBank wallet has no SUI for network fees." };
+  if (!(await hasGasFunds(__ADDR__, gas))) return { ok: false, error: "Your OurBank wallet has no SUI for network fees." };
   const tx = new Transaction();
   withGas(tx, signer.address, gas, await referenceGasPrice(), Number(GAS_BUDGET) * (kioskItems.length ? 3 : 1));
   const to = normalizeSuiAddress(recipient);
@@ -395,7 +395,7 @@ export async function sendManyFromBankWallet(
   const sender = signer.address;
   const to = normalizeSuiAddress(recipient);
   const gas = await gasCoins(sender);
-  if (gas.length === 0) return { ok: false, error: "Your OurBank wallet has no SUI for network fees." };
+  if (!(await hasGasFunds(__ADDR__, gas))) return { ok: false, error: "Your OurBank wallet has no SUI for network fees." };
   const tx = new Transaction();
   withGas(tx, sender, gas, await referenceGasPrice(), Number(GAS_BUDGET));
 
@@ -435,7 +435,7 @@ export async function commitPresaleFromBankWallet(
   }
   const sender = signer.address;
   const gas = await gasCoins(sender);
-  if (gas.length === 0) return { ok: false, error: "Your OurBank wallet has no SUI for network fees." };
+  if (!(await hasGasFunds(__ADDR__, gas))) return { ok: false, error: "Your OurBank wallet has no SUI for network fees." };
   const tx = new Transaction();
   withGas(tx, sender, gas, await referenceGasPrice(), Number(GAS_BUDGET));
   const [payment] = tx.splitCoins(tx.gas, [tx.pure.u64(p.amount)]);

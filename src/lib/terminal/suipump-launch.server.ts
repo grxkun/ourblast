@@ -538,9 +538,20 @@ export function withGas(tx: Transaction, sender: string, coins: OwnedObject[], g
   tx.setSender(sender);
   tx.setGasPrice(gasPrice);
   tx.setGasBudget(budget);
+  // No Coin<SUI> objects: leave payment unset so the SDK pays gas from the
+  // address-balance accumulator (funds received via send_funds).
+  if (coins.length === 0) return;
   tx.setGasPayment(
     coins.slice(0, 8).map((coin) => ({ objectId: coin.objectId, version: coin.version, digest: coin.digest })),
   );
+}
+
+/** True when the address can pay gas from coin objects or its address balance. */
+export async function hasGasFunds(address: string, coins: OwnedObject[]): Promise<boolean> {
+  if (coins.length > 0) return true;
+  const { readAddressBalance } = await import("./sui-balances.server");
+  const acc = await readAddressBalance(address, "0x2::sui::SUI").catch(() => 0n);
+  return acc >= 5_000_000n;
 }
 
 /**
