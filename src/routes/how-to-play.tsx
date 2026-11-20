@@ -99,10 +99,10 @@ function HowToPlay() {
             <div className="mt-7 flex flex-wrap gap-3">
               {userId ? (
                 <Link
-                  to="/arcade"
+                  to="/hub"
                   className="rounded-full bg-primary px-7 py-3 font-display text-lg tracking-wide text-primary-foreground uppercase transition-transform hover:-translate-y-0.5"
                 >
-                  Start playing
+                  Open the Hub
                 </Link>
               ) : (
                 <button
@@ -273,10 +273,10 @@ function HowToPlay() {
           Go take somebody's spot on the leaderboard.
         </p>
         <Link
-          to="/arcade"
+          to="/hub"
           className="rounded-full bg-primary px-8 py-3.5 font-display text-xl tracking-wide text-primary-foreground uppercase transition-transform hover:-translate-y-0.5"
         >
-          Play Blast Click
+          Open the Hub
         </Link>
       </section>
     </div>

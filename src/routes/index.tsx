@@ -6,7 +6,6 @@ import { AtSign, ShieldCheck } from "lucide-react";
 
 import heroGallery from "@/assets/hero-gallery.jpg.asset.json";
 import portrait from "@/assets/character-portrait.jpg.asset.json";
-import arcadeImg from "@/assets/gateway-arcade.jpg";
 import cityImg from "@/assets/gateway-city.jpg";
 import hubImg from "@/assets/gateway-hub.jpg";
 import { Ticker } from "@/components/site/Ticker";
@@ -57,7 +56,6 @@ const STATS = [
 ];
 
 const GATEWAYS = [
-  { to: "/arcade", title: "Arcade", body: "Play for BLAST POINTS, ranks and daily challenges.", img: arcadeImg },
   { to: "/build", title: "Builder City", body: "Build your block on Blast Island in 3D.", img: cityImg },
   { to: "/hub", title: "Coin Hub", body: "Chat, memes, roasts and the community board.", img: hubImg },
 ] as const;

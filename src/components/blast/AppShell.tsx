@@ -13,7 +13,6 @@ const NAV = [
   { to: "/", label: "Terminal", icon: "⌨️" },
   { to: "/launches", label: "Launches", icon: "🚀" },
   { to: "/assets", label: "Assets", icon: "🖼️" },
-  { to: "/arcade", label: "Arcade", icon: "🕹️" },
   { to: "/build", label: "Build", icon: "🏙️" },
   { to: "/hub", label: "Hub", icon: "🏠" },
   { to: "/leaderboard", label: "Ranks", icon: "🏆" },

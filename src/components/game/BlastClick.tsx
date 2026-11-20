@@ -284,9 +284,9 @@ export function BlastClick() {
   const share = async () => {
     const text = `I scored ${formatNumber(score)} in BLAST CLICK on OURBLAST 💥 helmets on.`;
     try {
-      if (navigator.share) await navigator.share({ text, url: "https://ourblast.xyz/arcade" });
+      if (navigator.share) await navigator.share({ text, url: "https://ourblast.xyz" });
       else {
-        await navigator.clipboard.writeText(`${text} https://ourblast.xyz/arcade`);
+        await navigator.clipboard.writeText(`${text} https://ourblast.xyz`);
         toast.success("Score copied — go brag.");
       }
     } catch {

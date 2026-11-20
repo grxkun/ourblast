@@ -11,7 +11,6 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AdminRouteImport } from './routes/admin'
-import { Route as ArcadeRouteImport } from './routes/arcade'
 import { Route as AssetsRouteImport } from './routes/assets'
 import { Route as BuildRouteImport } from './routes/build'
 import { Route as BuildersRouteImport } from './routes/builders'
@@ -54,11 +53,6 @@ const IndexRoute = IndexRouteImport.update({
 const AdminRoute = AdminRouteImport.update({
   id: '/admin',
   path: '/admin',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ArcadeRoute = ArcadeRouteImport.update({
-  id: '/arcade',
-  path: '/arcade',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AssetsRoute = AssetsRouteImport.update({
@@ -232,7 +226,6 @@ const ApiPublicTelegramWebhookRoute =
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
-  '/arcade': typeof ArcadeRoute
   '/assets': typeof AssetsRoute
   '/build': typeof BuildRoute
   '/builders': typeof BuildersRoute
@@ -270,7 +263,6 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
-  '/arcade': typeof ArcadeRoute
   '/assets': typeof AssetsRoute
   '/build': typeof BuildRoute
   '/builders': typeof BuildersRoute
@@ -309,7 +301,6 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
-  '/arcade': typeof ArcadeRoute
   '/assets': typeof AssetsRoute
   '/build': typeof BuildRoute
   '/builders': typeof BuildersRoute
@@ -349,7 +340,6 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/admin'
-    | '/arcade'
     | '/assets'
     | '/build'
     | '/builders'
@@ -387,7 +377,6 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/admin'
-    | '/arcade'
     | '/assets'
     | '/build'
     | '/builders'
@@ -425,7 +414,6 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/admin'
-    | '/arcade'
     | '/assets'
     | '/build'
     | '/builders'
@@ -464,7 +452,6 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AdminRoute: typeof AdminRoute
-  ArcadeRoute: typeof ArcadeRoute
   AssetsRoute: typeof AssetsRoute
   BuildRoute: typeof BuildRoute
   BuildersRoute: typeof BuildersRoute
@@ -514,13 +501,6 @@ declare module '@tanstack/react-router' {
       path: '/admin'
       fullPath: '/admin'
       preLoaderRoute: typeof AdminRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/arcade': {
-      id: '/arcade'
-      path: '/arcade'
-      fullPath: '/arcade'
-      preLoaderRoute: typeof ArcadeRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/assets': {
@@ -760,7 +740,6 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AdminRoute: AdminRoute,
-  ArcadeRoute: ArcadeRoute,
   AssetsRoute: AssetsRoute,
   BuildRoute: BuildRoute,
   BuildersRoute: BuildersRoute,

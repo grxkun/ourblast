@@ -677,12 +677,6 @@ function Docs() {
             liquidity, no buy or sell tax, no dev wallet.
           </li>
           <li>
-            <Link to="/arcade" className="text-primary underline">
-              Arcade
-            </Link>{" "}
-            — play for BLAST POINTS, daily challenges and leaderboard ranks.
-          </li>
-          <li>
             <Link to="/build" className="text-primary underline">
               Builder City
             </Link>{" "}

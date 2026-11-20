@@ -95,12 +95,6 @@ function Home() {
 
         <div className="mt-8 flex flex-wrap gap-3">
           <Link
-            to="/arcade"
-            className="glow-blast rounded-full bg-primary px-8 py-3.5 font-display text-xl tracking-wide text-primary-foreground uppercase transition-transform hover:-translate-y-0.5"
-          >
-            Play now
-          </Link>
-          <Link
             to="/how-to-play"
             className="rounded-full border-2 border-border px-8 py-3.5 font-display text-xl tracking-wide uppercase transition-transform hover:-translate-y-0.5"
           >
@@ -151,14 +145,7 @@ function Home() {
       </section>
 
       {/* cards */}
-      <section className="grid gap-5 lg:grid-cols-3">
-        <Card
-          to="/arcade"
-          kicker="Arcade"
-          title="Blast Click"
-          body="30 seconds, endless combos. Beat your own record and bank the points."
-          emoji="🕹️"
-        />
+      <section className="grid gap-5 lg:grid-cols-2">
         <Card
           to="/roast"
           kicker="Blast Roast"
@@ -310,7 +297,7 @@ function Card({
   body,
   emoji,
 }: {
-  to: "/arcade" | "/roast" | "/chat";
+  to: "/roast" | "/chat";
   kicker: string;
   title: string;
   body: string;
