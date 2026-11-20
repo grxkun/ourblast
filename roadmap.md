@@ -1,4 +1,5 @@
 # Roadmap
+- [x] Update Blast.fun production contracts; 29 tests, live SUI curve routing, buy/round-trip sell and open HASHI presale dry-runs passed; no signing, funds moved or publishing.
 - [x] Refresh wallet/site icon addresses and Mayan metadata using the official logo; no minting or funds moved.
 - [ ] Grant developer-wallet admin access — blocked: developer address has no registered profile; owner must sign in with that Slush account first.
 - [x] Resolve verified launch tickers in shared buys and support direct buy-to-recipient syntax; 34 checks passed including mocked HOLMOT forwarding, no live trades or Telegram delivery tested.

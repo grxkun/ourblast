@@ -4,6 +4,8 @@ import { normalizeStructTag, normalizeSuiAddress } from "@mysten/sui/utils";
 
 import { findSuipumpToken } from "./suipump.server";
 import { rpc, sharedRef } from "./suipump-launch.server";
+import { BLAST_V2_LAUNCH_PKG, BLAST_V2_VERSION, BLAST_V2_RUNTIME } from "@/lib/blast/contracts";
+export { BLAST_V2_LAUNCH_PKG } from "@/lib/blast/contracts";
 
 /**
  * Direct bonding-curve buys for unbonded tokens (still on the launchpad curve,
@@ -41,9 +43,6 @@ const VERSION = { objectId: "0x2319e3e76dfad73d8f4684bdbf42be4f32d8ce4521dd61bec
 // Blast v2 (interest-protocol/blast-v2-contracts), verified on mainnet:
 //   launch::buy<M, Q>(&mut Launch<M,Q>, &PackageVersion, &RuntimeConfig, Coin<Q>, u64 min_out) -> (Coin<M>, Coin<Q> refund)
 //   launch::sell<M, Q>(&mut Launch<M,Q>, &PackageVersion, &RuntimeConfig, Coin<M>, u64 min_out) -> Coin<Q>
-export const BLAST_V2_LAUNCH_PKG = "0x079a1b44c551613cbc63cc0406f8ff8d717407378dd6f17d43d9e1b3fd63a573";
-const BLAST_V2_VERSION = { objectId: "0xe63adb5817a9a74a883062ac3790d21a6433dfbd35a9403d18261de3a8836f93", initialSharedVersion: "2" };
-const BLAST_V2_RUNTIME = { objectId: "0x6d0c08363ebc1e2a77f16fed290dd0cd5f52791285744d758a3b0942073b6785", initialSharedVersion: "1" };
 
 /** Finds the shared Blast v2 Launch<coinType, SUI> object for a coin, if one exists. */
 async function findBlastV2Launch(coinType: string): Promise<string | null> {

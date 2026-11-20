@@ -14,6 +14,11 @@ export const PARTNER_DELAY_MS = 7 * 24 * 60 * 60 * 1_000;
 
 export interface Timelocked<T> { before: T; after: T; at_ms: string | number; delay_ms?: string | number }
 
+/** Production Delayed values change only after on-chain apply, not when a timer expires. */
+export function productionTimedValue<T>(state: { value: T; pending: { value: T; ready_at_ms: string | number } | null }): { current: T; pending: T | null } {
+  return { current: state.value, pending: state.pending?.value ?? null };
+}
+
 /** Value in force at `now`: `after` once now ≥ at_ms, else `before`. */
 export function inForce<T>(t: Timelocked<T>, now: number): T {
   return now >= Number(t.at_ms) ? t.after : t.before;

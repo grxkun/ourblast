@@ -1,7 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { inForce, partnerCut, pendingChange, buildMintPartnerCap, BLAST_PARTNERS_PKG } from "./partners";
+import { inForce, partnerCut, pendingChange, buildMintPartnerCap, BLAST_PARTNERS_PKG, productionTimedValue } from "./partners";
 
 describe("blast partners", () => {
+  it("keeps production pending values pending until applied on-chain", () => {
+    expect(productionTimedValue({ value: "2000", pending: null })).toEqual({ current: "2000", pending: null });
+    const state = { value: "2000", pending: { value: "4000", ready_at_ms: "1000" } };
+    expect(productionTimedValue(state)).toEqual({ current: "2000", pending: "4000" });
+  });
   it("takes floor(fee × share / 10,000) — 40% of 2,000 USDC is 800", () => {
     expect(partnerCut(2_000_000_000n, 4_000)).toBe(800_000_000n);
     expect(partnerCut(15n, 4_000)).toBe(6n);

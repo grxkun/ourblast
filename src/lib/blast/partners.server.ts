@@ -5,12 +5,12 @@
  * call reports "not registered" and nothing changes.
  */
 import { Transaction } from "@mysten/sui/transactions";
-import { PARTNER_TYPE, inForce, pendingChange, type Timelocked } from "./partners";
-
-const LAUNCH_PKG = "0x079a1b44c551613cbc63cc0406f8ff8d717407378dd6f17d43d9e1b3fd63a573";
-const VERSION = { objectId: "0xe63adb5817a9a74a883062ac3790d21a6433dfbd35a9403d18261de3a8836f93", initialSharedVersion: "2" };
-const RUNTIME = { objectId: "0x6d0c08363ebc1e2a77f16fed290dd0cd5f52791285744d758a3b0942073b6785", initialSharedVersion: "1" };
-const LAUNCH_CONFIG = "0xb1c860103a7c89c7def5ec92bc0585f26bf927ac6b3df48c985e1154e4765391";
+import { productionTimedValue } from "./partners";
+import {
+  BLAST_V2_LAUNCH_PKG as LAUNCH_PKG, BLAST_V2_VERSION as VERSION,
+  BLAST_V2_LAUNCH_CONFIG as LAUNCH_CONFIG, BLAST_V2_TREASURY,
+  BLAST_V2_PARTNER_TYPE as PARTNER_TYPE,
+} from "./contracts";
 
 export function partnerId(): string | null {
   const v = process.env["BLAST_PARTNER_ID"]?.trim();
@@ -30,25 +30,28 @@ export async function readPartner(id = partnerId()): Promise<PartnerState | null
   );
   const c = r.object?.asMoveObject?.contents;
   if (!c?.json || !String(c.type?.repr ?? "").startsWith(PARTNER_TYPE)) return null;
-  const now = Date.now();
-  const share = c.json.share_bps as Timelocked<string>;
-  const cap = c.json.cap_id as Timelocked<string>;
-  const pend = pendingChange(share, now);
+  const share = productionTimedValue<string>(c.json.share_bps);
+  const cap = productionTimedValue<string>(c.json.cap_id);
   return {
-    id, recipient: c.json.recipient, shareBps: Number(inForce(share, now)),
-    pendingShareBps: pend == null ? null : Number(pend), capId: inForce(cap, now),
+    id, recipient: c.json.recipient, shareBps: Number(share.current),
+    pendingShareBps: share.pending == null ? null : Number(share.pending), capId: cap.current,
     launchpadAccepted: await launchpadAccepts(id).catch(() => false),
   };
 }
 
-/** LaunchConfig dynamic field PartnerKey(id) → u64 "accepted until". */
+/** Production LaunchConfig stores accepted-until values in a nested partner table. */
 async function launchpadAccepts(id: string): Promise<boolean> {
   const { suiGql } = await import("@/lib/terminal/sui-rpc-compat.server");
+  const config = await suiGql<{ object?: { asMoveObject?: { contents?: { json?: { partners?: { acceptance_ends_at_ms?: { id?: string } } } } } } }>(
+    `query($id: SuiAddress!) { object(address: $id) { asMoveObject { contents { json } } } }`, { id: LAUNCH_CONFIG },
+  );
+  const tableId = config.object?.asMoveObject?.contents?.json?.partners?.acceptance_ends_at_ms?.id;
+  if (!tableId) return false;
   const r = await suiGql<{ object?: { dynamicFields?: { nodes?: { name?: { type?: { repr?: string }; json?: any }; value?: { json?: any } }[] } } }>(
     `query($id: SuiAddress!) { object(address: $id) { dynamicFields(first: 50) { nodes { name { type { repr } json } value { ... on MoveValue { json } } } } } }`,
-    { id: LAUNCH_CONFIG },
+    { id: tableId },
   );
-  const hit = r.object?.dynamicFields?.nodes?.find((n) => String(n.name?.type?.repr ?? "").endsWith("::launch_config::PartnerKey") && JSON.stringify(n.name?.json ?? "").toLowerCase().includes(id.slice(2).toLowerCase()));
+  const hit = r.object?.dynamicFields?.nodes?.find((n) => String(n.name?.type?.repr ?? "") === "address" && String(n.name?.json ?? "").toLowerCase() === id.toLowerCase());
   return !!hit && Date.now() < Number(hit.value?.json ?? 0);
 }
 
@@ -75,7 +78,8 @@ export async function buildPartnerFeeClaim(sender: string, launchId: string, mem
   tx.setSender(sender);
   tx.moveCall({
     target: `${LAUNCH_PKG}::launch::claim_protocol_fees_with_partner`, typeArguments: [memeType, quoteType],
-    arguments: [tx.sharedObjectRef({ ...l, mutable: true }), tx.sharedObjectRef({ ...VERSION, mutable: false }), tx.sharedObjectRef({ ...RUNTIME, mutable: false }), tx.sharedObjectRef({ ...p, mutable: false }), tx.object.clock()],
+    // Production claim takes Treasury, not RuntimeConfig; TxContext is implicit.
+    arguments: [tx.sharedObjectRef({ ...l, mutable: true }), tx.sharedObjectRef({ ...VERSION, mutable: false }), tx.object(BLAST_V2_TREASURY), tx.sharedObjectRef({ ...p, mutable: false })],
   });
   return tx;
 }
