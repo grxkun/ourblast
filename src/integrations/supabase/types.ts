@@ -1164,6 +1164,27 @@ export type Database = {
           },
         ]
       }
+      coin_metadata_cache: {
+        Row: {
+          coin_type: string
+          created_at: string
+          decimals: number
+          symbol: string
+        }
+        Insert: {
+          coin_type: string
+          created_at?: string
+          decimals: number
+          symbol: string
+        }
+        Update: {
+          coin_type?: string
+          created_at?: string
+          decimals?: number
+          symbol?: string
+        }
+        Relationships: []
+      }
       creator_fee_designations: {
         Row: {
           authorized: boolean
@@ -2537,6 +2558,24 @@ export type Database = {
           received_at?: string
           status?: string
           update_id?: number
+        }
+        Relationships: []
+      }
+      tx_activity_cache: {
+        Row: {
+          items: Json
+          refreshed_at: string
+          tg_user_id: number
+        }
+        Insert: {
+          items?: Json
+          refreshed_at?: string
+          tg_user_id: number
+        }
+        Update: {
+          items?: Json
+          refreshed_at?: string
+          tg_user_id?: number
         }
         Relationships: []
       }

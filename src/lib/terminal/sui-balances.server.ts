@@ -60,12 +60,20 @@ export async function readCoinMetadata(coinType: string): Promise<{ symbol: stri
   const key = normalizeStructTag(coinType);
   const hit = META_CACHE.get(key);
   if (hit) return hit;
+  const db = await (async () => {
+    try { return (await import("@/integrations/supabase/client.server")).supabaseAdmin; } catch { return null; }
+  })();
+  if (db) {
+    const { data: row } = await db.from("coin_metadata_cache").select("symbol,decimals").eq("coin_type", key).maybeSingle().then((r) => r, () => ({ data: null }));
+    if (row) { META_CACHE.set(key, row); return row; }
+  }
   const data = await gql<{ coinMetadata: { symbol: string; decimals: number } | null }>(
     `query($t:String!){coinMetadata(coinType:$t){symbol decimals}}`, { t: coinType },
   );
   if (data.coinMetadata) {
     if (META_CACHE.size > 2000) META_CACHE.clear();
     META_CACHE.set(key, data.coinMetadata);
+    if (db) void db.from("coin_metadata_cache").upsert({ coin_type: key, ...data.coinMetadata }).then(() => {}, () => {});
   }
   return data.coinMetadata;
 }

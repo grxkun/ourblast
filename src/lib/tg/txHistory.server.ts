@@ -11,7 +11,7 @@ type Node = {
   effects: { timestamp: string | null; status: string; balanceChanges: { nodes: { amount: string; coinType: { repr: string }; owner: { address: string } | null }[] } } | null;
 };
 
-export async function walletTransactions(tgUserId: number, handle: string, limit = 20): Promise<TxItem[]> {
+async function fetchWalletTransactions(tgUserId: number, handle: string, limit = 20): Promise<TxItem[]> {
   const { listTgWallets } = await import("./tgWallets.server");
   const { ensureBankWallet } = await import("@/lib/terminal/bank-wallet.server");
   const { suiGql } = await import("@/lib/terminal/sui-rpc-compat.server");
@@ -45,4 +45,18 @@ export async function walletTransactions(tgUserId: number, handle: string, limit
     .sort((a, b) => Date.parse(b.time ?? "0") - Date.parse(a.time ?? "0"))
     .filter((t) => (seen.has(t.digest + t.slot) ? false : (seen.add(t.digest + t.slot), true)))
     .slice(0, limit);
+}
+
+const FRESH_MS = 20_000;
+
+/** Served from the saved copy when it is under 20s old; a failed chain read falls back to the last saved list. */
+export async function walletTransactions(tgUserId: number, handle: string, limit = 20): Promise<TxItem[]> {
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const { data: row } = await supabaseAdmin.from("tx_activity_cache").select("items,refreshed_at").eq("tg_user_id", tgUserId).maybeSingle();
+  const cached = (row?.items as TxItem[] | undefined) ?? null;
+  if (cached && Date.now() - Date.parse(row!.refreshed_at) < FRESH_MS && cached.length >= Math.min(limit, cached.length)) return cached.slice(0, limit);
+  const fresh = await fetchWalletTransactions(tgUserId, handle, Math.max(limit, 30));
+  if (fresh.length === 0 && cached?.length) return cached.slice(0, limit);
+  await supabaseAdmin.from("tx_activity_cache").upsert({ tg_user_id: tgUserId, items: fresh as never, refreshed_at: new Date().toISOString() });
+  return fresh.slice(0, limit);
 }
