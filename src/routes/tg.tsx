@@ -14,7 +14,7 @@ import { buildSwapCommand, normalizeSwapToken, swapTokenSymbol } from "@/lib/tg/
 import { MAIN_TOKENS, mainTokenByType } from "@/lib/terminal/mainTokens";
 import { listPublicLaunches } from "@/lib/terminal/launch-status.functions";
 import { describeTx } from "@/lib/tg/txHistory";
-import { tgBlastPresales, tgBridgeHistory, tgTransactions, tgConsolidate, tgCreateWallet, tgExportWalletKey, tgWalletTokens, tgWalletTransfer, tgGetBankWallet, tgListWallets, tgSetTradeSlots, tgLinkX, tgRunCommand, tgSession, tgToggleWatch, tgUnlinkX } from "@/lib/tg/tg.functions";
+import { tgCommitPresale, tgBlastPresales, tgBridgeHistory, tgTransactions, tgConsolidate, tgCreateWallet, tgExportWalletKey, tgWalletTokens, tgWalletTransfer, tgGetBankWallet, tgListWallets, tgSetTradeSlots, tgLinkX, tgRunCommand, tgSession, tgToggleWatch, tgUnlinkX } from "@/lib/tg/tg.functions";
 
 const launchesQuery = queryOptions({
   queryKey: ["public-launches"],
@@ -195,7 +195,7 @@ function TgApp() {
             <p className="max-w-[60%] font-display text-2xl leading-tight">NEW MEMES<br /><span className="text-primary">NEW OPPORTUNITIES</span></p>
             <p className="mt-1 max-w-[60%] text-xs text-muted-foreground">Discover · Trade · Launch on Sui</p>
             <div className="mt-3 flex flex-wrap gap-1.5">
-              {["SUI", "SUIPUMP", "PERPSPLEXITY"].map((t) => (
+              {["SUI", "BLAST.FUN", "SUIPUMP", "PERPSPLEXITY"].map((t) => (
                 <span key={t} className="rounded-full border border-border bg-background/70 px-2 py-0.5 text-[0.6rem] font-semibold">{t}</span>
               ))}
             </div>
@@ -247,7 +247,7 @@ function TgApp() {
               </button>
             ))}
           </div>
-          <BlastPresales />
+          <BlastPresales initData={initData ?? ""} />
           {list(rows)}
         </div>
       )}
@@ -832,6 +832,9 @@ const CHEAT = [
   ["Bridge BNB", "bridge 0.02 bnb to sui"],
   ["Bridge out", "bridge 10 sui to bnb"],
   ["Claim fees", "claim fees for $TICKER"],
+  ["Presales", "/presales"],
+  ["Presale", "presale 0x…"],
+  ["Advisor", "/advisor"],
 ] as const;
 
 const TROUBLE = [
@@ -884,12 +887,65 @@ function GuideSheet({ onClose, onGo }: { onClose: () => void; onGo: (t: Tab) => 
   );
 }
 
-function BlastPresales() {
+type Presale = Awaited<ReturnType<typeof tgBlastPresales>>["presales"][number];
+
+function PresaleCommitSheet({ p, initData, onClose }: { p: Presale; initData: string; onClose: () => void }) {
+  const commit = useServerFn(tgCommitPresale);
+  const [amt, setAmt] = useState("1");
+  const [step, setStep] = useState<"pick" | "review" | "busy" | "done">("pick");
+  const [reply, setReply] = useState<string | null>(null);
+  const go = async () => {
+    setStep("busy");
+    try { const r = await commit({ data: { initData, presaleId: p.id, amount: amt } }); setReply(r.reply); }
+    catch (e) { setReply(`Not sent. ${(e as Error).message}`); }
+    setStep("done");
+  };
+  const label = p.symbol ? `$${p.symbol}` : p.name ?? "Presale";
+  return (
+    <div className="fixed inset-0 z-[60] flex items-end bg-background/70 backdrop-blur-sm" onClick={step === "busy" ? undefined : onClose}>
+      <div className="mx-auto w-full max-w-md rounded-t-3xl border border-border bg-card p-4 pb-[calc(1rem+env(safe-area-inset-bottom))]" onClick={(e) => e.stopPropagation()}>
+        <div className="mb-3 flex items-center justify-between">
+          <h2 className="font-display text-xl">COMMIT TO <span className="text-primary">{label}</span></h2>
+          {step !== "busy" && <button onClick={onClose} aria-label="Close"><X className="h-5 w-5" /></button>}
+        </div>
+        {p.raised && p.target && <p className="mb-2 text-xs text-muted-foreground">Raised {p.raised} / {p.target} SUI</p>}
+        {step === "pick" && (
+          <>
+            <div className="grid grid-cols-4 gap-1.5">
+              {["1", "5", "10", "25"].map((a) => (
+                <button key={a} onClick={() => setAmt(a)} className={`rounded-lg py-2 text-sm font-semibold ${amt === a ? "bg-primary text-primary-foreground" : "bg-surface"}`}>{a} SUI</button>
+              ))}
+            </div>
+            <input inputMode="decimal" value={amt} onChange={(e) => setAmt(e.target.value.replace(/[^0-9.]/g, ""))} className="mt-2 w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm" placeholder="Custom SUI amount" />
+            <Button className="mt-3 w-full" disabled={!(Number(amt) > 0)} onClick={() => setStep("review")}>Review</Button>
+          </>
+        )}
+        {step === "review" && (
+          <>
+            <p className="text-sm">Commit <b>{amt} SUI</b> from your main OurBank wallet to the {label} presale?</p>
+            <p className="mt-1 text-xs text-muted-foreground">If the raise misses its target you get a refund. Anything over a hard cap is returned. Claim on blast.fun after the sale ends.</p>
+            <div className="mt-3 grid grid-cols-2 gap-2">
+              <Button variant="outline" onClick={() => setStep("pick")}>Back</Button>
+              <Button onClick={() => void go()}>Confirm commit</Button>
+            </div>
+          </>
+        )}
+        {step === "busy" && <p className="text-sm text-muted-foreground">Committing on Sui…</p>}
+        {step === "done" && <p className="whitespace-pre-wrap break-words text-sm">{reply}</p>}
+        <a href={p.url} target="_blank" rel="noreferrer" className="mt-3 flex items-center gap-1 text-xs text-muted-foreground">Open on blast.fun <ExternalLink className="h-3 w-3" /></a>
+      </div>
+    </div>
+  );
+}
+
+function BlastPresales({ initData }: { initData: string }) {
   const fetchFeed = useServerFn(tgBlastPresales);
+  const [pick, setPick] = useState<Presale | null>(null);
   const [feed, setFeed] = useState<Awaited<ReturnType<typeof tgBlastPresales>> | null>(null);
   useEffect(() => { fetchFeed().then(setFeed).catch(() => setFeed({ ok: false, reason: "unavailable", presales: [] })); }, [fetchFeed]);
   return (
     <div className="rounded-2xl border border-primary/40 bg-card p-4">
+      {pick && <PresaleCommitSheet p={pick} initData={initData} onClose={() => setPick(null)} />}
       <div className="flex items-center justify-between">
         <span className="text-xs font-bold uppercase tracking-wider text-primary">Blast presales</span>
         <a href="https://blast.fun" target="_blank" rel="noreferrer" className="text-xs text-muted-foreground">blast.fun ↗</a>
@@ -897,7 +953,7 @@ function BlastPresales() {
       {feed?.ok && feed.presales.length > 0 ? (
         <div className="mt-2 space-y-2">
           {feed.presales.slice(0, 8).map((p) => (
-            <a key={p.id} href={p.url} target="_blank" rel="noreferrer" className="flex items-center gap-3 rounded-xl bg-surface p-2">
+            <button key={p.id} onClick={() => setPick(p)} className="flex w-full items-center gap-3 rounded-xl bg-surface p-2 text-left">
               {p.image ? <img src={p.image} alt="" className="h-9 w-9 rounded-lg object-cover" /> : <div className="h-9 w-9 rounded-lg bg-muted" />}
               <div className="min-w-0 flex-1">
                 <p className="truncate text-sm font-semibold">{p.symbol ? `$${p.symbol}` : p.name ?? "Presale"}</p>
@@ -905,8 +961,8 @@ function BlastPresales() {
                   {[p.status, p.raised && p.target ? `${p.raised} / ${p.target} SUI` : null].filter(Boolean).join(" · ") || "Open on blast.fun"}
                 </p>
               </div>
-              <ExternalLink className="h-4 w-4 text-muted-foreground" />
-            </a>
+              <span className="shrink-0 rounded-full bg-primary px-2 py-0.5 text-[0.65rem] font-bold text-primary-foreground">Commit</span>
+            </button>
           ))}
         </div>
       ) : (

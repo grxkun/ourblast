@@ -148,6 +148,21 @@ export const tgBlastPresales = createServerFn({ method: "GET" }).handler(async (
   return getBlastPresales();
 });
 
+/** Commits SUI to a verified Blast.fun presale from the caller's own main OurBank wallet. */
+export const tgCommitPresale = createServerFn({ method: "POST" })
+  .inputValidator((d) => z.object({
+    initData: z.string().min(1).max(4096),
+    presaleId: z.string().regex(/^0x[0-9a-fA-F]{1,64}$/),
+    amount: z.string().regex(/^\d+(\.\d{1,9})?$/).max(20),
+  }).parse(d))
+  .handler(async ({ data }) => {
+    if (!(Number(data.amount) > 0)) throw new Error("Enter an amount above 0.");
+    const { handle } = await linkedHandle(data.initData);
+    const { commitPresaleForHandle } = await import("./presale.server");
+    const reply = await commitPresaleForHandle(handle, data.presaleId, data.amount);
+    return { ok: reply.startsWith("✅"), reply };
+  });
+
 async function linkedHandle(initData: string) {
   const { user, db } = await authed(initData);
   void db;
