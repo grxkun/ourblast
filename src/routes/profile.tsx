@@ -20,16 +20,16 @@ import { ChainBackupButton, DepositActionToggle, evmSummary, solSummary, useChai
 export const Route = createFileRoute("/profile")({
   head: () => ({
     meta: [
-      { title: "Your Player Card — Points, Rank & Achievements | OURBLAST" },
+      { title: "Your Player Card — Best Score & Achievements | OURBLAST" },
       {
         name: "description",
         content:
-          "Your OURBLAST player card: BLAST POINTS balance, best score, login streak, achievements and recent point history.",
+          "Your OURBLAST player card: best score, login streak, achievements.",
       },
       { property: "og:title", content: "OURBLAST Player Card" },
       {
         property: "og:description",
-        content: "Track your points, streak, best score and achievements.",
+        content: "Track your streak, best score and achievements.",
       },
     ],
   }),
@@ -84,19 +84,6 @@ function ProfilePage() {
     },
   });
 
-  const history = useQuery({
-    queryKey: ["points-history", userId],
-    enabled: Boolean(userId),
-    queryFn: async () => {
-      const { data } = await supabase
-        .from("points_transactions")
-        .select("id, amount, reason, created_at")
-        .eq("user_id", userId!)
-        .order("created_at", { ascending: false })
-        .limit(20);
-      return data ?? [];
-    },
-  });
 
   if (!userId || !profile) {
     return (
@@ -266,9 +253,8 @@ function ProfilePage() {
         </section>
       ) : null}
 
-      <section className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+      <section className="grid grid-cols-3 gap-4">
         {[
-          { label: "Points", value: formatNumber(profile.points), tone: "text-lime" },
           { label: "Best score", value: formatNumber(profile.best_score), tone: "text-cyber" },
           { label: "Games", value: formatNumber(profile.games_played), tone: "" },
           { label: "Streak", value: `${profile.streak} 🔥`, tone: "text-primary" },
@@ -326,27 +312,6 @@ function ProfilePage() {
         </div>
       </section>
 
-      <section className="panel p-5 sm:p-6">
-        <SectionTitle kicker="Ledger" title="Recent points" />
-        {(history.data ?? []).length === 0 ? (
-          <p className="font-body text-muted-foreground">No points yet — go play a round.</p>
-        ) : (
-          <ul className="divide-y divide-border">
-            {(history.data ?? []).map((t) => (
-              <li key={t.id} className="flex items-center justify-between py-2.5 font-body text-sm">
-                <span className="capitalize">{t.reason.replace(/[_:]/g, " ")}</span>
-                <span className="flex items-center gap-3">
-                  <span className="text-xs text-muted-foreground">{timeAgo(t.created_at)}</span>
-                  <span className={t.amount >= 0 ? "text-lime" : "text-destructive"}>
-                    {t.amount >= 0 ? "+" : ""}
-                    {formatNumber(t.amount)}
-                  </span>
-                </span>
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
     </div>
   );
 }

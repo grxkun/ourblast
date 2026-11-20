@@ -18,7 +18,6 @@ const entries: SitemapEntry[] = [
   { path: "/ecosystem", changefreq: "daily", priority: "0.8" },
   { path: "/community-city", changefreq: "daily", priority: "0.8" },
   { path: "/how-to-play", changefreq: "monthly", priority: "0.8" },
-  { path: "/leaderboard", changefreq: "hourly", priority: "0.8" },
   { path: "/meme", changefreq: "daily", priority: "0.6" },
   { path: "/roast", changefreq: "weekly", priority: "0.6" },
   { path: "/chat", changefreq: "hourly", priority: "0.5" },

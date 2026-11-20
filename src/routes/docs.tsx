@@ -697,7 +697,7 @@ function Docs() {
             <Link to="/how-to-play" className="text-primary underline">
               How to play
             </Link>{" "}
-            — the five-step beginner guide to points and ranks.
+            — the five-step beginner guide.
           </li>
         </ul>
       </Block>

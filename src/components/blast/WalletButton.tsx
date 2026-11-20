@@ -22,9 +22,6 @@ export function WalletButton({ className }: { className?: string }) {
             <span className="block font-body text-xs text-muted-foreground">
               {playerLabel(profile)}
             </span>
-            <span className="block font-display text-sm text-lime">
-              {formatNumber(profile.points)} PTS
-            </span>
           </span>
         </Link>
         <Button

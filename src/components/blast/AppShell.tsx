@@ -17,7 +17,6 @@ const NAV = [
   { to: "/assets", label: "Assets", icon: "🖼️" },
   { to: "/build", label: "Build", icon: "🏙️" },
   { to: "/hub", label: "Hub", icon: "🏠" },
-  { to: "/leaderboard", label: "Ranks", icon: "🏆" },
   { to: "/chat", label: "Chat", icon: "💬" },
   { to: "/ecosystem", label: "Sui", icon: "◇" },
   { to: "/meme", label: "Meme", icon: "😂" },

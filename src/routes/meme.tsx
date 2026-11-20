@@ -18,7 +18,7 @@ export const Route = createFileRoute("/meme")({
       {
         name: "description",
         content:
-          "Two memes enter, one wins. Vote in today's Blast meme battle, submit your own and earn BLAST POINTS for taking part.",
+          "Two memes enter, one wins. Vote in today's Blast meme battle, submit your own.",
       },
       { property: "og:title", content: "OURBLAST Meme Battle" },
       {
@@ -72,7 +72,7 @@ function MemePage() {
     mutationFn: (memeId: string) => vote({ data: { battleId: battle.data!.id, memeId } }),
     onSuccess: (res) => {
       toast.success("Vote locked in", {
-        description: res.pointsEarned ? `+${res.pointsEarned} points` : undefined,
+        description: undefined,
       });
       refresh();
       void queryClient.invalidateQueries({ queryKey: ["battle"] });
@@ -89,7 +89,7 @@ function MemePage() {
       setTitle("");
       setImageUrl("");
       toast.success("Meme submitted for review", {
-        description: res.pointsEarned ? `+${res.pointsEarned} points` : undefined,
+        description: undefined,
       });
       refresh();
       void queryClient.invalidateQueries({ queryKey: ["my-memes"] });
@@ -110,7 +110,7 @@ function MemePage() {
         </p>
         <h1 className="mt-1 font-display text-4xl sm:text-5xl">Two memes. One winner.</h1>
         <p className="mt-3 max-w-xl font-body text-muted-foreground">
-          A fresh head-to-head every day. Vote once, earn points, and drop your own entries into the
+          A fresh head-to-head every day. Vote once and drop your own entries into the
           pool for tomorrow.
         </p>
       </div>

@@ -19,7 +19,7 @@ export const Route = createFileRoute("/chat")({
       {
         name: "description",
         content:
-          "Wallet-verified live chat for the Blast community. React to messages, mute the noise and earn BLAST POINTS for joining in.",
+          "Wallet-verified live chat for the Blast community. React to messages and mute the noise.",
       },
       { property: "og:title", content: "OURBLAST Community Chat" },
       {
@@ -126,7 +126,6 @@ function ChatPage() {
       const paymentId = await pay("chat");
       const res = await post({ data: { body, paymentId } });
       setDraft("");
-      if (res.pointsEarned > 0) toast.success(`+${res.pointsEarned} points for the noise`);
       void queryClient.invalidateQueries({ queryKey: ["profile"] });
       void queryClient.invalidateQueries({ queryKey: ["chat", "messages"] });
     } catch (error) {
@@ -175,7 +174,7 @@ function ChatPage() {
         </p>
         <h1 className="mt-1 font-display text-4xl sm:text-5xl">Blast chat</h1>
         <p className="mt-3 max-w-xl font-body text-muted-foreground">
-          Every message is signed by a wallet. Each message costs {FEES.chat} SUI, paid to the OURBLAST treasury. The first 20 messages a day earn points.
+          Every message is signed by a wallet. Each message costs {FEES.chat} SUI, paid to the OURBLAST treasury.
         </p>
       </div>
 

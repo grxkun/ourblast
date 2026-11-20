@@ -512,10 +512,10 @@ export function BlastClick() {
                     Share score
                   </button>
                   <Link
-                    to="/leaderboard"
+                    to="/hub"
                     className="rounded-full border border-border px-6 py-2.5 font-display tracking-wide uppercase"
                   >
-                    Leaderboard
+                    Hub
                   </Link>
                 </div>
               </div>

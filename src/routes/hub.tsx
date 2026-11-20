@@ -8,23 +8,22 @@ import { PlayerAvatar, PlayerName } from "@/components/blast/PlayerBadge";
 import { useBlast } from "@/components/blast/session";
 import { supabase } from "@/integrations/supabase/client";
 import { formatNumber, timeAgo } from "@/lib/blast";
-import { fetchLeaderboard } from "@/lib/leaderboard";
 import { getTodaysBattle } from "@/lib/community.functions";
 
 export const Route = createFileRoute("/hub")({
   head: () => ({
     meta: [
-      { title: "OURBLAST — Blast Community Arcade, Points & Leaderboards" },
+      { title: "OURBLAST — Blast Community Hub" },
       {
         name: "description",
         content:
-          "Play BLAST CLICK, climb the leaderboard, earn BLAST POINTS, battle memes and roast tokens. Connect your Slush wallet and join the Blast community arcade.",
+          "Battle memes and roast tokens. Connect your Slush wallet and join the Blast community arcade.",
       },
       { property: "og:title", content: "OURBLAST — Blast Community Arcade" },
       {
         property: "og:description",
         content:
-          "Arcade games, daily challenges, leaderboards, meme battles and AI roasts for the Blast community.",
+          "Daily challenges, meme battles and AI roasts for the Blast community.",
       },
     ],
   }),
@@ -33,11 +32,6 @@ export const Route = createFileRoute("/hub")({
 
 function Home() {
   const { userId, connect, connecting, profile } = useBlast();
-
-  const leaders = useQuery({
-    queryKey: ["leaderboard", "today"],
-    queryFn: () => fetchLeaderboard("today"),
-  });
 
   const challenge = useQuery({
     queryKey: ["challenge", "today"],
@@ -89,8 +83,7 @@ function Home() {
         </h1>
 
         <p className="mt-5 max-w-xl font-body text-lg text-muted-foreground">
-          A community-run arcade for Blast. Smash games, stack BLAST POINTS, fight for the top of
-          the leaderboard, vote on memes and let the AI roast your favourite token.
+          A community-run arcade for Blast. Vote on memes and let the AI roast your favourite token.
         </p>
 
         <div className="mt-8 flex flex-wrap gap-3">
@@ -105,7 +98,7 @@ function Home() {
               to="/profile"
               className="rounded-full bg-secondary px-8 py-3.5 font-display text-xl tracking-wide text-secondary-foreground uppercase transition-transform hover:-translate-y-0.5"
             >
-              {formatNumber(profile?.points ?? 0)} points
+              Your profile
             </Link>
           ) : (
             <button
@@ -157,47 +150,13 @@ function Home() {
           to="/chat"
           kicker="Community"
           title="Blast chat"
-          body="Wallet-verified chat. Talk trash, earn points for showing up."
+          body="Wallet-verified chat. Talk trash with the community."
           emoji="💬"
         />
       </section>
 
-      {/* leaderboard + challenge */}
-      <section className="grid gap-6 lg:grid-cols-[1.3fr_1fr]">
-        <div className="panel p-5 sm:p-6">
-          <SectionTitle
-            kicker="Trending today"
-            title="Top blasters"
-            action={
-              <Link to="/leaderboard" className="font-body text-sm text-cyber hover:underline">
-                Full leaderboard →
-              </Link>
-            }
-          />
-          {leaders.isLoading ? (
-            <p className="font-body text-muted-foreground">Loading scores…</p>
-          ) : (leaders.data ?? []).length === 0 ? (
-            <p className="font-body text-muted-foreground">
-              Nobody has played today yet. Be the first name on the board.
-            </p>
-          ) : (
-            <ol className="space-y-2">
-              {(leaders.data ?? []).slice(0, 6).map((row) => (
-                <li
-                  key={row.userId}
-                  className="flex items-center gap-3 rounded-2xl border border-border bg-background/40 px-4 py-3"
-                >
-                  <span className="w-7 font-display text-lg text-primary">#{row.rank}</span>
-                  <PlayerAvatar address={row.wallet} size={34} />
-                  <PlayerName address={row.wallet} nickname={row.nickname} className="flex-1" />
-                  <span className="font-display text-lg text-lime">{formatNumber(row.score)}</span>
-                </li>
-              ))}
-            </ol>
-          )}
-        </div>
-
-        <div className="space-y-6">
+      <section className="grid gap-6 lg:grid-cols-2">
+        <div className="contents">
           <div className="panel p-5 sm:p-6">
             <SectionTitle kicker="Daily challenge" title="Today's mission" />
             {challenge.data ? (
@@ -205,9 +164,6 @@ function Home() {
                 <p className="font-display text-xl">{challenge.data.title}</p>
                 <p className="mt-2 font-body text-sm text-muted-foreground">
                   {challenge.data.description}
-                </p>
-                <p className="mt-4 font-display text-lg text-lime">
-                  +{formatNumber(challenge.data.reward_points)} points
                 </p>
               </>
             ) : (
