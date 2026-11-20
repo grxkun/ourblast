@@ -34,6 +34,7 @@ export const getXBotStatus = createServerFn({ method: "GET" })
  * returns only counts, so it is safe to keep open.
  */
 export const pollXMentionsNow = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
   .handler(async () => {
     const { runXMentionPoll } = await import("./x-poll.server");
     return runXMentionPoll();

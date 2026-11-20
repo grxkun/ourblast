@@ -148,6 +148,13 @@
       "when": 1792796975207,
       "tag": "0020_telegram_durable_update_queue",
       "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1795179333005,
+      "tag": "0021_lock_scores_and_points",
+      "breakpoints": true
     }
   ]
 }
