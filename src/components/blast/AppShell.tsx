@@ -7,6 +7,7 @@ import type { ReactNode } from "react";
 import helmet from "@/assets/blast-logo.jpg.asset.json";
 import { useBlast } from "@/components/blast/session";
 import { WalletButton } from "@/components/blast/WalletButton";
+import { MotionDoodles } from "@/components/site/MotionDoodles";
 import { amIStaff } from "@/lib/admin.functions";
 
 const NAV = [
@@ -43,7 +44,8 @@ export function AppShell({ children }: { children: ReactNode }) {
   if (pathname === "/tg") return <div className="theme-paper min-h-screen">{children}</div>;
 
   return (
-    <div className="theme-paper min-h-screen">
+    <div className="theme-paper relative min-h-screen">
+      <MotionDoodles />
       <header className="sticky top-0 z-50 border-b border-border bg-background/80 backdrop-blur-xl">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3">
           <Link to="/" className="flex items-center gap-2">
@@ -103,7 +105,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         </div>
       </header>
 
-      <main className="mx-auto max-w-6xl px-4 pt-6 pb-[calc(7rem+env(safe-area-inset-bottom))] lg:pb-16">{children}</main>
+      <main className="app-content mx-auto max-w-6xl px-4 pt-8 sm:px-6 pb-[calc(7rem+env(safe-area-inset-bottom))] lg:pb-16">{children}</main>
 
       <nav className="fixed bottom-0 left-0 z-50 w-full border-t border-border bg-background/95 pb-[env(safe-area-inset-bottom)] backdrop-blur-xl lg:hidden">
         <div className="mx-auto flex max-w-lg items-stretch justify-between px-1 py-1.5">

@@ -437,3 +437,20 @@
   .builder-atlas-controls button { width: 2rem; height: 2rem; }
   .builder-atlas-help { display: none; }
 }
+
+/* Motion doodles + typography polish */
+.doodle-layer { position: fixed; inset: 0; z-index: 0; pointer-events: none; overflow: hidden; }
+.doodle { position: absolute; color: var(--primary); opacity: .16; animation: doodle-drift 16s ease-in-out infinite; }
+.doodle-alt { color: var(--foreground); opacity: .1; animation-name: doodle-drift-alt; }
+@keyframes doodle-drift { 0%,100% { transform: translate(0,0) rotate(0deg); } 50% { transform: translate(14px,-22px) rotate(14deg); } }
+@keyframes doodle-drift-alt { 0%,100% { transform: translate(0,0) rotate(0deg) scale(1); } 50% { transform: translate(-18px,16px) rotate(-12deg) scale(1.08); } }
+@media (prefers-reduced-motion: reduce) { .doodle { animation: none; } }
+.app-content { position: relative; z-index: 1; }
+.theme-paper { font-family: var(--font-body); font-size: 15px; line-height: 1.6; -webkit-font-smoothing: antialiased; }
+@media (min-width: 768px) { .theme-paper { font-size: 16px; } }
+@layer base {
+  .theme-paper main h1 { font-size: clamp(2rem, 5.5vw, 3.75rem); line-height: .95; }
+  .theme-paper main h2 { font-size: clamp(1.4rem, 3.2vw, 2.1rem); line-height: 1.05; }
+  .theme-paper main h3 { font-size: clamp(1.05rem, 2vw, 1.3rem); line-height: 1.15; }
+  .theme-paper main p { text-wrap: pretty; }
+}
