@@ -40,6 +40,21 @@ export async function runTgCommand(
     return { linked: true, reply: r.ok ? `✅ Trades now run from: ${r.selected.map((s) => `w${s}`).join(", ")}${r.selected.length > 1 ? "\nEach buy spends the amount from every selected wallet." : ""}` : r.error! };
   }
 
+  // Auto-snipe rules ("snipe all launches by filter"). Saving needs the explicit "confirm" prefix.
+  const auto = await import("./autoSnipe");
+  const confirmAuto = /^confirm\s+/i.test(trimmed);
+  const ac = auto.parseAutoSnipeCommand(trimmed.replace(/^confirm\s+/i, ""));
+  if (ac) {
+    const as = await import("./autoSnipe.server");
+    if (ac.op === "error") return { linked: true, reply: ac.error };
+    if (ac.op === "list") return { linked: true, reply: await as.listAutoSnipes(tgUserId) };
+    if (ac.op !== "start") return { linked: true, reply: await as.controlAutoSnipe(tgUserId, ac.op, ac.id) };
+    const { listTgWallets } = await import("./tgWallets.server");
+    const { selected } = await listTgWallets(tgUserId, handle);
+    if (!confirmAuto) return { linked: true, reply: `${await as.autoSnipeReview(ac, selected.length)}\n\nTo turn it on, send:\nconfirm ${auto.autoLine(ac)}` };
+    return { linked: true, reply: await as.saveAutoSnipe(tgUserId, ac, selected) };
+  }
+
   // Limit orders.
   const lim = await import("./limitOrder");
   const lc = lim.parseLimitCommand(trimmed);

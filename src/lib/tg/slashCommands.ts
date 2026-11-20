@@ -8,7 +8,7 @@ const HELP: Record<string, string> = {
   sell: "🔴 Sell\n/sell 50% $BLAST\n/sell 100% 0x…::coin::COIN\nYou confirm before anything moves.",
   send: "📤 Send\n/send 100 $BLAST to @user\n/send 1 sui to name.sui\n/send 5 sui to 0x…\n@user is an X handle linked to OurBank.",
   burn: "🔥 Burn\n/burn 1000 $BLAST — sends to the burn address\n/burn 2 sui of $BLAST — buys, then burns what was bought",
-  snipe: "🎯 Snipe\n/snipe 0x…::coin::COIN 5 sui slippage 10%\nDefault slippage 10% (0.1–50%). Review, then confirm.",
+  snipe: "🎯 Snipe\n/snipe 0x…::coin::COIN 5 sui slippage 10%\nDefault slippage 10% (0.1–50%). Review, then confirm.\n\n⚡ All launches by filter\n/autosnipe all 2 sui max 10 sui slippage 15%\n/autosnipe blast 1 sui keyword pepe\nautosnipes · pausesnipe all · stopsnipe all",
   limit: "⏱ Limit orders\n/limit buy 5 sui of 0x…::coin::COIN at 0.0012\n/limit sell 50% 0x…::coin::COIN at 0.002\n/orders to view · cancel all",
   bridge: "🌉 Bridge\n/bridge 0.05 sol to sui\n/bridge 0.02 bnb to sui\n/bridge 10 sui to sol\n/bridges for history",
   swap: "🔁 Swap\n/swap 5 sui to usdc\n/swap 10 usdc to sui",

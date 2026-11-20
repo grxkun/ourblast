@@ -2397,6 +2397,101 @@ export type Database = {
         }
         Relationships: []
       }
+      tg_snipe_cursor: {
+        Row: {
+          last_ts: string
+          source: string
+          updated_at: string
+        }
+        Insert: {
+          last_ts: string
+          source: string
+          updated_at?: string
+        }
+        Update: {
+          last_ts?: string
+          source?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      tg_snipe_fills: {
+        Row: {
+          coin_type: string
+          created_at: string
+          filter_id: string
+          id: string
+          result: string | null
+        }
+        Insert: {
+          coin_type: string
+          created_at?: string
+          filter_id: string
+          id?: string
+          result?: string | null
+        }
+        Update: {
+          coin_type?: string
+          created_at?: string
+          filter_id?: string
+          id?: string
+          result?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tg_snipe_fills_filter_id_fkey"
+            columns: ["filter_id"]
+            isOneToOne: false
+            referencedRelation: "tg_snipe_filters"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tg_snipe_filters: {
+        Row: {
+          active: boolean
+          amount: number
+          created_at: string
+          daily_cap: number
+          id: string
+          keyword: string | null
+          launchpads: string[]
+          slippage: number
+          slots: number[]
+          spent: number
+          spent_day: string | null
+          tg_user_id: number
+        }
+        Insert: {
+          active?: boolean
+          amount: number
+          created_at?: string
+          daily_cap: number
+          id?: string
+          keyword?: string | null
+          launchpads?: string[]
+          slippage?: number
+          slots?: number[]
+          spent?: number
+          spent_day?: string | null
+          tg_user_id: number
+        }
+        Update: {
+          active?: boolean
+          amount?: number
+          created_at?: string
+          daily_cap?: number
+          id?: string
+          keyword?: string | null
+          launchpads?: string[]
+          slippage?: number
+          slots?: number[]
+          spent?: number
+          spent_day?: string | null
+          tg_user_id?: number
+        }
+        Relationships: []
+      }
       tg_sub_wallets: {
         Row: {
           bank_handle: string

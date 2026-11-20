@@ -86,6 +86,27 @@ async function walletPicker(tgUserId: number, handle: string): Promise<{ text: s
   };
 }
 
+const SNIPE_MENU_TEXT = "🎯 Sniper\n\n• Target: snipe 0x…::coin::COIN 5 sui slippage 10% — one token, review then confirm.\n• ⚡ All launches by filter: buy every new Blast.fun / Suipump launch automatically, with a per-launch size and daily max.\n  Custom: autosnipe all 2 sui max 10 sui slippage 15% keyword pepe\n\nPick a quick rule below — you always review before it turns on.";
+function snipeMenuKeyboard(): Btn[][] {
+  return [
+    [{ text: "⚡ All · 1 SUI", callback_data: "sa|all|1" }, { text: "⚡ All · 2 SUI", callback_data: "sa|all|2" }, { text: "⚡ All · 5 SUI", callback_data: "sa|all|5" }],
+    [{ text: "💥 Blast.fun · 2 SUI", callback_data: "sa|blast|2" }, { text: "🚀 Suipump · 2 SUI", callback_data: "sa|suipump|2" }],
+    [{ text: "📋 My rules", callback_data: "asl" }, { text: "👛 Wallets", callback_data: "m:wallets" }],
+    [{ text: "⬅️ Menu", callback_data: "m:home" }],
+  ];
+}
+async function sendAutoReview(tg: (m: string, b: Record<string, unknown>) => Promise<unknown>, chat_id: number, tgUserId: number, r: import("@/lib/tg/autoSnipe").AutoRule) {
+  const [{ autoLine }, as, h] = await Promise.all([import("@/lib/tg/autoSnipe"), import("@/lib/tg/autoSnipe.server"), tgWalletHandle(tgUserId)]);
+  if (!h) { await tg("sendMessage", { chat_id, text: "🔗 Link your account first (open the app → Wallet)." }); return; }
+  const { listTgWallets } = await import("@/lib/tg/tgWallets.server");
+  const { selected } = await listTgWallets(tgUserId, h);
+  await tg("sendMessage", {
+    chat_id, disable_web_page_preview: true,
+    text: `${await as.autoSnipeReview(r, selected.length)}\nWallets: ${selected.map((s) => `w${s}`).join(", ")}\n\n${autoLine(r)}`,
+    reply_markup: { inline_keyboard: [[{ text: "✅ Turn on auto-snipe", callback_data: "as" }, { text: "Cancel", callback_data: "x" }]] },
+  });
+}
+
 const MENU_HOWTO: Record<string, string> = {
   buy: "🟢 Buy\nPaste a token contract (0x…::coin::COIN) or $TICKER — I'll show Buy buttons.\nOr type: buy 1 sui of $BLAST",
   sell: "🔴 Sell\nType: sell 50% $BLAST · sell all $BLAST\nOr paste a token contract to get Sell buttons.",
@@ -304,6 +325,10 @@ export async function processTelegramUpdate(update: TelegramUpdate, token: strin
               await tg("sendMessage", { chat_id, text: m.text, reply_markup: { inline_keyboard: m.kb } });
               return Response.json({ ok: true });
             }
+            if (key === "snipe") {
+              await tg("sendMessage", { chat_id, text: SNIPE_MENU_TEXT, disable_web_page_preview: true, reply_markup: { inline_keyboard: snipeMenuKeyboard() } });
+              return Response.json({ ok: true });
+            }
             const how = MENU_HOWTO[key];
             if (how) await tg("sendMessage", { chat_id, text: how, disable_web_page_preview: true, reply_markup: { inline_keyboard: [[{ text: "⬅️ Menu", callback_data: "m:home" }]] } });
             return Response.json({ ok: true });
@@ -430,6 +455,26 @@ export async function processTelegramUpdate(update: TelegramUpdate, token: strin
               const { runTgCommand } = await import("@/lib/tg/runCommand.server");
               return (await runTgCommand(cq.from.id, line)).reply;
             });
+            return Response.json({ ok: true });
+          }
+          if (cq.data?.startsWith("sa|") || cq.data === "as" || cq.data === "asl") {
+            await tg("answerCallbackQuery", { callback_query_id: cq.id, text: cq.data === "as" ? "Turning on…" : undefined });
+            const auto = await import("@/lib/tg/autoSnipe");
+            const { runTgCommand } = await import("@/lib/tg/runCommand.server");
+            if (cq.data === "asl") {
+              await replyWithProgress(chat_id, "Loading rules", async () => (await runTgCommand(cq.from.id, "autosnipes")).reply);
+              return Response.json({ ok: true });
+            }
+            if (cq.data === "as") {
+              const line = (cq.message.text ?? "").split("\n").reverse().find((l) => l.startsWith("autosnipe "));
+              const { reply } = line ? await runTgCommand(cq.from.id, `confirm ${line}`) : { reply: "Rule not found. Nothing was turned on." };
+              await tg("editMessageText", { chat_id, message_id, text: reply.slice(0, 4000), disable_web_page_preview: true, reply_markup: { inline_keyboard: [[{ text: "📋 My rules", callback_data: "asl" }, { text: "⬅️ Menu", callback_data: "m:home" }]] } });
+              return Response.json({ ok: true });
+            }
+            const [, pads, amt] = cq.data!.split("|");
+            const r = auto.parseAutoSnipeCommand(`autosnipe ${pads} ${amt} sui`);
+            if (r?.op !== "start") return Response.json({ ok: true });
+            await sendAutoReview(tg, chat_id, cq.from.id, r);
             return Response.json({ ok: true });
           }
           if (cq.data === "cc") {
@@ -696,7 +741,7 @@ export async function processTelegramUpdate(update: TelegramUpdate, token: strin
           await tg("sendMessage", {
             chat_id: chatId,
             text: isHelp
-              ? "📖 OURBLAST menu\n\nIn this chat:\n• /menu — tap-to-use dashboard\n• /link — bind or check your X account\n• follow 0x… name — dev-wallet alerts · /following · unfollow 0x…\n• copy 0x… 2 sui max 10 sui — copy a wallet's buys/sells with a daily cap · stopcopy all\n• Paste a token address or $TICKER → buy/sell buttons\n• snipe 0x…::coin::COIN 5 sui slippage 10% — review, then confirm\n• limit buy 5 sui of 0x…::coin::COIN at 0.0012 · limit sell 50% 0x… at 0.002 · /orders · cancel all\n• /wallets · newwallet name · use 1,2 · use all · w2 sell 50% 0x… — multiple Sui wallets\n• presales · presale 0x… · commit 5 sui to 0x… — Blast.fun presale buys, confirm first\n• Type any command: balance · wallet · buy 1 sui of $BLAST · sell 50% $BLAST · bridge 0.05 sol to sui · send 10 $BLAST to name.sui\nBuys and sells always ask you to confirm first.\n\nIn the app:\n🏠 Home · 🔍 Discover · ⚡ Trade · 👛 Wallet" + status
+              ? "📖 OURBLAST menu\n\nIn this chat:\n• /menu — tap-to-use dashboard\n• /link — bind or check your X account\n• follow 0x… name — dev-wallet alerts · /following · unfollow 0x…\n• copy 0x… 2 sui max 10 sui — copy a wallet's buys/sells with a daily cap · stopcopy all\n• Paste a token address or $TICKER → buy/sell buttons\n• snipe 0x…::coin::COIN 5 sui slippage 10% — review, then confirm\n• autosnipe all 2 sui max 10 sui — snipe all new launches by filter · autosnipes · stopsnipe all\n• limit buy 5 sui of 0x…::coin::COIN at 0.0012 · limit sell 50% 0x… at 0.002 · /orders · cancel all\n• /wallets · newwallet name · use 1,2 · use all · w2 sell 50% 0x… — multiple Sui wallets\n• presales · presale 0x… · commit 5 sui to 0x… — Blast.fun presale buys, confirm first\n• Type any command: balance · wallet · buy 1 sui of $BLAST · sell 50% $BLAST · bridge 0.05 sol to sui · send 10 $BLAST to name.sui\nBuys and sells always ask you to confirm first.\n\nIn the app:\n🏠 Home · 🔍 Discover · ⚡ Trade · 👛 Wallet" + status
               : isPrivate ? dashboardText(h) : "gm 💥 Trade Sui tokens from your OurBank wallet — DM me to start.",
             reply_markup: { inline_keyboard: isPrivate && !isHelp ? dashboardKeyboard(h) : [
               ...(isPrivate && !h ? [[{ text: "🔗 Link X account", web_app: { url: LINK_URL } }]] : []),
@@ -866,6 +911,18 @@ export async function processTelegramUpdate(update: TelegramUpdate, token: strin
             chat_id: chatId, text: `${card}\n\nCommit: ${pre.amount} SUI from your OurBank wallet.\nNothing is sent until you tap Confirm.`, disable_web_page_preview: true,
             reply_markup: { inline_keyboard: [[{ text: "✅ Confirm commit", callback_data: encodePresaleAction("go", pre.amount) }, { text: "Cancel", callback_data: "x" }]] },
           });
+          return Response.json({ ok: true });
+        }
+
+        // Auto-snipe by filter: review card first; rules only save after Confirm.
+        const autoCmd = isPrivate ? (await import("@/lib/tg/autoSnipe")).parseAutoSnipeCommand(original) : null;
+        if (autoCmd && msg?.from?.id) {
+          if (autoCmd.op === "start") await sendAutoReview(tg, chatId, msg.from.id, autoCmd);
+          else {
+            const { runTgCommand } = await import("@/lib/tg/runCommand.server");
+            const { reply } = await runTgCommand(msg.from.id, original);
+            await tg("sendMessage", { chat_id: chatId, text: reply.slice(0, 4000), disable_web_page_preview: true });
+          }
           return Response.json({ ok: true });
         }
 

@@ -162,6 +162,13 @@
       "when": 1795189202231,
       "tag": "0022_onchain_read_cache",
       "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "7",
+      "when": 1795199616877,
+      "tag": "0023_tg_auto_snipe_filters",
+      "breakpoints": true
     }
   ]
 }

@@ -729,6 +729,8 @@ function Docs() {
         <Cmd>{"/buy 5 sui $BLAST   ·   /sell 50% $BLAST   ·   /swap 10 sui to usdc"}</Cmd>
         <Cmd>{"/send @friend 100 BLAST   ·   /burn 1000 $BLAST   ·   /burn 2 sui of $BLAST"}</Cmd>
         <Cmd>{"/snipe 0x…::coin::COIN 5 sui slippage 10   ·   /limit   ·   /bridge   ·   /scan $BLAST"}</Cmd>
+        <Cmd>{"/autosnipe all 2 sui max 10 sui slippage 15   ·   autosnipes   ·   pausesnipe all   ·   stopsnipe all"}</Cmd>
+        <p><strong>Snipe all launches by filter:</strong> pick Blast.fun, Suipump or both, a SUI amount per launch, a daily max, slippage and an optional keyword. After you confirm, every new matching launch (under 10 minutes old) is simulated and bought once per selected wallet, and you get a receipt. Up to 3 rules.</p>
         <p>Type a command alone (like <em>/send</em> or <em>/burn</em>) and the bot replies with examples — nothing moves.</p>
         <h3 className="pt-2 font-body text-sm font-bold text-foreground">Blast Launch Advisor & sniper checks</h3>
         <Cmd>{"/advisor plan launch $TOKEN for our game"}</Cmd>

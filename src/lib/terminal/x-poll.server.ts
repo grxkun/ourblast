@@ -322,6 +322,8 @@ async function runWalletJobs() {
     await maintainWalletFollows();
     const { maintainLimitOrders } = await import("@/lib/tg/limitOrder.server");
     await maintainLimitOrders();
+    const { maintainAutoSnipes } = await import("@/lib/tg/autoSnipe.server");
+    await maintainAutoSnipes();
   } catch (error) {
     console.error(`Telegram alerts failed: ${error instanceof Error ? error.message : "unknown"}`);
   }

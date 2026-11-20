@@ -483,6 +483,52 @@ function linkify(text: string) {
   );
 }
 
+function AutoSnipeBox({ busy, onRun }: { busy: boolean; onRun: (cmd: string) => void }) {
+  const [pads, setPads] = useState<"all" | "blast" | "suipump">("all");
+  const [amt, setAmt] = useState("2");
+  const [cap, setCap] = useState("10");
+  const [slip, setSlip] = useState("15");
+  const [kw, setKw] = useState("");
+  const [review, setReview] = useState(false);
+  const kwOk = !kw || /^[a-z0-9]{2,16}$/i.test(kw);
+  const ok = Number(amt) > 0 && Number(amt) <= 50 && Number(cap) >= Number(amt) && Number(cap) <= 500 && Number(slip) >= 0.1 && Number(slip) <= 50 && kwOk;
+  const line = `autosnipe ${pads} ${amt} sui max ${cap} sui slippage ${slip}%${kw ? ` keyword ${kw.toLowerCase()}` : ""}`;
+  const chip = (on: boolean) => `rounded-full px-3 py-1 text-xs font-bold ${on ? "bg-primary text-primary-foreground" : "bg-surface text-muted-foreground"}`;
+  return (
+    <div className="space-y-2 rounded-xl border border-border bg-surface/50 p-3">
+      <div className="flex items-center justify-between">
+        <p className="font-display text-base uppercase">⚡ Snipe all launches</p>
+        <button disabled={busy} onClick={() => onRun("autosnipes")} className="text-xs font-bold text-cyber underline">My rules</button>
+      </div>
+      <p className="text-xs text-muted-foreground">Buys every new launch that matches, within your daily max.</p>
+      <div className="flex flex-wrap gap-1">
+        {(["all", "blast", "suipump"] as const).map((p) => <button key={p} onClick={() => { setPads(p); setReview(false); }} className={chip(pads === p)}>{p === "all" ? "All" : p === "blast" ? "Blast.fun" : "Suipump"}</button>)}
+      </div>
+      <div className="grid grid-cols-3 gap-2 text-xs">
+        <label className="space-y-1"><span className="text-muted-foreground">SUI / launch</span><input inputMode="decimal" value={amt} onChange={(e) => { setAmt(e.target.value); setReview(false); }} className="w-full rounded-lg border border-border bg-card px-2 py-1.5" /></label>
+        <label className="space-y-1"><span className="text-muted-foreground">Max / day</span><input inputMode="decimal" value={cap} onChange={(e) => { setCap(e.target.value); setReview(false); }} className="w-full rounded-lg border border-border bg-card px-2 py-1.5" /></label>
+        <label className="space-y-1"><span className="text-muted-foreground">Slippage %</span><input inputMode="decimal" value={slip} onChange={(e) => { setSlip(e.target.value); setReview(false); }} className="w-full rounded-lg border border-border bg-card px-2 py-1.5" /></label>
+      </div>
+      <input value={kw} onChange={(e) => { setKw(e.target.value); setReview(false); }} placeholder="Keyword filter (optional, e.g. pepe)" className="w-full rounded-lg border border-border bg-card px-2 py-1.5 text-xs" />
+      {review ? (
+        <div className="space-y-2 rounded-lg bg-background/60 p-2 text-xs">
+          <p>Every new {pads === "all" ? "Blast.fun + Suipump" : pads === "blast" ? "Blast.fun" : "Suipump"} launch{kw ? ` containing “${kw}”` : ""}: <b>{amt} SUI</b> per selected wallet, max <b>{cap} SUI/day</b>, slippage {slip}%. Each buy is simulated first; new tokens can lose value fast.</p>
+          <div className="flex gap-2">
+            <button onClick={() => setReview(false)} className="flex-1 rounded-full bg-card py-2 font-bold">Cancel</button>
+            <button disabled={busy} onClick={() => { setReview(false); onRun(`confirm ${line}`); }} className="flex-1 rounded-full bg-primary py-2 font-bold text-primary-foreground disabled:opacity-50">Turn on</button>
+          </div>
+        </div>
+      ) : (
+        <div className="flex gap-2">
+          <button disabled={!ok || busy} onClick={() => setReview(true)} className="flex-1 rounded-full bg-primary py-2 text-xs font-bold text-primary-foreground disabled:opacity-50">Review rule</button>
+          <button disabled={busy} onClick={() => onRun("pausesnipe all")} className="rounded-full bg-card px-3 py-2 text-xs font-bold">Pause</button>
+          <button disabled={busy} onClick={() => onRun("stopsnipe all")} className="rounded-full bg-card px-3 py-2 text-xs font-bold text-destructive">Stop all</button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 type TradeMode = "swap" | "snipe" | "limit" | "copy";
 type TradePreset = { side: "buy" | "sell"; token: string; key: number; amount?: string; mode?: TradeMode };
 
@@ -640,6 +686,7 @@ function SnipeCard({ busy, onRun }: { busy: boolean; onRun: (cmd: string) => voi
   const cmd = `snipe ${ca.trim()} ${amount} sui slippage ${slip}%`;
   return (
     <div className="space-y-3 rounded-2xl border border-border bg-card p-4">
+      <AutoSnipeBox busy={busy} onRun={onRun} />
       <p className="font-display text-lg uppercase">Snipe a launch</p>
       <Button variant="outline" disabled={busy || !ok} onClick={() => onRun(`snipe review ${ca.trim()} ${amount} sui slippage ${slip}%`)}>Inspect & simulate</Button>
       <input value={ca} onChange={(e) => { setCa(e.target.value); setReview(false); }} placeholder="0x…::coin::COIN (contract only)"
