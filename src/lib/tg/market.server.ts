@@ -65,7 +65,31 @@ export async function loadMarket(sort: MarketSort): Promise<{ rows: MarketRow[];
         }
       } catch { /* Unavailable prices remain null. */ }
     }));
-    const rows = sortMarket(merged.map((r) => r.priceUsd === null && livePrices.has(r.coinType) ? { ...r, priceUsd: livePrices.get(r.coinType) ?? null } : r), sort);
+    // Fill USD volume / market cap for catalog tokens with no GeckoTerminal pool (e.g. Blast.fun).
+    const ds = new Map<string, Partial<MarketRow>>();
+    const missing = merged.filter((r) => r.volume24h === null).slice(0, 900);
+    const dsBatches: MarketRow[][] = [];
+    for (let i = 0; i < missing.length; i += 30) dsBatches.push(missing.slice(i, i + 30));
+    await Promise.all(dsBatches.map(async (batch) => {
+      try {
+        const r = await fetch(`https://api.dexscreener.com/latest/dex/tokens/${batch.map((t) => t.coinType).join(",")}`, { headers: { accept: "application/json" }, signal: AbortSignal.timeout(6000) });
+        if (!r.ok) return;
+        const j = await r.json() as { pairs?: Array<{ chainId?: string; baseToken?: { address?: string }; priceUsd?: string; volume?: { h24?: number }; priceChange?: { h24?: number }; marketCap?: number; fdv?: number; liquidity?: { usd?: number } }> };
+        for (const p of j.pairs ?? []) {
+          if (p.chainId !== "sui") continue;
+          const key = canonicalCoin(String(p.baseToken?.address ?? "")); if (!key) continue;
+          const prev = ds.get(key), liq = marketNumber(p.liquidity?.usd);
+          const vol = (marketNumber(p.volume?.h24) ?? 0) + (prev?.volume24h ?? 0);
+          if (!prev || (liq ?? 0) > (prev.liquidityUsd ?? 0)) ds.set(key, { priceUsd: marketNumber(p.priceUsd), change24h: marketNumber(p.priceChange?.h24), mcapUsd: marketNumber(p.marketCap), fdvUsd: marketNumber(p.fdv), liquidityUsd: liq, volume24h: vol });
+          else prev.volume24h = vol;
+        }
+      } catch { /* stays null */ }
+    }));
+    const rows = sortMarket(merged.map((r) => {
+      const d = ds.get(r.coinType);
+      const base = d ? { ...r, priceUsd: r.priceUsd ?? d.priceUsd ?? null, change24h: r.change24h ?? d.change24h ?? null, mcapUsd: r.mcapUsd ?? d.mcapUsd ?? null, fdvUsd: r.fdvUsd ?? d.fdvUsd ?? null, liquidityUsd: r.liquidityUsd ?? d.liquidityUsd ?? null, volume24h: d.volume24h ?? null } : r;
+      return base.priceUsd === null && livePrices.has(r.coinType) ? { ...base, priceUsd: livePrices.get(r.coinType) ?? null } : base;
+    }), sort);
     const result = { rows, error: warnings.length ? warnings.join(" · ") : null };
     cache.set(sort, { at: Date.now(), ...result }); return result;
   })();

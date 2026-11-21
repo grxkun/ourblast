@@ -14,12 +14,14 @@ export function MarketBoard({ limit, compact, onTrade }: { limit?: number; compa
   const [venue, setVenue] = useState("all");
   const [search, setSearch] = useState("");
   const [visible, setVisible] = useState(40);
+  const [order, setOrder] = useState<"default" | "mc" | "vol">("default");
   const q = useQuery({ queryKey: ["tg-market", sort], queryFn: () => tgMarket({ data: { sort } }), refetchInterval: 45_000, staleTime: 30_000 });
   const all = q.data?.rows ?? [];
   const venues = useMemo(() => ["all", ...Array.from(new Set(all.flatMap((r) => [r.source, r.dex])))], [all]);
   const term = search.trim().replace(/^\$/, "").toLowerCase();
   const filtered = all.filter((r) => (venue === "all" || r.source === venue || r.dex === venue) && (!term || `${r.symbol} ${r.name} ${r.coinType}`.toLowerCase().includes(term)));
-  const rows = filtered.slice(0, limit ?? visible);
+  const sorted = order === "default" ? filtered : [...filtered].sort((a, b) => order === "mc" ? (b.mcapUsd ?? -1) - (a.mcapUsd ?? -1) : (b.volume24h ?? -1) - (a.volume24h ?? -1));
+  const rows = sorted.slice(0, limit ?? visible);
 
   return (
     <div className="min-w-0 space-y-2">
@@ -43,7 +45,7 @@ export function MarketBoard({ limit, compact, onTrade }: { limit?: number; compa
       {q.data?.error && <p role="status" className="text-xs text-muted-foreground">{q.data.error}</p>}
       <div className="overflow-hidden rounded-lg border border-border bg-card" aria-label="Sui market tokens">
         <div className="grid grid-cols-[minmax(0,1fr)_5.7rem_4.4rem] gap-1 border-b border-border bg-surface px-2.5 py-2 text-[0.6rem] font-semibold uppercase text-muted-foreground">
-          <span>Token</span><span className="text-right">Price / 24h</span><span className="text-right">MC / Vol</span>
+          <span>Token</span><span className="text-right">Price / 24h</span><button type="button" className="text-right uppercase" onClick={() => setOrder((o) => o === "mc" ? "vol" : o === "vol" ? "default" : "mc")} aria-label="Sort by market cap or volume">{order === "mc" ? "MC ↓ / Vol" : order === "vol" ? "MC / Vol ↓" : "MC / Vol ⇅"}</button>
         </div>
         {q.isLoading && <p className="p-4 text-center text-xs text-muted-foreground">Loading Sui market…</p>}
         {!q.isLoading && rows.length === 0 && <p className="p-4 text-center text-xs text-muted-foreground">{q.isError ? "Market unavailable. Try refresh." : "No matching tokens."}</p>}
