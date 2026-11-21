@@ -4,12 +4,14 @@ import { useQuery } from "@tanstack/react-query";
 import { Search, RefreshCw, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { TokenSheet } from "./TokenSheet";
 import { tgMarket, type MarketRow, type MarketSort } from "@/lib/tg/market.functions";
 
 const usd = (n: number | null) => n === null ? "—" : n >= 1e9 ? `$${(n / 1e9).toFixed(2)}B` : n >= 1e6 ? `$${(n / 1e6).toFixed(2)}M` : n >= 1e3 ? `$${(n / 1e3).toFixed(1)}K` : `$${n.toFixed(0)}`;
 const price = (n: number | null) => n === null ? "—" : n >= 1 ? `$${n.toFixed(3)}` : n >= 0.0001 ? `$${n.toFixed(6)}` : `$${n.toPrecision(3)}`;
 
-export function MarketBoard({ limit, compact, onTrade }: { limit?: number; compact?: boolean; onTrade: (coinType: string) => void }) {
+export function MarketBoard({ limit, compact, onTrade, initData }: { limit?: number; compact?: boolean; onTrade: (coinType: string) => void; initData?: string | null }) {
+  const [open, setOpen] = useState<MarketRow | null>(null);
   const [sort, setSort] = useState<MarketSort>("trending");
   const [venue, setVenue] = useState("all");
   const [search, setSearch] = useState("");
@@ -50,7 +52,7 @@ export function MarketBoard({ limit, compact, onTrade }: { limit?: number; compa
         {q.isLoading && <p className="p-4 text-center text-xs text-muted-foreground">Loading Sui market…</p>}
         {!q.isLoading && rows.length === 0 && <p className="p-4 text-center text-xs text-muted-foreground">{q.isError ? "Market unavailable. Try refresh." : "No matching tokens."}</p>}
         {rows.map((r: MarketRow) => (
-          <Button key={r.coinType} variant="ghost" onClick={() => onTrade(r.coinType)} aria-label={`Trade ${r.symbol}`}
+          <Button key={r.coinType} variant="ghost" onClick={() => setOpen(r)} aria-label={`Open ${r.symbol}`}
             className="grid h-auto w-full grid-cols-[minmax(0,1fr)_5.7rem_4.4rem] items-center gap-1 whitespace-normal rounded-none border-b border-border px-2.5 py-2 text-left last:border-0">
             <span className="flex min-w-0 items-center gap-2">
               <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-surface text-[0.6rem] font-bold">{r.symbol.slice(0, 2)}</span>
@@ -74,6 +76,7 @@ export function MarketBoard({ limit, compact, onTrade }: { limit?: number; compa
         <span>{filtered.length} tokens{q.dataUpdatedAt ? ` · ${new Date(q.dataUpdatedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}` : ""}</span>
         {rows.length < filtered.length && <Button size="sm" variant="ghost" onClick={() => setVisible((n) => n + 40)}><ChevronDown />More</Button>}
       </div>}
+      {open && <TokenSheet row={open} initData={initData ?? null} onClose={() => setOpen(null)} onTrade={(c) => { setOpen(null); onTrade(c); }} />}
     </div>
   );
 }

@@ -233,7 +233,7 @@ function TgApp() {
             <h2 className="font-display text-lg">SUI MARKET</h2>
             <button className="text-xs font-semibold text-primary" onClick={() => { setDisc("market"); setTab("discover"); }}>See all</button>
           </div>
-          <MarketBoard limit={8} compact onTrade={tradeToken} />
+          <MarketBoard limit={8} compact onTrade={tradeToken} initData={initData} />
           <div className="flex items-center justify-between">
             <h2 className="font-display text-lg">OURBLAST LAUNCHES</h2>
             <button className="text-xs font-semibold text-primary" onClick={() => { setDisc("launches"); setFilter("live"); setTab("discover"); }}>See all</button>
@@ -249,7 +249,7 @@ function TgApp() {
               <button key={d} onClick={() => setDisc(d)} className={`rounded-full py-1.5 ${disc === d ? "bg-primary text-primary-foreground" : "text-muted-foreground"}`}>{d === "market" ? "Sui Market" : "OURBLAST Launches"}</button>
             ))}
           </div>
-          {disc === "market" ? <MarketBoard onTrade={tradeToken} /> : <>
+          {disc === "market" ? <MarketBoard onTrade={tradeToken} initData={initData} /> : <>
           <label className="flex items-center gap-2 rounded-full border border-border bg-surface px-4 py-2.5">
             <Search className="h-4 w-4 text-muted-foreground" />
             <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search ticker, creator or launchpad"

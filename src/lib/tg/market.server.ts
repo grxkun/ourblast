@@ -85,7 +85,26 @@ export async function loadMarket(sort: MarketSort): Promise<{ rows: MarketRow[];
         }
       } catch { /* stays null */ }
     }));
+    // Unbonded launchpad tokens: the on-chain curve is the truth; DEX aggregators show stale dust pools.
+    const curve = new Map<string, Partial<MarketRow>>();
+    const suiUsd = livePrices.get(canonicalCoin("0x2::sui::SUI") ?? "") ?? await fetch("https://aftermath.finance/api/price-info", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ coins: ["0x2::sui::SUI"] }), signal: AbortSignal.timeout(5000) })
+      .then((r) => r.json() as Promise<Record<string, { price?: number }>>).then((j) => j["0x2::sui::SUI"]?.price ?? null).catch(() => null);
+    const curveRows = merged.filter((r) => /blast|suipump|perps/i.test(r.source)).sort((a, b) => Number(b.priceUsd != null || ds.has(b.coinType)) - Number(a.priceUsd != null || ds.has(a.coinType))).slice(0, 120);
+    if (suiUsd) {
+      const [{ readCoinMetadata }, { readCurve }] = await Promise.all([import("@/lib/terminal/sui-balances.server"), import("./curvePrice.server")]);
+      await Promise.all(curveRows.map(async (r) => {
+        try {
+          const meta = await readCoinMetadata(r.coinType); if (!meta) return;
+          const c = await readCurve(r.coinType, meta.decimals); if (!c?.live) return;
+          const px = c.priceUsd ?? (c.priceSui != null ? c.priceSui * suiUsd : null);
+          if (!px || !Number.isFinite(px)) return;
+          curve.set(r.coinType, { priceUsd: px, mcapUsd: c.totalSupply ? px * c.totalSupply : null, fdvUsd: c.totalSupply ? px * c.totalSupply : null, liquidityUsd: c.reserveSui != null ? c.reserveSui * suiUsd : null });
+        } catch { /* keep other sources */ }
+      }));
+    }
     const rows = sortMarket(merged.map((r) => {
+      const cv = curve.get(r.coinType);
+      if (cv) { const d = ds.get(r.coinType); return { ...r, ...cv, change24h: r.change24h ?? d?.change24h ?? null, volume24h: r.volume24h ?? d?.volume24h ?? null } as MarketRow; }
       const d = ds.get(r.coinType);
       const base = d ? { ...r, priceUsd: r.priceUsd ?? d.priceUsd ?? null, change24h: r.change24h ?? d.change24h ?? null, mcapUsd: r.mcapUsd ?? d.mcapUsd ?? null, fdvUsd: r.fdvUsd ?? d.fdvUsd ?? null, liquidityUsd: r.liquidityUsd ?? d.liquidityUsd ?? null, volume24h: d.volume24h ?? null } : r;
       return base.priceUsd === null && livePrices.has(r.coinType) ? { ...base, priceUsd: livePrices.get(r.coinType) ?? null } : base;
