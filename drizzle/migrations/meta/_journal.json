@@ -183,6 +183,13 @@
       "when": 1795247134540,
       "tag": "0025_tg_trailing_stop",
       "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "7",
+      "when": 1795254000565,
+      "tag": "0026_sui_market_catalog",
+      "breakpoints": true
     }
   ]
 }

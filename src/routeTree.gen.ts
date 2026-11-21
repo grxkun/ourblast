@@ -36,6 +36,7 @@ import { Route as Char91DotwellKnownChar93OauthProtectedResourceRouteImport } fr
 import { Route as BuilderUsernameRouteImport } from './routes/builder/$username'
 import { Route as ClaimTokenRouteImport } from './routes/claim.$token'
 import { Route as EcosystemProjectSlugRouteImport } from './routes/ecosystem-project.$slug'
+import { Route as ApiPublicIndexerRouteImport } from './routes/api/public/indexer'
 import { Route as ApiPublicPerpsTestRouteImport } from './routes/api/public/perps-test'
 import { Route as ApiPublicXMentionRouteImport } from './routes/api/public/x-mention'
 import { Route as ApiPublicXPollRouteImport } from './routes/api/public/x-poll'
@@ -180,6 +181,11 @@ const EcosystemProjectSlugRoute = EcosystemProjectSlugRouteImport.update({
   path: '/ecosystem-project/$slug',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicIndexerRoute = ApiPublicIndexerRouteImport.update({
+  id: '/api/public/indexer',
+  path: '/api/public/indexer',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicPerpsTestRoute = ApiPublicPerpsTestRouteImport.update({
   id: '/api/public/perps-test',
   path: '/api/public/perps-test',
@@ -245,6 +251,7 @@ export interface FileRoutesByFullPath {
   '/builder/$username': typeof BuilderUsernameRoute
   '/claim/$token': typeof ClaimTokenRoute
   '/ecosystem-project/$slug': typeof EcosystemProjectSlugRoute
+  '/api/public/indexer': typeof ApiPublicIndexerRoute
   '/api/public/perps-test': typeof ApiPublicPerpsTestRoute
   '/api/public/x-mention': typeof ApiPublicXMentionRoute
   '/api/public/x-poll': typeof ApiPublicXPollRoute
@@ -281,6 +288,7 @@ export interface FileRoutesByTo {
   '/builder/$username': typeof BuilderUsernameRoute
   '/claim/$token': typeof ClaimTokenRoute
   '/ecosystem-project/$slug': typeof EcosystemProjectSlugRoute
+  '/api/public/indexer': typeof ApiPublicIndexerRoute
   '/api/public/perps-test': typeof ApiPublicPerpsTestRoute
   '/api/public/x-mention': typeof ApiPublicXMentionRoute
   '/api/public/x-poll': typeof ApiPublicXPollRoute
@@ -318,6 +326,7 @@ export interface FileRoutesById {
   '/builder/$username': typeof BuilderUsernameRoute
   '/claim/$token': typeof ClaimTokenRoute
   '/ecosystem-project/$slug': typeof EcosystemProjectSlugRoute
+  '/api/public/indexer': typeof ApiPublicIndexerRoute
   '/api/public/perps-test': typeof ApiPublicPerpsTestRoute
   '/api/public/x-mention': typeof ApiPublicXMentionRoute
   '/api/public/x-poll': typeof ApiPublicXPollRoute
@@ -356,6 +365,7 @@ export interface FileRouteTypes {
     | '/builder/$username'
     | '/claim/$token'
     | '/ecosystem-project/$slug'
+    | '/api/public/indexer'
     | '/api/public/perps-test'
     | '/api/public/x-mention'
     | '/api/public/x-poll'
@@ -392,6 +402,7 @@ export interface FileRouteTypes {
     | '/builder/$username'
     | '/claim/$token'
     | '/ecosystem-project/$slug'
+    | '/api/public/indexer'
     | '/api/public/perps-test'
     | '/api/public/x-mention'
     | '/api/public/x-poll'
@@ -428,6 +439,7 @@ export interface FileRouteTypes {
     | '/builder/$username'
     | '/claim/$token'
     | '/ecosystem-project/$slug'
+    | '/api/public/indexer'
     | '/api/public/perps-test'
     | '/api/public/x-mention'
     | '/api/public/x-poll'
@@ -465,6 +477,7 @@ export interface RootRouteChildren {
   BuilderUsernameRoute: typeof BuilderUsernameRoute
   ClaimTokenRoute: typeof ClaimTokenRoute
   EcosystemProjectSlugRoute: typeof EcosystemProjectSlugRoute
+  ApiPublicIndexerRoute: typeof ApiPublicIndexerRoute
   ApiPublicPerpsTestRoute: typeof ApiPublicPerpsTestRoute
   ApiPublicXMentionRoute: typeof ApiPublicXMentionRoute
   ApiPublicXPollRoute: typeof ApiPublicXPollRoute
@@ -665,6 +678,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof EcosystemProjectSlugRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/indexer': {
+      id: '/api/public/indexer'
+      path: '/api/public/indexer'
+      fullPath: '/api/public/indexer'
+      preLoaderRoute: typeof ApiPublicIndexerRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/perps-test': {
       id: '/api/public/perps-test'
       path: '/api/public/perps-test'
@@ -746,6 +766,7 @@ const rootRouteChildren: RootRouteChildren = {
   BuilderUsernameRoute: BuilderUsernameRoute,
   ClaimTokenRoute: ClaimTokenRoute,
   EcosystemProjectSlugRoute: EcosystemProjectSlugRoute,
+  ApiPublicIndexerRoute: ApiPublicIndexerRoute,
   ApiPublicPerpsTestRoute: ApiPublicPerpsTestRoute,
   ApiPublicXMentionRoute: ApiPublicXMentionRoute,
   ApiPublicXPollRoute: ApiPublicXPollRoute,

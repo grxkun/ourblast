@@ -27,10 +27,10 @@ export const Route = createFileRoute("/tg")({
   loader: ({ context }) => context.queryClient.ensureQueryData(launchesQuery),
   head: () => ({
     meta: [
-      { title: "OURBLAST for Telegram — Sui launches" },
-      { name: "description", content: "Track live Sui token launches from @Ourblastbot and keep a private watchlist inside Telegram." },
+      { title: "OURBLAST for Telegram — Sui Market & Trading" },
+      { name: "description", content: "Explore Sui market tokens and launchpads, manage your OurBank wallet, and trade inside Telegram." },
       { property: "og:title", content: "OURBLAST for Telegram" },
-      { property: "og:description", content: "Live Sui launches and a private watchlist, right inside Telegram." },
+      { property: "og:description", content: "Sui market discovery, launchpad tokens and OurBank trading, right inside Telegram." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
     ],

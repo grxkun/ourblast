@@ -2223,6 +2223,33 @@ export type Database = {
         }
         Relationships: []
       }
+      sui_market_catalog: {
+        Row: {
+          coin_type: string
+          launched_at: string | null
+          name: string
+          source: string
+          symbol: string
+          updated_at: string
+        }
+        Insert: {
+          coin_type: string
+          launched_at?: string | null
+          name?: string
+          source: string
+          symbol: string
+          updated_at?: string
+        }
+        Update: {
+          coin_type?: string
+          launched_at?: string | null
+          name?: string
+          source?: string
+          symbol?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       sui_out_hops: {
         Row: {
           amount_sui: number

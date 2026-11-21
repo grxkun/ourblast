@@ -1,4 +1,7 @@
 # Roadmap
+- [x] Expand Discover with 1,044 catalog tokens from historical Suipump V17/V18, Blast.fun, Popular and Perpsplexity events plus curated Sui tokens; mobile/desktop search, venue filters and dark mode checked, absent metrics remain unavailable.
+- [x] Prepare an optional read-only VPS indexer with authenticated ingestion and resumable backfill/catch-up; 16 tests pass, ingestion auth verified, no trades or public bot messages.
+- [ ] Start continuous VPS market indexing — blocked: daemon must be installed on the user's VPS, with a matching SUI_INDEXER_SECRET configured and the updated app published.
 - [x] Update Blast.fun production contracts; 29 tests, live SUI curve routing, buy/round-trip sell and open HASHI presale dry-runs passed; no signing, funds moved or publishing.
 - [x] Refresh wallet/site icon addresses and Mayan metadata using the official logo; no minting or funds moved.
 - [ ] Grant developer-wallet admin access — blocked: developer address has no registered profile; owner must sign in with that Slush account first.
