@@ -81,7 +81,7 @@ describe("Telegram contract buy webhook", () => {
       const menu = calls.find((c) => c.method === "sendMessage" && c.body.reply_markup)?.body;
       if (!menu) throw new Error("Missing menu message");
       expect(menu.text).not.toContain("Linked to X");
-      expect(menu.text).toContain("X not linked yet");
+      expect(menu.text).toContain("Telegram wallet active");
       const rows = menu.reply_markup!.inline_keyboard.flat().map((b) => b.text);
       expect(rows).toContain("🔗 Link X account");
     } finally {

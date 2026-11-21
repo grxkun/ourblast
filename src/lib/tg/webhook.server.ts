@@ -63,7 +63,7 @@ function dashboardKeyboard(handle: string | null): Btn[][] {
 }
 
 function dashboardText(handle: string | null): string {
-  return `💥 OURBLAST dashboard\nTap a button to use it. Anything that spends asks you to confirm first.\n\n${handle ? `✅ Linked to X @${handle}` : "⚠️ X not linked yet — tap Link X account."}`;
+  return `💥 OURBLAST dashboard\nTap a button to use it. Anything that spends asks you to confirm first.\n\n${handle ? `✅ Linked to X @${handle}` : "✅ Telegram wallet active & ready to trade. Linking X is optional (syncs with the website)."}`;
 }
 
 /** BasedBot-style wallet grid: tap W2…W6 to toggle which wallets trade, ✅ marks selected, All selects every wallet. */
@@ -807,7 +807,7 @@ export async function processTelegramUpdate(update: TelegramUpdate, token: strin
           // tg-<id> is a native Telegram wallet, not a linked X account: never show it as an X link.
           const rawHandle = isPrivate ? await linkedHandle() : null;
           const h = rawHandle && !rawHandle.startsWith("tg-") ? rawHandle : null;
-          const status = isPrivate ? (h ? `\n\n✅ Linked to X @${h}` : "\n\n⚠️ X not linked yet — tap Link X account below.") : "";
+          const status = isPrivate ? (h ? `\n\n✅ Linked to X @${h}` : "\n\n✅ Telegram wallet active & ready to trade. Linking X is optional.") : "";
           await tg("sendMessage", {
             chat_id: chatId,
             text: isHelp

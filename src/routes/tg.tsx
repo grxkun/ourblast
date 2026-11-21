@@ -40,7 +40,7 @@ export const Route = createFileRoute("/tg")({
 
 const PrivyXLink = lazy(() => import("@/components/tg/PrivyXLink"));
 
-type Session = { name: string; username: string | null; xUsername: string | null; privyAppId: string | null; watchlist: string[] };
+type Session = { name: string; username: string | null; xUsername: string | null; walletHandle: string; privyAppId: string | null; watchlist: string[] };
 declare global {
   interface Window { Telegram?: { WebApp?: { initData: string; ready: () => void; expand: () => void } } }
 }
@@ -100,7 +100,7 @@ function TgApp() {
     if (!initData) return;
     try {
       const r = await linkX({ data: { initData, privyToken } });
-      setSession((s) => (s ? { ...s, xUsername: r.xUsername } : s));
+      setSession((s) => (s ? { ...s, xUsername: r.xUsername, walletHandle: r.xUsername } : s));
       if (r.telegramSlot) setMergeSlot(r.telegramSlot);
     } catch (e) {
       setError(String((e as Error).message ?? e));
@@ -115,7 +115,7 @@ function TgApp() {
           <button className="text-xs text-muted-foreground underline" onClick={async () => {
             if (!initData) return;
             await unlinkX({ data: { initData } });
-            setSession({ ...session, xUsername: null });
+            setSession({ ...session, xUsername: null, walletHandle: session.walletHandle.startsWith("tg-") ? session.walletHandle : "" }); location.reload();
           }}>Unlink</button>
         </div>
       ) : null}
@@ -258,15 +258,15 @@ function TgApp() {
       )}
 
       {tab === "trade" && (
-        session?.xUsername && initData
+        session && initData
           ? <TradeTerminal initData={initData} preset={preset} />
-          : <div className="space-y-3"><p className="text-sm text-muted-foreground">Link your X account to trade from your OurBank wallet.</p>{xCard}</div>
+          : <p className="text-sm text-muted-foreground">Open this inside Telegram to trade.</p>
       )}
 
       {tab === "wallet" && (
         <div className="space-y-3">
           {xCard}
-          {session?.xUsername && initData && <WalletView initData={initData} handle={session.xUsername} onTrade={() => setTab("trade")}
+          {session && initData && <WalletView initData={initData} handle={session.walletHandle} onTrade={() => setTab("trade")}
             onSell={(token, amount) => { setPreset({ side: "sell", token, amount, key: Date.now() }); setTab("trade"); }} />}
         </div>
       )}
@@ -277,9 +277,9 @@ function TgApp() {
             <h2 className="font-display text-2xl uppercase">Assets</h2>
             <p className="text-sm text-muted-foreground">NFTs in your main OurBank Sui wallet, including kiosk items.</p>
           </div>
-          {session?.xUsername && initData
-            ? <TgNftPanel key={session.xUsername} initData={initData} handle={session.xUsername} />
-            : <div className="space-y-3"><p className="text-sm text-muted-foreground">Link your X account to see your NFTs.</p>{xCard}</div>}
+          {session && initData
+            ? <TgNftPanel key={session.walletHandle} initData={initData} handle={session.walletHandle} />
+            : <p className="text-sm text-muted-foreground">Open this inside Telegram to see your NFTs.</p>}
         </div>
       )}
 

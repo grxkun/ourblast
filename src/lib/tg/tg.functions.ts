@@ -30,6 +30,7 @@ export const tgSession = createServerFn({ method: "POST" })
       name: user.first_name ?? user.username ?? "friend",
       username: user.username ?? null,
       xUsername: row?.x_username ?? null,
+      walletHandle: row?.x_username ?? `tg-${user.id}`,
       privyAppId: process.env["PRIVY_APP_ID"] ?? null,
       watchlist: (watch ?? []).map((w) => w.launch_id),
     };
