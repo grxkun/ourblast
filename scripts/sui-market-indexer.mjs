@@ -22,6 +22,13 @@ async function saveState() {
   await rename(`${statePath}.tmp`, statePath);
 }
 await sync("main");
+// Fast auto-snipe trigger loop (every 3s). Server dedups fills, so overlap never double-buys.
+const trigger = new URL("/api/public/snipe-trigger", origin);
+(async () => { for (;;) {
+  try { const r = await fetch(trigger, { method: "POST", headers: { authorization: `Bearer ${secret}` }, signal: AbortSignal.timeout(30000) }); if (!r.ok) console.error(`snipe-trigger: HTTP ${r.status}`); }
+  catch (e) { console.error(`snipe-trigger: ${e.message}`); }
+  await new Promise((r) => setTimeout(r, 3000));
+} })();
 // Backfill resumes at the last successful page after restart; failures never advance.
 for (const source of sources) {
   while (!state[source]?.done) {

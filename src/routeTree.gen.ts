@@ -38,6 +38,7 @@ import { Route as ClaimTokenRouteImport } from './routes/claim.$token'
 import { Route as EcosystemProjectSlugRouteImport } from './routes/ecosystem-project.$slug'
 import { Route as ApiPublicIndexerRouteImport } from './routes/api/public/indexer'
 import { Route as ApiPublicPerpsTestRouteImport } from './routes/api/public/perps-test'
+import { Route as ApiPublicSnipeTriggerRouteImport } from './routes/api/public/snipe-trigger'
 import { Route as ApiPublicXMentionRouteImport } from './routes/api/public/x-mention'
 import { Route as ApiPublicXPollRouteImport } from './routes/api/public/x-poll'
 import { Route as OauthGithubReturnRouteImport } from './routes/oauth/github/return'
@@ -191,6 +192,11 @@ const ApiPublicPerpsTestRoute = ApiPublicPerpsTestRouteImport.update({
   path: '/api/public/perps-test',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicSnipeTriggerRoute = ApiPublicSnipeTriggerRouteImport.update({
+  id: '/api/public/snipe-trigger',
+  path: '/api/public/snipe-trigger',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicXMentionRoute = ApiPublicXMentionRouteImport.update({
   id: '/api/public/x-mention',
   path: '/api/public/x-mention',
@@ -253,6 +259,7 @@ export interface FileRoutesByFullPath {
   '/ecosystem-project/$slug': typeof EcosystemProjectSlugRoute
   '/api/public/indexer': typeof ApiPublicIndexerRoute
   '/api/public/perps-test': typeof ApiPublicPerpsTestRoute
+  '/api/public/snipe-trigger': typeof ApiPublicSnipeTriggerRoute
   '/api/public/x-mention': typeof ApiPublicXMentionRoute
   '/api/public/x-poll': typeof ApiPublicXPollRoute
   '/oauth/github/return': typeof OauthGithubReturnRoute
@@ -290,6 +297,7 @@ export interface FileRoutesByTo {
   '/ecosystem-project/$slug': typeof EcosystemProjectSlugRoute
   '/api/public/indexer': typeof ApiPublicIndexerRoute
   '/api/public/perps-test': typeof ApiPublicPerpsTestRoute
+  '/api/public/snipe-trigger': typeof ApiPublicSnipeTriggerRoute
   '/api/public/x-mention': typeof ApiPublicXMentionRoute
   '/api/public/x-poll': typeof ApiPublicXPollRoute
   '/oauth/github/return': typeof OauthGithubReturnRoute
@@ -328,6 +336,7 @@ export interface FileRoutesById {
   '/ecosystem-project/$slug': typeof EcosystemProjectSlugRoute
   '/api/public/indexer': typeof ApiPublicIndexerRoute
   '/api/public/perps-test': typeof ApiPublicPerpsTestRoute
+  '/api/public/snipe-trigger': typeof ApiPublicSnipeTriggerRoute
   '/api/public/x-mention': typeof ApiPublicXMentionRoute
   '/api/public/x-poll': typeof ApiPublicXPollRoute
   '/oauth/github/return': typeof OauthGithubReturnRoute
@@ -367,6 +376,7 @@ export interface FileRouteTypes {
     | '/ecosystem-project/$slug'
     | '/api/public/indexer'
     | '/api/public/perps-test'
+    | '/api/public/snipe-trigger'
     | '/api/public/x-mention'
     | '/api/public/x-poll'
     | '/oauth/github/return'
@@ -404,6 +414,7 @@ export interface FileRouteTypes {
     | '/ecosystem-project/$slug'
     | '/api/public/indexer'
     | '/api/public/perps-test'
+    | '/api/public/snipe-trigger'
     | '/api/public/x-mention'
     | '/api/public/x-poll'
     | '/oauth/github/return'
@@ -441,6 +452,7 @@ export interface FileRouteTypes {
     | '/ecosystem-project/$slug'
     | '/api/public/indexer'
     | '/api/public/perps-test'
+    | '/api/public/snipe-trigger'
     | '/api/public/x-mention'
     | '/api/public/x-poll'
     | '/oauth/github/return'
@@ -479,6 +491,7 @@ export interface RootRouteChildren {
   EcosystemProjectSlugRoute: typeof EcosystemProjectSlugRoute
   ApiPublicIndexerRoute: typeof ApiPublicIndexerRoute
   ApiPublicPerpsTestRoute: typeof ApiPublicPerpsTestRoute
+  ApiPublicSnipeTriggerRoute: typeof ApiPublicSnipeTriggerRoute
   ApiPublicXMentionRoute: typeof ApiPublicXMentionRoute
   ApiPublicXPollRoute: typeof ApiPublicXPollRoute
   OauthGithubReturnRoute: typeof OauthGithubReturnRoute
@@ -692,6 +705,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicPerpsTestRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/snipe-trigger': {
+      id: '/api/public/snipe-trigger'
+      path: '/api/public/snipe-trigger'
+      fullPath: '/api/public/snipe-trigger'
+      preLoaderRoute: typeof ApiPublicSnipeTriggerRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/x-mention': {
       id: '/api/public/x-mention'
       path: '/api/public/x-mention'
@@ -768,6 +788,7 @@ const rootRouteChildren: RootRouteChildren = {
   EcosystemProjectSlugRoute: EcosystemProjectSlugRoute,
   ApiPublicIndexerRoute: ApiPublicIndexerRoute,
   ApiPublicPerpsTestRoute: ApiPublicPerpsTestRoute,
+  ApiPublicSnipeTriggerRoute: ApiPublicSnipeTriggerRoute,
   ApiPublicXMentionRoute: ApiPublicXMentionRoute,
   ApiPublicXPollRoute: ApiPublicXPollRoute,
   OauthGithubReturnRoute: OauthGithubReturnRoute,

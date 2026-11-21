@@ -20,3 +20,5 @@ The daemon backfills 25 events per request, preserving a local cursor only after
 - The daemon currently covers the verified V17/V18 Suipump lineages, not every retired deployment ever made.
 - API requests can sync only the listed sources and pagination cursor. Arbitrary records, prices, or user data are not accepted.
 - The app reads the latest 2,000 catalog entries. No claim of exhaustive ecosystem indexing is made.
+## Fast auto-snipe trigger
+The daemon also calls `/api/public/snipe-trigger` every 3 seconds (same secret). It runs the normal auto-snipe step; each (rule, token) fill is claimed once, so overlapping calls never buy twice.
