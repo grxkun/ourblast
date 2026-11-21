@@ -55,6 +55,17 @@ export function pnlLines(symbol: string, p: TokenPnl, held: number, priceSui: nu
   ];
 }
 
+const k = (n: number) => n >= 1e9 ? (n / 1e9).toFixed(2) + "B" : n >= 1e6 ? (n / 1e6).toFixed(2) + "M" : n >= 1e3 ? (n / 1e3).toFixed(1) + "K" : f(n);
+
+/** One compact line per token for the positions overview. */
+export function pnlRow(symbol: string, p: TokenPnl, held: number, priceSui: number | null): string {
+  const u = unrealized(p, held, priceSui);
+  const value = priceSui != null ? ` ≈${f(held * priceSui)} SUI` : "";
+  const unr = u ? ` ${u.pnlSui >= 0 ? "🟢+" : "🔴"}${u.pct.toFixed(0)}%` : "";
+  const real = p.soldTokens ? ` · R ${sign(p.realizedSui)}` : "";
+  return `$${symbol} ${k(held)}${value}${unr}${real}`;
+}
+
 /** Shareable exit card after a sell. */
 export function exitCard(symbol: string, p: TokenPnl, suiUsd: number | null): string | null {
   if (!p.soldTokens || p.spentSui <= 0) return null;

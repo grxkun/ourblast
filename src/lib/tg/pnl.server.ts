@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BUSL-1.1
-import { computePnl, exitCard, pnlLines, unrealized, type SwapRow } from "./pnl";
+import { computePnl, exitCard, pnlLines, pnlRow, unrealized, type SwapRow } from "./pnl";
 
 const SUI = "0x0000000000000000000000000000000000000000000000000000000000000002::sui::SUI";
 
@@ -46,9 +46,9 @@ export async function positionsPnl(handle: string): Promise<string> {
   const blocks = toks.map((b) => {
     const d = b.decimals ?? 9, held = Number(b.balance) / 10 ** d;
     const pu = prices[b.coinType];
-    return pnlLines(b.symbol ?? b.coinType.split("::").at(-1) ?? "Token", computePnl(rows, b.coinType, d), held, pu != null && suiUsd ? pu / suiUsd : null, suiUsd).join("\n");
+    return pnlRow(b.symbol ?? b.coinType.split("::").at(-1) ?? "Token", computePnl(rows, b.coinType, d), held, pu != null && suiUsd ? pu / suiUsd : null);
   });
-  return [`📊 Positions & PnL (main wallet)`, "", blocks.join("\n\n"), "", "PnL uses average buy cost from OurBank trades. Sell: sell 50% $TICKER"].join("\n");
+  return [`📊 Positions (main wallet)`, "", blocks.join("\n"), "", "% = unrealized · R = realized SUI. Detail: paste CA"].join("\n");
 }
 
 /** Remaining cost vs. live value of one position, for "take initial". */
