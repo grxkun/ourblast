@@ -86,12 +86,15 @@ async function walletPicker(tgUserId: number, handle: string): Promise<{ text: s
   };
 }
 
-const SNIPE_MENU_TEXT = "🎯 Sniper\n\n• Target: snipe 0x…::coin::COIN 5 sui slippage 10% — one token, review then confirm.\n• ⚡ All launches by filter: buy every new Blast.fun / Suipump launch automatically, with a per-launch size and daily max.\n  Custom: autosnipe all 2 sui max 10 sui slippage 15% keyword pepe\n\nPick a quick rule below — you always review before it turns on.";
+const HOLDINGS_KB: Btn[][] = [[{ text: "🔄 Refresh", callback_data: "m:positions" }, { text: "🎯 Sniper", callback_data: "m:snipe" }], [{ text: "📋 Orders", callback_data: "m:orders" }, { text: "⬅️ Menu", callback_data: "m:home" }]];
+const SNIPE_MENU_TEXT = "🎯 Sniper\n\n• Target: snipe 0x…::coin::COIN 5 sui slippage 10% — one token, review then confirm.\n• ⚡ All launches by filter: buy every new Blast.fun / Suipump launch automatically, with a per-launch size and daily max.\n  Custom: autosnipe all 2 sui max 10 sui slippage 15% keyword pepe\n\nPick a quick rule below — you always review before it turns on.\n📡 Holdings shows every token you hold with live value and PnL.";
 function snipeMenuKeyboard(): Btn[][] {
   return [
     [{ text: "⚡ All · 1 SUI", callback_data: "sa|all|1" }, { text: "⚡ All · 2 SUI", callback_data: "sa|all|2" }, { text: "⚡ All · 5 SUI", callback_data: "sa|all|5" }],
     [{ text: "💥 Blast.fun · 2 SUI", callback_data: "sa|blast|2" }, { text: "🚀 Suipump · 2 SUI", callback_data: "sa|suipump|2" }],
-    [{ text: "📋 My rules", callback_data: "asl" }, { text: "👛 Wallets", callback_data: "m:wallets" }],
+    [{ text: "🎯 All 2 SUI + TP100/SL30", callback_data: "sa|all|2|t" }, { text: "🎯 Blast 1 SUI + TP100/SL30", callback_data: "sa|blast|1|t" }],
+    [{ text: "📋 My rules", callback_data: "asl" }, { text: "⏸ Pause all", callback_data: "asp" }, { text: "🛑 Stop all", callback_data: "ass" }],
+    [{ text: "📡 Holdings", callback_data: "m:positions" }, { text: "📋 Orders", callback_data: "m:orders" }, { text: "👛 Wallets", callback_data: "m:wallets" }],
     [{ text: "⬅️ Menu", callback_data: "m:home" }],
   ];
 }
@@ -194,14 +197,14 @@ export async function processTelegramUpdate(update: TelegramUpdate, token: strin
           return j?.result?.message_id;
         };
         /** Shows "⏳ note" right away, then replaces it with the final reply (falls back to a new message). */
-        const replyWithProgress = async (chat_id: number, note: string, work: () => Promise<string>) => {
+        const replyWithProgress = async (chat_id: number, note: string, work: () => Promise<string>, kb?: Btn[][]) => {
           // Start the work at once; the placeholder is sent alongside it instead of before it.
           const started = Date.now();
           const workP = work().catch((e) => `❌ Failed: ${(e as Error).message}. Status is unconfirmed. Check your wallet and history before retrying; a transfer may already have been submitted.`);
           const [pid] = await Promise.all([tg("sendMessage", { chat_id, text: `⏳ ${note}…` }), tg("sendChatAction", { chat_id, action: "typing" })]);
           const text = await workP;
           console.log(`tg command done in ${Date.now() - started}ms`);
-          const body = { chat_id, text: text.slice(0, 4000), disable_web_page_preview: true };
+          const body = { chat_id, text: text.slice(0, 4000), disable_web_page_preview: true, ...(kb ? { reply_markup: { inline_keyboard: kb } } : {}) };
           if (pid && (await fetch(`https://api.telegram.org/bot${token}/editMessageText`, {
             method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ ...body, message_id: pid }),
           })).ok) return;
@@ -298,7 +301,7 @@ export async function processTelegramUpdate(update: TelegramUpdate, token: strin
                 const [srv, fmt] = await Promise.all([import("@/lib/tg/walletChat.server"), import("@/lib/tg/walletChat")]);
                 const snap = await srv.walletSnapshot(h, { sui: key !== "wallet", other: key === "balance" });
                 return key === "wallet" ? fmt.formatWallet(snap) : key === "positions" ? (await import("@/lib/tg/pnl.server")).positionsPnl(h).catch(() => fmt.formatPositions(snap)) : fmt.formatBalance(snap);
-              });
+              }, key === "positions" ? HOLDINGS_KB : undefined);
               return Response.json({ ok: true });
             }
             if (key === "wallets" && h) {
@@ -470,10 +473,15 @@ export async function processTelegramUpdate(update: TelegramUpdate, token: strin
             });
             return Response.json({ ok: true });
           }
-          if (cq.data?.startsWith("sa|") || cq.data === "as" || cq.data === "asl") {
+          if (cq.data?.startsWith("sa|") || cq.data === "as" || cq.data === "asl" || cq.data === "asp" || cq.data === "ass") {
             await tg("answerCallbackQuery", { callback_query_id: cq.id, text: cq.data === "as" ? "Turning on…" : undefined });
             const auto = await import("@/lib/tg/autoSnipe");
             const { runTgCommand } = await import("@/lib/tg/runCommand.server");
+            if (cq.data === "asp" || cq.data === "ass") {
+              const cmd = cq.data === "asp" ? "pausesnipe all" : "stopsnipe all";
+              await replyWithProgress(chat_id, "Updating rules", async () => (await runTgCommand(cq.from.id, cmd)).reply, [[{ text: "🎯 Sniper", callback_data: "m:snipe" }, { text: "⬅️ Menu", callback_data: "m:home" }]]);
+              return Response.json({ ok: true });
+            }
             if (cq.data === "asl") {
               await replyWithProgress(chat_id, "Loading rules", async () => (await runTgCommand(cq.from.id, "autosnipes")).reply);
               return Response.json({ ok: true });
@@ -484,8 +492,8 @@ export async function processTelegramUpdate(update: TelegramUpdate, token: strin
               await tg("editMessageText", { chat_id, message_id, text: reply.slice(0, 4000), disable_web_page_preview: true, reply_markup: { inline_keyboard: [[{ text: "📋 My rules", callback_data: "asl" }, { text: "⬅️ Menu", callback_data: "m:home" }]] } });
               return Response.json({ ok: true });
             }
-            const [, pads, amt] = cq.data!.split("|");
-            const r = auto.parseAutoSnipeCommand(`autosnipe ${pads} ${amt} sui`);
+            const [, pads, amt, exit] = cq.data!.split("|");
+            const r = auto.parseAutoSnipeCommand(`autosnipe ${pads} ${amt} sui${exit === "t" ? " tp 100% sl 30%" : ""}`);
             if (r?.op !== "start") return Response.json({ ok: true });
             await sendAutoReview(tg, chat_id, cq.from.id, r);
             return Response.json({ ok: true });
@@ -583,13 +591,17 @@ export async function processTelegramUpdate(update: TelegramUpdate, token: strin
         threadId = (msg as { message_thread_id?: number } | undefined)?.message_thread_id;
         let original = (msg?.text ?? "").trim();
         // Menu commands map to plain chat commands.
-        const slash = original.match(/^\/(balance|wallet|positions)(?:@\w+)?\s*$/i);
-        if (slash) original = slash[1]!.toLowerCase();
+        const slash = original.match(/^\/(balance|wallet|positions|holdings?)(?:@\w+)?\s*$/i);
+        if (slash) original = slash[1]!.toLowerCase().replace(/^holdings?$/, "positions");
         const text = original.toLowerCase();
         if (!chatId || !original) return Response.json({ ok: true });
 
         const isPrivate = msg?.chat?.type === "private" && !!msg.from?.id;
         // Private /buy /sell /send /burn … run as plain commands; bare ones get syntax help.
+        if (isPrivate && /^\/snipe(?:@\w+)?\s*$/i.test(original)) {
+          await tg("sendMessage", { chat_id: chatId, text: SNIPE_MENU_TEXT, disable_web_page_preview: true, reply_markup: { inline_keyboard: snipeMenuKeyboard() } });
+          return Response.json({ ok: true });
+        }
         if (isPrivate) {
           const { mapPrivateSlash } = await import("@/lib/tg/slashCommands");
           const ps = mapPrivateSlash(original);
@@ -826,14 +838,14 @@ export async function processTelegramUpdate(update: TelegramUpdate, token: strin
         }
 
         // Wallet views — each command answers a different question, read-only.
-        const view = text.match(/^(balance|balances|bal|wallet|address|addresses|deposit|positions|pos|portfolio)$/)?.[1];
+        const view = text.match(/^(balance|balances|bal|wallet|address|addresses|deposit|positions|pos|portfolio|holding|holdings)$/)?.[1];
         if (view) {
-          const kind = /^(wallet|address|addresses|deposit)$/.test(view) ? "wallet" : /^(positions|pos|portfolio)$/.test(view) ? "positions" : "balance";
+          const kind = /^(wallet|address|addresses|deposit)$/.test(view) ? "wallet" : /^(positions|pos|portfolio|holding|holdings)$/.test(view) ? "positions" : "balance";
           await replyWithProgress(chatId, kind === "wallet" ? "Loading addresses" : "Reading balances", async () => {
             const [h, srv, fmt] = await Promise.all([linkedHandle(), import("@/lib/tg/walletChat.server"), import("@/lib/tg/walletChat")]);
             const snap = await srv.walletSnapshot(h!, { sui: kind !== "wallet", other: kind === "balance" });
             return kind === "wallet" ? fmt.formatWallet(snap) : kind === "positions" ? (await import("@/lib/tg/pnl.server")).positionsPnl(h!).catch(() => fmt.formatPositions(snap)) : fmt.formatBalance(snap);
-          });
+          }, kind === "positions" ? HOLDINGS_KB : undefined);
           return Response.json({ ok: true });
         }
 
