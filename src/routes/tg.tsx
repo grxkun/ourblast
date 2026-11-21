@@ -3,7 +3,7 @@ import { Suspense, lazy, useCallback, useEffect, useMemo, useState } from "react
 import { ClientOnly, createFileRoute } from "@tanstack/react-router";
 import { queryOptions, useSuspenseQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { ArrowDownToLine, ArrowDownUp, Copy, ExternalLink, HelpCircle, Home, Image as ImageIcon, RefreshCw, Repeat, Rocket, Search, Send, Star, Wallet, X, Zap } from "lucide-react";
+import { ArrowDownToLine, ArrowDownUp, Copy, ExternalLink, HelpCircle, Home, Image as ImageIcon, Moon, RefreshCw, Repeat, Rocket, Search, Sun, Send, Star, Wallet, X, Zap } from "lucide-react";
 import logo from "@/assets/blast-logo.jpg.asset.json";
 import mascot from "@/assets/blast-cool.png.asset.json";
 import { toast } from "sonner";
@@ -57,6 +57,11 @@ function TgApp() {
   const [tab, setTab] = useState<Tab>("home");
   const [filter, setFilter] = useState<"live" | "watch">("live");
   const [q, setQ] = useState("");
+  const [pad, setPad] = useState("all");
+  const [st, setSt] = useState<"all" | "live" | "failed">("all");
+  const [dark, setDark] = useState(false);
+  useEffect(() => { setDark(localStorage.getItem("tg-dark") === "1"); }, []);
+  const toggleDark = () => setDark((d) => { localStorage.setItem("tg-dark", d ? "0" : "1"); return !d; });
   const [help, setHelp] = useState(false);
   const [openId, setOpenId] = useState<string | null>(null);
   const [preset, setPreset] = useState<TradePreset | null>(null);
@@ -87,6 +92,8 @@ function TgApp() {
 
   const watch = useMemo(() => new Set(session?.watchlist ?? []), [session]);
   const rows = (filter === "watch" ? launches.filter((l) => watch.has(l.id)) : launches)
+    .filter((l) => pad === "all" || (l.launchpad ?? "").toLowerCase() === pad)
+    .filter((l) => st === "all" || (st === "live" ? /deploy|live|success/i : /fail|unavail/i).test(l.status))
     .filter((l) => !q || `${l.symbol ?? ""} ${l.xUsername ?? ""} ${l.launchpad ?? ""}`.toLowerCase().includes(q.toLowerCase()))
     .slice(0, 60);
 
@@ -145,43 +152,40 @@ function TgApp() {
     /deploy|live|success/i.test(s) ? "bg-lime/15 text-lime" : /fail|unavail/i.test(s) ? "bg-destructive/15 text-destructive" : "bg-cyber/15 text-cyber";
 
   const list = (items: typeof launches, ranked = false) => (
-    <ul className="space-y-2">
-      {items.length === 0 && <li className="rounded-2xl border border-border bg-surface p-4 text-sm text-muted-foreground">Nothing here yet.</li>}
+    <div className="overflow-hidden rounded-2xl border border-border bg-surface">
+      <div className="grid grid-cols-[1fr_auto_auto] gap-2 border-b border-border bg-surface-2 px-3 py-1.5 text-[0.6rem] font-semibold uppercase text-muted-foreground">
+        <span>Token</span><span>Status</span><span className="w-5" />
+      </div>
+      {items.length === 0 && <p className="p-4 text-sm text-muted-foreground">Nothing here yet.</p>}
       {items.map((l, i) => (
-        <li key={l.id} className="flex items-center gap-3 rounded-2xl border border-border bg-surface p-3">
-          {ranked && <span className="w-4 text-center font-display text-sm text-muted-foreground">{i + 1}</span>}
-          <button onClick={() => setOpenId(l.id)} aria-label={`Open $${l.symbol ?? "token"}`} className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-surface-2 font-display text-sm text-primary">
-            {(l.symbol ?? "?").slice(0, 3)}
+        <div key={l.id} className="grid grid-cols-[1fr_auto_auto] items-center gap-2 border-b border-border/50 px-3 py-2 last:border-0 active:bg-surface-2">
+          <button onClick={() => setOpenId(l.id)} className="min-w-0 text-left">
+            <div className="truncate text-sm font-semibold">
+              {ranked && <span className="mr-1.5 text-muted-foreground">{i + 1}</span>}${l.symbol ?? "?"}
+              <span className="ml-1.5 rounded bg-surface-2 px-1 py-px text-[0.55rem] font-semibold uppercase text-muted-foreground">{l.launchpad}</span>
+            </div>
+            <div className="truncate text-[0.65rem] text-muted-foreground">@{l.xUsername}</div>
           </button>
-          <div className="min-w-0 flex-1 cursor-pointer" onClick={() => setOpenId(l.id)}>
-            <div className="truncate font-semibold">${l.symbol ?? "?"} <span className="text-xs font-normal text-muted-foreground">{l.name}</span></div>
-            <div className="mt-0.5 flex items-center gap-1.5 text-[0.7rem] text-muted-foreground">
-              <span className="rounded-full bg-surface-2 px-2 py-0.5 uppercase">{l.launchpad}</span>
-              <span className="truncate">@{l.xUsername}</span>
-            </div>
-          </div>
-          <div className="flex flex-col items-end gap-1.5">
-            <span className={`rounded-full px-2 py-0.5 text-[0.65rem] font-semibold uppercase ${statusTone(l.status)}`}>{l.status}</span>
-            <div className="flex items-center gap-2">
-              {l.tokenUrl && <a href={l.tokenUrl} target="_blank" rel="noreferrer" aria-label="Open token"><ExternalLink className="h-4 w-4 text-muted-foreground" /></a>}
-              <button aria-label="Toggle watchlist" disabled={!session} onClick={() => onStar(l.id)}>
-                <Star className={`h-4 w-4 ${watch.has(l.id) ? "fill-primary text-primary" : "text-muted-foreground"}`} />
-              </button>
-            </div>
-          </div>
-        </li>
+          <span className={`rounded-full px-2 py-0.5 text-[0.6rem] font-semibold uppercase ${statusTone(l.status)}`}>{l.status}</span>
+          <button aria-label="Toggle watchlist" disabled={!session} onClick={() => onStar(l.id)} className="w-5">
+            <Star className={`h-4 w-4 ${watch.has(l.id) ? "fill-primary text-primary" : "text-muted-foreground"}`} />
+          </button>
+        </div>
       ))}
-    </ul>
+    </div>
   );
 
   return (
-    <main className="mx-auto min-h-screen max-w-md bg-background px-4 pt-4 pb-24 text-foreground">
+    <main className={`${dark ? "tg-dark" : ""} mx-auto min-h-screen max-w-md bg-background px-4 pt-4 pb-24 text-foreground`}>
       <header className="mb-4 flex items-center gap-3">
         <img src={logo.url} alt="OURBLAST logo" width={40} height={40} className="size-10 rounded-xl border-2 border-border object-cover" />
         <div className="min-w-0 flex-1">
           <h1 className="font-display text-2xl leading-none">OUR<span className="text-primary">BLAST</span></h1>
           <p className="truncate text-xs text-muted-foreground">{session ? `gm ${session.name}` : (error ?? "Connecting to Telegram…")}</p>
         </div>
+        <button onClick={toggleDark} aria-label={dark ? "Light mode" : "Dark mode"} className="grid size-8 place-items-center rounded-full border border-border bg-surface">
+          {dark ? <Sun className="h-4 w-4 text-primary" /> : <Moon className="h-4 w-4" />}
+        </button>
         <button onClick={() => setHelp(true)} aria-label="How to use" className="flex items-center gap-1 rounded-full border border-border bg-surface px-3 py-1.5 text-xs font-semibold">
           <HelpCircle className="h-4 w-4 text-primary" />Guide
         </button>
@@ -242,8 +246,17 @@ function TgApp() {
               </button>
             ))}
           </div>
-          <BlastPresales initData={initData ?? ""} />
+          <div className="flex gap-1.5 overflow-x-auto text-xs">
+            {["all", ...Array.from(new Set(launches.map((l) => (l.launchpad ?? "").toLowerCase()).filter(Boolean)))].map((p) => (
+              <button key={p} onClick={() => setPad(p)} className={`shrink-0 rounded-full border px-3 py-1 font-semibold uppercase ${pad === p ? "border-primary text-primary" : "border-border text-muted-foreground"}`}>{p}</button>
+            ))}
+            <span className="w-px shrink-0 bg-border" />
+            {(["all", "live", "failed"] as const).map((v) => (
+              <button key={v} onClick={() => setSt(v)} className={`shrink-0 rounded-full border px-3 py-1 font-semibold uppercase ${st === v ? "border-primary text-primary" : "border-border text-muted-foreground"}`}>{v === "all" ? "Any status" : v}</button>
+            ))}
+          </div>
           {list(rows)}
+          <BlastPresales initData={initData ?? ""} />
         </div>
       )}
 
