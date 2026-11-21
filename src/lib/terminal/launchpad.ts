@@ -108,11 +108,11 @@ export const LAUNCHPADS: LaunchpadConfig[] = [
     label: "Blast.fun",
     site: "https://blast.fun",
     network: "sui",
-    // memez-fun router + shared Config object used by the official blast.fun form.
-    factoryPackage: "0xa36cd2f2ab1d47c884cf564df780691a461e05bda1db1528772f8d0694cb184d",
-    factoryObject: "0x9c665993f61a902475b083036da75240aa203bb874ebce4031810b589e485a61",
-    version: "memez-fun-sdk-19.1.0",
-    integrated: false,
+    // Blast.fun v2 production launch package + LaunchConfig (blastV2-launch.server.ts).
+    factoryPackage: "0x9c2cef371c0e80648136f7ae65378ac9476e3fdb860538d00290e6e4f975b192",
+    factoryObject: "0x2313c26286ab4809593b4216135cff085ade5882f2e58b44621baf33bcd79e9c",
+    version: "blast-v2",
+    integrated: true,
     supportsCustomPair: false,
     pairTokens: ["SUI"],
     liquidity: { min: 1, max: 5_000, default: 10 },

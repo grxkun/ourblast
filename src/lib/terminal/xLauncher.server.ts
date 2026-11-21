@@ -594,16 +594,14 @@ export async function executeLaunchRequest(requestId: string): Promise<LaunchOut
       failure = outcome.message;
     }
   } else if (pad.id === "blastfun") {
-    // Official Blast.fun flow: publish the coin, then open its bonding curve pool.
-    const { launchOnBlastfun } = await import("./blastfun-launch.server");
-    const outcome = await launchOnBlastfun({
+    // Blast.fun v2 (production): publish the official coin template, register
+    // its Currency, then open the curve. Confirmed only after the curve is shared.
+    const { launchOnBlastV2 } = await import("./blastV2-launch.server");
+    const outcome = await launchOnBlastV2({
       symbol: request.symbol,
       name: request.name,
-      description: extractDescription(request.tweet_text ?? "") ?? (isTerminalLaunch ? "" : request.tweet_text ?? ""),
+      description: richDescription("Blast.fun"),
       iconUrl: tokenIconUrl(request.icon_url),
-      xLink: socials.x ?? (request.x_username ? `https://x.com/${request.x_username}` : null),
-      website: socials.website,
-      telegram: socials.telegram,
     });
     if (outcome.status === "CONFIRMED" && outcome.coinType) {
       deployment = { tokenAddress: outcome.coinType, transactionDigest: outcome.digest ?? "" };
