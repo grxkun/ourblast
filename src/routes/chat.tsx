@@ -15,6 +15,8 @@ import { FEES } from "@/lib/ourblast.config";
 export const Route = createFileRoute("/chat")({
   head: () => ({
     meta: [
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
       { title: "Community Chat — Blast Holders Live Feed | OURBLAST" },
       {
         name: "description",

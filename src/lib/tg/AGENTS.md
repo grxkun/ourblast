@@ -1,3 +1,6 @@
 - Market data merges a public read-only catalog with DEX pools by canonical, case-sensitive Move coin type, not symbol, to avoid selecting the wrong token.
 - Market metrics remain null when unavailable, and FDV is not market cap, to avoid misleading financial values.
+- Holdings and automatic exits share livePrice.server.ts; active curve spot overrides DEX pricing to cover ungraduated tokens.
+- Sniper MC filters use circulating supply and real SUI reserves, skipping missing metrics to prevent unintended purchases.
+- Mini App launches verify Telegram identity and wallet ownership on every call, reuse the launch executor with an idempotent request key, and never emit X replies for synthetic posts.
 - Catalog ingestion accepts authenticated source/cursor requests and re-reads official GraphQL events; it never changes sniper state or executes trades, so replaying a backfill cannot buy tokens.- Scan cards price unbonded tokens from the launchpad curve object (curvePrice*.ts) because DEX routers only see migrated pools; deployer ATH is the peak MC OURBLAST has observed (token_scan_stats), labeled "seen", never a claimed historical high.

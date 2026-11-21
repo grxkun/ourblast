@@ -1,10 +1,33 @@
 // SPDX-License-Identifier: BUSL-1.1
 import { describe, expect, it } from "vitest";
-import { autoBudget, autoLine, parseAutoSnipeCommand, ruleMatches } from "./autoSnipe";
+import { autoBudget, autoLine, parseAutoSnipeCommand, ruleMatches, marketFilterMatches } from "./autoSnipe";
 
 const launch = { pad: "blast" as const, coinType: "0x1::pepe::PEPE", symbol: "PEPE", name: "Pepe", createdMs: 1_000_000 };
 
 describe("auto-snipe filters", () => {
+  it("round trips USD market cap and real SUI reserve thresholds", () => {
+    const r = parseAutoSnipeCommand("autosnipe blast 2 sui max 20 sui minmc 5k maxmc 20k minliq 500 sui");
+    expect(r).toMatchObject({ op: "start", minMc: "5000", maxMc: "20000", minLiq: "500" });
+    if (r?.op !== "start") throw new Error("Expected a valid rule");
+    expect(parseAutoSnipeCommand(autoLine(r))).toEqual(r);
+  });
+  it("skips when MC exceeds $20,000 or is missing", () => {
+    expect(marketFilterMatches({ max_mcap_usd: 20000 }, 20000, null)).toBe(true);
+    expect(marketFilterMatches({ max_mcap_usd: 20000 }, 20001, null)).toBe(false);
+    expect(marketFilterMatches({ max_mcap_usd: 20000 }, null, null)).toBe(false);
+  });
+  it("requires at least 500 SUI in real reserve", () => {
+    expect(marketFilterMatches({ min_reserve_sui: 500 }, null, 500)).toBe(true);
+    expect(marketFilterMatches({ min_reserve_sui: 500 }, null, 499)).toBe(false);
+    expect(marketFilterMatches({ min_reserve_sui: 500 }, null, null)).toBe(false);
+  });
+  it("requires MC at least $5,000", () => {
+    expect(marketFilterMatches({ min_mcap_usd: 5000 }, 4999, null)).toBe(false);
+    expect(marketFilterMatches({ min_mcap_usd: 5000 }, 5000, null)).toBe(true);
+  });
+  it("rejects an inverted MC range", () => {
+    expect(parseAutoSnipeCommand("autosnipe all 2 sui minmc 21k maxmc 20k")?.op).toBe("error");
+  });
   it("parses all launchpads with amount, daily max and slippage", () => {
     expect(parseAutoSnipeCommand("autosnipe all 2 sui max 10 sui slippage 15%")).toEqual({ op: "start", pads: ["blast", "suipump"], amount: "2", dailyCap: "10", slippage: "15", keyword: null });
   });

@@ -509,7 +509,7 @@ export async function executeLaunchRequest(requestId: string): Promise<LaunchOut
   // bot, is collected with it. Terminal launches pay the same fee, charged to
   // the OurBank wallet of the signed-in account that pressed launch.
   const postId = String(request.x_post_id ?? "");
-  const terminalUserId = postId.startsWith("terminal-")
+  const terminalUserId = postId.startsWith("terminal-") && !postId.startsWith("terminal-tg-")
     ? (postId.match(/^terminal-([0-9a-fA-F-]{36})-/)?.[1] ?? null)
     : null;
   let collectedFee: { payerAddress: string; amountMist: bigint } | null = null;
@@ -577,7 +577,7 @@ export async function executeLaunchRequest(requestId: string): Promise<LaunchOut
       // The picture from the tweet becomes the coin's image metadata.
       iconUrl: tokenIconUrl(request.icon_url),
       // The caller's X link goes into the coin's public info.
-      callerXLink: request.x_username ? `https://x.com/${request.x_username}` : null,
+      callerXLink: !postId.startsWith("terminal-tg-") && request.x_username ? `https://x.com/${request.x_username}` : null,
       // The caller's original tweet is quoted in the coin's public info.
       // When the caller wrote their own "Desc:", that is the coin's info instead.
       callerTweetText: extractDescription(request.tweet_text ?? "") || socialLine || isTerminalLaunch ? null : request.tweet_text ?? null,
@@ -904,7 +904,7 @@ async function postDeployedReply(
 ): Promise<void> {
   const { postReply, readXCredentials } = await import("./x-api.server");
   const credentials = readXCredentials();
-  if (!credentials || request.x_post_id.startsWith("sim-")) return;
+  if (!credentials || !/^\d+$/.test(request.x_post_id)) return;
   try {
     const replyId = await postReply(
       credentials,

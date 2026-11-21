@@ -9,8 +9,8 @@ const sym = (ct: string) => `$${ct.split("::").pop()}`;
 const usd = (n: number) => `$${n.toLocaleString("en-US", { maximumSignificantDigits: 6 })}`;
 
 export async function currentPrice(coinType: string): Promise<number | null> {
-  const { aftermathPrices } = await import("./runCommand.server");
-  return (await aftermathPrices([coinType]))[coinType] ?? null;
+  const { livePrices } = await import("./livePrice.server");
+  return (await livePrices([coinType]))[coinType] ?? null;
 }
 
 export async function limitReview(o: LimitOrder, walletCount: number): Promise<string> {
@@ -58,8 +58,9 @@ export async function maintainLimitOrders() {
   await d.from("tg_limit_orders").update({ status: "expired" }).eq("status", "open").lt("expires_at", new Date().toISOString());
   const { data: orders } = await d.from("tg_limit_orders").select("id, tg_user_id, side, coin_type, amount, trigger_usd, slippage, slots, stop, oco, trail_pct, peak_usd").eq("status", "open").limit(200);
   if (!orders?.length) return;
-  const { aftermathPrices, runTgCommand } = await import("./runCommand.server");
-  const prices = await aftermathPrices([...new Set(orders.map((o) => o.coin_type))]);
+  const { runTgCommand } = await import("./runCommand.server");
+  const { livePrices } = await import("./livePrice.server");
+  const prices = await livePrices([...new Set(orders.map((o) => o.coin_type))]);
   const say = (chat_id: number, text: string) => token ? fetch(`https://api.telegram.org/bot${token}/sendMessage`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ chat_id, text: text.slice(0, 4000), disable_web_page_preview: true }) }) : null;
   for (const o of orders) {
     const p = prices[o.coin_type];

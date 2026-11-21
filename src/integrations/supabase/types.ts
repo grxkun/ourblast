@@ -2495,6 +2495,9 @@ export type Database = {
           id: string
           keyword: string | null
           launchpads: string[]
+          max_mcap_usd: number | null
+          min_mcap_usd: number | null
+          min_reserve_sui: number | null
           sl_pct: number | null
           slippage: number
           slots: number[]
@@ -2511,6 +2514,9 @@ export type Database = {
           id?: string
           keyword?: string | null
           launchpads?: string[]
+          max_mcap_usd?: number | null
+          min_mcap_usd?: number | null
+          min_reserve_sui?: number | null
           sl_pct?: number | null
           slippage?: number
           slots?: number[]
@@ -2527,6 +2533,9 @@ export type Database = {
           id?: string
           keyword?: string | null
           launchpads?: string[]
+          max_mcap_usd?: number | null
+          min_mcap_usd?: number | null
+          min_reserve_sui?: number | null
           sl_pct?: number | null
           slippage?: number
           slots?: number[]

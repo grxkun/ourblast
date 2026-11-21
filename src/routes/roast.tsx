@@ -11,6 +11,8 @@ import { roastToken } from "@/lib/community.functions";
 export const Route = createFileRoute("/roast")({
   head: () => ({
     meta: [
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
       { title: "Blast Roast — Get Your Token Roasted by AI | OURBLAST" },
       {
         name: "description",

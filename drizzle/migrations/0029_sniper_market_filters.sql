@@ -1,0 +1,1 @@
+ALTER TABLE public.tg_snipe_filters ADD COLUMN min_mcap_usd numeric CHECK (min_mcap_usd > 0), ADD COLUMN max_mcap_usd numeric CHECK (max_mcap_usd > 0), ADD COLUMN min_reserve_sui numeric CHECK (min_reserve_sui > 0), ADD CONSTRAINT sniper_mcap_range CHECK (min_mcap_usd IS NULL OR max_mcap_usd IS NULL OR min_mcap_usd <= max_mcap_usd);

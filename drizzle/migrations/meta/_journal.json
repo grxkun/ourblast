@@ -204,6 +204,13 @@
       "when": 1795258312641,
       "tag": "0028_tg_pnl_background",
       "breakpoints": true
+    },
+    {
+      "idx": 29,
+      "version": "7",
+      "when": 1795261276323,
+      "tag": "0029_sniper_market_filters",
+      "breakpoints": true
     }
   ]
 }

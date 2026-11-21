@@ -10,6 +10,8 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { TgNftPanel } from "@/components/tg/TgNftPanel";
 import { MarketBoard } from "@/components/tg/MarketBoard";
+import { LaunchPanel } from "@/components/tg/LaunchPanel";
+import { parseAutoSnipeCommand } from "@/lib/tg/autoSnipe";
 
 import { buildSwapCommand, normalizeSwapToken, swapTokenSymbol } from "@/lib/tg/tradeCommand";
 import { MAIN_TOKENS, mainTokenByType } from "@/lib/terminal/mainTokens";
@@ -214,6 +216,7 @@ function TgApp() {
               ["Snipe", Rocket, "text-lime", () => { setPreset({ side: "buy", token: "", key: Date.now(), mode: "snipe" }); setTab("trade"); }],
               ["Copy", Repeat, "text-cyber", () => { setPreset({ side: "buy", token: "", key: Date.now(), mode: "copy" }); setTab("trade"); }],
               ["Limit", RefreshCw, "text-grape", () => { setPreset({ side: "buy", token: "", key: Date.now(), mode: "limit" }); setTab("trade"); }],
+              ["Launch", Rocket, "text-primary", () => { setPreset({ side: "buy", token: "", key: Date.now(), mode: "launch" }); setTab("trade"); }],
               ["Wallet", Wallet, "text-cyber", () => setTab("wallet")],
               ["Assets", ImageIcon, "text-grape", () => setTab("assets")],
               ["Presales", Send, "text-lime", () => { setFilter("live"); setTab("discover"); }],
@@ -542,10 +545,13 @@ function AutoSnipeBox({ busy, onRun }: { busy: boolean; onRun: (cmd: string) => 
   const [kw, setKw] = useState("");
   const [tp, setTp] = useState("");
   const [sl, setSl] = useState("");
+  const [minMc, setMinMc] = useState("");
+  const [maxMc, setMaxMc] = useState("");
+  const [minLiq, setMinLiq] = useState("");
   const [review, setReview] = useState(false);
   const kwOk = !kw || /^[a-z0-9]{2,16}$/i.test(kw);
-  const ok = Number(amt) > 0 && Number(amt) <= 50 && Number(cap) >= Number(amt) && Number(cap) <= 500 && Number(slip) >= 0.1 && Number(slip) <= 50 && kwOk && (!tp || (Number(tp) > 0 && Number(tp) <= 10000)) && (!sl || (Number(sl) > 0 && Number(sl) <= 99));
-  const line = `autosnipe ${pads} ${amt} sui max ${cap} sui slippage ${slip}%${kw ? ` keyword ${kw.toLowerCase()}` : ""}${tp ? ` tp ${tp}%` : ""}${sl ? ` sl ${sl}%` : ""}`;
+  const line = `autosnipe ${pads} ${amt} sui max ${cap} sui slippage ${slip}%${kw ? ` keyword ${kw.toLowerCase()}` : ""}${tp ? ` tp ${tp}%` : ""}${sl ? ` sl ${sl}%` : ""}${minMc ? ` minmc ${minMc} usd` : ""}${maxMc ? ` maxmc ${maxMc} usd` : ""}${minLiq ? ` minliq ${minLiq} sui` : ""}`;
+  const ok = kwOk && parseAutoSnipeCommand(line)?.op === "start";
   const chip = (on: boolean) => `rounded-full px-3 py-1 text-xs font-bold ${on ? "bg-primary text-primary-foreground" : "bg-surface text-muted-foreground"}`;
   return (
     <div className="space-y-2 rounded-xl border border-border bg-surface/50 p-3">
@@ -564,12 +570,18 @@ function AutoSnipeBox({ busy, onRun }: { busy: boolean; onRun: (cmd: string) => 
       </div>
       <input value={kw} onChange={(e) => { setKw(e.target.value); setReview(false); }} placeholder="Keyword filter (optional, e.g. pepe)" className="w-full rounded-lg border border-border bg-card px-2 py-1.5 text-xs" />
       <div className="grid grid-cols-2 gap-2 text-xs">
+        <label>Min MC (USD)<input aria-label="Min MC (USD)" inputMode="decimal" value={minMc} onChange={(e) => { setMinMc(e.target.value); setReview(false); }} placeholder="Optional" className="min-w-0 w-full rounded-lg border border-border bg-card px-2 py-1.5" /></label>
+        <label>Max MC (USD)<input aria-label="Max MC (USD)" inputMode="decimal" value={maxMc} onChange={(e) => { setMaxMc(e.target.value); setReview(false); }} placeholder="20000" className="min-w-0 w-full rounded-lg border border-border bg-card px-2 py-1.5" /></label>
+        <label className="col-span-2">Min real curve reserve (SUI)<input aria-label="Min real curve reserve (SUI)" inputMode="decimal" value={minLiq} onChange={(e) => { setMinLiq(e.target.value); setReview(false); }} placeholder="500" className="w-full rounded-lg border border-border bg-card px-2 py-1.5" /></label>
+      </div>
+      <div className="grid grid-cols-2 gap-2 text-xs">
         <label className="space-y-1"><span className="text-muted-foreground">Take profit % (optional)</span><input inputMode="decimal" value={tp} placeholder="100" onChange={(e) => { setTp(e.target.value); setReview(false); }} className="w-full rounded-lg border border-border bg-card px-2 py-1.5" /></label>
         <label className="space-y-1"><span className="text-muted-foreground">Stop loss % (optional)</span><input inputMode="decimal" value={sl} placeholder="30" onChange={(e) => { setSl(e.target.value); setReview(false); }} className="w-full rounded-lg border border-border bg-card px-2 py-1.5" /></label>
       </div>
       {review ? (
         <div className="space-y-2 rounded-lg bg-background/60 p-2 text-xs">
           <p>Every new {pads === "all" ? "Blast.fun + Suipump" : pads === "blast" ? "Blast.fun" : "Suipump"} launch{kw ? ` containing “${kw}”` : ""}: <b>{amt} SUI</b> per selected wallet, max <b>{cap} SUI/day</b>, slippage {slip}%{tp ? `, take profit +${tp}%` : ""}{sl ? `, stop loss −${sl}%` : ""}. Each buy is simulated first; new tokens can lose value fast.</p>
+          {(minMc || maxMc || minLiq) && <p>{minMc ? `Min MC $${minMc}. ` : ""}{maxMc ? `Max MC $${maxMc}. ` : ""}{minLiq ? `Real reserve ≥${minLiq} SUI. ` : ""}Missing metrics are skipped.</p>}
           <div className="flex gap-2">
             <button onClick={() => setReview(false)} className="flex-1 rounded-full bg-card py-2 font-bold">Cancel</button>
             <button disabled={busy} onClick={() => { setReview(false); onRun(`confirm ${line}`); }} className="flex-1 rounded-full bg-primary py-2 font-bold text-primary-foreground disabled:opacity-50">Turn on</button>
@@ -624,7 +636,7 @@ function CopyTradeBox({ busy, onRun }: { busy: boolean; onRun: (cmd: string) => 
   );
 }
 
-type TradeMode = "swap" | "snipe" | "limit" | "copy";
+type TradeMode = "swap" | "snipe" | "limit" | "copy" | "launch";
 type TradePreset = { side: "buy" | "sell"; token: string; key: number; amount?: string; mode?: TradeMode };
 
 type Holding = { coinType: string; symbol: string; amount: number; usd: number | null };
@@ -917,9 +929,9 @@ function TradeTerminal({ initData, preset }: { initData: string; preset: TradePr
   useEffect(() => { if (preset?.mode) setMode(preset.mode); }, [preset?.key, preset?.mode]);
   return (
     <div className="flex min-w-0 flex-col gap-3 overflow-x-hidden pb-20">
-      <div className="grid grid-cols-4 gap-1 rounded-full bg-surface p-1">
-        {(["swap", "snipe", "limit", "copy"] as const).map((m) => (
-          <button key={m} onClick={() => setMode(m)} className={`rounded-full py-1.5 text-xs font-bold uppercase ${mode === m ? "bg-primary text-primary-foreground" : "text-muted-foreground"}`}>{m}</button>
+      <div className="grid grid-cols-5 gap-1 rounded-lg bg-surface p-1">
+        {(["swap", "snipe", "limit", "copy", "launch"] as const).map((m) => (
+          <Button key={m} variant={mode === m ? "default" : "ghost"} onClick={() => setMode(m)} className="min-w-0 px-1 text-xs uppercase">{m}</Button>
         ))}
       </div>
       <WalletStrip busy={busy} onRun={(c) => void send(c)} />
@@ -928,6 +940,7 @@ function TradeTerminal({ initData, preset }: { initData: string; preset: TradePr
       {mode === "snipe" && <SnipeCard busy={busy} onRun={(c) => void send(c)} />}
       {mode === "limit" && <LimitCard busy={busy} onRun={(c) => void send(c)} />}
       {mode === "copy" && <CopyTradeBox busy={busy} onRun={(c) => void send(c)} />}
+      {mode === "launch" && <LaunchPanel initData={initData} />}
       <div className="space-y-2">
         {log.map((m) => (
           <div key={m.id} className={`w-fit min-w-0 max-w-[85%] whitespace-pre-wrap rounded-2xl px-3 py-2 text-sm [overflow-wrap:anywhere] ${m.who === "me" ? "ml-auto bg-primary text-primary-foreground" : "border border-border bg-card"}`}>

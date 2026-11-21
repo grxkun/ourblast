@@ -14,6 +14,8 @@ import { getTodaysBattle, submitMeme, voteMeme } from "@/lib/community.functions
 export const Route = createFileRoute("/meme")({
   head: () => ({
     meta: [
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
       { title: "Meme Battle — Vote on the Best Blast Memes | OURBLAST" },
       {
         name: "description",

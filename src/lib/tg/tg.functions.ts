@@ -3,6 +3,8 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
 import { verifyInitData } from "./initData";
+import { tgLaunchInput } from "./launchInput";
+import { launchFeeMist, requiredBalanceMist, formatSui } from "@/lib/terminal/launchFee";
 
 async function authed(initData: string) {
   const token = process.env["TELEGRAM_BOT_TOKEN"];
@@ -104,8 +106,8 @@ export const tgGetBankWallet = createServerFn({ method: "POST" })
       evmAddress ? evmBalances(evmAddress).catch(() => []) : Promise.resolve([]),
       solAddress ? solBalances(solAddress).catch(() => null) : Promise.resolve(null),
     ]);
-    const { aftermathPrices } = await import("./runCommand.server");
-    const prices = await aftermathPrices(sui.map((b) => b.coinType));
+    const { livePrices } = await import("./livePrice.server");
+    const prices = await livePrices(sui.map((b) => b.coinType));
     const suiPriced = sui.map((b) => ({ ...b, usd: prices[b.coinType] != null ? prices[b.coinType]! * b.amount : null }));
     return { linked: true as const, handle, address: wallet.address, evmAddress, solAddress, sui: suiPriced, evm, sol };
   });
@@ -411,4 +413,47 @@ export const tgPlaceExit = createServerFn({ method: "POST" })
       return { message: await lo.placeTpSl(user.id, data.coinType, TPSL_DEFAULT.tp, TPSL_DEFAULT.sl, selected) };
     }
     return { message: await lo.placeTrailing(user.id, data.coinType, data.kind === "trail15" ? 15 : 25, selected) };
+  });
+
+const launchArgs = z.object({ initData: z.string().min(1).max(4096), requestKey: z.string().uuid().optional() }).passthrough();
+async function launchOwner(initData: string, slot: number) {
+  const { user, handle } = await linkedHandle(initData);
+  const { listTgWallets } = await import("./tgWallets.server");
+  const { wallets } = await listTgWallets(user.id, handle);
+  const wallet = wallets.find((w) => w.slot === slot);
+  if (!wallet) throw new Error(`You don't have W${slot}.`);
+  const { ensureBankWallet, bankBalances } = await import("@/lib/terminal/bank-wallet.server");
+  const bank = await ensureBankWallet(wallet.handle, null);
+  const balances = await bankBalances(bank.address);
+  const sui = Number(balances.find((b) => /^0x0*2::sui::SUI$/.test(b.coinType))?.balance ?? 0n) / 1e9;
+  return { user, wallet, bank, sui };
+}
+
+export const tgReviewLaunch = createServerFn({ method: "POST" })
+  .inputValidator((d: unknown) => ({ ...launchArgs.parse(d), ...tgLaunchInput.parse(d) }))
+  .handler(async ({ data }) => {
+    const owner = await launchOwner(data.initData, data.slot);
+    const fee = formatSui(launchFeeMist(data.launchpad));
+    const need = Number(requiredBalanceMist(data.launchpad)) / 1e9 + data.firstBuySui;
+    if (owner.sui < need) throw new Error(`W${data.slot} needs ${need} SUI: ${fee} SUI total launch fee + ${data.firstBuySui} SUI first buy + 4 SUI retained headroom.`);
+    return { review: `Launch $${data.symbol} · ${data.name}\n${data.launchpad === "blastfun" ? "Blast.fun v2" : "Suipump protected launch"}\nPaying wallet: W${data.slot} (${owner.bank.address})\nTotal launch fee: ${fee} SUI · first buy: ${data.firstBuySui} SUI\n4 SUI retained headroom. Launch network gas is sponsored by OURBLAST.\nToken creation is irreversible. Success is shown only after chain confirmation.` };
+  });
+
+export const tgLaunchToken = createServerFn({ method: "POST" })
+  .inputValidator((d: unknown) => ({ ...launchArgs.extend({ requestKey: z.string().uuid() }).parse(d), ...tgLaunchInput.parse(d) }))
+  .handler(async ({ data }) => {
+    const { user, db } = await authed(data.initData);
+    const postId = `terminal-tg-${user.id}-${data.requestKey}`;
+    const { data: previous } = await db.from("x_launch_requests").select("status, notice, token_url, pool_url").eq("x_post_id", postId).maybeSingle();
+    // Never replay an ambiguous or failed submission on request retry.
+    if (previous) return { status: previous.status, notice: previous.notice ?? "This request was already handled. Check Activity before creating another launch.", tokenUrl: previous.token_url, poolUrl: previous.pool_url };
+    const owner = await launchOwner(data.initData, data.slot);
+    if (owner.sui < Number(requiredBalanceMist(data.launchpad)) / 1e9 + data.firstBuySui) throw new Error("Not enough SUI for launch fee, first buy and retained headroom.");
+    const { createLaunchRequest, executeLaunchRequest } = await import("@/lib/terminal/xLauncher.server");
+    const row = await createLaunchRequest(postId, owner.wallet.handle, {
+      symbol: data.symbol, name: data.name, launchpad: data.launchpad,
+      devBuySui: data.firstBuySui, feeReceiver: { wallet: owner.bank.address },
+    }, data.iconUrl, data.description ? `Desc: ${data.description}` : null);
+    if (row.status !== "PENDING") return { status: row.status, notice: row.notice, tokenUrl: row.token_url, poolUrl: row.pool_url };
+    return executeLaunchRequest(row.id);
   });

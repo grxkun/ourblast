@@ -1,4 +1,5 @@
 # Roadmap
+- [x] Connect curve prices to holdings and automatic exits; add confirmed MC/reserve sniper filters and Mini App launch review; 195 tests passed, JOEY live USD price read and authenticated mobile/desktop reviews checked, no launches or sniper activation.
 - [x] Expand Discover with 1,044 catalog tokens from historical Suipump V17/V18, Blast.fun, Popular and Perpsplexity events plus curated Sui tokens; mobile/desktop search, venue filters and dark mode checked, absent metrics remain unavailable.
 - [x] Prepare an optional read-only VPS indexer with authenticated ingestion and resumable backfill/catch-up; 16 tests pass, ingestion auth verified, no trades or public bot messages.
 - [ ] Start continuous VPS market indexing — blocked: daemon must be installed on the user's VPS, with a matching SUI_INDEXER_SECRET configured and the updated app published.

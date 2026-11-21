@@ -13,6 +13,8 @@ import { getTodaysBattle } from "@/lib/community.functions";
 export const Route = createFileRoute("/hub")({
   head: () => ({
     meta: [
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
       { title: "OURBLAST — Blast Community Hub" },
       {
         name: "description",

@@ -5,6 +5,8 @@ import { b64Address, blastSpotSui, curveProgress } from "./curvePrice";
 
 export interface CurveState {
   factory: string;
+  /** Actual deposited SUI, never virtual quote liquidity. */
+  reserveSui?: number | null;
   priceSui: number | null;
   /** Set instead of priceSui when the curve is quoted in USDC (Perpsplexity). */
   priceUsd?: number | null;
@@ -36,6 +38,7 @@ async function blastCurve(coinType: string, decimals: number): Promise<CurveStat
   const creatorRaw = j["creator"]?.["pos0"];
   return {
     factory: "Blast.fun v2",
+    reserveSui: Number(real) / 1e9,
     priceSui: live ? blastSpotSui({ virtualQuote: BigInt(j["virtual_quote"] ?? 0), realQuote: real, memeReserve: BigInt(j["meme_reserve"] ?? 0) }, decimals) : null,
     progress: live ? curveProgress(real, target) : 1,
     live,
@@ -50,7 +53,7 @@ async function suipumpCurve(coinType: string): Promise<CurveState | null> {
   const row = rows.find((r) => r.tokenType === coinType);
   if (!row) return null;
   const s = summarizeSuipumpToken(row);
-  return { factory: "Suipump", priceSui: s.graduated ? null : s.priceSui, progress: s.progress, live: !s.graduated, creator: row.creator || null, totalSupply: null };
+  return { factory: "Suipump", reserveSui: row.stats?.["reserve_sui"] != null ? Number(row.stats["reserve_sui"]) : null, priceSui: s.graduated ? null : s.priceSui, progress: s.progress, live: !s.graduated, creator: row.creator || null, totalSupply: null };
 }
 
 const PERPS_POOL = "0x97fea95545c04dc73f8174c6195013b100a26e3fa978e7cf8b100a51dfaf8354::pool::Pool";
