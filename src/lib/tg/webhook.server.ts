@@ -211,12 +211,48 @@ export async function processTelegramUpdate(update: TelegramUpdate, token: strin
           await tg("sendMessage", body);
         };
 
+        /** /chart reply: candle image, or a clear reason + Retry / timeframe buttons. Read-only. */
+        const sendChart = async (chatId: number, t: { symbol: string; coinType: string }, tf: string, replyTo: number | undefined): Promise<void> => {
+          const { getScanStats } = await import("@/lib/tg/scanInfo.server");
+          const { topPool, candles, renderChart } = await import("@/lib/tg/chart.server");
+          const { fmtUsd, fmtPrice, chartLinksHtml } = await import("@/lib/tg/scanner");
+          const [stats, pool] = await Promise.all([getScanStats(t.coinType).catch(() => null), topPool(t.coinType).catch(() => null)]);
+          const sym = (stats?.symbol ?? t.symbol).toUpperCase().slice(0, 16);
+          const chg = stats?.change24h != null ? ` · 24h ${stats.change24h >= 0 ? "+" : ""}${stats.change24h.toFixed(1)}%` : "";
+          const caption = `📊 <b>$${sym}</b> · ${tf}\nPrice ${fmtPrice(stats?.priceUsd ?? null)} · MC ${fmtUsd(stats?.mcap)}${chg}\n<code>${t.coinType}</code>\n${chartLinksHtml(t.coinType)}`;
+          const list = pool ? await candles(pool, tf, t.coinType).catch(() => []) : [];
+          const img = list.length >= 3 ? await renderChart(sym, tf, list).catch(() => null) : null;
+          const buyUrl = mainToken(sym)?.coinType === t.coinType ? buyDeepLink(sym) : contractDeepLink(t.coinType);
+          const tfRow = ["15m", "1h", "4h"].map((x) => ({ text: x === tf ? `• ${x}` : x, callback_data: `chr:${x}` }));
+          const rows: { text: string; url?: string; callback_data?: string }[][] = [tfRow];
+          if (buyUrl) rows.push([{ text: `🟢 Buy $${sym}`, url: buyUrl }]);
+          if (img) {
+            const sent = await tg("sendPhoto", { chat_id: chatId, photo: img, caption, parse_mode: "HTML", reply_to_message_id: replyTo, reply_markup: { inline_keyboard: rows } });
+            if (sent) return;
+          }
+          const why = !stats && !pool
+            ? "⚠️ Couldn't load token data right now (price sources didn't answer). Tap 🔄 Retry in a moment."
+            : stats?.onCurve ? "ℹ️ Still on the bonding curve — no DEX candles yet. Use the chart links above."
+            : !pool ? "ℹ️ No DEX pool found for this token yet, so there are no candles."
+            : list.length < 3 ? "⚠️ Candle data didn't load (or too few trades on this timeframe). Tap 🔄 Retry or try another timeframe."
+            : "⚠️ The chart image failed to render. Tap 🔄 Retry.";
+          rows.unshift([{ text: "🔄 Retry", callback_data: `chr:${tf}` }]);
+          await tg("sendMessage", { chat_id: chatId, text: `${caption}\n\n${why}`, parse_mode: "HTML", disable_web_page_preview: true, reply_to_message_id: replyTo, reply_markup: { inline_keyboard: rows } });
+        };
         // Button taps: first tap asks, second tap (Confirm) runs. Nothing moves on a single tap.
         const cq = update?.callback_query;
         if (cq?.message) {
           threadId = (cq.message as { message_thread_id?: number }).message_thread_id;
           const chat_id = cq.message.chat.id;
           const message_id = cq.message.message_id;
+          const chr = (cq.data ?? "").match(/^chr:(1m|5m|15m|1h|4h|1d)$/);
+          if (chr) {
+            const m = cq.message as { text?: string; caption?: string };
+            const t = findScanTarget(m.caption ?? m.text ?? "");
+            await tg("answerCallbackQuery", { callback_query_id: cq.id, text: t ? `Loading ${chr[1]} chart…` : "Couldn't find the token in this message. Send /chart again." });
+            if (t) await sendChart(chat_id, t, chr[1]!, undefined);
+            return Response.json({ ok: true });
+          }
           if (cq.data === "sc") {
             // Group scan "Buy" tap: open the token card in the tapper's private chat (never trades in the group).
             const t = findScanTarget(cq.message.text ?? "");
@@ -758,23 +794,7 @@ export async function processTelegramUpdate(update: TelegramUpdate, token: strin
               }
             }
             if (!t) { await reply("Usage: /chart 0x…::coin::COIN [1m|5m|15m|1h|4h|1d] or /chart $TICKER 1h"); return Response.json({ ok: true }); }
-            const { getScanStats } = await import("@/lib/tg/scanInfo.server");
-            const { topPool, candles, renderChart } = await import("@/lib/tg/chart.server");
-            const [stats, pool] = await Promise.all([getScanStats(t.coinType).catch(() => null), topPool(t.coinType)]);
-            const sym = (stats?.symbol ?? t.symbol).toUpperCase().slice(0, 16);
-            const { fmtUsd, fmtPrice, chartLinksHtml } = await import("@/lib/tg/scanner");
-            const chg = stats?.change24h != null ? ` · 24h ${stats.change24h >= 0 ? "+" : ""}${stats.change24h.toFixed(1)}%` : "";
-            const caption = `📊 <b>$${sym}</b> · ${cc.tf}\nPrice ${fmtPrice(stats?.priceUsd ?? null)} · MC ${fmtUsd(stats?.mcap)}${chg}\n<code>${t.coinType}</code>\n${chartLinksHtml(t.coinType)}`;
-            const list = pool ? await candles(pool, cc.tf, t.coinType) : [];
-            const img = list.length >= 3 ? await renderChart(sym, cc.tf, list) : null;
-            const buyUrl = mainToken(sym)?.coinType === t.coinType ? buyDeepLink(sym) : contractDeepLink(t.coinType);
-            const reply_markup = buyUrl ? { inline_keyboard: [[{ text: `🟢 Buy $${sym}`, url: buyUrl }]] } : undefined;
-            if (img) {
-              const sent = await tg("sendPhoto", { chat_id: chatId, photo: img, caption, parse_mode: "HTML", reply_to_message_id: msg?.message_id, ...(reply_markup ? { reply_markup } : {}) });
-              if (sent) return Response.json({ ok: true });
-            }
-            const why = stats?.onCurve ? "Still on the bonding curve — no DEX candles yet." : "No candle data for this token yet.";
-            await tg("sendMessage", { chat_id: chatId, text: `${caption}\n\n${why}`, parse_mode: "HTML", disable_web_page_preview: true, reply_to_message_id: msg?.message_id, ...(reply_markup ? { reply_markup } : {}) });
+            await sendChart(chatId, t, cc.tf, msg?.message_id);
             return Response.json({ ok: true });
           }
         }
@@ -1167,3 +1187,4 @@ export async function processTelegramUpdate(update: TelegramUpdate, token: strin
         });
         return Response.json({ ok: true });
 }
+
