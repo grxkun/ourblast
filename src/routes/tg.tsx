@@ -14,7 +14,7 @@ import { buildSwapCommand, normalizeSwapToken, swapTokenSymbol } from "@/lib/tg/
 import { MAIN_TOKENS, mainTokenByType } from "@/lib/terminal/mainTokens";
 import { listPublicLaunches } from "@/lib/terminal/launch-status.functions";
 import { describeTx } from "@/lib/tg/txHistory";
-import { tgCommitPresale, tgBlastPresales, tgBridgeHistory, tgTransactions, tgConsolidate, tgCreateWallet, tgExportWalletKey, tgWalletTokens, tgWalletTransfer, tgGetBankWallet, tgListWallets, tgSetTradeSlots, tgLinkX, tgRunCommand, tgSession, tgToggleWatch, tgUnlinkX } from "@/lib/tg/tg.functions";
+import { tgCommitPresale, tgBlastPresales, tgBridgeHistory, tgTransactions, tgConsolidate, tgCreateWallet, tgExportWalletKey, tgWalletTokens, tgWalletTransfer, tgGetBankWallet, tgPositions, tgPlaceExit, tgListWallets, tgSetTradeSlots, tgLinkX, tgRunCommand, tgSession, tgToggleWatch, tgUnlinkX } from "@/lib/tg/tg.functions";
 
 const launchesQuery = queryOptions({
   queryKey: ["public-launches"],
@@ -373,6 +373,62 @@ function AddressRow({ label, address, explorer, note }: { label: string; address
   );
 }
 
+function PositionsPanel({ initData, onSell }: { initData: string; onSell: (token: string, pct: string) => void }) {
+  const getPos = useServerFn(tgPositions);
+  const placeExit = useServerFn(tgPlaceExit);
+  const [rows, setRows] = useState<Awaited<ReturnType<typeof tgPositions>> | null>(null);
+  const [open, setOpen] = useState<string | null>(null);
+  const [note, setNote] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const load = useCallback(() => { getPos({ data: { initData } }).then(setRows).catch(() => setRows([])); }, [getPos, initData]);
+  useEffect(() => { load(); }, [load]);
+  const k = (n: number) => n >= 1e9 ? (n / 1e9).toFixed(2) + "B" : n >= 1e6 ? (n / 1e6).toFixed(2) + "M" : n >= 1e3 ? (n / 1e3).toFixed(1) + "K" : n.toLocaleString("en-US", { maximumFractionDigits: 4 });
+  const exit = async (coinType: string, kind: "tpsl" | "trail15" | "trail25") => {
+    setBusy(true); setNote(null);
+    try { setNote((await placeExit({ data: { initData, coinType, kind } })).message); } catch (e) { setNote(String((e as Error).message ?? e)); } finally { setBusy(false); }
+  };
+  return (
+    <div className="rounded-2xl border border-border bg-surface p-3">
+      <div className="mb-2 flex items-baseline justify-between">
+        <b className="font-display text-lg">Holdings</b>
+        <button onClick={load} className="text-xs text-muted-foreground underline">Refresh</button>
+      </div>
+      {!rows && <p className="text-sm text-muted-foreground">Loading positions…</p>}
+      {rows?.length === 0 && <p className="text-sm text-muted-foreground">No token positions yet.</p>}
+      <ul className="space-y-1.5">
+        {rows?.map((p) => (
+          <li key={p.coinType} className="rounded-xl bg-card">
+            <button onClick={() => setOpen(open === p.coinType ? null : p.coinType)} className="flex w-full min-w-0 items-center gap-2 p-2.5 text-left text-sm">
+              <b className="truncate">${p.symbol}</b>
+              <span className="font-mono text-xs text-muted-foreground">{k(p.held)}</span>
+              <span className="ml-auto shrink-0 font-mono text-xs">{p.valueSui != null ? `≈${p.valueSui.toFixed(3)} SUI` : "no price"}</span>
+              {p.pnlPct != null && <span className={`shrink-0 font-mono text-xs font-semibold ${p.pnlPct >= 0 ? "text-cyber" : "text-destructive"}`}>{p.pnlPct >= 0 ? "+" : ""}{p.pnlPct.toFixed(0)}%</span>}
+            </button>
+            {open === p.coinType && (
+              <div className="space-y-1.5 px-2.5 pb-2.5">
+                {p.realizedSui != null && <p className="text-[0.7rem] text-muted-foreground">Realized: {p.realizedSui >= 0 ? "+" : ""}{p.realizedSui.toFixed(3)} SUI</p>}
+                <div className="grid grid-cols-4 gap-1.5">
+                  {["25", "50", "75", "100"].map((pct) => (
+                    <button key={pct} onClick={() => onSell(p.coinType, pct)} className="rounded-full bg-destructive/15 py-1.5 text-xs font-semibold text-destructive">{pct}%</button>
+                  ))}
+                </div>
+                <div className="grid grid-cols-2 gap-1.5">
+                  <button disabled={p.takeInitialPct == null} onClick={() => p.takeInitialPct != null && onSell(p.coinType, String(p.takeInitialPct))} className="rounded-full bg-surface-2 py-1.5 text-xs font-semibold disabled:opacity-40">💰 Take initial</button>
+                  <button disabled={busy} onClick={() => void exit(p.coinType, "tpsl")} className="rounded-full bg-surface-2 py-1.5 text-xs font-semibold">🎯 TP+100 / SL−30</button>
+                  <button disabled={busy} onClick={() => void exit(p.coinType, "trail15")} className="rounded-full bg-surface-2 py-1.5 text-xs font-semibold">📈 Trail 15%</button>
+                  <button disabled={busy} onClick={() => void exit(p.coinType, "trail25")} className="rounded-full bg-surface-2 py-1.5 text-xs font-semibold">📈 Trail 25%</button>
+                </div>
+              </div>
+            )}
+          </li>
+        ))}
+      </ul>
+      {note && <p className="mt-2 whitespace-pre-wrap rounded-xl bg-card p-2 text-xs">{note}</p>}
+      <p className="mt-2 text-[0.7rem] text-muted-foreground">% = unrealized profit/loss from your OurBank buys. Tap a token for exits. Sell buttons open a review first.</p>
+    </div>
+  );
+}
+
 function WalletView({ initData, handle, onTrade, onSell }: { initData: string; handle: string; onTrade: () => void; onSell: (token: string, pct: string) => void }) {
   const getWallet = useServerFn(tgGetBankWallet);
   const [w, setW] = useState<Awaited<ReturnType<typeof tgGetBankWallet>> | null>(null);
@@ -434,35 +490,7 @@ function WalletView({ initData, handle, onTrade, onSell }: { initData: string; h
           ))}
         </ul>
       </div>
-      {(() => {
-        const positions = w.sui.filter((b) => b.amount > 0 && !/^0x0*2::sui::SUI$/i.test(b.coinType));
-        const total = w.sui.reduce((t, b) => t + (b.usd ?? 0), 0);
-        return (
-          <div className="rounded-2xl border border-border bg-surface p-3">
-            <div className="mb-2 flex items-baseline justify-between">
-              <b className="font-display text-lg">Positions</b>
-              {total > 0 && <span className="text-xs text-muted-foreground">Sui total ≈ ${total.toFixed(2)}</span>}
-            </div>
-            {positions.length === 0 && <p className="text-sm text-muted-foreground">No Sui token positions yet.</p>}
-            <ul className="space-y-2">
-              {positions.map((p) => (
-                <li key={p.coinType} className="rounded-xl bg-card p-2.5">
-                  <div className="flex items-center justify-between text-sm">
-                    <b>${p.symbol}</b>
-                    <span className="font-mono">{fmt(p.amount)}{p.usd != null && <span className="ml-1 text-muted-foreground">≈ ${p.usd.toFixed(2)}</span>}</span>
-                  </div>
-                  <div className="mt-2 grid grid-cols-3 gap-1.5">
-                    {["25", "50", "100"].map((pct) => (
-                      <button key={pct} onClick={() => onSell(p.coinType, pct)} className="rounded-full bg-surface-2 py-1 text-xs font-semibold">{pct === "100" ? "Sell MAX" : `Sell ${pct}%`}</button>
-                    ))}
-                  </div>
-                </li>
-              ))}
-            </ul>
-            <p className="mt-2 text-[0.7rem] text-muted-foreground">Values from Aftermath when a price exists. Profit/loss needs your buy prices, which aren't tracked yet. Sell buttons open a review first.</p>
-          </div>
-        );
-      })()}
+      <PositionsPanel initData={initData} onSell={onSell} />
       </>}
       <div id="tg-addresses" className="space-y-3">
         <AddressRow label="Sui wallet" address={w.address} explorer={`https://suiscan.xyz/mainnet/account/${w.address}`} note="Send SUI or any Sui token here." />

@@ -68,3 +68,26 @@ export async function heldTokens(handle: string): Promise<{ symbol: string; coin
   const { raw } = await load(handle);
   return raw.filter((b) => !b.coinType.endsWith("::sui::SUI") && Number(b.balance) > 0).map((b) => ({ symbol: b.symbol ?? b.coinType.split("::").at(-1) ?? "Token", coinType: b.coinType }));
 }
+
+export interface PositionView { coinType: string; symbol: string; held: number; valueSui: number | null; pnlPct: number | null; realizedSui: number | null; takeInitialPct: number | null }
+
+/** Structured positions for the Mini App: same math as the bot's /holding panel. */
+export async function positionsView(handle: string): Promise<PositionView[]> {
+  const { raw, rows, aftermathPrices } = await load(handle);
+  const { takeInitialPct } = await import("./limitOrder");
+  const toks = raw.filter((b) => !b.coinType.endsWith("::sui::SUI") && Number(b.balance) > 0);
+  if (!toks.length) return [];
+  const prices = await aftermathPrices([SUI, ...toks.map((t) => t.coinType)]).catch(() => ({} as Record<string, number>));
+  const suiUsd = prices[SUI] ?? null;
+  return toks.map((b) => {
+    const d = b.decimals ?? 9, held = Number(b.balance) / 10 ** d, pu = prices[b.coinType];
+    const priceSui = pu != null && suiUsd ? pu / suiUsd : null;
+    const p = computePnl(rows, b.coinType, d), u = unrealized(p, held, priceSui);
+    return {
+      coinType: b.coinType, symbol: b.symbol ?? b.coinType.split("::").at(-1) ?? "Token", held,
+      valueSui: priceSui != null ? held * priceSui : null, pnlPct: u ? u.pct : null,
+      realizedSui: p.soldTokens ? p.realizedSui : null,
+      takeInitialPct: u ? takeInitialPct(u.costSui, u.valueSui) : null,
+    };
+  });
+}

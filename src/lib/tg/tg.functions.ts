@@ -385,3 +385,30 @@ export const tgBridgeHistory = createServerFn({ method: "POST" })
     const { bridgeHistory } = await import("./bridgeHistory.server");
     return bridgeHistory(handle, 20);
   });
+
+/** Positions with PnL for the Mini App holdings panel (caller's own wallet only). */
+export const tgPositions = createServerFn({ method: "POST" })
+  .inputValidator((d) => z.object({ initData: z.string().min(1).max(4096) }).parse(d))
+  .handler(async ({ data }) => {
+    const { handle } = await linkedHandle(data.initData);
+    return (await import("./pnl.server")).positionsView(handle);
+  });
+
+/** Place TP/SL or a trailing stop for one held token from the selected wallet(s). */
+export const tgPlaceExit = createServerFn({ method: "POST" })
+  .inputValidator((d) => z.object({
+    initData: z.string().min(1).max(4096),
+    coinType: z.string().regex(/^0x[0-9a-fA-F]+::\w+::\w+$/).max(300),
+    kind: z.enum(["tpsl", "trail15", "trail25"]),
+  }).parse(d))
+  .handler(async ({ data }) => {
+    const { user, handle } = await linkedHandle(data.initData);
+    const { listTgWallets } = await import("./tgWallets.server");
+    const { selected } = await listTgWallets(user.id, handle);
+    const lo = await import("./limitOrder.server");
+    if (data.kind === "tpsl") {
+      const { TPSL_DEFAULT } = await import("./limitOrder");
+      return { message: await lo.placeTpSl(user.id, data.coinType, TPSL_DEFAULT.tp, TPSL_DEFAULT.sl, selected) };
+    }
+    return { message: await lo.placeTrailing(user.id, data.coinType, data.kind === "trail15" ? 15 : 25, selected) };
+  });
