@@ -2570,6 +2570,7 @@ export type Database = {
           first_name: string | null
           last_seen_at: string
           photo_url: string | null
+          pnl_bg: string | null
           privy_user_id: string | null
           tg_user_id: number
           trade_slots: number[]
@@ -2581,6 +2582,7 @@ export type Database = {
           first_name?: string | null
           last_seen_at?: string
           photo_url?: string | null
+          pnl_bg?: string | null
           privy_user_id?: string | null
           tg_user_id: number
           trade_slots?: number[]
@@ -2592,6 +2594,7 @@ export type Database = {
           first_name?: string | null
           last_seen_at?: string
           photo_url?: string | null
+          pnl_bg?: string | null
           privy_user_id?: string | null
           tg_user_id?: number
           trade_slots?: number[]

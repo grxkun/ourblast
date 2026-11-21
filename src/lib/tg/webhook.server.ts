@@ -505,6 +505,20 @@ export async function processTelegramUpdate(update: TelegramUpdate, token: strin
             });
             return Response.json({ ok: true });
           }
+          if (cq.data === "pbg" || cq.data?.startsWith("pbg:")) {
+            const pc = await import("@/lib/tg/pnlCard");
+            const key = cq.data.slice(4);
+            if (key && pc.PNL_PRESETS[key]) {
+              const { supabaseAdmin: db } = await import("@/integrations/supabase/client.server");
+              await db.from("tg_users").update({ pnl_bg: key }).eq("tg_user_id", cq.from.id);
+              await tg("answerCallbackQuery", { callback_query_id: cq.id, text: `Background: ${pc.PNL_PRESETS[key]!.label}` });
+              await tg("sendPhoto", { chat_id, photo: pc.PNL_PRESETS[key]!.url, caption: `✅ PnL card background set to ${pc.PNL_PRESETS[key]!.label}` });
+            } else {
+              await tg("answerCallbackQuery", { callback_query_id: cq.id });
+              await tg("sendMessage", { chat_id, text: pc.PNL_BG_HELP, reply_markup: { inline_keyboard: pc.pnlBgKeyboard() } });
+            }
+            return Response.json({ ok: true });
+          }
           if (cq.data === "tsl") {
             await tg("answerCallbackQuery", { callback_query_id: cq.id, text: "Setting TP/SL…" });
             const ct = (cq.message.text ?? "").split("\n").map((l) => detectToken(l)?.coinType).find(Boolean);
@@ -622,10 +636,16 @@ export async function processTelegramUpdate(update: TelegramUpdate, token: strin
               const { supabaseAdmin: db } = await import("@/integrations/supabase/client.server");
               const u = { x_username: await tgWalletHandle(cq.from.id) as string | null };
               const card = u?.x_username ? await (await import("@/lib/tg/pnl.server")).exitCardFor(u.x_username, coinType, shown) : null;
-              if (card) await tg("sendMessage", { chat_id, text: card, disable_web_page_preview: true, reply_markup: { inline_keyboard: [[
-                { text: "Share on X", url: `https://x.com/intent/post?text=${encodeURIComponent(card)}` },
-                { text: "Share on Telegram", url: `https://t.me/share/url?url=${encodeURIComponent("https://t.me/ourblastsuibot")}&text=${encodeURIComponent(card)}` },
-              ]] } });
+              if (card) {
+                const { resolvePnlBg } = await import("@/lib/tg/pnlCard");
+                const { data: pref } = await db.from("tg_users").select("pnl_bg").eq("tg_user_id", cq.from.id).maybeSingle();
+                const reply_markup = { inline_keyboard: [[
+                  { text: "Share on X", url: `https://x.com/intent/post?text=${encodeURIComponent(card)}` },
+                  { text: "Share on Telegram", url: `https://t.me/share/url?url=${encodeURIComponent("https://t.me/ourblastsuibot")}&text=${encodeURIComponent(card)}` },
+                ], [{ text: "🎨 Change background", callback_data: "pbg" }]] };
+                const sent = await tg("sendPhoto", { chat_id, photo: resolvePnlBg((pref as { pnl_bg?: string | null } | null)?.pnl_bg), caption: card, reply_markup });
+                if (!sent) await tg("sendMessage", { chat_id, text: card, disable_web_page_preview: true, reply_markup });
+              }
             } catch { /* PnL card is best-effort; the trade receipt already went out */ }
           }
           return Response.json({ ok: true });
@@ -670,6 +690,20 @@ export async function processTelegramUpdate(update: TelegramUpdate, token: strin
         };
         const linkKb = { inline_keyboard: [[{ text: "🔗 Link X account", web_app: { url: LINK_URL } }]] };
 
+        const pbgCmd = isPrivate ? (await import("@/lib/tg/pnlCard")).parsePnlBg(original) : null;
+        if (pbgCmd) {
+          const pc = await import("@/lib/tg/pnlCard");
+          if ("menu" in pbgCmd) {
+            await tg("sendMessage", { chat_id: chatId, text: pc.PNL_BG_HELP, reply_markup: { inline_keyboard: pc.pnlBgKeyboard() } });
+          } else {
+            const { supabaseAdmin: db } = await import("@/integrations/supabase/client.server");
+            const v = "reset" in pbgCmd ? null : pbgCmd.set;
+            await db.from("tg_users").update({ pnl_bg: v }).eq("tg_user_id", msg!.from!.id);
+            const sent = await tg("sendPhoto", { chat_id: chatId, photo: pc.resolvePnlBg(v), caption: "✅ PnL card background saved. It shows on your next exit card." });
+            if (!sent) await tg("sendMessage", { chat_id: chatId, text: "⚠️ Saved, but Telegram couldn't load that picture. Use a direct https image link (.jpg/.png), or pick a preset: /pnlbg" });
+          }
+          return Response.json({ ok: true });
+        }
         if (/^\/(link|account|me)\b/.test(text) && isPrivate) {
           const raw = await linkedHandle();
           const h = raw && !raw.startsWith("tg-") ? raw : null;

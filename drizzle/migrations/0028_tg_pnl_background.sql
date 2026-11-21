@@ -1,0 +1,1 @@
+ALTER TABLE public.tg_users ADD COLUMN IF NOT EXISTS pnl_bg text;
