@@ -55,6 +55,23 @@ export async function runTgCommand(
     return { linked: true, reply: await as.saveAutoSnipe(tgUserId, ac, selected) };
   }
 
+  // Copy trading. Starting needs the explicit "confirm" prefix (the Mini App form reviews first).
+  const ct = await import("./copyTrade");
+  const cc = ct.parseCopyCommand(trimmed.replace(/^confirm\s+/i, ""));
+  if (cc) {
+    if (cc.op === "error") return { linked: true, reply: cc.error };
+    const { supabaseAdmin: db } = await import("@/integrations/supabase/client.server");
+    if (cc.op === "stop") {
+      let q = db.from("tg_wallet_follows").update({ copy_sui: null }).eq("tg_user_id", tgUserId).not("copy_sui", "is", null);
+      if (cc.address !== "all") q = q.eq("address", cc.address);
+      const { data } = await q.select("id");
+      return { linked: true, reply: data?.length ? `🛑 Copy trading stopped for ${data.length} wallet(s).` : "No active copy trades matched." };
+    }
+    if (!/^confirm\s+/i.test(trimmed)) return { linked: true, reply: `🪞 Copy ${cc.address}: ${cc.perTrade} SUI per buy · max ${cc.dailyCap} SUI/day · slippage ${cc.slippage}%\n\nTo start, send:\nconfirm ${ct.copyLine(cc)}` };
+    const { error } = await db.from("tg_wallet_follows").upsert({ tg_user_id: tgUserId, address: cc.address, copy_sui: Number(cc.perTrade), copy_daily_cap: Number(cc.dailyCap), copy_slippage: Number(cc.slippage) }, { onConflict: "tg_user_id,address" });
+    return { linked: true, reply: error ? `Couldn't start: ${error.message}` : `🪞 Copying ${cc.address}\n${cc.perTrade} SUI per buy · max ${cc.dailyCap} SUI/day · slippage ${cc.slippage}%\nStarts from its next trade. Stop: stopcopy all` };
+  }
+
   // Limit orders.
   const lim = await import("./limitOrder");
   const lc = lim.parseLimitCommand(trimmed);

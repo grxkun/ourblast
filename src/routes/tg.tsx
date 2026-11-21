@@ -203,19 +203,14 @@ function TgApp() {
           <h2 className="font-display text-lg">DASHBOARD</h2>
           <div className="grid grid-cols-4 gap-2">
             {([
-              ["Buy", Zap, "text-primary", () => { setPreset({ side: "buy", token: "", key: Date.now(), mode: "swap" }); setTab("trade"); }],
-              ["Sell", ArrowDownUp, "text-grape", () => { setPreset({ side: "sell", token: "", key: Date.now(), mode: "swap" }); setTab("trade"); }],
+              ["Swap", ArrowDownUp, "text-primary", () => { setPreset({ side: "buy", token: "", key: Date.now(), mode: "swap" }); setTab("trade"); }],
               ["Snipe", Rocket, "text-lime", () => { setPreset({ side: "buy", token: "", key: Date.now(), mode: "snipe" }); setTab("trade"); }],
               ["Copy", Repeat, "text-cyber", () => { setPreset({ side: "buy", token: "", key: Date.now(), mode: "copy" }); setTab("trade"); }],
-              ["Limit", RefreshCw, "text-muted-foreground", () => { setPreset({ side: "buy", token: "", key: Date.now(), mode: "limit" }); setTab("trade"); }],
+              ["Limit", RefreshCw, "text-grape", () => { setPreset({ side: "buy", token: "", key: Date.now(), mode: "limit" }); setTab("trade"); }],
               ["Wallet", Wallet, "text-cyber", () => setTab("wallet")],
               ["Assets", ImageIcon, "text-grape", () => setTab("assets")],
-              ["Deposit", ArrowDownToLine, "text-lime", () => setTab("wallet")],
-              ["Launches", Search, "text-primary", () => { setFilter("live"); setTab("discover"); }],
-              [`Watch (${watch.size})`, Star, "text-lime", () => { setFilter("watch"); setTab("discover"); }],
-              ["Presales", Send, "text-grape", () => { setFilter("live"); setTab("discover"); }],
+              ["Presales", Send, "text-lime", () => { setFilter("live"); setTab("discover"); }],
               ["Guide", HelpCircle, "text-primary", () => setHelp(true)],
-              ["Terminal", Copy, "text-muted-foreground", () => { setPreset({ side: "buy", token: "", key: Date.now(), mode: "swap" }); setTab("trade"); }],
             ] as const).map(([label, Icon, tone, go]) => (
               <button key={label} onClick={go}
                 className="flex flex-col items-center gap-1 rounded-2xl border border-border bg-surface px-1 py-3 active:scale-95 transition-transform">
@@ -517,10 +512,12 @@ function AutoSnipeBox({ busy, onRun }: { busy: boolean; onRun: (cmd: string) => 
   const [cap, setCap] = useState("10");
   const [slip, setSlip] = useState("15");
   const [kw, setKw] = useState("");
+  const [tp, setTp] = useState("");
+  const [sl, setSl] = useState("");
   const [review, setReview] = useState(false);
   const kwOk = !kw || /^[a-z0-9]{2,16}$/i.test(kw);
-  const ok = Number(amt) > 0 && Number(amt) <= 50 && Number(cap) >= Number(amt) && Number(cap) <= 500 && Number(slip) >= 0.1 && Number(slip) <= 50 && kwOk;
-  const line = `autosnipe ${pads} ${amt} sui max ${cap} sui slippage ${slip}%${kw ? ` keyword ${kw.toLowerCase()}` : ""}`;
+  const ok = Number(amt) > 0 && Number(amt) <= 50 && Number(cap) >= Number(amt) && Number(cap) <= 500 && Number(slip) >= 0.1 && Number(slip) <= 50 && kwOk && (!tp || (Number(tp) > 0 && Number(tp) <= 10000)) && (!sl || (Number(sl) > 0 && Number(sl) <= 99));
+  const line = `autosnipe ${pads} ${amt} sui max ${cap} sui slippage ${slip}%${kw ? ` keyword ${kw.toLowerCase()}` : ""}${tp ? ` tp ${tp}%` : ""}${sl ? ` sl ${sl}%` : ""}`;
   const chip = (on: boolean) => `rounded-full px-3 py-1 text-xs font-bold ${on ? "bg-primary text-primary-foreground" : "bg-surface text-muted-foreground"}`;
   return (
     <div className="space-y-2 rounded-xl border border-border bg-surface/50 p-3">
@@ -538,9 +535,13 @@ function AutoSnipeBox({ busy, onRun }: { busy: boolean; onRun: (cmd: string) => 
         <label className="space-y-1"><span className="text-muted-foreground">Slippage %</span><input inputMode="decimal" value={slip} onChange={(e) => { setSlip(e.target.value); setReview(false); }} className="w-full rounded-lg border border-border bg-card px-2 py-1.5" /></label>
       </div>
       <input value={kw} onChange={(e) => { setKw(e.target.value); setReview(false); }} placeholder="Keyword filter (optional, e.g. pepe)" className="w-full rounded-lg border border-border bg-card px-2 py-1.5 text-xs" />
+      <div className="grid grid-cols-2 gap-2 text-xs">
+        <label className="space-y-1"><span className="text-muted-foreground">Take profit % (optional)</span><input inputMode="decimal" value={tp} placeholder="100" onChange={(e) => { setTp(e.target.value); setReview(false); }} className="w-full rounded-lg border border-border bg-card px-2 py-1.5" /></label>
+        <label className="space-y-1"><span className="text-muted-foreground">Stop loss % (optional)</span><input inputMode="decimal" value={sl} placeholder="30" onChange={(e) => { setSl(e.target.value); setReview(false); }} className="w-full rounded-lg border border-border bg-card px-2 py-1.5" /></label>
+      </div>
       {review ? (
         <div className="space-y-2 rounded-lg bg-background/60 p-2 text-xs">
-          <p>Every new {pads === "all" ? "Blast.fun + Suipump" : pads === "blast" ? "Blast.fun" : "Suipump"} launch{kw ? ` containing “${kw}”` : ""}: <b>{amt} SUI</b> per selected wallet, max <b>{cap} SUI/day</b>, slippage {slip}%. Each buy is simulated first; new tokens can lose value fast.</p>
+          <p>Every new {pads === "all" ? "Blast.fun + Suipump" : pads === "blast" ? "Blast.fun" : "Suipump"} launch{kw ? ` containing “${kw}”` : ""}: <b>{amt} SUI</b> per selected wallet, max <b>{cap} SUI/day</b>, slippage {slip}%{tp ? `, take profit +${tp}%` : ""}{sl ? `, stop loss −${sl}%` : ""}. Each buy is simulated first; new tokens can lose value fast.</p>
           <div className="flex gap-2">
             <button onClick={() => setReview(false)} className="flex-1 rounded-full bg-card py-2 font-bold">Cancel</button>
             <button disabled={busy} onClick={() => { setReview(false); onRun(`confirm ${line}`); }} className="flex-1 rounded-full bg-primary py-2 font-bold text-primary-foreground disabled:opacity-50">Turn on</button>
@@ -551,6 +552,44 @@ function AutoSnipeBox({ busy, onRun }: { busy: boolean; onRun: (cmd: string) => 
           <button disabled={!ok || busy} onClick={() => setReview(true)} className="flex-1 rounded-full bg-primary py-2 text-xs font-bold text-primary-foreground disabled:opacity-50">Review rule</button>
           <button disabled={busy} onClick={() => onRun("pausesnipe all")} className="rounded-full bg-card px-3 py-2 text-xs font-bold">Pause</button>
           <button disabled={busy} onClick={() => onRun("stopsnipe all")} className="rounded-full bg-card px-3 py-2 text-xs font-bold text-destructive">Stop all</button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function CopyTradeBox({ busy, onRun }: { busy: boolean; onRun: (cmd: string) => void }) {
+  const [addr, setAddr] = useState("");
+  const [amt, setAmt] = useState("2");
+  const [cap, setCap] = useState("10");
+  const [slip, setSlip] = useState("10");
+  const [review, setReview] = useState(false);
+  const a = addr.trim().toLowerCase();
+  const ok = /^0x[a-f0-9]{1,64}$/.test(a) && Number(amt) > 0 && Number(amt) <= 100 && Number(cap) >= Number(amt) && Number(slip) >= 0.1 && Number(slip) <= 50;
+  const line = `copy ${a} ${amt} sui max ${cap} sui slippage ${slip}%`;
+  const field = "w-full rounded-lg border border-border bg-card px-2 py-1.5";
+  return (
+    <div className="space-y-2 rounded-xl border border-border bg-surface/50 p-3">
+      <p className="font-display text-base uppercase">🪞 Copy a wallet</p>
+      <p className="text-xs text-muted-foreground">When this wallet buys a token, you buy too. When it sells, you sell all of that token.</p>
+      <input value={addr} onChange={(e) => { setAddr(e.target.value); setReview(false); }} placeholder="Wallet address 0x…" className={`${field} text-xs`} />
+      <div className="grid grid-cols-3 gap-2 text-xs">
+        <label className="space-y-1"><span className="text-muted-foreground">SUI / buy</span><input inputMode="decimal" value={amt} onChange={(e) => { setAmt(e.target.value); setReview(false); }} className={field} /></label>
+        <label className="space-y-1"><span className="text-muted-foreground">Max / day</span><input inputMode="decimal" value={cap} onChange={(e) => { setCap(e.target.value); setReview(false); }} className={field} /></label>
+        <label className="space-y-1"><span className="text-muted-foreground">Slippage %</span><input inputMode="decimal" value={slip} onChange={(e) => { setSlip(e.target.value); setReview(false); }} className={field} /></label>
+      </div>
+      {review ? (
+        <div className="space-y-2 rounded-lg bg-background/60 p-2 text-xs">
+          <p>Copy <b className="break-all">{a}</b>: <b>{amt} SUI</b> per buy, max <b>{cap} SUI/day</b>, slippage {slip}%. Trades run automatically from your wallet.</p>
+          <div className="flex gap-2">
+            <button onClick={() => setReview(false)} className="flex-1 rounded-full bg-card py-2 font-bold">Cancel</button>
+            <button disabled={busy} onClick={() => { setReview(false); onRun(`confirm ${line}`); }} className="flex-1 rounded-full bg-primary py-2 font-bold text-primary-foreground disabled:opacity-50">Start copying</button>
+          </div>
+        </div>
+      ) : (
+        <div className="flex gap-2">
+          <button disabled={!ok || busy} onClick={() => setReview(true)} className="flex-1 rounded-full bg-primary py-2 text-xs font-bold text-primary-foreground disabled:opacity-50">Review</button>
+          <button disabled={busy} onClick={() => onRun("stopcopy all")} className="rounded-full bg-card px-3 py-2 text-xs font-bold text-destructive">Stop all</button>
         </div>
       )}
     </div>
@@ -860,7 +899,7 @@ function TradeTerminal({ initData, preset }: { initData: string; preset: TradePr
       {mode === "swap" && <SwapCard preset={preset} busy={busy} onRun={(c) => void send(c)} holdings={holdings} onRefresh={loadHoldings} />}
       {mode === "snipe" && <SnipeCard busy={busy} onRun={(c) => void send(c)} />}
       {mode === "limit" && <LimitCard busy={busy} onRun={(c) => void send(c)} />}
-      {mode === "copy" && <SoonCard soon={false} title="Copy trading" text="Copy a wallet's buys and sells with a per-trade size and daily max. In the bot chat send “copy 0x… 2 sui max 10 sui” — review, confirm, and stop anytime with “stopcopy all”." />}
+      {mode === "copy" && <CopyTradeBox busy={busy} onRun={(c) => void send(c)} />}
       <div className="space-y-2">
         {log.map((m) => (
           <div key={m.id} className={`w-fit min-w-0 max-w-[85%] whitespace-pre-wrap rounded-2xl px-3 py-2 text-sm [overflow-wrap:anywhere] ${m.who === "me" ? "ml-auto bg-primary text-primary-foreground" : "border border-border bg-card"}`}>
