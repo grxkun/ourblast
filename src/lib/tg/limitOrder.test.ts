@@ -74,3 +74,23 @@ describe("take-profit / stop-loss", () => {
     expect(parseAutoSnipeCommand("autosnipe all 2 sui sl 100%")?.op).toBe("error");
   });
 });
+
+import { takeInitialPct, trailStep } from "./limitOrder";
+import { snipeExitKeyboard } from "./autoSnipe";
+describe("exit tools", () => {
+  it("take initial sells exactly the cost share", () => {
+    expect(takeInitialPct(2, 4)).toBe(50);
+    expect(takeInitialPct(1, 3)).toBe(33.4);
+    expect(takeInitialPct(2, 2)).toBeNull();
+    expect(takeInitialPct(2, 1)).toBeNull();
+  });
+  it("trailing stop follows the peak", () => {
+    expect(trailStep(1, 2, 15)).toEqual({ peak: 2, fire: false });
+    expect(trailStep(2, 1.71, 15).fire).toBe(false);
+    expect(trailStep(2, 1.7, 15).fire).toBe(true);
+  });
+  it("exit keyboard has 25/50/75/100 instant sells", () => {
+    const kb = snipeExitKeyboard("0xabc::joey::JOEY");
+    expect(kb[0]!.map((b) => b.callback_data)).toEqual(["g|s|25|JOEY", "g|s|50|JOEY", "g|s|75|JOEY", "g|s|100|JOEY"]);
+  });
+});

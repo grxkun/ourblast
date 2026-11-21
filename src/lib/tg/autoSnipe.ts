@@ -57,8 +57,9 @@ export function autoLine(r: AutoRule): string {
 export function snipeExitKeyboard(coinType: string) {
   const sym = (coinType.split("::").pop() ?? "TOKEN").toUpperCase().replace(/[^A-Z0-9_]/g, "").slice(0, 16) || "TOKEN";
   return [
-    [{ text: "🔴 Sell 50%", callback_data: `a|s|50|${sym}` }, { text: "🔴 Sell 100%", callback_data: `a|s|100|${sym}` }],
-    [{ text: "🎯 TP +100% / SL −30%", callback_data: "tsl" }, { text: "📊 Positions", callback_data: "m:positions" }],
+    [25, 50, 75, 100].map((n) => ({ text: `🔴 ${n}%`, callback_data: `g|s|${n}|${sym}` })),
+    [{ text: "💰 Take initial", callback_data: "ti" }, { text: "🎯 TP +100% / SL −30%", callback_data: "tsl" }],
+    [{ text: "📈 Trail 15%", callback_data: "tr|15" }, { text: "📈 Trail 25%", callback_data: "tr|25" }, { text: "📊 Holdings", callback_data: "m:positions" }],
   ];
 }
 

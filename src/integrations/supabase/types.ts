@@ -2358,6 +2358,7 @@ export type Database = {
           filled_at: string | null
           id: string
           oco: string | null
+          peak_usd: number | null
           result: string | null
           side: string
           slippage: number
@@ -2365,6 +2366,7 @@ export type Database = {
           status: string
           stop: boolean
           tg_user_id: number
+          trail_pct: number | null
           trigger_usd: number
         }
         Insert: {
@@ -2375,6 +2377,7 @@ export type Database = {
           filled_at?: string | null
           id?: string
           oco?: string | null
+          peak_usd?: number | null
           result?: string | null
           side: string
           slippage?: number
@@ -2382,6 +2385,7 @@ export type Database = {
           status?: string
           stop?: boolean
           tg_user_id: number
+          trail_pct?: number | null
           trigger_usd: number
         }
         Update: {
@@ -2392,6 +2396,7 @@ export type Database = {
           filled_at?: string | null
           id?: string
           oco?: string | null
+          peak_usd?: number | null
           result?: string | null
           side?: string
           slippage?: number
@@ -2399,6 +2404,7 @@ export type Database = {
           status?: string
           stop?: boolean
           tg_user_id?: number
+          trail_pct?: number | null
           trigger_usd?: number
         }
         Relationships: []

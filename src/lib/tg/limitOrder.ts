@@ -69,3 +69,16 @@ export function tpSlTargets(entry: number, tpPct: number | null, slPct: number |
 /** The trade command run when the order fires. */
 export const limitTradeCommand = (o: { side: string; amount: string; coin_type: string; slippage: number | string }) =>
   o.side === "buy" ? `buy ${o.amount} sui of ${o.coin_type} slippage ${o.slippage}%` : `sell ${o.amount}% ${o.coin_type} slippage ${o.slippage}%`;
+
+/** Percent of a position to sell so the proceeds repay its remaining cost (rest rides free). Null when the position isn't in profit. */
+export function takeInitialPct(costSui: number, valueSui: number): number | null {
+  if (!(costSui > 0) || !(valueSui > costSui)) return null;
+  return Math.min(99, Math.max(1, Math.ceil((costSui / valueSui) * 1000) / 10));
+}
+
+export const TRAIL_PRESETS = [15, 25] as const;
+/** Trailing stop: the stop price follows the highest price seen and fires once price falls trailPct below it. */
+export function trailStep(peak: number, price: number, trailPct: number): { peak: number; fire: boolean } {
+  const p = Math.max(peak, price);
+  return { peak: p, fire: price > 0 && price <= p * (1 - trailPct / 100) };
+}

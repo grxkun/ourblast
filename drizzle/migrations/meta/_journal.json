@@ -176,6 +176,13 @@
       "when": 1795241060576,
       "tag": "0024_snipe_tp_sl",
       "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "7",
+      "when": 1795247134540,
+      "tag": "0025_tg_trailing_stop",
+      "breakpoints": true
     }
   ]
 }

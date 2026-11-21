@@ -1,0 +1,1 @@
+ALTER TABLE public.tg_limit_orders ADD COLUMN IF NOT EXISTS trail_pct numeric, ADD COLUMN IF NOT EXISTS peak_usd numeric;

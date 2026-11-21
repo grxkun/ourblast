@@ -86,7 +86,7 @@ async function walletPicker(tgUserId: number, handle: string): Promise<{ text: s
   };
 }
 
-const HOLDINGS_KB: Btn[][] = [[{ text: "🔄 Refresh", callback_data: "m:positions" }, { text: "🎯 Sniper", callback_data: "m:snipe" }], [{ text: "📋 Orders", callback_data: "m:orders" }, { text: "⬅️ Menu", callback_data: "m:home" }]];
+const HOLDINGS_KB: Btn[][] = [[{ text: "🎛 Exit a token (sell · take initial · trail)", callback_data: "xl" }], [{ text: "🔄 Refresh", callback_data: "m:positions" }, { text: "🎯 Sniper", callback_data: "m:snipe" }], [{ text: "📋 Orders", callback_data: "m:orders" }, { text: "⬅️ Menu", callback_data: "m:home" }]];
 const SNIPE_MENU_TEXT = "🎯 Sniper\n\n• Target: snipe 0x…::coin::COIN 5 sui slippage 10% — one token, review then confirm.\n• ⚡ All launches by filter: buy every new Blast.fun / Suipump launch automatically, with a per-launch size and daily max.\n  Custom: autosnipe all 2 sui max 10 sui slippage 15% keyword pepe\n\nPick a quick rule below — you always review before it turns on.\n📡 Holdings shows every token you hold with live value and PnL.";
 function snipeMenuKeyboard(): Btn[][] {
   return [
@@ -457,6 +457,51 @@ export async function processTelegramUpdate(update: TelegramUpdate, token: strin
             await replyWithProgress(chat_id, cq.data === "lp" ? "Placing order" : "Running", async () => {
               const { runTgCommand } = await import("@/lib/tg/runCommand.server");
               return (await runTgCommand(cq.from.id, line)).reply;
+            });
+            return Response.json({ ok: true });
+          }
+          if (cq.data === "xl" || cq.data?.startsWith("xp|")) {
+            await tg("answerCallbackQuery", { callback_query_id: cq.id });
+            const h = await tgWalletHandle(cq.from.id);
+            if (!h) return Response.json({ ok: true });
+            const pnl = await import("@/lib/tg/pnl.server");
+            const toks = (await pnl.heldTokens(h).catch(() => [])).slice(0, 12);
+            if (cq.data === "xl") {
+              const cells: Btn[] = toks.map((t, i) => ({ text: `$${t.symbol}`.slice(0, 20), callback_data: `xp|${i}` }));
+              const rows: Btn[][] = [];
+              for (let i = 0; i < cells.length; i += 3) rows.push(cells.slice(i, i + 3));
+              await tg("sendMessage", { chat_id, text: toks.length ? "🎛 Pick a token to exit:" : "No token positions yet.", reply_markup: { inline_keyboard: [...rows, [{ text: "⬅️ Holdings", callback_data: "m:positions" }]] } });
+              return Response.json({ ok: true });
+            }
+            const t = toks[Number(cq.data.slice(3))];
+            if (!t) { await tg("sendMessage", { chat_id, text: "That token isn't in your wallet anymore. Refresh: /holding" }); return Response.json({ ok: true }); }
+            const sym = await realSymbol(t.coinType, t.symbol);
+            const lines = await pnl.tokenPnlReply(h, t.coinType, sym).catch(() => `📊 $${sym}`);
+            await tg("sendMessage", { chat_id, disable_web_page_preview: true, text: `🎛 Exit $${sym}\n${t.coinType}\n\n${lines}\n\nSell buttons run instantly from your selected wallet(s).`, reply_markup: { inline_keyboard: (await import("@/lib/tg/autoSnipe")).snipeExitKeyboard(t.coinType) } });
+            return Response.json({ ok: true });
+          }
+          if (cq.data === "ti" || /^tr\|\d{1,2}$/.test(cq.data ?? "")) {
+            const trail = cq.data !== "ti" ? Number(cq.data!.slice(3)) : null;
+            await tg("answerCallbackQuery", { callback_query_id: cq.id, text: trail ? "Setting trailing stop…" : "Taking initial…" });
+            const ct = (cq.message.text ?? "").split("\n").map((l) => detectToken(l)?.coinType).find(Boolean);
+            await replyWithProgress(chat_id, trail ? "Setting trailing stop" : "Taking initial", async () => {
+              if (!ct) return "Couldn't find the token in that message. Nothing was done.";
+              const h = await tgWalletHandle(cq.from.id);
+              if (!h) return "Link your wallet first.";
+              const { listTgWallets } = await import("@/lib/tg/tgWallets.server");
+              const { selected } = await listTgWallets(cq.from.id, h);
+              if (trail) {
+                if (![15, 25].includes(trail)) return "Unsupported trail.";
+                return (await import("@/lib/tg/limitOrder.server")).placeTrailing(cq.from.id, ct, trail, selected);
+              }
+              const pv = await (await import("@/lib/tg/pnl.server")).positionValue(h, ct).catch(() => null);
+              const { takeInitialPct } = await import("@/lib/tg/limitOrder");
+              const pct = pv ? takeInitialPct(pv.costSui, pv.valueSui) : null;
+              if (!pv) return "Take initial needs a tracked OurBank buy and a live price. Nothing was sold.";
+              if (pct == null) return `Not in profit yet (value ${pv.valueSui.toFixed(3)} SUI vs cost ${pv.costSui.toFixed(3)} SUI). Nothing was sold.`;
+              const { runTgCommand } = await import("@/lib/tg/runCommand.server");
+              const r = await runTgCommand(cq.from.id, `sell ${pct}% ${ct} slippage 15%`, null, { mainOnly: true });
+              return `💰 Take initial: selling ${pct}% to recover ~${pv.costSui.toFixed(3)} SUI cost (main wallet)\n${r.reply}`;
             });
             return Response.json({ ok: true });
           }
