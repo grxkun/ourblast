@@ -214,13 +214,15 @@ export async function processTelegramUpdate(update: TelegramUpdate, token: strin
         /** /chart reply: candle image, or a clear reason + Retry / timeframe buttons. Read-only. */
         const sendChart = async (chatId: number, t: { symbol: string; coinType: string }, tf: string, replyTo: number | undefined): Promise<void> => {
           const { getScanStats } = await import("@/lib/tg/scanInfo.server");
-          const { topPool, candles, renderChart } = await import("@/lib/tg/chart.server");
+          const { topPool, candles, renderChart, yoloCandles } = await import("@/lib/tg/chart.server");
           const { fmtUsd, fmtPrice, chartLinksHtml } = await import("@/lib/tg/scanner");
           const [stats, pool] = await Promise.all([getScanStats(t.coinType).catch(() => null), topPool(t.coinType).catch(() => null)]);
           const sym = (stats?.symbol ?? t.symbol).toUpperCase().slice(0, 16);
           const chg = stats?.change24h != null ? ` · 24h ${stats.change24h >= 0 ? "+" : ""}${stats.change24h.toFixed(1)}%` : "";
           const caption = `📊 <b>$${sym}</b> · ${tf}\nPrice ${fmtPrice(stats?.priceUsd ?? null)} · MC ${fmtUsd(stats?.mcap)}${chg}\n<code>${t.coinType}</code>\n${chartLinksHtml(t.coinType)}`;
-          const list = pool ? await candles(pool, tf, t.coinType).catch(() => []) : [];
+          let list = stats?.onCurve || !pool ? [] : await candles(pool, tf, t.coinType).catch(() => []);
+          // Unbonded (or DEX feed empty): bonding-curve candles from YOLO.casa.
+          if (list.length < 3) { const y = await yoloCandles(t.coinType, tf).catch(() => []); if (y.length >= 3) list = y; }
           const img = list.length >= 3 ? await renderChart(sym, tf, list).catch(() => null) : null;
           const buyUrl = mainToken(sym)?.coinType === t.coinType ? buyDeepLink(sym) : contractDeepLink(t.coinType);
           const tfRow = ["15m", "1h", "4h"].map((x) => ({ text: x === tf ? `• ${x}` : x, callback_data: `chr:${x}` }));
@@ -232,8 +234,8 @@ export async function processTelegramUpdate(update: TelegramUpdate, token: strin
           }
           const why = !stats && !pool
             ? "⚠️ Couldn't load token data right now (price sources didn't answer). Tap 🔄 Retry in a moment."
-            : stats?.onCurve ? "ℹ️ Still on the bonding curve — no DEX candles yet. Use the chart links above."
-            : !pool ? "ℹ️ No DEX pool found for this token yet, so there are no candles."
+            : stats?.onCurve && list.length < 3 ? "ℹ️ Still on the bonding curve and no curve candles yet (too few trades). Tap 🔄 Retry later or use the chart links above."
+            : !pool && list.length < 3 ? "ℹ️ No DEX pool found for this token yet, so there are no candles."
             : list.length < 3 ? "⚠️ Candle data didn't load (or too few trades on this timeframe). Tap 🔄 Retry or try another timeframe."
             : "⚠️ The chart image failed to render. Tap 🔄 Retry.";
           rows.unshift([{ text: "🔄 Retry", callback_data: `chr:${tf}` }]);

@@ -38,3 +38,11 @@ export async function renderChart(symbol: string, tf: string, list: Candle[]): P
   const j = (await r?.json().catch(() => null)) as { success?: boolean; url?: string } | null;
   return j?.success && j.url ? j.url : null;
 }
+
+/** Bonding-curve candles (unbonded launchpad tokens) from YOLO.casa — DEX OHLCV sources only see pools. */
+export async function yoloCandles(coinType: string, tf: string): Promise<Candle[]> {
+  const r = await fetch(`https://yolo.casa/api/token/${coinType}/candles?tf=${encodeURIComponent(tf)}`, { headers: { accept: "application/json", "user-agent": "Mozilla/5.0 OURBLAST" }, signal: AbortSignal.timeout(7000) }).catch(() => null);
+  if (!r?.ok) return [];
+  const j = (await r.json().catch(() => null)) as { candles?: { time: number; open: number; high: number; low: number; close: number; volume: number }[] } | null;
+  return (j?.candles ?? []).slice(-120).map((c) => [c.time, c.open, c.high, c.low, c.close, c.volume] as Candle);
+}

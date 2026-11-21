@@ -15,6 +15,8 @@ export function TokenSheet({ row, initData, onClose, onTrade }: { row: MarketRow
     queryFn: () => tgWalletTokens({ data: { initData: initData!, slot: 1 } }),
   });
   const [chartKey, setChartKey] = useState(0);
+  const [src, setSrc] = useState<"yolo" | "noodles">("yolo");
+  const chartUrl = src === "yolo" ? `https://yolo.casa/embed/${row.coinType}` : `https://noodles.fi/tv-widget?coin=${encodeURIComponent(row.coinType)}&theme=dark`;
   const held = bag.data?.tokens.find((t) => t.coinType === row.coinType)?.amount ?? 0;
   const value = row.priceUsd != null ? held * row.priceUsd : null;
   return (
@@ -24,8 +26,8 @@ export function TokenSheet({ row, initData, onClose, onTrade }: { row: MarketRow
           <div className="min-w-0"><p className="truncate font-display text-xl">${row.symbol}</p><p className="truncate text-[0.65rem] text-muted-foreground">{row.source} · {row.coinType.slice(0, 10)}…</p></div>
           <Button size="icon-sm" variant="ghost" onClick={onClose} aria-label="Close"><X /></Button>
         </div>
-        <iframe title={`${row.symbol} chart`} src={`https://noodles.fi/tv-widget?coin=${encodeURIComponent(row.coinType)}&theme=dark`} key={chartKey} className="h-72 w-full rounded-xl border-0 bg-surface" loading="lazy" />
-        <div className="mt-1 flex items-center justify-between gap-2 text-[0.65rem] text-muted-foreground"><span>Chart blank? New tokens may have no candles yet, or the chart service is slow.</span><Button size="sm" variant="ghost" onClick={() => setChartKey((k) => k + 1)}>Reload chart</Button></div>
+        <iframe title={`${row.symbol} chart`} src={chartUrl} key={`${src}-${chartKey}`} className="h-72 w-full rounded-xl border-0 bg-surface" loading="lazy" />
+        <div className="mt-1 flex items-center justify-between gap-2 text-[0.65rem] text-muted-foreground"><span>YOLO covers bonding-curve tokens. Blank? Switch source or reload.</span><div className="flex gap-1"><Button size="sm" variant={src === "yolo" ? "secondary" : "ghost"} onClick={() => setSrc("yolo")}>YOLO</Button><Button size="sm" variant={src === "noodles" ? "secondary" : "ghost"} onClick={() => setSrc("noodles")}>Noodles</Button></div><Button size="sm" variant="ghost" onClick={() => setChartKey((k) => k + 1)}>Reload chart</Button></div>
         <div className="mt-3 grid grid-cols-3 gap-2 text-center text-xs">
           <div className="rounded-xl bg-surface p-2"><p className="text-muted-foreground">MC</p><p className="font-semibold">{usd(row.mcapUsd)}</p></div>
           <div className="rounded-xl bg-surface p-2"><p className="text-muted-foreground">Vol 24h</p><p className="font-semibold">{usd(row.volume24h)}</p></div>
