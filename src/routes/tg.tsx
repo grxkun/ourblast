@@ -9,6 +9,7 @@ import mascot from "@/assets/blast-cool.png.asset.json";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { TgNftPanel } from "@/components/tg/TgNftPanel";
+import { MarketBoard } from "@/components/tg/MarketBoard";
 
 import { buildSwapCommand, normalizeSwapToken, swapTokenSymbol } from "@/lib/tg/tradeCommand";
 import { MAIN_TOKENS, mainTokenByType } from "@/lib/terminal/mainTokens";
@@ -66,6 +67,8 @@ function TgApp() {
   const [openId, setOpenId] = useState<string | null>(null);
   const [preset, setPreset] = useState<TradePreset | null>(null);
   const [mergeSlot, setMergeSlot] = useState<number | null>(null);
+  const [disc, setDisc] = useState<"market" | "launches">("market");
+  const tradeToken = (token: string) => { setPreset({ side: "buy", token, key: Date.now(), mode: "swap" }); setTab("trade"); };
   const open = openId ? launches.find((l) => l.id === openId) ?? null : null;
 
   useEffect(() => {
@@ -224,8 +227,13 @@ function TgApp() {
             ))}
           </div>
           <div className="flex items-center justify-between">
-            <h2 className="font-display text-lg">LATEST LAUNCHES</h2>
-            <button className="text-xs font-semibold text-primary" onClick={() => { setFilter("live"); setTab("discover"); }}>See all</button>
+            <h2 className="font-display text-lg">SUI MARKET</h2>
+            <button className="text-xs font-semibold text-primary" onClick={() => { setDisc("market"); setTab("discover"); }}>See all</button>
+          </div>
+          <MarketBoard limit={8} compact onTrade={tradeToken} />
+          <div className="flex items-center justify-between">
+            <h2 className="font-display text-lg">OURBLAST LAUNCHES</h2>
+            <button className="text-xs font-semibold text-primary" onClick={() => { setDisc("launches"); setFilter("live"); setTab("discover"); }}>See all</button>
           </div>
           {list(launches.slice(0, 5), true)}
         </div>
@@ -233,6 +241,12 @@ function TgApp() {
 
       {tab === "discover" && (
         <div className="space-y-3">
+          <div className="grid grid-cols-2 rounded-full border border-border bg-surface p-1 text-sm font-semibold">
+            {(["market", "launches"] as const).map((d) => (
+              <button key={d} onClick={() => setDisc(d)} className={`rounded-full py-1.5 ${disc === d ? "bg-primary text-primary-foreground" : "text-muted-foreground"}`}>{d === "market" ? "Sui Market" : "OURBLAST Launches"}</button>
+            ))}
+          </div>
+          {disc === "market" ? <MarketBoard onTrade={tradeToken} /> : <>
           <label className="flex items-center gap-2 rounded-full border border-border bg-surface px-4 py-2.5">
             <Search className="h-4 w-4 text-muted-foreground" />
             <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search ticker, creator or launchpad"
@@ -257,6 +271,7 @@ function TgApp() {
           </div>
           {list(rows)}
           <BlastPresales initData={initData ?? ""} />
+          </>}
         </div>
       )}
 
