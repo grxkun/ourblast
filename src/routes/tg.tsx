@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { TgNftPanel } from "@/components/tg/TgNftPanel";
 import { MarketBoard } from "@/components/tg/MarketBoard";
 import { LaunchPanel } from "@/components/tg/LaunchPanel";
+import { BridgeCard } from "@/components/tg/BridgeCard";
 import { parseAutoSnipeCommand } from "@/lib/tg/autoSnipe";
 
 import { buildSwapCommand, normalizeSwapToken, swapTokenSymbol } from "@/lib/tg/tradeCommand";
@@ -217,6 +218,7 @@ function TgApp() {
               ["Copy", Repeat, "text-cyber", () => { setPreset({ side: "buy", token: "", key: Date.now(), mode: "copy" }); setTab("trade"); }],
               ["Limit", RefreshCw, "text-grape", () => { setPreset({ side: "buy", token: "", key: Date.now(), mode: "limit" }); setTab("trade"); }],
               ["Launch", Rocket, "text-primary", () => { setPreset({ side: "buy", token: "", key: Date.now(), mode: "launch" }); setTab("trade"); }],
+              ["Bridge", ArrowDownToLine, "text-lime", () => { setPreset({ side: "buy", token: "", key: Date.now(), mode: "bridge" }); setTab("trade"); }],
               ["Wallet", Wallet, "text-cyber", () => setTab("wallet")],
               ["Assets", ImageIcon, "text-grape", () => setTab("assets")],
               ["Presales", Send, "text-lime", () => { setFilter("live"); setTab("discover"); }],
@@ -636,7 +638,7 @@ function CopyTradeBox({ busy, onRun }: { busy: boolean; onRun: (cmd: string) => 
   );
 }
 
-type TradeMode = "swap" | "snipe" | "limit" | "copy" | "launch";
+type TradeMode = "swap" | "snipe" | "limit" | "copy" | "launch" | "bridge";
 type TradePreset = { side: "buy" | "sell"; token: string; key: number; amount?: string; mode?: TradeMode };
 
 type Holding = { coinType: string; symbol: string; amount: number; usd: number | null };
@@ -929,8 +931,8 @@ function TradeTerminal({ initData, preset }: { initData: string; preset: TradePr
   useEffect(() => { if (preset?.mode) setMode(preset.mode); }, [preset?.key, preset?.mode]);
   return (
     <div className="flex min-w-0 flex-col gap-3 overflow-x-hidden pb-20">
-      <div className="grid grid-cols-5 gap-1 rounded-lg bg-surface p-1">
-        {(["swap", "snipe", "limit", "copy", "launch"] as const).map((m) => (
+      <div className="grid grid-cols-6 gap-1 rounded-lg bg-surface p-1">
+        {(["swap", "snipe", "limit", "copy", "launch", "bridge"] as const).map((m) => (
           <Button key={m} variant={mode === m ? "default" : "ghost"} onClick={() => setMode(m)} className="min-w-0 px-1 text-xs uppercase">{m}</Button>
         ))}
       </div>
@@ -941,6 +943,7 @@ function TradeTerminal({ initData, preset }: { initData: string; preset: TradePr
       {mode === "limit" && <LimitCard busy={busy} onRun={(c) => void send(c)} />}
       {mode === "copy" && <CopyTradeBox busy={busy} onRun={(c) => void send(c)} />}
       {mode === "launch" && <LaunchPanel initData={initData} />}
+      {mode === "bridge" && <BridgeCard busy={busy} onRun={(c) => void send(c)} />}
       <div className="space-y-2">
         {log.map((m) => (
           <div key={m.id} className={`w-fit min-w-0 max-w-[85%] whitespace-pre-wrap rounded-2xl px-3 py-2 text-sm [overflow-wrap:anywhere] ${m.who === "me" ? "ml-auto bg-primary text-primary-foreground" : "border border-border bg-card"}`}>

@@ -457,3 +457,39 @@ export const tgLaunchToken = createServerFn({ method: "POST" })
     if (row.status !== "PENDING") return { status: row.status, notice: row.notice, tokenUrl: row.token_url, poolUrl: row.pool_url };
     return executeLaunchRequest(row.id);
   });
+
+const fundArgs = z.object({ asset: z.enum(["SOL", "ETH", "BNB"]), amount: z.number().positive().max(1000) });
+
+/** Cross-chain launch review: bridge SOL/ETH/BNB from the slot's OurBank deposit address, then launch. Nothing moves yet. */
+export const tgStageFundedLaunch = createServerFn({ method: "POST" })
+  .inputValidator((d: unknown) => ({ ...launchArgs.parse(d), ...tgLaunchInput.parse(d), fund: fundArgs.parse((d as { fund?: unknown })?.fund) }))
+  .handler(async ({ data }) => {
+    const owner = await launchOwner(data.initData, data.slot);
+    const { db } = await authed(data.initData);
+    const { data: w } = await db.from("bank_wallets").select("user_id, x_username, address, sol_address, evm_address").eq("x_username", owner.wallet.handle).maybeSingle();
+    if (!w) throw new Error(`W${data.slot} has no OurBank wallet yet.`);
+    const { stageFundedLaunch } = await import("@/lib/terminal/fundedLaunch.server");
+    const postId = `terminal-tg-${owner.user.id}-${data.symbol.toUpperCase()}-funded-${Date.now()}`;
+    const r = await stageFundedLaunch({
+      postId, wallet: w, handle: w.x_username, fund: data.fund,
+      request: { symbol: data.symbol, name: data.name, launchpad: data.launchpad, devBuySui: data.firstBuySui, feeReceiver: { wallet: w.address } },
+      iconUrl: data.iconUrl, tweetText: data.description ? `Desc: ${data.description}` : null,
+    });
+    if (!r.ok) throw new Error(r.message || "Couldn't stage this launch.");
+    return { id: r.id as string, review: r.message };
+  });
+
+/** Confirm or cancel a staged cross-chain launch; only wallets this Telegram user owns can act on it. */
+export const tgResolveFundedLaunch = createServerFn({ method: "POST" })
+  .inputValidator((d: unknown) => z.object({ initData: z.string().min(1).max(4096), id: z.string().uuid(), confirm: z.boolean() }).parse(d))
+  .handler(async ({ data }) => {
+    const { user, handle } = await linkedHandle(data.initData);
+    const { db } = await authed(data.initData);
+    const { listTgWallets } = await import("./tgWallets.server");
+    const { wallets } = await listTgWallets(user.id, handle);
+    const { data: row } = await db.from("funded_launches").select("user_id, x_username").eq("id", data.id).maybeSingle();
+    if (!row || !wallets.some((w) => w.handle.toLowerCase() === row.x_username)) throw new Error("Launch not found.");
+    const { confirmFundedLaunch, cancelFundedLaunch } = await import("@/lib/terminal/fundedLaunch.server");
+    if (!data.confirm) return { ok: true, message: (await cancelFundedLaunch(data.id, row.user_id ?? undefined)) ? "Launch cancelled. Nothing moved." : "Nothing to cancel." };
+    return confirmFundedLaunch(data.id, row.user_id ?? undefined);
+  });
