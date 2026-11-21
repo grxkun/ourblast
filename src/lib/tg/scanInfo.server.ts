@@ -69,7 +69,8 @@ export async function getScanStats(coinType: string): Promise<ScanStats> {
   const curve = meta.decimals != null ? await readCurve(coinType, meta.decimals).catch(() => null) : null;
   if (curve) {
     v.factory = curve.factory; v.progress = curve.progress; v.onCurve = curve.live; v.creator = curve.creator;
-    if (curve.live && curve.priceSui) {
+    if (curve.live && curve.priceUsd) { v.priceUsd = curve.priceUsd; v.priceSource = `${curve.factory}`; v.dex = "Bonding curve"; }
+    else if (curve.live && curve.priceSui) {
       const { aftermathPrices } = await import("@/lib/tg/runCommand.server");
       const suiUsd = (await aftermathPrices([SUI]).catch(() => ({} as Record<string, number>)))[SUI];
       if (suiUsd) { v.priceUsd = curve.priceSui * suiUsd; v.priceSource = `${curve.factory} curve`; v.dex = "Bonding curve"; }
