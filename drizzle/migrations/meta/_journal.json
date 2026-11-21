@@ -169,6 +169,13 @@
       "when": 1795199616877,
       "tag": "0023_tg_auto_snipe_filters",
       "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1795241060576,
+      "tag": "0024_snipe_tp_sl",
+      "breakpoints": true
     }
   ]
 }

@@ -2357,11 +2357,13 @@ export type Database = {
           expires_at: string
           filled_at: string | null
           id: string
+          oco: string | null
           result: string | null
           side: string
           slippage: number
           slots: number[]
           status: string
+          stop: boolean
           tg_user_id: number
           trigger_usd: number
         }
@@ -2372,11 +2374,13 @@ export type Database = {
           expires_at?: string
           filled_at?: string | null
           id?: string
+          oco?: string | null
           result?: string | null
           side: string
           slippage?: number
           slots?: number[]
           status?: string
+          stop?: boolean
           tg_user_id: number
           trigger_usd: number
         }
@@ -2387,11 +2391,13 @@ export type Database = {
           expires_at?: string
           filled_at?: string | null
           id?: string
+          oco?: string | null
           result?: string | null
           side?: string
           slippage?: number
           slots?: number[]
           status?: string
+          stop?: boolean
           tg_user_id?: number
           trigger_usd?: number
         }
@@ -2456,11 +2462,13 @@ export type Database = {
           id: string
           keyword: string | null
           launchpads: string[]
+          sl_pct: number | null
           slippage: number
           slots: number[]
           spent: number
           spent_day: string | null
           tg_user_id: number
+          tp_pct: number | null
         }
         Insert: {
           active?: boolean
@@ -2470,11 +2478,13 @@ export type Database = {
           id?: string
           keyword?: string | null
           launchpads?: string[]
+          sl_pct?: number | null
           slippage?: number
           slots?: number[]
           spent?: number
           spent_day?: string | null
           tg_user_id: number
+          tp_pct?: number | null
         }
         Update: {
           active?: boolean
@@ -2484,11 +2494,13 @@ export type Database = {
           id?: string
           keyword?: string | null
           launchpads?: string[]
+          sl_pct?: number | null
           slippage?: number
           slots?: number[]
           spent?: number
           spent_day?: string | null
           tg_user_id?: number
+          tp_pct?: number | null
         }
         Relationships: []
       }

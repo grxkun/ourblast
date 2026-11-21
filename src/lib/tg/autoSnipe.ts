@@ -10,7 +10,7 @@ export const AUTO_MAX_DAILY = 500;
 /** Only launches seen this fresh are sniped — never old tokens after downtime. */
 export const AUTO_MAX_AGE_MS = 10 * 60_000;
 
-export type AutoRule = { pads: AutoPad[]; amount: string; dailyCap: string; slippage: string; keyword: string | null };
+export type AutoRule = { pads: AutoPad[]; amount: string; dailyCap: string; slippage: string; keyword: string | null; tp?: string | null; sl?: string | null };
 export type AutoCommand =
   | ({ op: "start" } & AutoRule)
   | { op: "list" }
@@ -18,7 +18,7 @@ export type AutoCommand =
   | { op: "pause" | "resume"; id: string | "all" }
   | { op: "error"; error: string };
 
-export const AUTO_USAGE = "Usage: autosnipe all 2 sui max 10 sui slippage 15%\nLaunchpads: all · blast · suipump\nOptional: keyword pepe (only names/tickers containing it)";
+export const AUTO_USAGE = "Usage: autosnipe all 2 sui max 10 sui slippage 15%\nLaunchpads: all · blast · suipump\nOptional: keyword pepe (only names/tickers containing it) · tp 100% sl 30% (auto take-profit / stop-loss)";
 
 export function parseAutoSnipeCommand(text: string): AutoCommand | null {
   const t = text.trim().replace(/^\//, "").replace(/^(\w+)@\w+/, "$1");
@@ -29,7 +29,9 @@ export function parseAutoSnipeCommand(text: string): AutoCommand | null {
     return { op, id: ctl[2]!.toLowerCase() };
   }
   if (!/^(?:autosnipe|snipe\s+(?:all|filter))\b/i.test(t)) return null;
-  const body = t.replace(/^(?:autosnipe|snipe\s+filter|snipe\s+all\s+launches)\s*/i, "").replace(/^snipe\s+all\s*/i, "all ");
+  let tp: string | null = null, sl: string | null = null;
+  const t2 = t.replace(/\s+tp\s+(\d*\.?\d+)\s*%?/i, (_, v) => { tp = v; return ""; }).replace(/\s+sl\s+(\d*\.?\d+)\s*%?/i, (_, v) => { sl = v; return ""; });
+  const body = t2.replace(/^(?:autosnipe|snipe\s+filter|snipe\s+all\s+launches)\s*/i, "").replace(/^snipe\s+all\s*/i, "all ");
   const m = body.match(/^(all|blast(?:\.fun)?|suipump)(?:\s*,\s*(blast(?:\.fun)?|suipump))?\s+(\d*\.?\d+)\s*(?:sui)?(?:\s+max\s+(\d*\.?\d+)\s*(?:sui)?(?:\s*\/\s*day)?)?(?:\s+slip(?:page)?\s+(\d*\.?\d+)\s*%?)?(?:\s+keyword\s+([a-z0-9]{2,16}))?\s*$/i);
   if (!m) return body ? { op: "error", error: AUTO_USAGE } : { op: "list" };
   const norm = (p: string) => (p.toLowerCase().startsWith("blast") ? "blast" : "suipump") as AutoPad;
@@ -40,13 +42,24 @@ export function parseAutoSnipeCommand(text: string): AutoCommand | null {
   if (!(Number(amount) > 0) || Number(amount) > AUTO_MAX_PER_SNIPE) return { op: "error", error: `Amount per launch must be between 0 and ${AUTO_MAX_PER_SNIPE} SUI.` };
   if (Number(dailyCap) < Number(amount) || Number(dailyCap) > AUTO_MAX_DAILY) return { op: "error", error: `Daily max must be at least the per-launch amount and at most ${AUTO_MAX_DAILY} SUI.` };
   if (!validSlippage(Number(slippage))) return { op: "error", error: `Slippage must be between ${MIN_SLIPPAGE}% and ${MAX_SLIPPAGE}%.` };
-  return { op: "start", pads, amount, dailyCap, slippage, keyword: m[6]?.toLowerCase() ?? null };
+  if (tp != null && !(Number(tp) > 0 && Number(tp) <= 10000)) return { op: "error", error: "Take-profit must be 1–10000%." };
+  if (sl != null && !(Number(sl) > 0 && Number(sl) < 100)) return { op: "error", error: "Stop-loss must be between 1% and 99%." };
+  return { op: "start", pads, amount, dailyCap, slippage, keyword: m[6]?.toLowerCase() ?? null, ...(tp ? { tp } : {}), ...(sl ? { sl } : {}) };
 }
 
 /** Canonical line carried in the confirm card (callback data can't hold it). */
 export function autoLine(r: AutoRule): string {
   const pads = r.pads.length === AUTO_PADS.length ? "all" : r.pads.join(",");
-  return `autosnipe ${pads} ${r.amount} sui max ${r.dailyCap} sui slippage ${r.slippage}%${r.keyword ? ` keyword ${r.keyword}` : ""}`;
+  return `autosnipe ${pads} ${r.amount} sui max ${r.dailyCap} sui slippage ${r.slippage}%${r.keyword ? ` keyword ${r.keyword}` : ""}${r.tp ? ` tp ${r.tp}%` : ""}${r.sl ? ` sl ${r.sl}%` : ""}`;
+}
+
+/** Quick-exit buttons under a snipe receipt; contract stays in the message text (callback data is 64 bytes). */
+export function snipeExitKeyboard(coinType: string) {
+  const sym = (coinType.split("::").pop() ?? "TOKEN").toUpperCase().replace(/[^A-Z0-9_]/g, "").slice(0, 16) || "TOKEN";
+  return [
+    [{ text: "🔴 Sell 50%", callback_data: `a|s|50|${sym}` }, { text: "🔴 Sell 100%", callback_data: `a|s|100|${sym}` }],
+    [{ text: "🎯 TP +100% / SL −30%", callback_data: "tsl" }, { text: "📊 Positions", callback_data: "m:positions" }],
+  ];
 }
 
 export type FreshLaunch = { pad: AutoPad; coinType: string; symbol: string; name: string; createdMs: number };

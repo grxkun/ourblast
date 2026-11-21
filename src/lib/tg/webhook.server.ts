@@ -457,6 +457,19 @@ export async function processTelegramUpdate(update: TelegramUpdate, token: strin
             });
             return Response.json({ ok: true });
           }
+          if (cq.data === "tsl") {
+            await tg("answerCallbackQuery", { callback_query_id: cq.id, text: "Setting TP/SL…" });
+            const ct = (cq.message.text ?? "").split("\n").map((l) => detectToken(l)?.coinType).find(Boolean);
+            await replyWithProgress(chat_id, "Setting TP/SL", async () => {
+              if (!ct) return "Couldn't find the token in that message. Nothing was set.";
+              const h = await tgWalletHandle(cq.from.id);
+              if (!h) return "Link your wallet first.";
+              const [{ placeTpSl }, { listTgWallets }, { TPSL_DEFAULT }] = await Promise.all([import("@/lib/tg/limitOrder.server"), import("@/lib/tg/tgWallets.server"), import("@/lib/tg/limitOrder")]);
+              const { selected } = await listTgWallets(cq.from.id, h);
+              return placeTpSl(cq.from.id, ct, TPSL_DEFAULT.tp, TPSL_DEFAULT.sl, selected);
+            });
+            return Response.json({ ok: true });
+          }
           if (cq.data?.startsWith("sa|") || cq.data === "as" || cq.data === "asl") {
             await tg("answerCallbackQuery", { callback_query_id: cq.id, text: cq.data === "as" ? "Turning on…" : undefined });
             const auto = await import("@/lib/tg/autoSnipe");
@@ -550,7 +563,7 @@ export async function processTelegramUpdate(update: TelegramUpdate, token: strin
           const isSnipe = (cq.message.text ?? "").startsWith("🎯 Snipe review");
           const command = isSnipe && coinType ? `snipe ${coinType} ${action.amount} sui slippage ${action.slippage ?? "10"}%` : actionCommand(action, coinType);
           const { reply } = await runTgCommand(cq.from.id, command).catch((e) => ({ reply: `❌ Failed: ${(e as Error).message}. Status is unconfirmed. Check your wallet and history before retrying; a transfer may already have been submitted.` }));
-          await tg("editMessageText", { chat_id, message_id, text: reply.slice(0, 4000), disable_web_page_preview: true });
+          await tg("editMessageText", { chat_id, message_id, text: reply.slice(0, 4000), disable_web_page_preview: true, ...(isSnipe && coinType && /suiscan|suivision|tx\//i.test(reply) ? { text: `${reply}\n${coinType}`.slice(0, 4000), reply_markup: { inline_keyboard: (await import("@/lib/tg/autoSnipe")).snipeExitKeyboard(coinType) } } : {}) });
           if (action.side === "sell" && coinType && reply.includes("✅")) {
             try {
               const { supabaseAdmin: db } = await import("@/integrations/supabase/client.server");
