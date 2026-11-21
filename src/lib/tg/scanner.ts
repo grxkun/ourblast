@@ -81,6 +81,8 @@ export type ScanStats = {
   volume24h: number | null; change24h: number | null; dex: string | null; pools: number; launchpad?: string | null;
   /** Real on-chain ticker/name (launchpad templates share struct names like ::suipump::SUIPUMP). */
   symbol?: string | null; name?: string | null;
+  fdv?: number | null; factory?: string | null; progress?: number | null; onCurve?: boolean;
+  creator?: string | null; devLaunches?: number | null; devBestAth?: number | null; athMcap?: number | null;
 };
 
 /** Launchpads whose coin template fixes the module name, so the module identifies the pad. */
@@ -121,7 +123,10 @@ export function richScanCard(t: { symbol: string; coinType: string }, s: ScanSta
     `<code>${esc(t.coinType)}</code>`,
     "",
     `💰 <b>USD:</b> ${fmtPrice(s.priceUsd)}${ch}`,
-    `💎 <b>MC:</b> ${fmtUsd(s.mcap)}`,
+    `💎 <b>MC:</b> ${fmtUsd(s.mcap)}${s.fdv != null && s.fdv !== s.mcap ? ` · <b>FDV:</b> ${fmtUsd(s.fdv)}` : ""}`,
+    ...(s.athMcap != null ? [`🏔 <b>ATH MC:</b> ${fmtUsd(s.athMcap)} <i>(seen)</i>`] : []),
+    ...(s.factory ? [`🏭 <b>Factory:</b> ${esc(s.factory)}${s.onCurve ? ` · ⏳ bonding${s.progress != null ? ` ${(s.progress * 100).toFixed(1)}%` : ""}` : s.progress === 1 ? " · ✅ graduated" : ""}`] : []),
+    ...(s.creator ? [`👤 <b>Dev:</b> <a href="https://suiscan.xyz/mainnet/account/${esc(s.creator)}">${s.creator.slice(0, 6)}…${s.creator.slice(-4)}</a>${s.devLaunches ? ` · ${s.devLaunches} launch${s.devLaunches > 1 ? "es" : ""}` : ""}${s.devBestAth != null ? ` · best ATH ${fmtUsd(s.devBestAth)}` : ""}`] : []),
     ...(s.liquidity != null ? [`💧 <b>Liq:</b> ${fmtUsd(s.liquidity)}${liqPct}`] : []),
     ...(s.volume24h != null ? [`📊 <b>Vol:</b> ${fmtUsd(s.volume24h)} (24h)`] : []),
     `🏦 <b>DEX:</b> ${esc(dex)}${s.pools > 1 ? ` · ${s.pools} pools` : ""}${s.priceSource ? ` · via ${esc(s.priceSource)}` : ""}`,

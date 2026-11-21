@@ -64,8 +64,21 @@ export async function getScanStats(coinType: string): Promise<ScanStats> {
   // Aftermath's router knows every pool it can trade, even when its price index returns -1.
   const q = meta.decimals != null ? await routeQuote(coinType, meta.decimals).catch(() => null) : null;
   if (q) { if (v.priceUsd == null) { v.priceUsd = q.priceUsd; v.priceSource = "Aftermath route"; } v.dex = q.dex; }
-  // Market cap = live price × on-chain total supply.
+  // Unbonded tokens: price straight from the launchpad curve (routers only see DEX pools).
+  const { readCurve } = await import("@/lib/tg/curvePrice.server");
+  const curve = meta.decimals != null ? await readCurve(coinType, meta.decimals).catch(() => null) : null;
+  if (curve) {
+    v.factory = curve.factory; v.progress = curve.progress; v.onCurve = curve.live; v.creator = curve.creator;
+    if (curve.live && curve.priceSui) {
+      const { aftermathPrices } = await import("@/lib/tg/runCommand.server");
+      const suiUsd = (await aftermathPrices([SUI]).catch(() => ({} as Record<string, number>)))[SUI];
+      if (suiUsd) { v.priceUsd = curve.priceSui * suiUsd; v.priceSource = `${curve.factory} curve`; v.dex = "Bonding curve"; }
+    }
+  } else if (v.dex) v.factory = `DEX (${v.dex})`;
+  // Market cap = live price × on-chain circulating supply; FDV = price × max supply.
   if (v.priceUsd != null && meta.supply) v.mcap = v.priceUsd * meta.supply;
+  if (v.priceUsd != null) { const total = curve?.totalSupply ?? meta.supply; v.fdv = total ? v.priceUsd * total : null; }
+  await trackDeployer(coinType, v).catch(() => {});
   cache.set(coinType, { at: Date.now(), v });
   return v;
 }
@@ -82,4 +95,22 @@ export async function resolveLaunchedTicker(symbol: string): Promise<string | nu
     "query($a:SuiAddress!){object(address:$a){asMoveObject{contents{type{repr}}}}}", { a: addr }).catch(() => null);
   const repr = d?.object?.asMoveObject?.contents?.type?.repr ?? "";
   return repr.match(/<(0x[a-f0-9]+::\w+::\w+)>/i)?.[1] ?? null;
+}
+
+/** Records the peak MC we have seen and the deployer, then reads that deployer's track record. */
+async function trackDeployer(coinType: string, v: ScanStats): Promise<void> {
+  const { supabaseAdmin: db } = await import("@/integrations/supabase/client.server");
+  const { data: prev } = await db.from("token_scan_stats").select("ath_mcap,creator").eq("coin_type", coinType).maybeSingle();
+  const creator = v.creator ?? prev?.creator ?? null;
+  const ath = Math.max(prev?.ath_mcap ?? 0, v.mcap ?? 0) || null;
+  await db.from("token_scan_stats").upsert({
+    coin_type: coinType, creator, factory: v.factory ?? null, symbol: v.symbol ?? null, ath_mcap: ath,
+    ...(ath && ath !== prev?.ath_mcap ? { ath_at: new Date().toISOString() } : {}), updated_at: new Date().toISOString(),
+  }, { onConflict: "coin_type" });
+  v.athMcap = ath; v.creator = creator;
+  if (!creator) return;
+  const { data: rows } = await db.from("token_scan_stats").select("ath_mcap").eq("creator", creator).limit(500);
+  v.devLaunches = rows?.length ?? null;
+  const best = Math.max(0, ...(rows ?? []).map((r) => r.ath_mcap ?? 0));
+  v.devBestAth = best > 0 ? best : null;
 }

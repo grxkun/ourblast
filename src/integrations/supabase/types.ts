@@ -2701,6 +2701,36 @@ export type Database = {
         }
         Relationships: []
       }
+      token_scan_stats: {
+        Row: {
+          ath_at: string | null
+          ath_mcap: number | null
+          coin_type: string
+          creator: string | null
+          factory: string | null
+          symbol: string | null
+          updated_at: string
+        }
+        Insert: {
+          ath_at?: string | null
+          ath_mcap?: number | null
+          coin_type: string
+          creator?: string | null
+          factory?: string | null
+          symbol?: string | null
+          updated_at?: string
+        }
+        Update: {
+          ath_at?: string | null
+          ath_mcap?: number | null
+          coin_type?: string
+          creator?: string | null
+          factory?: string | null
+          symbol?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       tx_activity_cache: {
         Row: {
           items: Json
