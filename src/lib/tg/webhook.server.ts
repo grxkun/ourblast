@@ -185,7 +185,7 @@ export async function processTelegramUpdate(update: TelegramUpdate, token: strin
         let threadId: number | undefined;
         const tg = async (method: string, body: Record<string, unknown>): Promise<number | undefined> => {
           // Threaded bot chats: reply inside the same topic or Telegram hides it.
-          if (threadId && (method === "sendMessage" || method === "sendChatAction")) body = { ...body, message_thread_id: threadId };
+          if (threadId && (method === "sendMessage" || method === "sendChatAction" || method === "sendPhoto")) body = { ...body, message_thread_id: threadId };
           const res = await fetch(`https://api.telegram.org/bot${token}/${method}`, {
             method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body),
           });
@@ -741,6 +741,42 @@ export async function processTelegramUpdate(update: TelegramUpdate, token: strin
             reply_markup: { inline_keyboard: hit?.coinType ? tokenKeyboard(startBuy) : [[{ text: "Open OURBLAST", web_app: { url: APP_URL } }]] },
           });
           return Response.json({ ok: true });
+        }
+        // /chart <ca|$TICKER> [tf] — candlestick image, groups and DMs, read-only.
+        {
+          const { parseChartCmd } = await import("@/lib/tg/chart");
+          const cc = parseChartCmd(original);
+          if (cc) {
+            const reply = (t: string) => tg("sendMessage", { chat_id: chatId, text: t, disable_web_page_preview: true, reply_to_message_id: msg?.message_id });
+            let t = cc.target ? findScanTarget(`/scan ${cc.target}`) : null;
+            if (!t && cc.target) {
+              const tk = cc.target.replace(/^\$/, "");
+              if (/^[a-z0-9]{1,16}$/i.test(tk)) {
+                const { resolveLaunchedTicker } = await import("@/lib/tg/scanInfo.server");
+                const ct = await resolveLaunchedTicker(tk).catch(() => null);
+                if (ct) t = { symbol: tk.toUpperCase(), coinType: ct };
+              }
+            }
+            if (!t) { await reply("Usage: /chart 0x…::coin::COIN [1m|5m|15m|1h|4h|1d] or /chart $TICKER 1h"); return Response.json({ ok: true }); }
+            const { getScanStats } = await import("@/lib/tg/scanInfo.server");
+            const { topPool, candles, renderChart } = await import("@/lib/tg/chart.server");
+            const [stats, pool] = await Promise.all([getScanStats(t.coinType).catch(() => null), topPool(t.coinType)]);
+            const sym = (stats?.symbol ?? t.symbol).toUpperCase().slice(0, 16);
+            const { fmtUsd, fmtPrice, chartLinksHtml } = await import("@/lib/tg/scanner");
+            const chg = stats?.change24h != null ? ` · 24h ${stats.change24h >= 0 ? "+" : ""}${stats.change24h.toFixed(1)}%` : "";
+            const caption = `📊 <b>$${sym}</b> · ${cc.tf}\nPrice ${fmtPrice(stats?.priceUsd ?? null)} · MC ${fmtUsd(stats?.mcap)}${chg}\n<code>${t.coinType}</code>\n${chartLinksHtml(t.coinType)}`;
+            const list = pool ? await candles(pool, cc.tf, t.coinType) : [];
+            const img = list.length >= 3 ? await renderChart(sym, cc.tf, list) : null;
+            const buyUrl = mainToken(sym)?.coinType === t.coinType ? buyDeepLink(sym) : contractDeepLink(t.coinType);
+            const reply_markup = buyUrl ? { inline_keyboard: [[{ text: `🟢 Buy $${sym}`, url: buyUrl }]] } : undefined;
+            if (img) {
+              const sent = await tg("sendPhoto", { chat_id: chatId, photo: img, caption, parse_mode: "HTML", reply_to_message_id: msg?.message_id, ...(reply_markup ? { reply_markup } : {}) });
+              if (sent) return Response.json({ ok: true });
+            }
+            const why = stats?.onCurve ? "Still on the bonding curve — no DEX candles yet." : "No candle data for this token yet.";
+            await tg("sendMessage", { chat_id: chatId, text: `${caption}\n\n${why}`, parse_mode: "HTML", disable_web_page_preview: true, reply_to_message_id: msg?.message_id, ...(reply_markup ? { reply_markup } : {}) });
+            return Response.json({ ok: true });
+          }
         }
         // Groups: read-only scanner. /scan <ca|$TICKER> or any pasted contract → price card + Buy (opens DM).
         if (!isPrivate) {

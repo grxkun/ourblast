@@ -13,6 +13,7 @@ const HELP: Record<string, string> = {
   bridge: "🌉 Bridge\n/bridge 0.05 sol to sui\n/bridge 0.02 bnb to sui\n/bridge 10 sui to sol\n/bridges for history",
   swap: "🔁 Swap\n/swap 5 sui to usdc\n/swap 10 usdc to sui",
   scan: "🔍 Scan\n/scan 0x…::coin::COIN or /scan $TICKER",
+  chart: "📊 Chart\n/chart 0x…::coin::COIN 1h or /chart $TICKER 15m (1m 5m 15m 1h 4h 1d)",
 };
 
 export type SlashResult = { help: string } | { text: string } | null;
