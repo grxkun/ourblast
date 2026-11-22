@@ -227,7 +227,7 @@ export async function processTelegramUpdate(update: TelegramUpdate, token: strin
           const buyUrl = mainToken(sym)?.coinType === t.coinType ? buyDeepLink(sym) : contractDeepLink(t.coinType);
           const tfRow = ["15m", "1h", "4h"].map((x) => ({ text: x === tf ? `• ${x}` : x, callback_data: `chr:${x}` }));
           const rows: { text: string; url?: string; callback_data?: string }[][] = [tfRow];
-          if (buyUrl) rows.push([{ text: `🟢 Buy $${sym}`, url: buyUrl }]);
+          if (buyUrl) rows.push([{ text: `🟢 Buy $${sym}`, url: buyUrl }, ...(sym === "BLAST" ? [] : [{ text: "💥 Buy $BLAST", url: buyDeepLink("BLAST") }])]);
           if (img) {
             const sent = await tg("sendPhoto", { chat_id: chatId, photo: img, caption, parse_mode: "HTML", reply_to_message_id: replyTo, reply_markup: { inline_keyboard: rows } });
             if (sent) return;
@@ -881,11 +881,12 @@ export async function processTelegramUpdate(update: TelegramUpdate, token: strin
             await tg("sendMessage", {
               chat_id: chatId, disable_web_page_preview: true, parse_mode: "HTML", reply_to_message_id: msg?.message_id,
               text: richScanCard(t, stats, "group"),
-              reply_markup: { inline_keyboard: [[(() => {
+              reply_markup: { inline_keyboard: [(() => {
                 // URL button opens the DM directly; tickers or encodable contracts fit Telegram's 64-char start payload.
                 const url = mainToken(sym)?.coinType === t.coinType ? buyDeepLink(sym) : contractDeepLink(t.coinType);
-                return url ? { text: `🟢 Buy $${sym} on OURBLAST`, url } : { text: `🟢 Buy $${sym} on OURBLAST`, callback_data: "sc" };
-              })()]] },
+                const main = url ? { text: `🟢 Buy $${sym}`, url } : { text: `🟢 Buy $${sym}`, callback_data: "sc" };
+                return sym === "BLAST" ? [main] : [main, { text: "💥 Buy $BLAST", url: buyDeepLink("BLAST") }];
+              })()] },
             });
             return Response.json({ ok: true });
           }
