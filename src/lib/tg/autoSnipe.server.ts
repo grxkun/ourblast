@@ -30,23 +30,25 @@ function typeArgs(repr: string): string[] {
 
 export async function freshLaunches(): Promise<(FreshLaunch & { ts: string })[]> {
   const { readCoinMetadata } = await import("@/lib/terminal/sui-balances.server");
-  const out: (FreshLaunch & { ts: string })[] = [];
-  const blast = await gql<{ events: { nodes: Ev[] } }>(EV_Q, { t: `${BLAST_V2_LAUNCH_PKG}::events::LaunchShared` });
-  for (const e of blast?.events.nodes ?? []) {
+  // Both launchpads and every per-launch lookup run in parallel: detection latency is the snipe's head start.
+  const [blast, sp] = await Promise.all([
+    gql<{ events: { nodes: Ev[] } }>(EV_Q, { t: `${BLAST_V2_LAUNCH_PKG}::events::LaunchShared` }),
+    gql<{ events: { nodes: Ev[] } }>(EV_Q, { t: `${SUIPUMP_V18}::curve::CurveCreated` }),
+  ]);
+  const blastRows = Promise.all((blast?.events.nodes ?? []).map(async (e): Promise<(FreshLaunch & { ts: string }) | null> => {
     const [coin, quote] = typeArgs(e.contents.type.repr);
-    if (!coin || !quote || !SUI_RE.test(quote)) continue;
+    if (!coin || !quote || !SUI_RE.test(quote)) return null;
     const meta = await readCoinMetadata(coin).catch(() => null);
-    out.push({ pad: "blast", coinType: coin, symbol: meta?.symbol ?? coin.split("::").pop()!, name: "", createdMs: Date.parse(e.timestamp), ts: e.timestamp });
-  }
-  const sp = await gql<{ events: { nodes: Ev[] } }>(EV_Q, { t: `${SUIPUMP_V18}::curve::CurveCreated` });
-  for (const e of sp?.events.nodes ?? []) {
+    return { pad: "blast", coinType: coin, symbol: meta?.symbol ?? coin.split("::").pop()!, name: "", createdMs: Date.parse(e.timestamp), ts: e.timestamp };
+  }));
+  const spRows = Promise.all((sp?.events.nodes ?? []).map(async (e): Promise<(FreshLaunch & { ts: string }) | null> => {
     const id = String(e.contents.json["curve_id"] ?? "");
     const o = id ? await gql<{ object: { asMoveObject?: { contents?: { type?: { repr?: string } } } } | null }>(`query($a:SuiAddress!){object(address:$a){asMoveObject{contents{type{repr}}}}}`, { a: id }) : null;
     const coin = typeArgs(o?.object?.asMoveObject?.contents?.type?.repr ?? "")[0];
-    if (!coin) continue;
-    out.push({ pad: "suipump", coinType: coin, symbol: String(e.contents.json["symbol"] ?? ""), name: String(e.contents.json["name"] ?? ""), createdMs: Date.parse(e.timestamp), ts: e.timestamp });
-  }
-  return out;
+    if (!coin) return null;
+    return { pad: "suipump", coinType: coin, symbol: String(e.contents.json["symbol"] ?? ""), name: String(e.contents.json["name"] ?? ""), createdMs: Date.parse(e.timestamp), ts: e.timestamp };
+  }));
+  return [...(await blastRows), ...(await spRows)].filter((x): x is FreshLaunch & { ts: string } => !!x);
 }
 
 /** Poll step: new launches since the stored cursor → matching rules → protected buys. */
@@ -64,28 +66,30 @@ export async function maintainAutoSnipes() {
   const now = Date.now(), today = new Date().toISOString().slice(0, 10);
   const token = process.env["TELEGRAM_BOT_TOKEN"];
   const say = (chat_id: number, text: string, kb?: unknown) => token ? fetch(`https://api.telegram.org/bot${token}/sendMessage`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ chat_id, text: text.slice(0, 4000), disable_web_page_preview: true, ...(kb ? { reply_markup: { inline_keyboard: kb } } : {}) }) }) : null;
+  // Launches stay sequential so a rule's daily budget is read/written in order; different users' rules buy
+  // concurrently — each (rule, token) claim is a unique insert, so parallelism can't double-buy.
   for (const l of launches.filter((x) => x.createdMs > since)) {
-    let metrics: { mcap: number | null; reserve: number | null } | null = null;
-    for (const r of rules) {
-      if (!ruleMatches({ launchpads: r.launchpads, keyword: r.keyword, active: r.active }, l, now)) continue;
+    let metricsP: Promise<{ mcap: number | null; reserve: number | null }> | null = null;
+    await Promise.all(rules.map(async (r) => {
+      if (!ruleMatches({ launchpads: r.launchpads, keyword: r.keyword, active: r.active }, l, now)) return;
       if (r.min_mcap_usd != null || r.max_mcap_usd != null || r.min_reserve_sui != null) {
-        if (!metrics) {
+        metricsP ??= (async () => {
           const [{ readCoinMetadata }, { readCurve }, { livePrices }] = await Promise.all([import("@/lib/terminal/sui-balances.server"), import("./curvePrice.server"), import("./livePrice.server")]);
           const meta = await readCoinMetadata(l.coinType).catch(() => null);
-          const [curve, prices] = await Promise.all([meta ? readCurve(l.coinType, meta.decimals).catch(() => null) : Promise.resolve(null), livePrices([l.coinType]).catch(() => ({} as Record<string, number>))]);
           // CoinMetadata supply is circulating supply; do not substitute curve FDV supply.
-          const supplyData = await gql<{ coinMetadata?: { supply?: string | null } }>("query($t:String!){coinMetadata(coinType:$t){supply}}", { t: l.coinType });
+          const [curve, prices, supplyData] = await Promise.all([meta ? readCurve(l.coinType, meta.decimals).catch(() => null) : Promise.resolve(null), livePrices([l.coinType]).catch(() => ({} as Record<string, number>)), gql<{ coinMetadata?: { supply?: string | null } }>("query($t:String!){coinMetadata(coinType:$t){supply}}", { t: l.coinType })]);
           const supply = supplyData?.coinMetadata?.supply != null && meta ? Number(supplyData.coinMetadata.supply) / 10 ** meta.decimals : null;
           const price = prices[l.coinType];
-          metrics = { mcap: supply != null && price != null ? supply * price : null, reserve: curve?.reserveSui ?? null };
-        }
-        if (!marketFilterMatches(r, metrics.mcap, metrics.reserve)) continue;
+          return { mcap: supply != null && price != null ? supply * price : null, reserve: curve?.reserveSui ?? null };
+        })();
+        const metrics = await metricsP;
+        if (!marketFilterMatches(r, metrics.mcap, metrics.reserve)) return;
       }
       const { data: claim } = await d.from("tg_snipe_fills").insert({ filter_id: r.id, coin_type: l.coinType }).select("id").maybeSingle();
-      if (!claim) continue; // already handled
+      if (!claim) return; // already handled
       const { data: fresh } = await d.from("tg_snipe_filters").select("spent, spent_day").eq("id", r.id).single();
       const amt = autoBudget(Number(r.amount), Number(r.daily_cap), fresh?.spent_day ?? null, Number(fresh?.spent ?? 0), today);
-      if (!amt) { await d.from("tg_snipe_fills").update({ result: "daily max" }).eq("id", claim.id); await say(r.tg_user_id, `⚡ Auto-snipe skipped $${l.symbol}: daily max ${r.daily_cap} SUI reached.`); continue; }
+      if (!amt) { await d.from("tg_snipe_fills").update({ result: "daily max" }).eq("id", claim.id); await say(r.tg_user_id, `⚡ Auto-snipe skipped $${l.symbol}: daily max ${r.daily_cap} SUI reached.`); return; }
       const spent = (fresh?.spent_day === today ? Number(fresh.spent) : 0) + amt;
       await d.from("tg_snipe_filters").update({ spent, spent_day: today }).eq("id", r.id);
       const { runTgCommand } = await import("./runCommand.server");
@@ -100,7 +104,7 @@ export async function maintainAutoSnipes() {
       }
       const { snipeExitKeyboard } = await import("./autoSnipe");
       await say(r.tg_user_id, `⚡ Auto-snipe · $${l.symbol} on ${l.pad === "blast" ? "Blast.fun" : "Suipump"}\n${l.coinType}\n${out}${tpsl}\n\nRule #${r.id.slice(0, 6)} · stop: stopsnipe ${r.id.slice(0, 6)}`, bought ? snipeExitKeyboard(l.coinType) : undefined);
-    }
+    }));
   }
 }
 
