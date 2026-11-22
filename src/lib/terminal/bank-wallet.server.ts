@@ -339,6 +339,23 @@ export async function sendFromBankWallet(
   return { ok: true, digest: executed.digest };
 }
 
+/** Pays several SUI amounts to several addresses in one transaction (all or nothing). */
+export async function paySuiSplit(wallet: BankWalletRow, payments: { to: string; amount: bigint }[]): Promise<Result> {
+  const list = payments.filter((p) => p.amount > 0n);
+  if (!list.length) return { ok: false, error: "Nothing to pay." };
+  const { gasCoins, hasGasFunds, referenceGasPrice, withGas, signAndExecute } = await chain();
+  let signer: Awaited<ReturnType<typeof bankSigner>>;
+  try { signer = await bankSigner(wallet); } catch (e) { return { ok: false, error: (e as Error).message }; }
+  const gas = await gasCoins(signer.address);
+  if (!(await hasGasFunds(signer.address, gas))) return { ok: false, error: "No SUI for network fees." };
+  const tx = new Transaction();
+  withGas(tx, signer.address, gas, await referenceGasPrice(), Number(GAS_BUDGET));
+  for (const p of list) tx.transferObjects([tx.coin({ balance: p.amount, type: SUI_TYPE })], tx.pure.address(normalizeSuiAddress(p.to)));
+  const executed = await signAndExecute(tx, signer);
+  if (!executed.ok || !executed.digest) return { ok: false, error: executed.error ?? "Transaction failed." };
+  return { ok: true, digest: executed.digest };
+}
+
 /**
  * Sends NFTs to one recipient in one transaction (all or nothing). Plain ids are directly owned;
  * `kioskItems` come out of the sender's kiosk (locked ones land in a new kiosk owned by the recipient).

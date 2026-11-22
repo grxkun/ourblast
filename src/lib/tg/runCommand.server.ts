@@ -122,7 +122,19 @@ async function runOne(bankHandle: string, xHandle: string | null, text: string):
     const { sniperPreflight } = await import("@/lib/blast/sniper.server");
     const check = await sniperPreflight(bankHandle, snipe.coinType, snipe.amount, snipe.slippage);
     if (!check.ok) return check.reply;
-    text = actionCommand({ side: "buy", amount: snipe.amount, symbol: snipe.symbol, slippage: snipe.slippage }, snipe.coinType);
+    // Sniper fee: swap 98.5%, then pay 1% dev + 0.5% treasury only after the buy confirms.
+    const { splitSniperFee, SNIPER_FEE_RECIPIENTS, SNIPER_FEE_NOTE } = await import("./sniperFee");
+    const { toAtomic } = await import("@/lib/terminal/bank");
+    const fee = splitSniperFee(toAtomic(snipe.amount, 9));
+    const netSui = (Number(fee.net) / 1e9).toFixed(9).replace(/\.?0+$/, "");
+    const buyText = actionCommand({ side: "buy", amount: netSui, symbol: snipe.symbol, slippage: snipe.slippage }, snipe.coinType);
+    const out = await runOne(bankHandle, xHandle, buyText);
+    if (!/suiscan|suivision|tx\//i.test(out)) return out;
+    const { findBankWallet, paySuiSplit } = await import("@/lib/terminal/bank-wallet.server");
+    const wallet = await findBankWallet(bankHandle);
+    const paid = wallet ? await paySuiSplit(wallet, [{ to: SNIPER_FEE_RECIPIENTS.dev, amount: fee.dev }, { to: SNIPER_FEE_RECIPIENTS.treasury, amount: fee.treasury }]) : { ok: false as const, error: "wallet not found" };
+    if (!paid.ok) console.error("sniper fee not collected", bankHandle, paid.error);
+    return `${out}\n${SNIPER_FEE_NOTE}${paid.ok ? "" : " (fee not collected this time)"}`;
   }
   const [{ ensureBankWallet }, claim, bank] = await Promise.all([
     import("@/lib/terminal/bank-wallet.server"),
