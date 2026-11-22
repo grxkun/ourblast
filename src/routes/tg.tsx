@@ -550,9 +550,11 @@ function AutoSnipeBox({ busy, onRun }: { busy: boolean; onRun: (cmd: string) => 
   const [minMc, setMinMc] = useState("");
   const [maxMc, setMaxMc] = useState("");
   const [minLiq, setMinLiq] = useState("");
+  const [dev, setDev] = useState("");
+  const [from, setFrom] = useState("");
   const [review, setReview] = useState(false);
   const kwOk = !kw || /^[a-z0-9]{2,16}$/i.test(kw);
-  const line = `autosnipe ${pads} ${amt} sui max ${cap} sui slippage ${slip}%${kw ? ` keyword ${kw.toLowerCase()}` : ""}${tp ? ` tp ${tp}%` : ""}${sl ? ` sl ${sl}%` : ""}${minMc ? ` minmc ${minMc} usd` : ""}${maxMc ? ` maxmc ${maxMc} usd` : ""}${minLiq ? ` minliq ${minLiq} sui` : ""}`;
+  const line = `autosnipe ${pads} ${amt} sui max ${cap} sui slippage ${slip}%${kw ? ` keyword ${kw.toLowerCase()}` : ""}${tp ? ` tp ${tp}%` : ""}${sl ? ` sl ${sl}%` : ""}${minMc ? ` minmc ${minMc} usd` : ""}${maxMc ? ` maxmc ${maxMc} usd` : ""}${minLiq ? ` minliq ${minLiq} sui` : ""}${dev.trim() ? ` dev ${dev.trim()}` : ""}${from.trim() ? ` from ${from.trim().replace(/\s+/g, "")}` : ""}`;
   const ok = kwOk && parseAutoSnipeCommand(line)?.op === "start";
   const chip = (on: boolean) => `rounded-full px-3 py-1 text-xs font-bold ${on ? "bg-primary text-primary-foreground" : "bg-surface text-muted-foreground"}`;
   return (
@@ -571,6 +573,8 @@ function AutoSnipeBox({ busy, onRun }: { busy: boolean; onRun: (cmd: string) => 
         <label className="space-y-1"><span className="text-muted-foreground">Slippage %</span><input inputMode="decimal" value={slip} onChange={(e) => { setSlip(e.target.value); setReview(false); }} className="w-full rounded-lg border border-border bg-card px-2 py-1.5" /></label>
       </div>
       <input value={kw} onChange={(e) => { setKw(e.target.value); setReview(false); }} placeholder="Keyword filter (optional, e.g. pepe)" className="w-full rounded-lg border border-border bg-card px-2 py-1.5 text-xs" />
+      <input value={dev} onChange={(e) => { setDev(e.target.value); setReview(false); }} placeholder="Dev address 0x… (optional — only this creator's launches)" className="w-full rounded-lg border border-border bg-card px-2 py-1.5 text-xs" />
+      <input value={from} onChange={(e) => { setFrom(e.target.value); setReview(false); }} placeholder="Buy from wallets, e.g. w2,w3 (optional — default: selected)" className="w-full rounded-lg border border-border bg-card px-2 py-1.5 text-xs" />
       <div className="grid grid-cols-2 gap-2 text-xs">
         <label>Min MC (USD)<input aria-label="Min MC (USD)" inputMode="decimal" value={minMc} onChange={(e) => { setMinMc(e.target.value); setReview(false); }} placeholder="Optional" className="min-w-0 w-full rounded-lg border border-border bg-card px-2 py-1.5" /></label>
         <label>Max MC (USD)<input aria-label="Max MC (USD)" inputMode="decimal" value={maxMc} onChange={(e) => { setMaxMc(e.target.value); setReview(false); }} placeholder="20000" className="min-w-0 w-full rounded-lg border border-border bg-card px-2 py-1.5" /></label>
@@ -584,6 +588,8 @@ function AutoSnipeBox({ busy, onRun }: { busy: boolean; onRun: (cmd: string) => 
         <div className="space-y-2 rounded-lg bg-background/60 p-2 text-xs">
           <p>Every new {pads === "all" ? "Blast.fun + Suipump" : pads === "blast" ? "Blast.fun" : "Suipump"} launch{kw ? ` containing “${kw}”` : ""}: <b>{amt} SUI</b> per selected wallet, max <b>{cap} SUI/day</b>, slippage {slip}%{tp ? `, take profit +${tp}%` : ""}{sl ? `, stop loss −${sl}%` : ""}. Each buy is simulated first; new tokens can lose value fast.</p>
           {(minMc || maxMc || minLiq) && <p>{minMc ? `Min MC $${minMc}. ` : ""}{maxMc ? `Max MC $${maxMc}. ` : ""}{minLiq ? `Real reserve ≥${minLiq} SUI. ` : ""}Missing metrics are skipped.</p>}
+          {dev.trim() && <p>Only launches created by <b>{dev.trim().slice(0, 8)}…{dev.trim().slice(-4)}</b>. Unknown creator is skipped.</p>}
+          {from.trim() && <p>Buys from <b>{from.trim()}</b>.</p>}
           <div className="flex gap-2">
             <button onClick={() => setReview(false)} className="flex-1 rounded-full bg-card py-2 font-bold">Cancel</button>
             <button disabled={busy} onClick={() => { setReview(false); onRun(`confirm ${line}`); }} className="flex-1 rounded-full bg-primary py-2 font-bold text-primary-foreground disabled:opacity-50">Turn on</button>

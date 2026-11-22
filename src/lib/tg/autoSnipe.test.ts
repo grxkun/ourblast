@@ -56,3 +56,20 @@ describe("auto-snipe filters", () => {
     expect(autoBudget(2, 10, "2026-11-19", 9, "2026-11-20")).toBe(2);
   });
 });
+
+import { devMatches, packKeyword, unpackKeyword } from "./autoSnipe";
+describe("dev-address snipe", () => {
+  const dev = "0x" + "ab".repeat(32);
+  it("parses dev and from", () => {
+    const r = parseAutoSnipeCommand(`autosnipe all 2 sui dev ${dev} from w2,w3`);
+    expect(r).toMatchObject({ op: "start", dev, slots: [2, 3] });
+    if (r?.op === "start") expect(parseAutoSnipeCommand(autoLine(r))).toMatchObject({ dev, slots: [2, 3] });
+  });
+  it("rejects bad dev", () => expect(parseAutoSnipeCommand("autosnipe all 2 sui dev pepe")?.op).toBe("error"));
+  it("round-trips keyword packing", () => expect(unpackKeyword(packKeyword("pepe", dev))).toEqual({ dev, keyword: "pepe" }));
+  it("matches only that creator, fails closed", () => {
+    expect(devMatches(dev, dev.toUpperCase().replace("0X", "0x"))).toBe(true);
+    expect(devMatches(dev, "0x" + "cd".repeat(32))).toBe(false);
+    expect(devMatches(dev, null)).toBe(false);
+  });
+});

@@ -50,7 +50,8 @@ export async function runTgCommand(
     if (ac.op === "list") return { linked: true, reply: await as.listAutoSnipes(tgUserId) };
     if (ac.op !== "start") return { linked: true, reply: await as.controlAutoSnipe(tgUserId, ac.op, ac.id) };
     const { listTgWallets } = await import("./tgWallets.server");
-    const { selected } = await listTgWallets(tgUserId, handle);
+    const { selected, wallets } = await listTgWallets(tgUserId, handle);
+    if (ac.slots?.length && ac.slots.some((x) => !wallets.some((w) => w.slot === x))) return { linked: true, reply: `You don't have wallet ${ac.slots.filter((x) => !wallets.some((w) => w.slot === x)).map((x) => `w${x}`).join(",")}. See /wallets.` };
     if (!confirmAuto) return { linked: true, reply: `${await as.autoSnipeReview(ac, selected.length)}\n\nTo turn it on, send:\nconfirm ${auto.autoLine(ac)}` };
     return { linked: true, reply: await as.saveAutoSnipe(tgUserId, ac, selected) };
   }

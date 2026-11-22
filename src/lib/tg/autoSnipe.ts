@@ -10,7 +10,7 @@ export const AUTO_MAX_DAILY = 500;
 /** Only launches seen this fresh are sniped — never old tokens after downtime. */
 export const AUTO_MAX_AGE_MS = 10 * 60_000;
 
-export type AutoRule = { pads: AutoPad[]; amount: string; dailyCap: string; slippage: string; keyword: string | null; tp?: string | null; sl?: string | null; minMc?: string; maxMc?: string; minLiq?: string };
+export type AutoRule = { pads: AutoPad[]; amount: string; dailyCap: string; slippage: string; keyword: string | null; tp?: string | null; sl?: string | null; minMc?: string; maxMc?: string; minLiq?: string; dev?: string; slots?: number[] };
 export type AutoCommand =
   | ({ op: "start" } & AutoRule)
   | { op: "list" }
@@ -18,7 +18,7 @@ export type AutoCommand =
   | { op: "pause" | "resume"; id: string | "all" }
   | { op: "error"; error: string };
 
-export const AUTO_USAGE = "Usage: autosnipe all 2 sui max 10 sui slippage 15%\nLaunchpads: all · blast · suipump\nOptional: keyword pepe (only names/tickers containing it) · tp 100% sl 30% (auto take-profit / stop-loss) · minmc 5k maxmc 20k (USD) · minliq 500 sui (real curve reserve)";
+export const AUTO_USAGE = "Usage: autosnipe all 2 sui max 10 sui slippage 15%\nLaunchpads: all · blast · suipump\nOptional: keyword pepe (only names/tickers containing it) · tp 100% sl 30% (auto take-profit / stop-loss) · minmc 5k maxmc 20k (USD) · minliq 500 sui (real curve reserve) · dev 0x… (only launches by this creator) · from w2,w3 (wallets that buy)";
 
 export function parseAutoSnipeCommand(text: string): AutoCommand | null {
   const t = text.trim().replace(/^\//, "").replace(/^(\w+)@\w+/, "$1");
@@ -29,9 +29,13 @@ export function parseAutoSnipeCommand(text: string): AutoCommand | null {
     return { op, id: (ctl[2] ?? "").toLowerCase() };
   }
   if (!/^(?:autosnipe|snipe\s+(?:all|filter))\b/i.test(t)) return null;
+  let dev: string | undefined, slots: number[] | undefined, bad = "";
+  const t0 = t.replace(/\s+dev\s+(\S+)/i, (_, a: string) => { if (/^0x[a-f0-9]{1,64}$/i.test(a)) dev = "0x" + a.slice(2).toLowerCase().padStart(64, "0"); else bad = "Dev address must be a Sui address 0x…"; return ""; })
+    .replace(/\s+from\s+((?:w?[1-6])(?:\s*,\s*w?[1-6])*)\b/i, (_, w: string) => { slots = [...new Set(w.split(",").map((x) => Number(x.trim().replace(/^w/i, ""))))].sort(); return ""; });
+  if (bad) return { op: "error", error: bad };
   let tp: string | null = null, sl: string | null = null;
   const filters: { minMc?: string; maxMc?: string; minLiq?: string } = {};
-  let input = t.replace(/\s+(minmc|maxmc|minliq)\s+(\d*\.?\d+)([km])?\b(?:\s+(?:usdc|usd|sui)\b)?/gi, (_, key: string, v: string, unit: string) => {
+  let input = t0.replace(/\s+(minmc|maxmc|minliq)\s+(\d*\.?\d+)([km])?\b(?:\s+(?:usdc|usd|sui)\b)?/gi, (_, key: string, v: string, unit: string) => {
     const n = Number(v) * (unit?.toLowerCase() === "k" ? 1000 : unit?.toLowerCase() === "m" ? 1000000 : 1);
     const field = key.toLowerCase() === "minmc" ? "minMc" : key.toLowerCase() === "maxmc" ? "maxMc" : "minLiq";
     filters[field] = String(n); return "";
@@ -52,13 +56,13 @@ export function parseAutoSnipeCommand(text: string): AutoCommand | null {
   if (!validSlippage(Number(slippage))) return { op: "error", error: `Slippage must be between ${MIN_SLIPPAGE}% and ${MAX_SLIPPAGE}%.` };
   if (tp != null && !(Number(tp) > 0 && Number(tp) <= 10000)) return { op: "error", error: "Take-profit must be 1–10000%." };
   if (sl != null && !(Number(sl) > 0 && Number(sl) < 100)) return { op: "error", error: "Stop-loss must be between 1% and 99%." };
-  return { op: "start", pads, amount, dailyCap, slippage, keyword: m[6]?.toLowerCase() ?? null, ...(tp ? { tp } : {}), ...(sl ? { sl } : {}), ...filters };
+  return { op: "start", pads, amount, dailyCap, slippage, keyword: m[6]?.toLowerCase() ?? null, ...(tp ? { tp } : {}), ...(sl ? { sl } : {}), ...filters, ...(dev ? { dev } : {}), ...(slots ? { slots } : {}) };
 }
 
 /** Canonical line carried in the confirm card (callback data can't hold it). */
 export function autoLine(r: AutoRule): string {
   const pads = r.pads.length === AUTO_PADS.length ? "all" : r.pads.join(",");
-  return `autosnipe ${pads} ${r.amount} sui max ${r.dailyCap} sui slippage ${r.slippage}%${r.keyword ? ` keyword ${r.keyword}` : ""}${r.tp ? ` tp ${r.tp}%` : ""}${r.sl ? ` sl ${r.sl}%` : ""}${r.minMc ? ` minmc ${r.minMc} usd` : ""}${r.maxMc ? ` maxmc ${r.maxMc} usd` : ""}${r.minLiq ? ` minliq ${r.minLiq} sui` : ""}`;
+  return `autosnipe ${pads} ${r.amount} sui max ${r.dailyCap} sui slippage ${r.slippage}%${r.keyword ? ` keyword ${r.keyword}` : ""}${r.tp ? ` tp ${r.tp}%` : ""}${r.sl ? ` sl ${r.sl}%` : ""}${r.minMc ? ` minmc ${r.minMc} usd` : ""}${r.maxMc ? ` maxmc ${r.maxMc} usd` : ""}${r.minLiq ? ` minliq ${r.minLiq} sui` : ""}${r.dev ? ` dev ${r.dev}` : ""}${r.slots?.length ? ` from ${r.slots.map((x) => `w${x}`).join(",")}` : ""}`;
 }
 
 /** Quick-exit buttons under a snipe receipt; contract stays in the message text (callback data is 64 bytes). */
@@ -73,10 +77,26 @@ export function snipeExitKeyboard(coinType: string) {
 
 export type FreshLaunch = { pad: AutoPad; coinType: string; symbol: string; name: string; createdMs: number };
 
+/** Dev filter is stored in the keyword column as "dev:<addr>[ kw:<word>]" (no schema change). */
+export function packKeyword(keyword: string | null, dev?: string): string | null {
+  return dev ? `dev:${dev}${keyword ? ` kw:${keyword}` : ""}` : keyword;
+}
+export function unpackKeyword(k: string | null): { keyword: string | null; dev: string | null } {
+  const m = k?.match(/^dev:(0x[a-f0-9]{64})(?: kw:(\S+))?$/);
+  return m ? { dev: m[1]!, keyword: m[2] ?? null } : { keyword: k, dev: null };
+}
+/** Creator must be known and equal; unknown creator fails closed. */
+export function devMatches(dev: string | null, creator: string | null): boolean {
+  if (!dev) return true;
+  if (!creator) return false;
+  return "0x" + creator.replace(/^0x/i, "").toLowerCase().padStart(64, "0") === dev;
+}
+
 export function ruleMatches(rule: { launchpads: string[]; keyword: string | null; active: boolean }, l: FreshLaunch, nowMs: number): boolean {
   if (!rule.active || !rule.launchpads.includes(l.pad)) return false;
   if (nowMs - l.createdMs > AUTO_MAX_AGE_MS) return false;
-  if (rule.keyword && !`${l.symbol} ${l.name}`.toLowerCase().includes(rule.keyword)) return false;
+  const { keyword } = unpackKeyword(rule.keyword);
+  if (keyword && !`${l.symbol} ${l.name}`.toLowerCase().includes(keyword)) return false;
   return true;
 }
 
@@ -94,5 +114,5 @@ export function marketFilterMatches(rule: { min_mcap_usd?: number | null; max_mc
   return true;
 }
 export function marketFilterLabel(r: AutoRule): string {
-  return [r.minMc ? `Min MC $${r.minMc}` : "", r.maxMc ? `Max MC $${r.maxMc}` : "", r.minLiq ? `Min real reserve ${r.minLiq} SUI` : ""].filter(Boolean).join(" · ");
+  return [r.minMc ? `Min MC $${r.minMc}` : "", r.maxMc ? `Max MC $${r.maxMc}` : "", r.minLiq ? `Min real reserve ${r.minLiq} SUI` : "", r.dev ? `Dev ${r.dev.slice(0, 8)}…${r.dev.slice(-4)}` : ""].filter(Boolean).join(" · ");
 }
