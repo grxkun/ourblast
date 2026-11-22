@@ -3122,7 +3122,48 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      public_profiles: {
+        Row: {
+          avatar_seed: string | null
+          avatar_url: string | null
+          best_score: number | null
+          display_name: string | null
+          games_played: number | null
+          id: string | null
+          is_banned: boolean | null
+          nickname: string | null
+          points: number | null
+          streak: number | null
+          wallet_address: string | null
+        }
+        Insert: {
+          avatar_seed?: string | null
+          avatar_url?: string | null
+          best_score?: number | null
+          display_name?: string | null
+          games_played?: number | null
+          id?: string | null
+          is_banned?: boolean | null
+          nickname?: string | null
+          points?: number | null
+          streak?: number | null
+          wallet_address?: string | null
+        }
+        Update: {
+          avatar_seed?: string | null
+          avatar_url?: string | null
+          best_score?: number | null
+          display_name?: string | null
+          games_played?: number | null
+          id?: string | null
+          is_banned?: boolean | null
+          nickname?: string | null
+          points?: number | null
+          streak?: number | null
+          wallet_address?: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       award_points: {

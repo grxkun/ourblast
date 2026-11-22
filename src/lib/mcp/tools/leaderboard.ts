@@ -14,7 +14,7 @@ export default defineTool({
   handler: async ({ limit }) => {
     const supabase = supabaseAnon();
     const { data, error } = await supabase
-      .from("profiles")
+      .from("public_profiles")
       .select("nickname, display_name, points, games_played, best_score, streak")
       .eq("is_banned", false)
       .order("points", { ascending: false })

@@ -72,7 +72,7 @@ export async function fetchLeaderboard(period: Period): Promise<LeaderRow[]> {
   if (ids.length === 0) return [];
 
   const { data: profiles } = await supabase
-    .from("profiles")
+    .from("public_profiles")
     .select("id, wallet_address, nickname")
     .in("id", ids);
 

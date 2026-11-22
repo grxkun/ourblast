@@ -60,7 +60,7 @@ function Home() {
         .limit(3);
       const ids = [...new Set((data ?? []).map((m) => m.user_id))];
       const { data: profiles } = ids.length
-        ? await supabase.from("profiles").select("id, wallet_address, nickname").in("id", ids)
+        ? await supabase.from("public_profiles").select("id, wallet_address, nickname").in("id", ids)
         : { data: [] };
       return (data ?? []).map((m) => ({
         ...m,

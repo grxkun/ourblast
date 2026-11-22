@@ -70,7 +70,7 @@ function ChatPage() {
     enabled: authorIds.length > 0,
     queryFn: async () => {
       const { data } = await supabase
-        .from("profiles")
+        .from("public_profiles")
         .select("id, wallet_address, nickname")
         .in("id", authorIds);
       return data ?? [];
