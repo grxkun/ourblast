@@ -27,3 +27,9 @@ describe("blast partners", () => {
     expect(JSON.stringify(data.commands)).toContain(BLAST_PARTNERS_PKG.slice(2, 20));
   });
 });
+
+describe("partner package", () => {
+  it("mints caps from the live Blast partners package", () => {
+    expect(BLAST_PARTNERS_PKG).toBe("0x2998c10c91e46082548b2f3205f84f09377bbbedf2b0f617f70575a09ec69a54");
+  });
+});

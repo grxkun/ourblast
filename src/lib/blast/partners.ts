@@ -6,7 +6,9 @@
  */
 import { Transaction } from "@mysten/sui/transactions";
 
-export const BLAST_PARTNERS_PKG = "0x163a96aa9b88afe77e51febc195a9e0fa8534a6122bc09c6bd46d176c91a99f9";
+import { BLAST_V2_PARTNER_TYPE } from "./contracts";
+/** Same package as the live LaunchConfig partner type, so minted caps can be registered. */
+export const BLAST_PARTNERS_PKG = BLAST_V2_PARTNER_TYPE.split("::")[0]!;
 export const PARTNER_TYPE = `${BLAST_PARTNERS_PKG}::blast_partners::Partner`;
 export const PARTNER_CAP_TYPE = `${BLAST_PARTNERS_PKG}::blast_partners::PartnerCap`;
 export const MAX_SHARE_BPS = 8_000;
