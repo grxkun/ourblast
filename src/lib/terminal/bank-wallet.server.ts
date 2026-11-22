@@ -422,7 +422,7 @@ export async function sendManyFromBankWallet(
   for (const it of items) {
     const type = normalizeStructTag(it.coinType);
     if (type === SUI_TYPE) {
-      outs.push(tx.splitCoins(tx.gas, [tx.pure.u64(it.amount)])[0]!);
+      outs.push(tx.coin({ balance: it.amount, type: SUI_TYPE }));
       continue;
     }
     const source = await tokenSendSource(tx, sender, type, it.amount, tokenSourceDeps(rpc));
@@ -466,7 +466,7 @@ export async function commitPresaleFromBankWallet(
 export function buildPresaleCommit(sender: string, p: { pkg: string; presaleId: string; memeType: string; amount: bigint }): Transaction {
   const tx = new Transaction();
   tx.setSender(sender);
-  const [payment] = tx.splitCoins(tx.gas, [tx.pure.u64(p.amount)]);
+  const payment = tx.coin({ balance: p.amount, type: SUI_TYPE });
   if (!payment) throw new Error("Presale payment could not be built.");
   const [unused] = tx.moveCall({
     target: `${p.pkg}::blast_presale::commit_open`,

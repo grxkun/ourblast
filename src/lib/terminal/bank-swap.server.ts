@@ -359,7 +359,7 @@ async function buildBluefinSwap(sender: string, inType: string, outType: string,
   tx.setSender(sender);
   let coinIn;
   if (inType === SUI) {
-    [coinIn] = tx.splitCoins(tx.gas, [amountIn]);
+    coinIn = tx.coin({ balance: amountIn, type: SUI });
   } else {
     const { rpc } = await import("./suipump-launch.server");
     const coins = await rpc<{ data: { coinObjectId: string; balance: string }[] }>(

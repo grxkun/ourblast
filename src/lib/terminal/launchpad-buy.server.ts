@@ -203,7 +203,7 @@ async function buildSuipumpBuy(
   const priceConfigRef = await sharedRef(plan.priceConfigId!);
   const tx = new Transaction();
   tx.setSender(sender);
-  const [coinIn] = tx.splitCoins(tx.gas, [amountIn]);
+  const coinIn = tx.coin({ balance: amountIn, type: "0x2::sui::SUI" });
   // buy returns (Coin<T>, Coin<SUI> refund) — both go back to the sender.
   const buyResult = tx.moveCall({
     target: `${plan.suipumpTarget ?? `${SUICOMP}::${SUICOMP_MODULE}`}::buy`,
@@ -231,7 +231,7 @@ async function buildBlastfunBuy(
   const poolRef = await sharedRef(plan.poolObjectId);
   const tx = new Transaction();
   tx.setSender(sender);
-  const [coinIn] = tx.splitCoins(tx.gas, [amountIn]);
+  const coinIn = tx.coin({ balance: amountIn, type: "0x2::sui::SUI" });
   const versions = tx.moveCall({
     target: `${MEMEZ_FUN_LATEST}::memez_allowed_versions::get_allowed_versions`,
     arguments: [tx.sharedObjectRef({ ...VERSION, mutable: false })],
@@ -265,7 +265,7 @@ async function buildBlastV2Buy(sender: string, plan: LaunchpadBuyPlan, amountIn:
   const launchRef = await sharedRef(plan.poolObjectId);
   const tx = new Transaction();
   tx.setSender(sender);
-  const [coinIn] = tx.splitCoins(tx.gas, [amountIn]);
+  const coinIn = tx.coin({ balance: amountIn, type: "0x2::sui::SUI" });
   const r = tx.moveCall({
     target: `${BLAST_V2_LAUNCH_PKG}::launch::buy`,
     typeArguments: [plan.coinType, SUI],
