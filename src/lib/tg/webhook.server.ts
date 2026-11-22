@@ -681,7 +681,9 @@ export async function processTelegramUpdate(update: TelegramUpdate, token: strin
                   { text: "Share on X", url: `https://x.com/intent/post?text=${encodeURIComponent(card)}` },
                   { text: "Share on Telegram", url: `https://t.me/share/url?url=${encodeURIComponent("https://t.me/ourblastsuibot")}&text=${encodeURIComponent(card)}` },
                 ], [{ text: "🎨 Change background", callback_data: "pbg" }]] };
-                const sent = await tg("sendPhoto", { chat_id, photo: resolvePnlBg((pref as { pnl_bg?: string | null } | null)?.pnl_bg), caption: card, reply_markup });
+                const bg = resolvePnlBg((pref as { pnl_bg?: string | null } | null)?.pnl_bg);
+                const img = await (await import("@/lib/tg/pnlImage.server")).renderPnlImage(card, bg).catch(() => null);
+                const sent = (img ? await tg("sendPhoto", { chat_id, photo: img, caption: card, reply_markup }) : null) ?? await tg("sendPhoto", { chat_id, photo: bg, caption: card, reply_markup });
                 if (!sent) await tg("sendMessage", { chat_id, text: card, disable_web_page_preview: true, reply_markup });
               }
             } catch { /* PnL card is best-effort; the trade receipt already went out */ }
