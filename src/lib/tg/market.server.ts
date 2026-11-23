@@ -4,8 +4,8 @@ import { MAIN_TOKENS } from "@/lib/terminal/mainTokens";
 import { canonicalCoin, emptyMarketRow, marketNumber, mergeMarket, sortMarket, type MarketRow, type MarketSort } from "./market";
 import { MarketCache, marketPool } from "./market-cache";
 
-const cache = new MarketCache<MarketSort, { rows: MarketRow[]; error: string | null }>(45_000, 300_000);
-const catalogCache = new MarketCache<string, MarketRow[]>(300_000, 300_000);
+const cache = new MarketCache<MarketSort, { rows: MarketRow[]; error: string | null }>(15_000, 300_000);
+const catalogCache = new MarketCache<string, MarketRow[]>(15_000, 30_000);
 const paths = { trending: "trending_pools", new: "new_pools", volume: "pools", main: "pools" };
 type Gt = { data?: Array<{ attributes: Record<string, unknown>; relationships: Record<string, { data?: { id: string } }> }>; included?: Array<{ id: string; type: string; attributes: Record<string, unknown> }> };
 export async function loadMarket(sort: MarketSort, retain?: (work: Promise<unknown>) => void) {

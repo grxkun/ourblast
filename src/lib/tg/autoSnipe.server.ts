@@ -5,6 +5,7 @@
  * launch is never bought twice; every buy still runs the unsigned preflight + min-output protection.
  */
 import { BLAST_V2_LAUNCH_PKG } from "@/lib/blast/contracts";
+import { saveDetectedLaunches } from "./launch-catalog.server";
 import { devMatches, packKeyword, unpackKeyword, AUTO_MAX_RULES, autoBudget, ruleMatches, marketFilterMatches, marketFilterLabel, type AutoRule, type FreshLaunch } from "./autoSnipe";
 
 const GQL = "https://graphql.mainnet.sui.io/graphql";
@@ -39,7 +40,7 @@ export async function freshLaunches(): Promise<(FreshLaunch & { ts: string })[]>
     const [coin, quote] = typeArgs(e.contents.type.repr);
     if (!coin || !quote || !SUI_RE.test(quote)) return null;
     const meta = await readCoinMetadata(coin).catch(() => null);
-    return { pad: "blast", coinType: coin, symbol: meta?.symbol ?? coin.split("::").pop()!, name: "", createdMs: Date.parse(e.timestamp), ts: e.timestamp };
+    return { pad: "blast", coinType: coin, symbol: meta?.symbol ?? coin.split("::").pop() ?? "?", name: String(e.contents.json["name"] ?? ""), createdMs: Date.parse(e.timestamp), ts: e.timestamp };
   }));
   const spRows = Promise.all((sp?.events.nodes ?? []).map(async (e): Promise<(FreshLaunch & { ts: string }) | null> => {
     const id = String(e.contents.json["curve_id"] ?? "");
@@ -54,12 +55,14 @@ export async function freshLaunches(): Promise<(FreshLaunch & { ts: string })[]>
 /** Poll step: new launches since the stored cursor → matching rules → protected buys. */
 export async function maintainAutoSnipes() {
   const d = await db();
+  // Catalog discovery is independent of active rules, first-run baselines and purchase budgets.
+  const launches = (await freshLaunches()).sort((a, b) => a.createdMs - b.createdMs);
+  await saveDetectedLaunches(launches).catch((error: unknown) => console.error("Discover launch indexing failed", error));
   const { data: rules } = await d.from("tg_snipe_filters").select("*").eq("active", true).limit(500);
   if (!rules?.length) return;
   const { data: cur } = await d.from("tg_snipe_cursor").select("last_ts").eq("source", "all").maybeSingle();
-  const launches = (await freshLaunches()).sort((a, b) => a.createdMs - b.createdMs);
-  if (!launches.length) return;
-  const newest = launches[launches.length - 1]!.ts;
+  const newest = launches[launches.length - 1]?.ts;
+  if (!newest) return;
   await d.from("tg_snipe_cursor").upsert({ source: "all", last_ts: newest, updated_at: new Date().toISOString() });
   if (!cur) return; // first run only sets the baseline
   const since = Date.parse(cur.last_ts);
