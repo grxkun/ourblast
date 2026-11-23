@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: BUSL-1.1
 import { useMemo, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { keepPreviousData, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Search, RefreshCw, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { TokenSheet } from "./TokenSheet";
 import { tgMarket, tgTokenDetail, type MarketRow, type MarketSort } from "@/lib/tg/market.functions";
-import { canonicalCoin, emptyMarketRow } from "@/lib/tg/market";
+import { canonicalCoin, emptyMarketRow, sortMarket } from "@/lib/tg/market";
 
 const usd = (n: number | null) => n === null ? "—" : n >= 1e9 ? `$${(n / 1e9).toFixed(2)}B` : n >= 1e6 ? `$${(n / 1e6).toFixed(2)}M` : n >= 1e3 ? `$${(n / 1e3).toFixed(1)}K` : `$${n.toFixed(0)}`;
 const price = (n: number | null) => n === null ? "—" : n >= 1 ? `$${n.toFixed(3)}` : n >= 0.0001 ? `$${n.toFixed(6)}` : `$${n.toPrecision(3)}`;
@@ -18,8 +18,14 @@ export function MarketBoard({ limit, compact, onTrade, initData }: { limit?: num
   const [search, setSearch] = useState("");
   const [visible, setVisible] = useState(40);
   const [order, setOrder] = useState<"default" | "mc" | "vol">("default");
-  const q = useQuery({ queryKey: ["tg-market", sort], queryFn: () => tgMarket({ data: { sort } }), refetchInterval: 45_000, staleTime: 30_000 });
-  const all = q.data?.rows ?? [];
+  const queryClient = useQueryClient();
+  const q = useQuery({
+    queryKey: ["tg-market", sort], queryFn: () => tgMarket({ data: { sort } }),
+    refetchInterval: (query) => query.state.data?.refreshing ? 1500 : 45_000,
+    staleTime: 30_000, gcTime: 600_000,
+    placeholderData: (previous) => keepPreviousData(previous) ?? queryClient.getQueryData<Awaited<ReturnType<typeof tgMarket>>>(["tg-market", "trending"]),
+  });
+  const all = sortMarket(q.data?.rows ?? [], sort);
   const contract = canonicalCoin(search.trim());
   const lookup = useQuery({
     queryKey: ["tg-token-detail", contract], enabled: !!contract && !all.some((r) => r.coinType === contract),
@@ -54,12 +60,13 @@ export function MarketBoard({ limit, compact, onTrade, initData }: { limit?: num
           {venues.map((v) => <Button key={v} size="sm" variant={venue === v ? "default" : "outline"} className="h-7 shrink-0 px-2 text-[0.65rem]" onClick={() => { setVenue(v); setVisible(40); }} aria-pressed={venue === v}>{v === "all" ? "All venues" : v}</Button>)}
         </div>
       </>}
+      {(q.isFetching || q.data?.refreshing) && q.data && <p role="status" className="text-xs text-muted-foreground">Updating prices…</p>}
       {q.data?.error && <p role="status" className="text-xs text-muted-foreground">{q.data.error}</p>}
       <div className="overflow-hidden rounded-lg border border-border bg-card" aria-label="Sui market tokens">
         <div className="grid grid-cols-[minmax(0,1fr)_5.7rem_4.4rem] gap-1 border-b border-border bg-surface px-2.5 py-2 text-[0.6rem] font-semibold uppercase text-muted-foreground">
           <span>Token</span><span className="text-right">Price / 24h</span><button type="button" className="text-right uppercase" onClick={() => setOrder((o) => o === "mc" ? "vol" : o === "vol" ? "default" : "mc")} aria-label="Sort by market cap or volume">{order === "mc" ? "MC ↓ / Vol" : order === "vol" ? "MC / Vol ↓" : "MC / Vol ⇅"}</button>
         </div>
-        {q.isLoading && <p className="p-4 text-center text-xs text-muted-foreground">Loading Sui market…</p>}
+        {q.isLoading && <div role="status" aria-label="Loading Sui market" className="motion-safe:animate-pulse divide-y divide-border">{Array.from({ length: compact ? 4 : 8 }, (_, i) => <div key={i} className="flex h-14 items-center gap-3 px-3"><span className="size-7 rounded-full bg-muted" /><span className="h-3 flex-1 rounded bg-muted" /><span className="h-3 w-16 rounded bg-muted" /></div>)}</div>}
         {!q.isLoading && rows.length === 0 && <p className="p-4 text-center text-xs text-muted-foreground">{lookup.isFetching ? "Reading token contract…" : q.isError ? "Market unavailable. Try refresh." : "No matching tokens."}</p>}
         {rows.map((r: MarketRow) => (
           <Button key={r.coinType} variant="ghost" onClick={() => setOpen(r)} aria-label={`Open ${r.symbol}`}
@@ -83,7 +90,7 @@ export function MarketBoard({ limit, compact, onTrade, initData }: { limit?: num
         ))}
       </div>
       {!compact && <div className="flex items-center justify-between text-[0.65rem] text-muted-foreground">
-        <span>{filtered.length} tokens{q.dataUpdatedAt ? ` · ${new Date(q.dataUpdatedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}` : ""}</span>
+        <span>{filtered.length} tokens{q.data?.updatedAt ? ` · ${new Date(q.data.updatedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}` : ""}</span>
         {rows.length < filtered.length && <Button size="sm" variant="ghost" onClick={() => setVisible((n) => n + 40)}><ChevronDown />More</Button>}
       </div>}
       {open && <TokenSheet key={open.coinType} row={all.find((r) => r.coinType === open.coinType) ?? open} initData={initData ?? null} onClose={() => setOpen(null)} onTrade={(c) => { setOpen(null); onTrade(c); }} />}

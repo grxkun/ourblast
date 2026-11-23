@@ -92,7 +92,11 @@ async function perpsCurve(coinType: string, decimals: number): Promise<CurveStat
 }
 
 /** Tries each launchpad; null when the token is not on a known curve. */
-export async function readCurve(coinType: string, decimals: number): Promise<CurveState | null> {
+export async function readCurve(coinType: string, decimals: number, source?: string): Promise<CurveState | null> {
+  // Catalog provenance avoids querying three unrelated launchpads for every visible token.
+  if (source && /blast/i.test(source)) return blastCurve(coinType, decimals).catch(() => null);
+  if (source && /suipump/i.test(source)) return suipumpCurve(coinType).catch(() => null);
+  if (source && /perps/i.test(source)) return perpsCurve(coinType, decimals).catch(() => null);
   const [b, s, p] = await Promise.all([blastCurve(coinType, decimals).catch(() => null), suipumpCurve(coinType).catch(() => null), perpsCurve(coinType, decimals).catch(() => null)]);
   return b ?? s ?? p;
 }

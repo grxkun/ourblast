@@ -1,5 +1,6 @@
 - Market data merges a public read-only catalog with DEX pools by canonical, case-sensitive Move coin type, not symbol, to avoid selecting the wrong token.
 - Market metrics remain null when unavailable, and FDV is not market cap, to avoid misleading financial values.
+- Market snapshots use request-retained stale-while-revalidate (blocking without waitUntil), a shared catalog cache and bounded visible-token enrichment; preserve source timestamps and the full searchable catalog so speed never invents freshness or token metrics.
 - Holdings and automatic exits share livePrice.server.ts; active curve spot overrides DEX pricing to cover ungraduated tokens.
 - Sniper MC filters use circulating supply and real SUI reserves, skipping missing metrics to prevent unintended purchases.
 - Mini App launches verify Telegram identity and wallet ownership on every call, reuse the launch executor with an idempotent request key, and never emit X replies for synthetic posts.
