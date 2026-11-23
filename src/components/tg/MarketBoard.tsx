@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { TokenSheet } from "./TokenSheet";
 import { tgMarket, tgTokenDetail, type MarketRow, type MarketSort } from "@/lib/tg/market.functions";
-import { canonicalCoin, emptyMarketRow, sortMarket } from "@/lib/tg/market";
+import { canonicalCoin, emptyMarketRow, marketMatchesVenue, sortMarket } from "@/lib/tg/market";
 
 const usd = (n: number | null) => n === null ? "—" : n >= 1e9 ? `$${(n / 1e9).toFixed(2)}B` : n >= 1e6 ? `$${(n / 1e6).toFixed(2)}M` : n >= 1e3 ? `$${(n / 1e3).toFixed(1)}K` : `$${n.toFixed(0)}`;
 const price = (n: number | null) => n === null ? "—" : n >= 1 ? `$${n.toFixed(3)}` : n >= 0.0001 ? `$${n.toFixed(6)}` : `$${n.toPrecision(3)}`;
@@ -37,8 +37,8 @@ export function MarketBoard({ limit, compact, onTrade, initData }: { limit?: num
     ? [{ ...emptyMarketRow(contract, found.symbol, found.symbol, found.curve?.factory ?? "Sui"), priceUsd: found.priceUsd, fdvUsd: found.fdvUsd }] : [];
   const venues = useMemo(() => ["all", ...Array.from(new Set(all.flatMap((r) => [r.source, r.dex])))], [all]);
   const term = search.trim().replace(/^\$/, "").toLowerCase();
-  const filtered = [...discovered, ...all].filter((r) => (venue === "all" || r.source === venue || r.dex === venue) && (!term || `${r.symbol} ${r.name} ${r.coinType}`.toLowerCase().includes(term)));
-  const sorted = order === "default" ? filtered : [...filtered].sort((a, b) => order === "mc" ? (b.mcapUsd ?? -1) - (a.mcapUsd ?? -1) : (b.volume24h ?? -1) - (a.volume24h ?? -1));
+  const filtered = [...discovered, ...all].filter((r) => marketMatchesVenue(r, venue, sort) && (!term || `${r.symbol} ${r.name} ${r.coinType}`.toLowerCase().includes(term)));
+  const sorted = order === "default" ? sortMarket(filtered, sort, venue) : [...filtered].sort((a, b) => order === "mc" ? (b.mcapUsd ?? -1) - (a.mcapUsd ?? -1) : (b.volume24h ?? -1) - (a.volume24h ?? -1));
   const rows = sorted.slice(0, limit ?? visible);
 
   return (

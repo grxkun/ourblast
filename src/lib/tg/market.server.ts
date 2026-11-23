@@ -1,11 +1,12 @@
 // SPDX-License-Identifier: BUSL-1.1
 import { createClient } from "@supabase/supabase-js";
 import { MAIN_TOKENS } from "@/lib/terminal/mainTokens";
-import { canonicalCoin, emptyMarketRow, marketNumber, mergeMarket, sortMarket, type MarketRow, type MarketSort } from "./market";
+import { canonicalCoin, emptyMarketRow, isFeaturedBlast, marketNumber, mergeMarket, sortMarket, type MarketRow, type MarketSort } from "./market";
 import { MarketCache, marketPool } from "./market-cache";
 
 const cache = new MarketCache<MarketSort, { rows: MarketRow[]; error: string | null }>(15_000, 300_000);
 const catalogCache = new MarketCache<string, MarketRow[]>(15_000, 30_000);
+const curveSnapshots = new Map<string, { at: number; value: Partial<MarketRow> | null }>();
 const paths = { trending: "trending_pools", new: "new_pools", volume: "pools", main: "pools" };
 type Gt = { data?: Array<{ attributes: Record<string, unknown>; relationships: Record<string, { data?: { id: string } }> }>; included?: Array<{ id: string; type: string; attributes: Record<string, unknown> }> };
 export async function loadMarket(sort: MarketSort, retain?: (work: Promise<unknown>) => void) {
@@ -47,7 +48,11 @@ export async function loadMarket(sort: MarketSort, retain?: (work: Promise<unkno
     ]);
     const merged = mergeMarket([...catalog, ...stored], pools);
     // Keep the entire searchable catalog, but enrich visible rows first, not 2,000 tokens.
-    const priority = [...new Map([...sortMarket(merged, sort).slice(0, 40), ...sortMarket(merged, "new").slice(0, 20), ...merged.filter((r) => r.curated)].map((r) => [r.coinType, r])).values()];
+    const observed = merged.map((r) => ({ ...r, curveReserveSui: curveSnapshots.get(r.coinType)?.value?.curveReserveSui ?? null }));
+    const launchRows = merged.filter((r) => /blast|suipump|perps/i.test(r.source));
+    // Rotate a bounded sample through the catalog so older active curves can earn a rank.
+    const scouts = [...launchRows].sort((a, b) => (curveSnapshots.get(a.coinType)?.at ?? 0) - (curveSnapshots.get(b.coinType)?.at ?? 0)).slice(0, 12);
+    const priority = [...new Map([...merged.filter(isFeaturedBlast), ...sortMarket(observed, sort).slice(0, 20), ...scouts, ...sortMarket(merged, "new").slice(0, 8), ...merged.filter((r) => r.curated)].map((r) => [r.coinType, r])).values()];
     const unpriced = priority.filter((r) => r.priceUsd === null);
     // A catalog token need not have a trending pool. Resolve actual prices separately,
     // without inventing volume, change or market cap for unindexed curves.
@@ -87,21 +92,32 @@ export async function loadMarket(sort: MarketSort, retain?: (work: Promise<unkno
     });
     // Unbonded launchpad tokens: the on-chain curve is the truth; DEX aggregators show stale dust pools.
     const curve = new Map<string, Partial<MarketRow>>();
+    for (const r of merged) {
+      const cached = curveSnapshots.get(r.coinType);
+      if (cached?.value && Date.now() - cached.at < 300_000) curve.set(r.coinType, cached.value);
+    }
     const suiUsd = livePrices.get(canonicalCoin("0x2::sui::SUI") ?? "") ?? await fetch("https://aftermath.finance/api/price-info", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ coins: ["0x2::sui::SUI"] }), signal: AbortSignal.timeout(5000) })
       .then((r) => r.json() as Promise<Record<string, { price?: number }>>).then((j) => j["0x2::sui::SUI"]?.price ?? null).catch(() => null);
     const curveRows = priority.filter((r) => /blast|suipump|perps/i.test(r.source)).slice(0, 40);
     if (suiUsd) {
       const [{ readCoinMetadata }, { readCurve }] = await Promise.all([import("@/lib/terminal/sui-balances.server"), import("./curvePrice.server")]);
       await marketPool(curveRows, 3, async (r) => {
+        const cached = curveSnapshots.get(r.coinType);
+        if (cached && Date.now() - cached.at < 300_000) return;
         try {
           const meta = await readCoinMetadata(r.coinType); if (!meta) return;
-          const c = await readCurve(r.coinType, meta.decimals, r.source); if (!c?.live) return;
+          const c = await readCurve(r.coinType, meta.decimals, r.source);
+          curveSnapshots.set(r.coinType, { at: Date.now(), value: null });
+          if (!c?.live) return;
           const px = c.priceUsd ?? (c.priceSui != null ? c.priceSui * suiUsd : null);
           if (!px || !Number.isFinite(px)) return;
-          curve.set(r.coinType, { priceUsd: px, mcapUsd: null, fdvUsd: c.totalSupply ? px * c.totalSupply : null, liquidityUsd: null });
+          const value = { priceUsd: px, mcapUsd: null, fdvUsd: c.totalSupply ? px * c.totalSupply : null, liquidityUsd: null, curveReserveSui: c.reserveSui ?? null };
+          curve.set(r.coinType, value);
+          curveSnapshots.set(r.coinType, { at: Date.now(), value });
         } catch { /* keep other sources */ }
       });
     }
+    for (const coin of curveSnapshots.keys()) if (!merged.some((r) => r.coinType === coin)) curveSnapshots.delete(coin);
     const rows = merged.map((r) => {
       const cv = curve.get(r.coinType);
       if (cv) { const d = ds.get(r.coinType); return { ...r, ...cv, change24h: r.change24h ?? d?.change24h ?? null, volume24h: r.volume24h ?? d?.volume24h ?? null } as MarketRow; }

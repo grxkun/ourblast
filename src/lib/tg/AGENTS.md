@@ -1,5 +1,6 @@
 - Market data merges a public read-only catalog with DEX pools by canonical, case-sensitive Move coin type, not symbol, to avoid selecting the wrong token.
 - Market metrics remain null when unavailable, and FDV is not market cap, to avoid misleading financial values.
+- Featured market slots match exact coin types; Trending breaks DEX-activity ties with observed real curve deposits using bounded rotating reads, while New/Volume preserve chronological/volume ordering to avoid promoting ticker copies or blocking on the full catalog.
 - Launch detection saves official-event identities into Discover before rule gating; catalog indexing never claims fills or alters budgets, so skipped launches remain visible even without active rules.
 - Market snapshots use request-retained stale-while-revalidate (blocking without waitUntil), a shared catalog cache and bounded visible-token enrichment; preserve source timestamps and the full searchable catalog so speed never invents freshness or token metrics.
 - Holdings and automatic exits share livePrice.server.ts; active curve spot overrides DEX pricing to cover ungraduated tokens.
