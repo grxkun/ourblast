@@ -7,6 +7,7 @@ export interface CurveState {
   factory: string;
   /** Actual deposited SUI, never virtual quote liquidity. */
   reserveSui?: number | null;
+  targetSui?: number | null;
   priceSui: number | null;
   /** Set instead of priceSui when the curve is quoted in USDC (Perpsplexity). */
   priceUsd?: number | null;
@@ -39,6 +40,7 @@ async function blastCurve(coinType: string, decimals: number): Promise<CurveStat
   return {
     factory: "Blast.fun v2",
     reserveSui: Number(real) / 1e9,
+    targetSui: Number(target) / 1e9,
     priceSui: live ? blastSpotSui({ virtualQuote: BigInt(j["virtual_quote"] ?? 0), realQuote: real, memeReserve: BigInt(j["meme_reserve"] ?? 0) }, decimals) : null,
     progress: live ? curveProgress(real, target) : 1,
     live,

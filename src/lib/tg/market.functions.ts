@@ -10,3 +10,10 @@ export const tgMarket = createServerFn({ method: "GET" })
     const { loadMarket } = await import("./market.server");
     return loadMarket(data.sort);
   });
+
+export const tgTokenDetail = createServerFn({ method: "GET" })
+  .inputValidator(z.object({ coinType: z.string().min(10).max(300) }))
+  .handler(async ({ data }) => {
+    const { loadTokenDetail } = await import("./tokenDetail.server");
+    return loadTokenDetail(data.coinType);
+  });

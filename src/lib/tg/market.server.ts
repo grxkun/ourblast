@@ -98,7 +98,7 @@ export async function loadMarket(sort: MarketSort): Promise<{ rows: MarketRow[];
           const c = await readCurve(r.coinType, meta.decimals); if (!c?.live) return;
           const px = c.priceUsd ?? (c.priceSui != null ? c.priceSui * suiUsd : null);
           if (!px || !Number.isFinite(px)) return;
-          curve.set(r.coinType, { priceUsd: px, mcapUsd: c.totalSupply ? px * c.totalSupply : null, fdvUsd: c.totalSupply ? px * c.totalSupply : null, liquidityUsd: c.reserveSui != null ? c.reserveSui * suiUsd : null });
+          curve.set(r.coinType, { priceUsd: px, mcapUsd: null, fdvUsd: c.totalSupply ? px * c.totalSupply : null, liquidityUsd: null });
         } catch { /* keep other sources */ }
       }));
     }

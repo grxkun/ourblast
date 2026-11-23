@@ -1,4 +1,5 @@
 # Roadmap
+- [x] Refresh Mini App token details every 10s with exact-contract lookup, curve reserves/progress, observed spot chart, FDV labeling, copy contract and external links; 15 tests and live NIHAOSEM mobile/desktop checks passed, no transactions; historical Noodles candles still depend on provider indexing, Telegram wallet authentication unchanged and not retested.
 - [x] Connect curve prices to holdings and automatic exits; add confirmed MC/reserve sniper filters and Mini App launch review; 195 tests passed, JOEY live USD price read and authenticated mobile/desktop reviews checked, no launches or sniper activation.
 - [x] Expand Discover with 1,044 catalog tokens from historical Suipump V17/V18, Blast.fun, Popular and Perpsplexity events plus curated Sui tokens; mobile/desktop search, venue filters and dark mode checked, absent metrics remain unavailable.
 - [x] Prepare an optional read-only VPS indexer with authenticated ingestion and resumable backfill/catch-up; 16 tests pass, ingestion auth verified, no trades or public bot messages.
