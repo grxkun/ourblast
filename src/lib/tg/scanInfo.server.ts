@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: BUSL-1.1
 /** Read-only token stats for scan cards: Aftermath price + DexScreener pool data + on-chain metadata + OURBLAST launchpad record. 30s cache. */
+import { suilendNetUsd, SUILEND_CAP_TYPE } from "./devDefi";
 import { padFromModule, type ScanStats } from "@/lib/tg/scanner";
 
 const GQL = "https://graphql.mainnet.sui.io/graphql";
@@ -81,10 +82,21 @@ export async function getScanStats(coinType: string): Promise<ScanStats> {
   if (v.priceUsd != null) { const total = curve?.totalSupply ?? meta.supply; v.fdv = total ? v.priceUsd * total : null; }
   // Real deployer = sender of the package publish tx (curve "creator" can be a social-account id, not a wallet).
   const dep = await deployerOf(coinType, meta.decimals, curve?.totalSupply ?? meta.supply).catch(() => null);
-  if (dep) { v.creator = dep.address; v.devHold = dep.hold; v.devHoldPct = dep.pct; v.devSui = dep.sui; }
+  if (dep) { v.creator = dep.address; v.devHold = dep.hold; v.devHoldPct = dep.pct; v.devSui = dep.sui; v.devDefiUsd = await devDefiUsd(dep.address).catch(() => null); }
   await trackDeployer(coinType, v).catch(() => {});
   cache.set(coinType, { at: Date.now(), v });
   return v;
+}
+
+/** Net Suilend equity (deposits − borrows, USD) of a wallet; null when it has no obligations. */
+async function devDefiUsd(owner: string): Promise<number | null> {
+  const caps = await gql<{ address?: { objects?: { nodes?: { contents?: { json?: { obligation_id?: string } } }[] } } }>(
+    "query($o:SuiAddress!,$t:String!){address(address:$o){objects(first:20,filter:{type:$t}){nodes{contents{json}}}}}", { o: owner, t: SUILEND_CAP_TYPE });
+  const ids = (caps?.address?.objects?.nodes ?? []).map((n) => n.contents?.json?.obligation_id).filter((x): x is string => !!x).slice(0, 10);
+  if (!ids.length) return null;
+  const obs = await Promise.all(ids.map((id) => gql<{ object?: { asMoveObject?: { contents?: { json?: Record<string, never> } } } }>(
+    "query($a:SuiAddress!){object(address:$a){asMoveObject{contents{json}}}}", { a: id }).then((r) => r?.object?.asMoveObject?.contents?.json ?? null).catch(() => null)));
+  return suilendNetUsd(obs);
 }
 
 /** Package publisher + its live holding of this token and SUI balance. */
