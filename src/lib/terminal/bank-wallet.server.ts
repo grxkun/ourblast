@@ -6,6 +6,7 @@ import { normalizeStructTag, normalizeSuiAddress } from "@mysten/sui/utils";
 
 import { decryptConnectionKey, encryptConnectionKey } from "@/lib/connection-key.server";
 import { readAddressBalance, readSuiHoldings } from "./sui-balances.server";
+import { withBankGas } from "./bank-gas";
 import { BLAST_V2_PRESALE_PKG, BLAST_V2_PRESALE_VERSION } from "@/lib/blast/contracts";
 export { BLAST_V2_PRESALE_PKG } from "@/lib/blast/contracts";
 
@@ -308,7 +309,7 @@ export async function sendFromBankWallet(
   amount: bigint | null,
   recipient: string,
 ): Promise<Result> {
-  const { gasCoins, hasGasFunds, referenceGasPrice, rpc, withGas, signAndExecute } = await chain();
+  const { gasCoins, hasGasFunds, referenceGasPrice, rpc, signAndExecute } = await chain();
   let signer: Awaited<ReturnType<typeof bankSigner>>;
   try {
     signer = await bankSigner(wallet);
@@ -322,7 +323,7 @@ export async function sendFromBankWallet(
   const gas = await gasCoins(sender);
   if (!(await hasGasFunds(sender, gas))) return { ok: false, error: "Your OurBank wallet has no SUI for network fees." };
   const tx = new Transaction();
-  withGas(tx, sender, gas, await referenceGasPrice(), Number(GAS_BUDGET));
+  withBankGas(tx, sender, await referenceGasPrice(), GAS_BUDGET);
 
   if (type === SUI_TYPE) {
     if (amount === null) tx.transferObjects([tx.gas], tx.pure.address(to));
@@ -343,13 +344,13 @@ export async function sendFromBankWallet(
 export async function paySuiSplit(wallet: BankWalletRow, payments: { to: string; amount: bigint }[]): Promise<Result> {
   const list = payments.filter((p) => p.amount > 0n);
   if (!list.length) return { ok: false, error: "Nothing to pay." };
-  const { gasCoins, hasGasFunds, referenceGasPrice, withGas, signAndExecute } = await chain();
+  const { gasCoins, hasGasFunds, referenceGasPrice, signAndExecute } = await chain();
   let signer: Awaited<ReturnType<typeof bankSigner>>;
   try { signer = await bankSigner(wallet); } catch (e) { return { ok: false, error: (e as Error).message }; }
   const gas = await gasCoins(signer.address);
   if (!(await hasGasFunds(signer.address, gas))) return { ok: false, error: "No SUI for network fees." };
   const tx = new Transaction();
-  withGas(tx, signer.address, gas, await referenceGasPrice(), Number(GAS_BUDGET));
+  withBankGas(tx, signer.address, await referenceGasPrice(), GAS_BUDGET);
   for (const p of list) tx.transferObjects([tx.coin({ balance: p.amount, type: SUI_TYPE })], tx.pure.address(normalizeSuiAddress(p.to)));
   const executed = await signAndExecute(tx, signer);
   if (!executed.ok || !executed.digest) return { ok: false, error: executed.error ?? "Transaction failed." };
@@ -404,7 +405,7 @@ export async function sendManyFromBankWallet(
   items: { coinType: string; amount: bigint }[],
   recipient: string,
 ): Promise<Result> {
-  const { gasCoins, hasGasFunds, referenceGasPrice, rpc, withGas, signAndExecute } = await chain();
+  const { gasCoins, hasGasFunds, referenceGasPrice, rpc, signAndExecute } = await chain();
   let signer: Awaited<ReturnType<typeof bankSigner>>;
   try {
     signer = await bankSigner(wallet);
@@ -416,7 +417,7 @@ export async function sendManyFromBankWallet(
   const gas = await gasCoins(sender);
   if (!(await hasGasFunds(sender, gas))) return { ok: false, error: "Your OurBank wallet has no SUI for network fees." };
   const tx = new Transaction();
-  withGas(tx, sender, gas, await referenceGasPrice(), Number(GAS_BUDGET));
+  withBankGas(tx, sender, await referenceGasPrice(), GAS_BUDGET);
 
   const outs: (TransactionResult | ReturnType<Transaction["splitCoins"]>[number])[] = [];
   for (const it of items) {
@@ -445,7 +446,7 @@ export async function commitPresaleFromBankWallet(
   wallet: BankWalletRow,
   p: { pkg: string; presaleId: string; memeType: string; amount: bigint },
 ): Promise<Result> {
-  const { gasCoins, hasGasFunds, referenceGasPrice, withGas, signAndExecute } = await chain();
+  const { gasCoins, hasGasFunds, referenceGasPrice, signAndExecute } = await chain();
   let signer: Awaited<ReturnType<typeof bankSigner>>;
   try {
     signer = await bankSigner(wallet);
@@ -456,7 +457,7 @@ export async function commitPresaleFromBankWallet(
   const gas = await gasCoins(sender);
   if (!(await hasGasFunds(sender, gas))) return { ok: false, error: "Your OurBank wallet has no SUI for network fees." };
   const tx = buildPresaleCommit(sender, p);
-  withGas(tx, sender, gas, await referenceGasPrice(), Number(GAS_BUDGET));
+  withBankGas(tx, sender, await referenceGasPrice(), GAS_BUDGET);
   const executed = await signAndExecute(tx, signer);
   if (!executed.ok || !executed.digest) return { ok: false, error: executed.error ?? "Transaction failed." };
   return { ok: true, digest: executed.digest };

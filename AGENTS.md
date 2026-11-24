@@ -35,3 +35,7 @@
 - Suipump launches follow the lineage of the issuer's LaunchTicket; V18 always mints and attaches a Cetus PoolCreationCap before share_curve and never launches unprotected, because V18 refuses unprotected curves.
 - Telegram auto-snipe rules (autoSnipe*.ts) save only after confirm, watch Blast.fun LaunchShared (SUI quote) and Suipump CurveCreated events from a stored cursor, skip launches older than 10 minutes, and claim each (rule, token) fill by unique insert before the protected snipe — so downtime never back-buys and a launch is never bought twice.
 - New Blast.fun launches use blastV2-launch.server.ts (3 txs mirroring a live mainnet launch); MemezFun launch code is legacy.
+
+<!-- LOVABLE:BEGIN -->
+- Bank transfers, split/batch payments, presales and all swap venues use withBankGas without pinning gas objects; the official SDK must include address-balance reservations when SUI spending exceeds discrete coin balances.
+<!-- LOVABLE:END -->

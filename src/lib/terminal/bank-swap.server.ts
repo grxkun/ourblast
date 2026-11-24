@@ -8,6 +8,7 @@ import { normalizeStructTag, normalizeSuiAddress } from "@mysten/sui/utils";
 
 import { DEFAULT_TREASURY_ADDRESS } from "@/lib/ourblast.config";
 import { bankSigner } from "./bank-wallet.server";
+import { withBankGas } from "./bank-gas";
 import { toAtomic, type SwapCommand } from "./bank";
 import { resolveLaunchpadBuy, buildLaunchpadBuySwap, buildLaunchpadSellSwap } from "./launchpad-buy.server";
 import { minimumSnipeOutput } from "@/lib/blast/advisor";
@@ -118,7 +119,7 @@ export async function executeBankSwap(
   amountIn: bigint,
   slippage: number = SLIPPAGE,
 ): Promise<SwapResult> {
-  const { gasCoins, hasGasFunds, referenceGasPrice, withGas, signAndExecute, rpc } = await import("./suipump-launch.server");
+  const { gasCoins, hasGasFunds, referenceGasPrice, signAndExecute, rpc } = await import("./suipump-launch.server");
   const signer = await bankSigner(wallet);
   const sender = signer.address;
   if (sender !== normalizeSuiAddress(wallet.address)) return { ok: false, error: "Bank wallet key mismatch." };
@@ -127,22 +128,14 @@ export async function executeBankSwap(
   if (inType === outType) return { ok: false, error: "Nothing to swap." };
   if (amountIn <= 0n) return { ok: false, error: "Amount is too small." };
 
-  const attempt = async (skipBluefin: boolean, skipAftermath = false, autoGas = false) => {
+  const attempt = async (skipBluefin: boolean, skipAftermath = false) => {
     const picked = await pickSwapRoute(sender, inType, outType, amountIn, skipBluefin, skipAftermath, slippage);
     if (!picked.ok) return { picked, executed: null };
     const built = picked.built;
     const gas = await gasCoins(sender);
     if (!(await hasGasFunds(sender, gas))) return { picked: { ok: false as const, error: "Your OurBank wallet has no SUI for network fees." }, executed: null };
-    // Aftermath reserves the trade amount from the address balance; pinning the
-    // wallet's only SUI coin as gas makes the node reject that reservation, so
-    // let the SDK pick gas itself for Aftermath routes.
-    if (built.venue === "Aftermath" || autoGas) {
-      built.tx.setSender(sender);
-      built.tx.setGasPrice(await referenceGasPrice());
-      built.tx.setGasBudget(SWAP_GAS_BUDGET);
-    } else {
-      withGas(built.tx, sender, gas, await referenceGasPrice(), Number(SWAP_GAS_BUDGET));
-    }
+    // Curve and DEX routes both need automatic coin + accumulator gas selection.
+    withBankGas(built.tx, sender, await referenceGasPrice(), SWAP_GAS_BUDGET);
     try {
       // Resolve the aggregator's object inputs once; signAndExecute then simulates and submits.
       const client = new SuiGraphQLClient({ url: BUILD_GRAPHQL, network: "mainnet" });
@@ -175,7 +168,7 @@ export async function executeBankSwap(
   // (pinning that coin double-counts it against the reservation too).
   if (run.executed && !run.executed.ok && isReservationError(run.executed.error)) {
     console.warn("withdraw reservation rejected, retrying on Cetus", run.built?.venue);
-    run = await attempt(true, true, true);
+    run = await attempt(true, true);
   }
   if (!run.picked.ok) return run.picked;
   const executed = run.executed;
@@ -302,7 +295,7 @@ export async function prepareSwapForAddress(
   coinOut: string,
   amountIn: bigint,
 ): Promise<{ ok: true; bytes: string; quoted: bigint; venue: BuiltSwap["venue"] } | { ok: false; error: string }> {
-  const { gasCoins, hasGasFunds, referenceGasPrice, withGas } = await import("./suipump-launch.server");
+  const { gasCoins, hasGasFunds, referenceGasPrice } = await import("./suipump-launch.server");
   const sender = normalizeSuiAddress(address);
   const inType = normalizeCoinRef(coinIn);
   const outType = normalizeCoinRef(coinOut);
@@ -312,13 +305,7 @@ export async function prepareSwapForAddress(
   if (!picked.ok) return picked;
   const gas = await gasCoins(sender);
   if (!(await hasGasFunds(sender, gas))) return { ok: false, error: "Your wallet has no SUI for network fees." };
-  if (picked.built.venue === "Aftermath") {
-    picked.built.tx.setSender(sender);
-    picked.built.tx.setGasPrice(await referenceGasPrice());
-    picked.built.tx.setGasBudget(SWAP_GAS_BUDGET);
-  } else {
-    withGas(picked.built.tx, sender, gas, await referenceGasPrice(), Number(SWAP_GAS_BUDGET));
-  }
+  withBankGas(picked.built.tx, sender, await referenceGasPrice(), SWAP_GAS_BUDGET);
   try {
     const bytes = await withTimeout(
       picked.built.tx.build({ client: new SuiGraphQLClient({ url: BUILD_GRAPHQL, network: "mainnet" }) }),
