@@ -2376,6 +2376,57 @@ export type Database = {
         }
         Relationships: []
       }
+      tg_launch_notifications: {
+        Row: {
+          channel: string
+          coin_type: string
+          created_at: string
+          error: string | null
+          launched_at: string
+          launchpad: string | null
+          message_id: number | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          channel: string
+          coin_type: string
+          created_at?: string
+          error?: string | null
+          launched_at: string
+          launchpad?: string | null
+          message_id?: number | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          channel?: string
+          coin_type?: string
+          created_at?: string
+          error?: string | null
+          launched_at?: string
+          launchpad?: string | null
+          message_id?: number | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      tg_launch_notifier_state: {
+        Row: {
+          channel: string
+          started_at: string
+        }
+        Insert: {
+          channel: string
+          started_at?: string
+        }
+        Update: {
+          channel?: string
+          started_at?: string
+        }
+        Relationships: []
+      }
       tg_limit_orders: {
         Row: {
           amount: string

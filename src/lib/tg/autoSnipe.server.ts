@@ -58,6 +58,15 @@ export async function maintainAutoSnipes() {
   // Catalog discovery is independent of active rules, first-run baselines and purchase budgets.
   const launches = (await freshLaunches()).sort((a, b) => a.createdMs - b.createdMs);
   await saveDetectedLaunches(launches).catch((error: unknown) => console.error("Discover launch indexing failed", error));
+  // Alerts and buys share detection, not budgets or delivery work: neither blocks the other's start.
+  const { maintainLaunchNotifications } = await import("./launchNotifier.server");
+  await Promise.all([
+    maintainLaunchNotifications(launches).catch((error: unknown) => console.error("Launch notifier failed", error)),
+    executeDetectedSnipes(d, launches),
+  ]);
+}
+
+async function executeDetectedSnipes(d: Awaited<ReturnType<typeof db>>, launches: (FreshLaunch & { ts: string })[]) {
   const { data: rules } = await d.from("tg_snipe_filters").select("*").eq("active", true).limit(500);
   if (!rules?.length) return;
   const { data: cur } = await d.from("tg_snipe_cursor").select("last_ts").eq("source", "all").maybeSingle();

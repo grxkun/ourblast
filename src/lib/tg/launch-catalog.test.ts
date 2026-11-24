@@ -7,6 +7,7 @@ import { maintainAutoSnipes } from "./autoSnipe.server";
 const mocks = vi.hoisted(() => ({ upsert: vi.fn(), from: vi.fn(), limit: vi.fn(), metadata: vi.fn() }));
 vi.mock("@/integrations/supabase/client.server", () => ({ supabaseAdmin: { from: mocks.from } }));
 vi.mock("@/lib/terminal/sui-balances.server", () => ({ readCoinMetadata: mocks.metadata }));
+vi.mock("./launchNotifier.server", () => ({ maintainLaunchNotifications: vi.fn().mockResolvedValue(undefined) }));
 const token = "0x1::cant::CANT";
 const launch = { pad: "blast" as const, coinType: token, symbol: "CANT", name: "Cant", createdMs: 1795426920000, ts: "2026-11-23T09:42:00Z" };
 
