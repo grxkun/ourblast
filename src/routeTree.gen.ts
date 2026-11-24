@@ -37,6 +37,7 @@ import { Route as BuilderUsernameRouteImport } from './routes/builder/$username'
 import { Route as ClaimTokenRouteImport } from './routes/claim.$token'
 import { Route as EcosystemProjectSlugRouteImport } from './routes/ecosystem-project.$slug'
 import { Route as ApiPublicIndexerRouteImport } from './routes/api/public/indexer'
+import { Route as ApiPublicNotifierTriggerRouteImport } from './routes/api/public/notifier-trigger'
 import { Route as ApiPublicPerpsTestRouteImport } from './routes/api/public/perps-test'
 import { Route as ApiPublicSnipeTriggerRouteImport } from './routes/api/public/snipe-trigger'
 import { Route as ApiPublicXMentionRouteImport } from './routes/api/public/x-mention'
@@ -187,6 +188,12 @@ const ApiPublicIndexerRoute = ApiPublicIndexerRouteImport.update({
   path: '/api/public/indexer',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicNotifierTriggerRoute =
+  ApiPublicNotifierTriggerRouteImport.update({
+    id: '/api/public/notifier-trigger',
+    path: '/api/public/notifier-trigger',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicPerpsTestRoute = ApiPublicPerpsTestRouteImport.update({
   id: '/api/public/perps-test',
   path: '/api/public/perps-test',
@@ -258,6 +265,7 @@ export interface FileRoutesByFullPath {
   '/claim/$token': typeof ClaimTokenRoute
   '/ecosystem-project/$slug': typeof EcosystemProjectSlugRoute
   '/api/public/indexer': typeof ApiPublicIndexerRoute
+  '/api/public/notifier-trigger': typeof ApiPublicNotifierTriggerRoute
   '/api/public/perps-test': typeof ApiPublicPerpsTestRoute
   '/api/public/snipe-trigger': typeof ApiPublicSnipeTriggerRoute
   '/api/public/x-mention': typeof ApiPublicXMentionRoute
@@ -296,6 +304,7 @@ export interface FileRoutesByTo {
   '/claim/$token': typeof ClaimTokenRoute
   '/ecosystem-project/$slug': typeof EcosystemProjectSlugRoute
   '/api/public/indexer': typeof ApiPublicIndexerRoute
+  '/api/public/notifier-trigger': typeof ApiPublicNotifierTriggerRoute
   '/api/public/perps-test': typeof ApiPublicPerpsTestRoute
   '/api/public/snipe-trigger': typeof ApiPublicSnipeTriggerRoute
   '/api/public/x-mention': typeof ApiPublicXMentionRoute
@@ -335,6 +344,7 @@ export interface FileRoutesById {
   '/claim/$token': typeof ClaimTokenRoute
   '/ecosystem-project/$slug': typeof EcosystemProjectSlugRoute
   '/api/public/indexer': typeof ApiPublicIndexerRoute
+  '/api/public/notifier-trigger': typeof ApiPublicNotifierTriggerRoute
   '/api/public/perps-test': typeof ApiPublicPerpsTestRoute
   '/api/public/snipe-trigger': typeof ApiPublicSnipeTriggerRoute
   '/api/public/x-mention': typeof ApiPublicXMentionRoute
@@ -375,6 +385,7 @@ export interface FileRouteTypes {
     | '/claim/$token'
     | '/ecosystem-project/$slug'
     | '/api/public/indexer'
+    | '/api/public/notifier-trigger'
     | '/api/public/perps-test'
     | '/api/public/snipe-trigger'
     | '/api/public/x-mention'
@@ -413,6 +424,7 @@ export interface FileRouteTypes {
     | '/claim/$token'
     | '/ecosystem-project/$slug'
     | '/api/public/indexer'
+    | '/api/public/notifier-trigger'
     | '/api/public/perps-test'
     | '/api/public/snipe-trigger'
     | '/api/public/x-mention'
@@ -451,6 +463,7 @@ export interface FileRouteTypes {
     | '/claim/$token'
     | '/ecosystem-project/$slug'
     | '/api/public/indexer'
+    | '/api/public/notifier-trigger'
     | '/api/public/perps-test'
     | '/api/public/snipe-trigger'
     | '/api/public/x-mention'
@@ -490,6 +503,7 @@ export interface RootRouteChildren {
   ClaimTokenRoute: typeof ClaimTokenRoute
   EcosystemProjectSlugRoute: typeof EcosystemProjectSlugRoute
   ApiPublicIndexerRoute: typeof ApiPublicIndexerRoute
+  ApiPublicNotifierTriggerRoute: typeof ApiPublicNotifierTriggerRoute
   ApiPublicPerpsTestRoute: typeof ApiPublicPerpsTestRoute
   ApiPublicSnipeTriggerRoute: typeof ApiPublicSnipeTriggerRoute
   ApiPublicXMentionRoute: typeof ApiPublicXMentionRoute
@@ -698,6 +712,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicIndexerRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/notifier-trigger': {
+      id: '/api/public/notifier-trigger'
+      path: '/api/public/notifier-trigger'
+      fullPath: '/api/public/notifier-trigger'
+      preLoaderRoute: typeof ApiPublicNotifierTriggerRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/perps-test': {
       id: '/api/public/perps-test'
       path: '/api/public/perps-test'
@@ -787,6 +808,7 @@ const rootRouteChildren: RootRouteChildren = {
   ClaimTokenRoute: ClaimTokenRoute,
   EcosystemProjectSlugRoute: EcosystemProjectSlugRoute,
   ApiPublicIndexerRoute: ApiPublicIndexerRoute,
+  ApiPublicNotifierTriggerRoute: ApiPublicNotifierTriggerRoute,
   ApiPublicPerpsTestRoute: ApiPublicPerpsTestRoute,
   ApiPublicSnipeTriggerRoute: ApiPublicSnipeTriggerRoute,
   ApiPublicXMentionRoute: ApiPublicXMentionRoute,

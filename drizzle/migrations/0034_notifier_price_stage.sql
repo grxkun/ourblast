@@ -1,0 +1,1 @@
+ALTER TABLE public.tg_notifier_observations ADD COLUMN price_basis text NOT NULL DEFAULT 'unknown';

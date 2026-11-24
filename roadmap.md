@@ -1,4 +1,6 @@
 # Roadmap
+- [x] Implement four-hour observed-price trends, +20%/15m surge alerts, one-time 50% curve crossings and verified migration alerts with a separate authenticated supervised daemon and minute-poll fallback; no public test posts.
+- [ ] Activate channel signal listener — blocked: publish updated app and install/start scripts/ourblast-notifier.mjs on the user's VPS with the matching existing SUI_INDEXER_SECRET. First four-hour trends require four hours of observations.
 - [x] Add new-launch scan/image/deployer/social posts to @ourblastnotifier with durable channel/contract claims, activation baseline and safe uncertain-send handling; channel admin permission verified, tests passed; automatic production posts require publishing.
 - [x] Post the latest five detected deployments (FSDV15, KARES, CATMEOW, SMCH, NOGAS) to @ourblastnotifier as explicitly requested; all five Telegram receipts saved, five public images confirmed. Missing token socials remain unavailable rather than guessed.
 - [x] Fix unpinned gas selection across SUI buys/sends, split/batch payments and presales; 41 tests passed, 160 SUI mixed-balance regression covered, live unsigned 15.498 SUI treasury self-send simulation succeeded using 0.585 coin + 15.206 accumulator SUI; no signing, broadcast or publishing. Old pinned failure did not reproduce in today's live build.

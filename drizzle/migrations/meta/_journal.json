@@ -232,6 +232,27 @@
       "when": 1795482987107,
       "tag": "0032_notifier_launchpad_provenance",
       "breakpoints": true
+    },
+    {
+      "idx": 33,
+      "version": "7",
+      "when": 1795483334196,
+      "tag": "0033_notifier_market_signals",
+      "breakpoints": true
+    },
+    {
+      "idx": 34,
+      "version": "7",
+      "when": 1795483431945,
+      "tag": "0034_notifier_price_stage",
+      "breakpoints": true
+    },
+    {
+      "idx": 35,
+      "version": "7",
+      "when": 1795483567242,
+      "tag": "0035_notifier_trend_baselines",
+      "breakpoints": true
     }
   ]
 }

@@ -1,5 +1,6 @@
 - Market data merges a public read-only catalog with DEX pools by canonical, case-sensitive Move coin type, not symbol, to avoid selecting the wrong token.
 - Launch notifications share the authenticated event poller but run alongside snipes; channel/contract claims are durable, start at activation, and never replay sending/uncertain deliveries, preventing duplicate public posts after ambiguous API outcomes.
+- Channel market alerts have a separate authenticated daemon trigger and leased monitor; use persisted same-stage price baselines, observed threshold crossings and verified migration completion, never run trades from the listener or replay ambiguous deliveries.
 - Market metrics remain null when unavailable, and FDV is not market cap, to avoid misleading financial values.
 - Featured market slots match exact coin types; Trending breaks DEX-activity ties with observed real curve deposits using bounded rotating reads, while New/Volume preserve chronological/volume ordering to avoid promoting ticker copies or blocking on the full catalog.
 - Launch detection saves official-event identities into Discover before rule gating; catalog indexing never claims fills or alters budgets, so skipped launches remain visible even without active rules.

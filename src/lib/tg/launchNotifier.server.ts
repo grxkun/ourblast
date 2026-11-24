@@ -7,7 +7,7 @@ import { getScanStats } from "./scanInfo.server";
 class TelegramRejected extends Error {
   constructor(public status: number, body: string) { super(`Telegram [${status}]: ${body}`); }
 }
-async function telegram(method: string, body: Record<string, unknown>): Promise<{ message_id?: number }> {
+export async function telegram(method: string, body: Record<string, unknown>): Promise<{ message_id?: number }> {
   const token = process.env["TELEGRAM_BOT_TOKEN"];
   if (!token) throw new Error("Telegram bot is not configured");
   // Reuse the application's existing direct Bot API credential; never expose it to clients or logs.

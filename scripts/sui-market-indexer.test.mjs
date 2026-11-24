@@ -13,6 +13,11 @@ test("daemon pages past a burst before advancing its saved watermark", async () 
   const requests = [];
   const server = createServer(async (req, res) => {
     let text = ""; for await (const part of req) text += part;
+    if (req.url === "/api/public/snipe-trigger") {
+      assert.equal(req.headers.authorization, "Bearer test-fixture-only");
+      res.setHeader("content-type", "application/json");
+      res.end(JSON.stringify({ ok: true })); return;
+    }
     const body = JSON.parse(text); requests.push(body);
     const count = requests.filter((r) => r.source === body.source).length;
     const burst = body.source === "suipump-v17" && count === 2;

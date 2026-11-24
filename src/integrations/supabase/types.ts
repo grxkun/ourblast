@@ -2487,6 +2487,117 @@ export type Database = {
         }
         Relationships: []
       }
+      tg_notifier_listener: {
+        Row: {
+          error: string | null
+          id: string
+          last_completed_at: string | null
+          lease_until: string
+          owner: string | null
+          started_at: string
+        }
+        Insert: {
+          error?: string | null
+          id: string
+          last_completed_at?: string | null
+          lease_until?: string
+          owner?: string | null
+          started_at?: string
+        }
+        Update: {
+          error?: string | null
+          id?: string
+          last_completed_at?: string | null
+          lease_until?: string
+          owner?: string | null
+          started_at?: string
+        }
+        Relationships: []
+      }
+      tg_notifier_monitors: {
+        Row: {
+          checked_at: string
+          coin_type: string
+          last_progress: number | null
+          migrated: boolean
+          source: string
+        }
+        Insert: {
+          checked_at?: string
+          coin_type: string
+          last_progress?: number | null
+          migrated?: boolean
+          source: string
+        }
+        Update: {
+          checked_at?: string
+          coin_type?: string
+          last_progress?: number | null
+          migrated?: boolean
+          source?: string
+        }
+        Relationships: []
+      }
+      tg_notifier_observations: {
+        Row: {
+          coin_type: string
+          observed_at: string
+          price_basis: string
+          price_usd: number | null
+          progress: number | null
+          reserve_sui: number | null
+          symbol: string
+        }
+        Insert: {
+          coin_type: string
+          observed_at: string
+          price_basis?: string
+          price_usd?: number | null
+          progress?: number | null
+          reserve_sui?: number | null
+          symbol: string
+        }
+        Update: {
+          coin_type?: string
+          observed_at?: string
+          price_basis?: string
+          price_usd?: number | null
+          progress?: number | null
+          reserve_sui?: number | null
+          symbol?: string
+        }
+        Relationships: []
+      }
+      tg_notifier_signal_deliveries: {
+        Row: {
+          channel: string
+          created_at: string
+          error: string | null
+          kind: string
+          message_id: number | null
+          signal_key: string
+          status: string
+        }
+        Insert: {
+          channel: string
+          created_at?: string
+          error?: string | null
+          kind: string
+          message_id?: number | null
+          signal_key: string
+          status?: string
+        }
+        Update: {
+          channel?: string
+          created_at?: string
+          error?: string | null
+          kind?: string
+          message_id?: number | null
+          signal_key?: string
+          status?: string
+        }
+        Relationships: []
+      }
       tg_snipe_cursor: {
         Row: {
           last_ts: string
@@ -3227,6 +3338,7 @@ export type Database = {
         }
         Returns: number
       }
+      claim_notifier_listener: { Args: { p_owner: string }; Returns: boolean }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -3235,6 +3347,24 @@ export type Database = {
         Returns: boolean
       }
       is_staff: { Args: { _user_id: string }; Returns: boolean }
+      notifier_trend_baselines: {
+        Args: { p_now: string }
+        Returns: {
+          coin_type: string
+          observed_at: string
+          price_basis: string
+          price_usd: number | null
+          progress: number | null
+          reserve_sui: number | null
+          symbol: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "tg_notifier_observations"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
       run_x_poll: { Args: never; Returns: undefined }
       run_x_poll_burst: { Args: never; Returns: undefined }
       set_x_poll_secret: { Args: { p_secret: string }; Returns: undefined }

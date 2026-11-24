@@ -327,4 +327,11 @@ async function runWalletJobs() {
   } catch (error) {
     console.error(`Telegram alerts failed: ${error instanceof Error ? error.message : "unknown"}`);
   }
+  // Independent fallback; a failed trade/watch job must not suppress channel monitoring.
+  try {
+    const { maintainChannelSignals } = await import("@/lib/tg/notifierSignals.server");
+    await maintainChannelSignals();
+  } catch (error) {
+    console.error(`Channel listener failed: ${error instanceof Error ? error.message : "unknown"}`);
+  }
 }
