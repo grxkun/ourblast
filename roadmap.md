@@ -60,3 +60,4 @@
 - [x] Fix unspaced NFT titles (Bluey Bubble Time#630) so name sends match
 - [x] Assets: select/deselect, filter, search (web + Mini App)
 - [x] Assets: drip.market floor price + Buy/Sell/List/Bid links
+- [x] Scan card: real deployer (package publisher) + dev holding size

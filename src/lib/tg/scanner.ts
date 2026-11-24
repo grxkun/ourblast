@@ -83,6 +83,7 @@ export type ScanStats = {
   symbol?: string | null; name?: string | null;
   fdv?: number | null; factory?: string | null; progress?: number | null; onCurve?: boolean;
   creator?: string | null; devLaunches?: number | null; devBestAth?: number | null; athMcap?: number | null;
+  devHold?: number | null; devHoldPct?: number | null; devSui?: number | null;
 };
 
 /** Launchpads whose coin template fixes the module name, so the module identifies the pad. */
@@ -99,6 +100,7 @@ export function fmtUsd(n: number | null | undefined): string {
   return `$${n.toFixed(0)}`;
 }
 
+const fmtAmt = (n: number) => n >= 1e9 ? `${(n / 1e9).toFixed(2)}B` : n >= 1e6 ? `${(n / 1e6).toFixed(2)}M` : n >= 1e3 ? `${(n / 1e3).toFixed(1)}K` : n.toFixed(0);
 const esc = (v: string) => v.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 
 /** Inline chart/explorer links as short hyperlinked tags (Rick-style), not buttons. */
@@ -127,6 +129,7 @@ export function richScanCard(t: { symbol: string; coinType: string }, s: ScanSta
     ...(s.athMcap != null ? [`🏔 <b>ATH MC:</b> ${fmtUsd(s.athMcap)} <i>(seen)</i>`] : []),
     ...(s.factory ? [`🏭 <b>Factory:</b> ${esc(s.factory)}${s.onCurve ? ` · ⏳ bonding${s.progress != null ? ` ${(s.progress * 100).toFixed(1)}%` : ""}` : s.progress === 1 ? " · ✅ graduated" : ""}`] : []),
     ...(s.creator ? [`👤 <b>Dev:</b> <a href="https://suiscan.xyz/mainnet/account/${esc(s.creator)}">${s.creator.slice(0, 6)}…${s.creator.slice(-4)}</a>${s.devLaunches ? ` · ${s.devLaunches} launch${s.devLaunches > 1 ? "es" : ""}` : ""}${s.devBestAth != null ? ` · best ATH ${fmtUsd(s.devBestAth)}` : ""}`] : []),
+    ...(s.creator && (s.devHold != null || s.devSui != null) ? [`👛 <b>Dev holds:</b> ${s.devHold != null ? `${fmtAmt(s.devHold)}${s.devHoldPct != null ? ` (${s.devHoldPct.toFixed(2)}%)` : ""}` : "n/a"}${s.devSui != null ? ` · ${s.devSui.toFixed(2)} SUI` : ""}`] : []),
     ...(s.liquidity != null ? [`💧 <b>Liq:</b> ${fmtUsd(s.liquidity)}${liqPct}`] : []),
     ...(s.volume24h != null ? [`📊 <b>Vol:</b> ${fmtUsd(s.volume24h)} (24h)`] : []),
     `🏦 <b>DEX:</b> ${esc(dex)}${s.pools > 1 ? ` · ${s.pools} pools` : ""}${s.priceSource ? ` · via ${esc(s.priceSource)}` : ""}`,

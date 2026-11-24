@@ -79,9 +79,29 @@ export async function getScanStats(coinType: string): Promise<ScanStats> {
   // Market cap = live price × on-chain circulating supply; FDV = price × max supply.
   if (v.priceUsd != null && meta.supply) v.mcap = v.priceUsd * meta.supply;
   if (v.priceUsd != null) { const total = curve?.totalSupply ?? meta.supply; v.fdv = total ? v.priceUsd * total : null; }
+  // Real deployer = sender of the package publish tx (curve "creator" can be a social-account id, not a wallet).
+  const dep = await deployerOf(coinType, meta.decimals, curve?.totalSupply ?? meta.supply).catch(() => null);
+  if (dep) { v.creator = dep.address; v.devHold = dep.hold; v.devHoldPct = dep.pct; v.devSui = dep.sui; }
   await trackDeployer(coinType, v).catch(() => {});
   cache.set(coinType, { at: Date.now(), v });
   return v;
+}
+
+/** Package publisher + its live holding of this token and SUI balance. */
+export async function deployerOf(coinType: string, decimals: number | null, supply: number | null): Promise<{ address: string; hold: number | null; pct: number | null; sui: number | null } | null> {
+  const pkg = coinType.split("::")[0]!;
+  const d = await gql<{ object?: { previousTransaction?: { sender?: { address?: string } } } }>(
+    "query($id:SuiAddress!){object(address:$id){previousTransaction{sender{address}}}}", { id: pkg });
+  const address = d?.object?.previousTransaction?.sender?.address;
+  if (!address) return null;
+  const b = await gql<{ address?: { t?: { totalBalance?: string } | null; s?: { totalBalance?: string } | null } }>(
+    "query($o:SuiAddress!,$c:String!,$s:String!){address(address:$o){t:balance(coinType:$c){totalBalance} s:balance(coinType:$s){totalBalance}}}",
+    { o: address, c: coinType, s: SUI }).catch(() => null);
+  const raw = b?.address?.t?.totalBalance;
+  const hold = raw != null && decimals != null ? Number(raw) / 10 ** decimals : null;
+  const pct = hold != null && supply ? (hold / supply) * 100 : null;
+  const sraw = b?.address?.s?.totalBalance;
+  return { address, hold, pct, sui: sraw != null ? Number(sraw) / 1e9 : null };
 }
 
 /** "$HOLMOT" → coin type of a token OURBLAST launched (reads the curve object's type parameter). */

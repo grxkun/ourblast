@@ -87,3 +87,11 @@ describe("suipump template tokens", () => {
     expect(card).not.toContain("$SUIPUMP");
   });
 });
+
+describe("dev holding line", () => {
+  it("shows dev token size and percent", () => {
+    const c = richScanCard({ symbol: "CANT", coinType: "0x1::cant::CANT" }, { priceUsd: null, mcap: null, liquidity: null, volume24h: null, change24h: null, dex: null, pools: 0, creator: "0x412ee87c1b4b39198d3d394b0845dd683a8428a4e05c3b45dd4e0af803b43e8d", devHold: 32319473, devHoldPct: 3.23, devSui: 1.5 }, "dm");
+    expect(c).toContain("0x412e…3e8d");
+    expect(c).toContain("32.32M (3.23%)");
+  });
+});
