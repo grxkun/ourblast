@@ -41,11 +41,12 @@ const TEMPLATE_DEPS = [
 ];
 const SUI = "0x2::sui::SUI";
 
-// Blast app defaults read from the live launch: 1,000 SUI virtual quote and
-// graduation target, allocation bps 7823/1927/9850, owner LP route 100%, tick 200.
+// Blast app standard configuration (verified against live launches like $TGM,
+// $SPEPE, $PARA): 8,000 SUI virtual quote and graduation target (~$6.6K
+// starting MC), allocation bps 7823/1927/9850, owner LP route 100%, tick 200.
 export const BLAST_V2_DEFAULTS = {
-  virtualQuote: 1_000_000_000_000n,
-  graduationTarget: 1_000_000_000_000n,
+  virtualQuote: 8_000_000_000_000n,
+  graduationTarget: 8_000_000_000_000n,
   allocationBps: [7823, 1927, 9850] as const,
   ownerLpBps: 10_000,
   cetusTickSpacing: 200,
