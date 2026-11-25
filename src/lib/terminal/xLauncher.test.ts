@@ -329,6 +329,12 @@ describe("launchpad after chatter", () => {
 });
 
 describe("fee receiver in the tweet", () => {
+  it("keeps creator-fee instructions out of EVAN's name before removing mentions", () => {
+    const request = parseDeployTweet("@ourblastbot launch $EVAN Evan Coin on https://blast.fun creator fees to @EvanWeb3");
+    expect(request?.name).toBe("Evan Coin");
+    expect(request?.launchpad).toBe("blastfun");
+    expect(request?.feeReceiver).toEqual({ handle: "evanweb3" });
+  });
   it("reads 'Set @adiniyi as fee receiver' and keeps the name and ticker", async () => {
     const { parseDeployTweet } = await import("./xLauncher");
     const request = parseDeployTweet(

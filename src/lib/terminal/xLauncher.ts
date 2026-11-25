@@ -181,7 +181,8 @@ export function parseDeployTweet(tweetText: string, defaultPad = LAUNCHPAD.id): 
   const commandText = rawPadMatch
     ? rawText.slice(0, rawPadMatch.index) + " " + rawText.slice(rawPadMatch.index + rawPadMatch.length)
     : rawText;
-  let text = stripDevBuyPhrase(stripPairPhrase(stripFeePhrases(normalizeCommandText(commandText))));
+  // Fee destinations must still be present when removing their full phrase.
+  let text = stripDevBuyPhrase(stripPairPhrase(normalizeCommandText(stripFeePhrases(commandText))));
 
   const textPadMatch = findPadMatch(text);
   const padMatch = textPadMatch ?? rawPadMatch;

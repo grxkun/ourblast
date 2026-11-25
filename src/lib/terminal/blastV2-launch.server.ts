@@ -58,7 +58,7 @@ export interface BlastV2LaunchInput { symbol: string; name: string; description:
 export interface BlastV2LaunchResult { status: "CONFIRMED" | "FAILED"; error: string | null; coinType: string | null; poolId: string | null; digest: string | null }
 
 const fail = (error: string, extra: Partial<BlastV2LaunchResult> = {}): BlastV2LaunchResult => ({ status: "FAILED", error, coinType: null, poolId: null, digest: null, ...extra });
-const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
 
 type Created = { objectId: string; objectType: string; version: string; digest: string };
 async function receipt(digest: string): Promise<{ ok: boolean; error: string | null; created: Created[] }> {
@@ -73,8 +73,9 @@ async function receipt(digest: string): Promise<{ ok: boolean; error: string | n
         ok: status === "success",
         error: block?.effects?.status?.error ?? null,
         created: (block?.objectChanges ?? [])
-          .filter((c) => c.type === "created" && c.objectId && c.objectType)
-          .map((c) => ({ objectId: c.objectId!, objectType: normalizeType(c.objectType!), version: String(c.version), digest: c.digest! })),
+          .flatMap((c) => c.type === "created" && c.objectId && c.objectType && c.version && c.digest
+            ? [{ objectId: c.objectId, objectType: normalizeType(c.objectType), version: String(c.version), digest: c.digest }]
+            : []),
       };
     }
     await sleep(1500);
@@ -97,6 +98,40 @@ export function coinModuleName(symbol: string): string {
   return MOVE_KEYWORDS.has(m) ? `${m}_coin` : m;
 }
 
+/** Finalization deletes the receiving Currency and creates a different shared ID. */
+export async function findBlastV2Currency(coinType: string): Promise<string | null> {
+  const type = normalizeType(`0x2::coin_registry::Currency<${coinType}>`);
+  const data = await gql<{ objects: { nodes: {
+    address: string;
+    owner: { __typename: string } | null;
+    asMoveObject: { contents: { type: { repr: string } } | null } | null;
+  }[] } }>(
+    `query($t:String!){objects(first:3,filter:{type:$t}){nodes{address owner{__typename} asMoveObject{contents{type{repr}}}}}}`,
+    { t: type },
+  );
+  const matches = data.objects.nodes.filter((node) => node.owner?.__typename === "Shared"
+    && normalizeType(node.asMoveObject?.contents?.type.repr ?? "") === type);
+  return matches.length === 1 ? matches[0]?.address ?? null : null;
+}
+
+/** Submit registration at most once; another actor may win before or during it. */
+export async function ensureBlastV2Currency(actions: {
+  lookup: () => Promise<string | null>;
+  register: () => Promise<void>;
+  wait: () => Promise<void>;
+}): Promise<string> {
+  const existing = await actions.lookup();
+  if (existing) return existing;
+  let registrationError: unknown;
+  try { await actions.register(); } catch (error) { registrationError = error; }
+  for (let i = 0; i < 8; i += 1) {
+    const shared = await actions.lookup();
+    if (shared) return shared;
+    if (i < 7) await actions.wait();
+  }
+  throw registrationError ?? new Error("The shared coin Currency has not appeared; curve opening stopped.");
+}
+
 /** Step 1 transaction (publish), exported for unsigned simulation. */
 export async function buildBlastV2Publish(input: BlastV2LaunchInput, sender: string): Promise<Transaction> {
   const symbol = input.symbol.toUpperCase();
@@ -112,7 +147,8 @@ export async function buildBlastV2Publish(input: BlastV2LaunchInput, sender: str
   const tx = new Transaction();
   tx.setSender(sender);
   const [cap] = tx.publish({ modules: [Array.from(bytes)], dependencies: TEMPLATE_DEPS.map((d) => d.replace(/^0x/, "").padStart(64, "0")).map((d) => `0x${d}`) });
-  tx.moveCall({ target: "0x2::package::make_immutable", arguments: [cap!] });
+  if (!cap) throw new Error("The publish transaction has no upgrade capability.");
+  tx.moveCall({ target: "0x2::package::make_immutable", arguments: [cap] });
   return tx;
 }
 
@@ -209,22 +245,38 @@ export async function launchOnBlastV2(input: BlastV2LaunchInput): Promise<BlastV
   if (!ticket || !sealedCap || !currency) return fail("The coin published but its launch ticket did not appear.");
   const coinType = ticket.objectType.slice(ticket.objectType.indexOf("<") + 1, -1);
 
-  // 2 — share the coin's Currency through the coin registry.
-  const reg = new Transaction();
-  withGas(reg, sender, await gas(), gasPrice, 50_000_000);
-  reg.moveCall({
-    target: "0x2::coin_registry::finalize_registration",
-    typeArguments: [coinType],
-    arguments: [reg.object(COIN_REGISTRY), reg.receivingRef({ objectId: currency.objectId, version: currency.version, digest: currency.digest })],
-  });
-  const fin = await signAndExecute(reg, keypair);
-  if (!fin.ok || !fin.digest) return fail(fin.error ?? "Coin registration failed.", { coinType });
-  const r2 = await receipt(fin.digest);
-  if (!r2.ok) return fail(r2.error ?? "Coin registration failed on chain.", { coinType });
+  // 2 — resolve the shared Currency, including permissionless-finalization races.
+  let currencyId: string;
+  try {
+    currencyId = await ensureBlastV2Currency({
+      lookup: () => findBlastV2Currency(coinType),
+      wait: () => sleep(1500),
+      register: async () => {
+        const reg = new Transaction();
+        withGas(reg, sender, await gas(), gasPrice, 50_000_000);
+        reg.moveCall({
+          target: "0x2::coin_registry::finalize_registration",
+          typeArguments: [coinType],
+          arguments: [reg.object(COIN_REGISTRY), reg.receivingRef({ objectId: currency.objectId, version: currency.version, digest: currency.digest })],
+        });
+        const fin = await signAndExecute(reg, keypair);
+        if (!fin.ok || !fin.digest) throw new Error(fin.error ?? "Coin registration failed.");
+        const r2 = await receipt(fin.digest);
+        if (!r2.ok) throw new Error(r2.error ?? "Coin registration failed on chain.");
+      },
+    });
+  } catch (error) {
+    return fail(error instanceof Error ? error.message : "Coin registration could not be verified.", { coinType });
+  }
 
   // 3 — open the Blast.fun curve.
   const partnerId = process.env["BLAST_PARTNER_ID"]?.trim() || null;
-  const { tx } = await buildBlastV2Launch({ coinType, ticket, sealedCap, currencyId: currency.objectId, partnerId });
+  let tx: Transaction;
+  try {
+    ({ tx } = await buildBlastV2Launch({ coinType, ticket, sealedCap, currencyId, partnerId }));
+  } catch (error) {
+    return fail(`Could not prepare the curve: ${error instanceof Error ? error.message : "shared object read failed"}`, { coinType });
+  }
   withGas(tx, sender, await gas(), gasPrice, 300_000_000);
   const made = await signAndExecute(tx, keypair);
   if (!made.ok || !made.digest) return fail(made.error ?? "Blast.fun launch failed.", { coinType });
