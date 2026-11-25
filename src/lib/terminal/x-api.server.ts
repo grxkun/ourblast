@@ -117,11 +117,27 @@ export interface XMentionItem {
   imageUrl?: string | null;
 }
 
+interface XTweetData {
+  id: string;
+  text: string;
+  author_id?: string;
+  attachments?: { media_keys?: string[] };
+  entities?: { urls?: Array<{ url: string; expanded_url?: string; unwound_url?: string }> };
+}
+
+/** Expand only URLs supplied by X; never follow arbitrary links over the network. */
+export function expandTweetText(tweet: Pick<XTweetData, "text" | "entities">): string {
+  const urls = new Map((tweet.entities?.urls ?? []).map((entity) => [
+    entity.url, entity.expanded_url || entity.unwound_url || entity.url,
+  ]));
+  return tweet.text.replace(/https?:\/\/t\.co\/[a-z0-9]+/gi, (url) => urls.get(url) ?? url);
+}
+
 /** Mentions of the bot, newest last, restricted to anything after `sinceId`. */
 export async function listMentions(credentials: XCredentials, botUserId: string, sinceId?: string | null) {
   const query: Record<string, string> = {
     max_results: "25",
-    "tweet.fields": "author_id,created_at,attachments",
+    "tweet.fields": "author_id,created_at,attachments,entities",
     expansions: "author_id,attachments.media_keys",
     "user.fields": "username",
     "media.fields": "url,preview_image_url,type",
@@ -129,7 +145,7 @@ export async function listMentions(credentials: XCredentials, botUserId: string,
   if (sinceId) query["since_id"] = sinceId;
 
   const result = await request<{
-    data?: Array<{ id: string; text: string; author_id?: string; attachments?: { media_keys?: string[] } }>;
+    data?: XTweetData[];
     includes?: {
       users?: Array<{ id: string; username: string }>;
       media?: Array<{ media_key: string; url?: string; preview_image_url?: string; type?: string }>;
@@ -145,7 +161,7 @@ export async function listMentions(credentials: XCredentials, botUserId: string,
       const key = tweet.attachments?.media_keys?.find((mediaKey) => media.get(mediaKey));
       return {
         id: tweet.id,
-        text: tweet.text,
+        text: expandTweetText(tweet),
         imageUrl: key ? media.get(key) ?? null : null,
         ...(tweet.author_id ? { author_id: tweet.author_id, username: users.get(tweet.author_id) ?? "" } : {}),
       };
@@ -161,7 +177,7 @@ export async function searchMentions(credentials: XCredentials, handle: string, 
   const query: Record<string, string> = {
     query: `@${handle.replace(/^@/, "")} -is:retweet`,
     max_results: "25",
-    "tweet.fields": "author_id,created_at,attachments",
+    "tweet.fields": "author_id,created_at,attachments,entities",
     expansions: "author_id,attachments.media_keys",
     "user.fields": "username",
     "media.fields": "url,preview_image_url,type",
@@ -169,7 +185,7 @@ export async function searchMentions(credentials: XCredentials, handle: string, 
   if (sinceId) query["since_id"] = sinceId;
 
   const result = await request<{
-    data?: Array<{ id: string; text: string; author_id?: string; attachments?: { media_keys?: string[] } }>;
+    data?: XTweetData[];
     includes?: {
       users?: Array<{ id: string; username: string }>;
       media?: Array<{ media_key: string; url?: string; preview_image_url?: string; type?: string }>;
@@ -185,7 +201,7 @@ export async function searchMentions(credentials: XCredentials, handle: string, 
       const key = tweet.attachments?.media_keys?.find((mediaKey) => media.get(mediaKey));
       return {
         id: tweet.id,
-        text: tweet.text,
+        text: expandTweetText(tweet),
         imageUrl: key ? media.get(key) ?? null : null,
         ...(tweet.author_id ? { author_id: tweet.author_id, username: users.get(tweet.author_id) ?? "" } : {}),
       };
@@ -208,14 +224,14 @@ export async function fetchTweetImage(credentials: XCredentials, postId: string)
 /** Full tweet details (text, author username, first picture), read on demand. */
 export async function fetchTweetDetails(credentials: XCredentials, postId: string): Promise<XMentionItem | null> {
   const result = await request<{
-    data?: { id: string; text: string; author_id?: string; attachments?: { media_keys?: string[] } };
+    data?: XTweetData;
     includes?: {
       users?: Array<{ id: string; username: string }>;
       media?: Array<{ media_key: string; url?: string; preview_image_url?: string }>;
     };
   }>(credentials, "GET", `/2/tweets/${postId}`, {
     query: {
-      "tweet.fields": "author_id,attachments",
+      "tweet.fields": "author_id,attachments,entities",
       expansions: "author_id,attachments.media_keys",
       "user.fields": "username",
       "media.fields": "url,preview_image_url,type",
@@ -236,7 +252,7 @@ export async function fetchTweetDetails(credentials: XCredentials, postId: strin
   const mediaItem = (result?.includes?.media ?? []).find((m) => m.media_key === key);
   return {
     id: tweet.id,
-    text: tweet.text,
+    text: expandTweetText(tweet),
     username,
     imageUrl: mediaItem?.url ?? mediaItem?.preview_image_url ?? null,
   };

@@ -124,7 +124,7 @@ function stripPairPhrase(text: string): string {
  * matchLaunchpad tolerates typos ("on Peropelxity" → Perpsplexity) and
  * rejects non-pad words ("on Monday" → no pad).
  */
-const PAD_ANYWHERE = /\b(?:on|in|at|via|using)\s+@?([a-z][a-z0-9.]{2,20})\b/gi;
+const PAD_ANYWHERE = /\b(?:on|in|at|via|using)\s+(?:https?:\/\/)?(?:www\.)?@?([a-z][a-z0-9.]{2,20})\b(?:\/[^\s]*)?/gi;
 
 /**
  * Scans every "on <word>" phrase, not just the first, so chatter like
@@ -176,7 +176,12 @@ export function parseDeployTweet(tweetText: string, defaultPad = LAUNCHPAD.id): 
   // Same reason: "@adiniyi" must be read before mention stripping removes it.
   const feeReceiver = extractFeeReceiver(rawText) ?? undefined;
   const devBuyAmount = extractDevBuy(rawText) ?? undefined;
-  let text = stripDevBuyPhrase(stripPairPhrase(stripFeePhrases(normalizeCommandText(rawText))));
+  // Remove the complete pad phrase before link/mention stripping, otherwise
+  // "on https://blast.fun" leaves a stray "on" in the token name.
+  const commandText = rawPadMatch
+    ? rawText.slice(0, rawPadMatch.index) + " " + rawText.slice(rawPadMatch.index + rawPadMatch.length)
+    : rawText;
+  let text = stripDevBuyPhrase(stripPairPhrase(stripFeePhrases(normalizeCommandText(commandText))));
 
   const textPadMatch = findPadMatch(text);
   const padMatch = textPadMatch ?? rawPadMatch;

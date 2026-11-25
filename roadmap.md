@@ -1,4 +1,5 @@
 # Roadmap
+- [x] Fix X shortened launchpad links across mentions, search and direct tweet reads; 35 tests passed including ALPHA → Blast.fun with clean name, build OK; no posting, launching or settings changes, publishing required.
 - [x] Implement four-hour observed-price trends, +20%/15m surge alerts, one-time 50% curve crossings and verified migration alerts with a separate authenticated supervised daemon and minute-poll fallback; no public test posts.
 - [ ] Activate channel signal listener — blocked: publish updated app and install/start scripts/ourblast-notifier.mjs on the user's VPS with the matching existing SUI_INDEXER_SECRET. First four-hour trends require four hours of observations.
 - [x] Add new-launch scan/image/deployer/social posts to @ourblastnotifier with durable channel/contract claims, activation baseline and safe uncertain-send handling; channel admin permission verified, tests passed; automatic production posts require publishing.
